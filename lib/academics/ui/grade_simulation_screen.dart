@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/controller.dart';
 import '../../l10n/l10n.dart';
 import '../../sync/controller.dart';
+import '../../ui/selection_controls.dart';
 import '../model.dart';
 import 'academic_common.dart';
 import 'projected_course_dialog.dart';
@@ -249,9 +250,7 @@ class _GradeSimulationScreenState extends State<GradeSimulationScreen> {
                 ],
               ),
             ),
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            controlAffinity: ListTileControlAffinity.leading,
+          AppSelectionTile(
             title: Text(l10n.retakeUsesHighest),
             value: _replaceRetakes,
             onChanged: (value) => setState(() => _replaceRetakes = value!),

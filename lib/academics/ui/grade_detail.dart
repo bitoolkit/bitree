@@ -25,13 +25,7 @@ Future<void> showGradeDetails(
         child: SheetLayout(
           header: SheetHeader(
             title: Text(l10n.courseGradeTitle),
-            actions: [
-              IconButton(
-                tooltip: l10n.close,
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close_rounded),
-              ),
-            ],
+            actions: const [SheetCloseButton()],
           ),
           content: Padding(
             padding: appSheetContentPadding,

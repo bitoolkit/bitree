@@ -37,13 +37,7 @@ class EditorSheet extends StatelessWidget {
         child: SheetLayout(
           header: SheetHeader(
             title: Text(title),
-            actions: [
-              IconButton(
-                tooltip: context.l10n.close,
-                onPressed: saving ? null : () => Navigator.pop(context),
-                icon: const Icon(Icons.close_rounded, size: 20),
-              ),
-            ],
+            actions: [SheetCloseButton(enabled: !saving)],
           ),
           content: Padding(
             // Leave room for floating labels above the first field.

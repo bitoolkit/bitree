@@ -45,13 +45,7 @@ Future<void> showDeletedDeadlines(
         child: SheetLayout(
           header: SheetHeader(
             title: Text(l10n.deletedDeadlinesTitle),
-            actions: [
-              IconButton(
-                tooltip: l10n.close,
-                onPressed: () => Navigator.pop(sheetContext),
-                icon: const Icon(Icons.close_rounded, size: 20),
-              ),
-            ],
+            actions: const [SheetCloseButton()],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,

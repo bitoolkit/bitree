@@ -1,5 +1,23 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/l10n.dart';
+
+class SheetCloseButton extends StatelessWidget {
+  const SheetCloseButton({super.key, this.onPressed, this.enabled = true});
+
+  final VoidCallback? onPressed;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: context.l10n.close,
+    onPressed: enabled
+        ? (onPressed ?? () => Navigator.maybePop(context))
+        : null,
+    icon: const Icon(Icons.close_rounded, size: 20),
+  );
+}
+
 class SheetHeader extends StatelessWidget {
   const SheetHeader({super.key, required this.title, required this.actions});
 

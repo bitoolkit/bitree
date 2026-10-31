@@ -66,13 +66,7 @@ Future<void> showAgendaDay(
                     ],
                   ],
                 ),
-                actions: [
-                  IconButton(
-                    tooltip: l10n.close,
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close_rounded, size: 20),
-                  ),
-                ],
+                actions: const [SheetCloseButton()],
               ),
               content: Padding(
                 padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
@@ -156,13 +150,7 @@ Future<void> showCalendarItems(
               ],
             ],
           ),
-          actions: [
-            IconButton(
-              tooltip: l10n.close,
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.close_rounded, size: 20),
-            ),
-          ],
+          actions: const [SheetCloseButton()],
         ),
         content: Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),

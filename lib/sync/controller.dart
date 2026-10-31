@@ -23,9 +23,20 @@ enum SyncTarget {
 
   const SyncTarget([this.source]);
   final DeadlineSource? source;
-  bool get isSchool => this != mooc && this != physicsLab;
+  bool get usesSchoolSession => switch (this) {
+    schedule || exams || grades || studyPlan || lexue || eclass => true,
+    mooc || physicsLab => false,
+  };
+
   bool get isAcademicRecord => this == grades || this == studyPlan;
+
+  SyncCategory get category => switch (this) {
+    schedule || exams || grades || studyPlan => SyncCategory.schoolData,
+    lexue || eclass || mooc || physicsLab => SyncCategory.deadlineData,
+  };
 }
+
+enum SyncCategory { schoolData, deadlineData }
 
 enum SyncOutcome {
   synced,
@@ -135,7 +146,7 @@ class SyncController extends ChangeNotifier {
   }
 
   Future<void> _syncSchoolAndLab(String? term, AppLocalizations l10n) async {
-    for (final target in _targets.where((target) => target.isSchool)) {
+    for (final target in _targets.where((target) => target.usesSchoolSession)) {
       while (_school.busy && !_cancelled) {
         await Future.any([_school.idle, _cancelledSignal!.future]);
       }
@@ -258,7 +269,7 @@ class SyncController extends ChangeNotifier {
     if (!busy || _cancelled) return;
     _cancelled = true;
     _cancelledSignal!.complete();
-    if (_running.any((target) => target.isSchool)) _school.cancel();
+    if (_running.any((target) => target.usesSchoolSession)) _school.cancel();
     if (_running.contains(SyncTarget.mooc)) _mooc.cancel();
     _notify();
   }

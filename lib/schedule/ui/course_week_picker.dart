@@ -5,23 +5,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../l10n/l10n.dart';
+import '../../ui/selection_controls.dart';
 
-enum _WeekSelection {
-  all,
-  none,
+enum _WeekPreset {
   summer,
   regular;
 
   Set<int> weeksIn(List<int> weeks) => switch (this) {
-    all => weeks.toSet(),
-    none => {},
     summer => weeks.where((week) => week < 0).toSet(),
     regular => weeks.where((week) => week > 0).toSet(),
   };
 
   String label(AppLocalizations l10n) => switch (this) {
-    all => l10n.weekSelectionAll,
-    none => l10n.weekSelectionNone,
     summer => l10n.weekSelectionSummer,
     regular => l10n.weekSelectionRegular,
   };
@@ -162,6 +157,7 @@ class _CourseWeekPickerState extends State<CourseWeekPicker> {
     final onChanged = widget.onChanged;
     final hasSummerWeeks = weeks.any((week) => week < 0);
     final hasRegularWeeks = weeks.any((week) => week > 0);
+    final selectedCount = weeks.where(selectedWeeks.contains).length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -185,39 +181,32 @@ class _CourseWeekPickerState extends State<CourseWeekPicker> {
             ),
           ],
         ),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final minimumWidth =
-                MediaQuery.textScalerOf(context).scale(14) * 4 + 16;
-            final columns = constraints.maxWidth >= minimumWidth * 4 ? 4 : 2;
-            final width = constraints.maxWidth / columns;
-
-            return Wrap(
-              children: [
-                for (final selection in _WeekSelection.values)
-                  SizedBox(
-                    width: width,
-                    child: TextButton(
-                      style: TextButton.styleFrom(
-                        minimumSize: const Size(48, 36),
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        textStyle: theme.textTheme.labelMedium,
-                      ),
-                      onPressed:
-                          !enabled ||
-                              (selection == _WeekSelection.summer &&
-                                  !hasSummerWeeks) ||
-                              (selection == _WeekSelection.regular &&
-                                  !hasRegularWeeks)
-                          ? null
-                          : () => onChanged(selection.weeksIn(weeks)),
-                      child: Text(selection.label(l10n)),
-                    ),
-                  ),
-              ],
-            );
-          },
+        AppSelectionBar(
+          selectedCount: selectedCount,
+          totalCount: weeks.length,
+          summary: l10n.selectedItems(selectedCount),
+          enabled: enabled,
+          onSelectAll: () => onChanged(weeks.toSet()),
+          onClear: () => onChanged({}),
         ),
+        if (hasSummerWeeks || hasRegularWeeks) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              for (final preset in _WeekPreset.values)
+                if ((preset == _WeekPreset.summer && hasSummerWeeks) ||
+                    (preset == _WeekPreset.regular && hasRegularWeeks))
+                  ActionChip(
+                    label: Text(preset.label(l10n)),
+                    onPressed: enabled
+                        ? () => onChanged(preset.weeksIn(weeks))
+                        : null,
+                  ),
+            ],
+          ),
+        ],
         const SizedBox(height: 8),
         LayoutBuilder(
           builder: (context, constraints) {

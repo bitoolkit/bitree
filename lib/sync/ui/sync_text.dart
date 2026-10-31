@@ -25,7 +25,7 @@ String syncProgressText(
     }
     return l10n.syncing;
   }
-  return target.isSchool && controller.waitingForSchool
+  return target.usesSchoolSession && controller.waitingForSchool
       ? l10n.waitingForSchool
       : l10n.waitingToSync;
 }

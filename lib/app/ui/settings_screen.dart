@@ -14,6 +14,7 @@ import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_menu_trigger.dart';
 import '../../ui/app_page.dart';
 import '../../ui/external_link.dart';
+import '../../ui/section_label.dart';
 import '../../updates/version.dart';
 import '../controller.dart';
 import 'logs_screen.dart';
@@ -226,11 +227,7 @@ class SettingsScreen extends StatelessWidget {
       padding: const EdgeInsets.only(top: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _SectionLabel(title),
-          const SizedBox(height: 8),
-          ...children,
-        ],
+        children: [AppSectionLabel(title), ...children],
       ),
     );
 
@@ -428,19 +425,4 @@ class SettingsScreen extends StatelessWidget {
       ),
     );
   }
-}
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Text(
-    text,
-    style: TextStyle(
-      fontSize: 13,
-      fontWeight: FontWeight.w600,
-      color: Theme.of(context).colorScheme.onSurfaceVariant,
-    ),
-  );
 }

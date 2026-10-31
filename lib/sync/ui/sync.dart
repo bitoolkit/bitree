@@ -10,6 +10,8 @@ import '../../school/ui/school_screen.dart';
 import '../../school/ui/school_verification_dialog.dart';
 import '../../ui/app_notice.dart';
 import '../../ui/design.dart';
+import '../../ui/section_label.dart';
+import '../../ui/selection_controls.dart';
 import '../../ui/sheet_layout.dart';
 import '../controller.dart';
 import 'sync_text.dart';
@@ -29,7 +31,9 @@ Future<bool> startSync(
   }
   final selected = targets ?? app.sync.defaultTargets;
   if (selected.isEmpty) return false;
-  final school = selected.where((target) => target.isSchool).firstOrNull;
+  final school = selected
+      .where((target) => target.usesSchoolSession)
+      .firstOrNull;
   if (school != null &&
       (app.school.username == null || app.school.loginExpired)) {
     if (await openSchoolLogin(context, app, source: school.source) != true ||
@@ -111,63 +115,66 @@ class _CustomSyncSheetState extends State<_CustomSyncSheet> {
     child: SheetLayout(
       header: SheetHeader(
         title: Text(context.l10n.customSync),
-        actions: [
-          IconButton(
-            tooltip: context.l10n.close,
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.close_rounded, size: 20),
-          ),
-        ],
+        actions: const [SheetCloseButton()],
       ),
       content: Padding(
         padding: appSheetContentPadding,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    context.l10n.selectedItems(_selected.length),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () =>
-                      setState(() => _selected.addAll(_availableTargets)),
-                  child: Text(context.l10n.selectAll),
-                ),
-                TextButton(
-                  onPressed: () => setState(_selected.clear),
-                  child: Text(context.l10n.clearSelection),
-                ),
-              ],
+            AppSelectionBar(
+              selectedCount: _selected.length,
+              totalCount: _availableTargets.length,
+              summary: context.l10n.selectedItems(_selected.length),
+              onSelectAll: () =>
+                  setState(() => _selected.addAll(_availableTargets)),
+              onClear: () => setState(_selected.clear),
             ),
-            for (final target in _availableTargets) ...[
-              if (target == SyncTarget.lexue) const Divider(),
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-                title: Text(target.localizedTitle(context.l10n)),
-                subtitle:
-                    target == SyncTarget.mooc && widget.app.mooc.needsLogin
-                    ? Text(context.l10n.loginAfterSelection)
-                    : null,
-                value: _selected.contains(target),
-                onChanged: (checked) => setState(() {
-                  if (checked == true) {
-                    _selected.add(target);
-                  } else {
-                    _selected.remove(target);
-                  }
-                }),
+            const SizedBox(height: 16),
+            AppSectionLabel(context.l10n.syncSchoolData),
+            _SyncTargetChoices(
+              targets: _availableTargets.where(
+                (target) => target.category == SyncCategory.schoolData,
+              ),
+              selected: _selected,
+              onChanged: _setSelected,
+            ),
+            const SizedBox(height: 16),
+            AppSectionLabel(context.l10n.syncDeadlineData),
+            _SyncTargetChoices(
+              targets: _availableTargets.where(
+                (target) => target.category == SyncCategory.deadlineData,
+              ),
+              selected: _selected,
+              onChanged: _setSelected,
+            ),
+            if (_selected.contains(SyncTarget.mooc) &&
+                widget.app.mooc.needsLogin) ...[
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.login_rounded,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      context.l10n.loginAfterSelection,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                ],
               ),
             ],
           ],
         ),
       ),
       actions: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+        padding: appSheetActionPadding,
         child: FilledButton(
           onPressed: _selected.isEmpty
               ? null
@@ -176,6 +183,42 @@ class _CustomSyncSheetState extends State<_CustomSyncSheet> {
         ),
       ),
     ),
+  );
+
+  void _setSelected(SyncTarget target, bool checked) {
+    setState(() {
+      if (checked) {
+        _selected.add(target);
+      } else {
+        _selected.remove(target);
+      }
+    });
+  }
+}
+
+class _SyncTargetChoices extends StatelessWidget {
+  const _SyncTargetChoices({
+    required this.targets,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final Iterable<SyncTarget> targets;
+  final Set<SyncTarget> selected;
+  final void Function(SyncTarget target, bool checked) onChanged;
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      for (final target in targets)
+        FilterChip(
+          label: Text(target.localizedTitle(context.l10n)),
+          selected: selected.contains(target),
+          onSelected: (checked) => onChanged(target, checked),
+        ),
+    ],
   );
 }
 
@@ -196,7 +239,7 @@ class _SyncProgressSheetState extends State<_SyncProgressSheet> {
     final term = app.sync.term;
     setState(() => _authenticating = true);
     try {
-      if (selected.any((target) => target.isSchool) &&
+      if (selected.any((target) => target.usesSchoolSession) &&
           app.school.verificationRequired) {
         final verified = await app.school.restoreAccount(
           verify: (request) => verifySchoolLogin(context, request),
@@ -259,76 +302,17 @@ class _SyncProgressSheetState extends State<_SyncProgressSheet> {
                 ),
                 const SizedBox(height: 16),
                 for (final target in model.targets)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2, right: 14),
-                          child: model.isRunning(target)
-                              ? const SizedBox.square(
-                                  dimension: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Icon(
-                                  switch (results[target]?.outcome) {
-                                    SyncOutcome.synced =>
-                                      Icons.check_circle_outline_rounded,
-                                    SyncOutcome.failed ||
-                                    SyncOutcome.needsLogin ||
-                                    SyncOutcome.needsVerification ||
-                                    SyncOutcome.saveFailed =>
-                                      Icons.error_outline_rounded,
-                                    SyncOutcome.cancelled =>
-                                      Icons.close_rounded,
-                                    SyncOutcome.noSchedule =>
-                                      Icons.event_busy_rounded,
-                                    null => Icons.schedule_rounded,
-                                  },
-                                  size: 20,
-                                  color:
-                                      results[target]?.outcome ==
-                                              SyncOutcome.failed ||
-                                          results[target]?.outcome ==
-                                              SyncOutcome.needsLogin ||
-                                          results[target]?.outcome ==
-                                              SyncOutcome.needsVerification ||
-                                          results[target]?.outcome ==
-                                              SyncOutcome.saveFailed
-                                      ? theme.colorScheme.error
-                                      : theme.colorScheme.onSurfaceVariant,
-                                ),
-                        ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                target.localizedTitle(l10n),
-                                style: theme.textTheme.titleSmall,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                syncProgressText(l10n, model, target),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                  _SyncProgressRow(
+                    controller: model,
+                    target: target,
+                    l10n: l10n,
                   ),
               ],
             ),
           ),
           actions: model.busy
               ? Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+                  padding: appSheetActionPadding,
                   child: Row(
                     children: [
                       Expanded(
@@ -348,7 +332,7 @@ class _SyncProgressSheetState extends State<_SyncProgressSheet> {
                 )
               : model.incompleteTargets.isNotEmpty
               ? Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+                  padding: appSheetActionPadding,
                   child: FilledButton(
                     onPressed: _authenticating ? null : _retry,
                     child: Text(
@@ -361,4 +345,79 @@ class _SyncProgressSheetState extends State<_SyncProgressSheet> {
       );
     },
   );
+}
+
+class _SyncProgressRow extends StatelessWidget {
+  const _SyncProgressRow({
+    required this.controller,
+    required this.target,
+    required this.l10n,
+  });
+
+  final SyncController controller;
+  final SyncTarget target;
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final outcome = controller.results[target]?.outcome;
+    final failed = switch (outcome) {
+      SyncOutcome.failed ||
+      SyncOutcome.needsLogin ||
+      SyncOutcome.needsVerification ||
+      SyncOutcome.saveFailed => true,
+      _ => false,
+    };
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2, right: 14),
+            child: controller.isRunning(target)
+                ? const SizedBox.square(
+                    dimension: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(
+                    switch (outcome) {
+                      SyncOutcome.synced => Icons.check_circle_outline_rounded,
+                      SyncOutcome.failed ||
+                      SyncOutcome.needsLogin ||
+                      SyncOutcome.needsVerification ||
+                      SyncOutcome.saveFailed => Icons.error_outline_rounded,
+                      SyncOutcome.cancelled => Icons.close_rounded,
+                      SyncOutcome.noSchedule => Icons.event_busy_rounded,
+                      null => Icons.schedule_rounded,
+                    },
+                    size: 20,
+                    color: failed
+                        ? theme.colorScheme.error
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  target.localizedTitle(l10n),
+                  style: theme.textTheme.titleSmall,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  syncProgressText(l10n, controller, target),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

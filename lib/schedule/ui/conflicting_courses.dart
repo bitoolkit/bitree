@@ -34,13 +34,7 @@ class ConflictingCourses extends StatelessWidget {
         child: SheetLayout(
           header: SheetHeader(
             title: Text(l10n.chooseCourse),
-            actions: [
-              IconButton(
-                tooltip: l10n.close,
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close_rounded, size: 20),
-              ),
-            ],
+            actions: const [SheetCloseButton()],
           ),
           content: Padding(
             padding: const EdgeInsets.only(bottom: 12),

@@ -567,12 +567,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get weekSelectionAll => '全选';
-
-  @override
-  String get weekSelectionNone => '全不选';
-
-  @override
   String get weekSelectionSummer => '小学期';
 
   @override
@@ -928,9 +922,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get clearDeadlinesIntro => '勾选要删除的来源，可多选。数量包含所有学期、已完成和已删除的 DDL。';
 
   @override
-  String get clearDeadlinesSelectAll => '全选';
-
-  @override
   String clearDeadlinesSourceCount(String source, int count) {
     return '$source（$count 条）';
   }
@@ -1048,6 +1039,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get customSync => '自定义同步';
+
+  @override
+  String get syncSchoolData => '学校数据';
+
+  @override
+  String get syncDeadlineData => 'DDL 与课业';
 
   @override
   String get deletedDdlMenu => '已删除的 DDL';

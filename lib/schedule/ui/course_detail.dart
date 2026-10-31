@@ -178,15 +178,7 @@ class _CourseDetails extends StatelessWidget {
               ),
             ],
           ),
-          actions: [
-            IconButton(
-              tooltip: l10n.close,
-              onPressed: controller.timetable.busy
-                  ? null
-                  : () => Navigator.pop(context),
-              icon: const Icon(Icons.close_rounded, size: 20),
-            ),
-          ],
+          actions: [SheetCloseButton(enabled: !controller.timetable.busy)],
         ),
         content: Padding(
           padding: appSheetContentPadding,

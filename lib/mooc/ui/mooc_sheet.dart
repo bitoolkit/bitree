@@ -150,13 +150,7 @@ class _MoocSheetState extends State<_MoocSheet> {
                 ],
               ],
             ),
-            actions: [
-              IconButton(
-                tooltip: l10n.close,
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close_rounded, size: 20),
-              ),
-            ],
+            actions: const [SheetCloseButton()],
           ),
           content: Padding(
             padding: appSheetContentPadding,

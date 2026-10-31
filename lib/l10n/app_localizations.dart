@@ -1074,18 +1074,6 @@ abstract class AppLocalizations {
     String end,
   );
 
-  /// No description provided for @weekSelectionAll.
-  ///
-  /// In en, this message translates to:
-  /// **'All'**
-  String get weekSelectionAll;
-
-  /// No description provided for @weekSelectionNone.
-  ///
-  /// In en, this message translates to:
-  /// **'None'**
-  String get weekSelectionNone;
-
   /// No description provided for @weekSelectionSummer.
   ///
   /// In en, this message translates to:
@@ -1656,12 +1644,6 @@ abstract class AppLocalizations {
   /// **'Select one or more sources. Counts include every term and completed or deleted DDLs.'**
   String get clearDeadlinesIntro;
 
-  /// No description provided for @clearDeadlinesSelectAll.
-  ///
-  /// In en, this message translates to:
-  /// **'Select all'**
-  String get clearDeadlinesSelectAll;
-
   /// No description provided for @clearDeadlinesSourceCount.
   ///
   /// In en, this message translates to:
@@ -1871,6 +1853,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Custom sync'**
   String get customSync;
+
+  /// No description provided for @syncSchoolData.
+  ///
+  /// In en, this message translates to:
+  /// **'School data'**
+  String get syncSchoolData;
+
+  /// No description provided for @syncDeadlineData.
+  ///
+  /// In en, this message translates to:
+  /// **'Deadlines and coursework'**
+  String get syncDeadlineData;
 
   /// No description provided for @deletedDdlMenu.
   ///

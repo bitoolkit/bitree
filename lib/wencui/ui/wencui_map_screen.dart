@@ -10,6 +10,7 @@ import '../../schedule/model.dart';
 import '../../ui/app_menu_anchor.dart';
 import '../../ui/design.dart';
 import '../../ui/external_link.dart';
+import '../../ui/sheet_layout.dart';
 import '../atlas.dart';
 import '../place.dart';
 import 'floor_map.dart';
@@ -217,11 +218,7 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
                   l10n.myWencuiCourses,
                   style: Theme.of(sheetContext).textTheme.titleLarge,
                 ),
-                trailing: IconButton(
-                  tooltip: l10n.close,
-                  onPressed: () => Navigator.pop(sheetContext),
-                  icon: const Icon(Icons.close_rounded),
-                ),
+                trailing: const SheetCloseButton(),
               ),
               for (final (:course, :place) in _courses)
                 ListTile(

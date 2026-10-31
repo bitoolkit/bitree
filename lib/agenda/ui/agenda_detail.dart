@@ -113,11 +113,7 @@ Future<void> showAgendaEntry(
                       },
                 icon: const Icon(Icons.delete_outline, size: 20),
               ),
-              IconButton(
-                tooltip: l10n.close,
-                onPressed: () => Navigator.pop(sheetContext),
-                icon: const Icon(Icons.close_rounded, size: 20),
-              ),
+              const SheetCloseButton(),
             ],
           ),
           content: Padding(
