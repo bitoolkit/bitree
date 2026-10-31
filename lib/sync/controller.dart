@@ -34,6 +34,8 @@ enum SyncTarget {
     schedule || exams || grades || studyPlan => SyncCategory.schoolData,
     lexue || eclass || mooc || physicsLab => SyncCategory.deadlineData,
   };
+
+  bool get isAcademicRecord => this == grades || this == studyPlan;
 }
 
 enum SyncCategory { schoolData, deadlineData }
