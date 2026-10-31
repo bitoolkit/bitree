@@ -114,7 +114,7 @@ void main() {
     await tester.tap(restoreButton);
     await tester.pumpAndSettle();
     expect(find.text('已删除的 DDL'), findsOneWidget);
-    await tester.tap(find.text('恢复'));
+    await tester.tap(find.byTooltip('恢复'));
     await tester.pumpAndSettle();
     expect(app.agenda.entries.single.id, 'task');
     expect(app.agenda.deletedDeadlines, isEmpty);
@@ -131,7 +131,49 @@ void main() {
         viewSize: const Size(320, 640),
         textScale: 1.8,
       );
-      expect(find.byTooltip('已删除的 DDL').hitTestable(), findsOneWidget);
+      final restoreButton = find.byTooltip('已删除的 DDL');
+      expect(restoreButton.hitTestable(), findsOneWidget);
+      await tester.tap(restoreButton);
+      await tester.pumpAndSettle();
+      expect(find.text('已删除的 DDL'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Deleted DDL recovery shares select-all, clear, and partial restore',
+    (tester) async {
+      final app = await showAgenda(tester, count: 3, deleted: true);
+      await tester.tap(find.byTooltip('已删除的 DDL'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(Checkbox).first);
+      await tester.pump();
+      expect(find.text('已选 3 项'), findsOneWidget);
+      expect(find.text('全部恢复'), findsOneWidget);
+
+      await tester.tap(find.text('清空'));
+      await tester.pump();
+      expect(find.text('已选 0 项'), findsOneWidget);
+
+      await tester.tap(find.text('作业 1'));
+      await tester.pump();
+      expect(find.text('已选 1 项'), findsOneWidget);
+      await tester.tap(find.text('恢复所选'));
+      await tester.pumpAndSettle();
+
+      expect(app.agenda.deletedDeadlines.map((entry) => entry.id), {
+        'task',
+        'task2',
+      });
+      expect(find.text('已恢复“作业 1”'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.text('作业 1'),
+        ),
+        findsNothing,
+      );
       expect(tester.takeException(), isNull);
     },
   );
