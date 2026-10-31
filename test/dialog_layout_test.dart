@@ -1,7 +1,9 @@
 import 'dart:math' as math;
 
 import 'package:bitree/classrooms/ui/classroom_time_field.dart';
-import 'package:bitree/schedule/ui/week_range_dialog.dart';
+import 'package:bitree/schedule/ui/week_range_sheet.dart';
+import 'package:bitree/school/ui/school_verification_sheet.dart';
+import 'package:bitree/school/verification.dart';
 import 'package:bitree/ui/dialog_layout.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
@@ -99,7 +101,7 @@ void main() {
       });
     }
 
-    testWidgets('Week management fits its actual content width at $size', (
+    testWidgets('Week management uses the shared sheet at $size', (
       tester,
     ) async {
       ({int first, int last})? saved;
@@ -108,13 +110,14 @@ void main() {
         size,
         (context) => TextButton(
           onPressed: () async =>
-              saved = await showWeekRangeDialog(context, first: -3, last: 25),
+              saved = await showWeekRangeSheet(context, first: -3, last: 25),
           child: const Text('打开'),
         ),
       );
       await tester.tap(find.text('打开'));
       await tester.pumpAndSettle();
-      _expectWidth(tester, size);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byType(BottomSheet), findsOneWidget);
       await tester.tap(find.byTooltip('增加一周').first);
       await tester.tap(find.text('确定'));
       await tester.pumpAndSettle();
@@ -193,5 +196,52 @@ void main() {
       await tester.tapAt(const Offset(5, 5));
       await tester.pumpAndSettle();
     }
+  });
+
+  testWidgets('School verification uses the shared sheet with large text', (
+    tester,
+  ) async {
+    var sends = 0;
+    String? checkedCode;
+    String? result;
+    await _host(
+      tester,
+      const Size(320, 640),
+      (context) => TextButton(
+        onPressed: () async {
+          result = await verifySchoolLogin(
+            context,
+            SchoolSmsVerification(
+              phone: '138****0000',
+              sendCode: () async {
+                sends++;
+              },
+              checkCode: (code) async {
+                checkedCode = code;
+              },
+            ),
+          );
+        },
+        child: const Text('开始验证'),
+      ),
+      textScale: 1.8,
+    );
+    await tester.tap(find.text('开始验证'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(sends, 1);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(find.text('短信验证'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.enterText(find.byType(TextFormField), '1234');
+    await tester.tap(find.text('确定'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(checkedCode, '1234');
+    expect(result, '1234');
+    expect(tester.takeException(), isNull);
   });
 }

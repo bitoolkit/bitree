@@ -7,6 +7,8 @@ import '../../l10n/l10n.dart';
 import '../../sync/ui/sync.dart';
 import '../../sync/ui/sync_button.dart';
 import '../../ui/app_page.dart';
+import '../../ui/design.dart';
+import '../../ui/sheet_layout.dart';
 import '../model.dart';
 import 'course_detail.dart';
 import 'course_editor.dart';
@@ -168,22 +170,39 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _unscheduled(BuildContext context) => showDialog<void>(
+  Future<void> _unscheduled(BuildContext context) => showAppSheet<void>(
     context: context,
-    builder: (dialogContext) => SimpleDialog(
-      title: Text(context.l10n.timedCourses),
-      children: [
-        for (final course in controller.timetable.schedule!.courses.where(
-          (course) => !course.isScheduled,
-        ))
-          SimpleDialogOption(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              showCourse(context, controller, course);
-            },
-            child: Text(course.name),
-          ),
-      ],
+    builder: (sheetContext) => SheetLayout(
+      header: SheetHeader(
+        title: Text(sheetContext.l10n.timedCourses),
+        actions: const [SheetCloseButton()],
+      ),
+      contentPadding: appSheetListPadding,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final course in controller.timetable.schedule!.courses.where(
+            (course) => !course.isScheduled,
+          ))
+            ListTile(
+              key: ValueKey(course.id),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+              ),
+              title: Text(
+                course.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                showCourse(context, controller, course);
+              },
+            ),
+        ],
+      ),
     ),
   );
 }

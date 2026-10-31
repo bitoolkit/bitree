@@ -34,40 +34,40 @@ class WencuiMapScreen extends StatefulWidget {
   State<WencuiMapScreen> createState() => _WencuiMapScreenState();
 }
 
-void _showMapInfo(BuildContext context) => showDialog<void>(
+void _showMapInfo(BuildContext context) => showAppSheet<void>(
   context: context,
-  builder: (dialogContext) {
-    final l10n = dialogContext.l10n;
-    return AlertDialog(
-      title: Text(l10n.mapInfoTitle),
-      scrollable: true,
+  builder: (sheetContext) {
+    final l10n = sheetContext.l10n;
+    return SheetLayout(
+      header: SheetHeader(
+        title: Text(l10n.mapInfoTitle),
+        actions: const [SheetCloseButton()],
+      ),
       content: Text(l10n.mapInfoBody),
-      actions: [
-        TextButton(
-          onPressed: () => openExternalLink(
-            dialogContext,
-            Uri.parse(
-              'https://github.com/Zebedee2021/BIT-Nav-2026/tree/main/wencui',
+      actions: SheetActionBar(
+        children: [
+          TextButton(
+            onPressed: () => openExternalLink(
+              sheetContext,
+              Uri.parse(
+                'https://github.com/Zebedee2021/BIT-Nav-2026/tree/main/wencui',
+              ),
+              failureTitle: l10n.openMapSourceFailed,
             ),
-            failureTitle: l10n.openMapSourceFailed,
+            child: Text(l10n.mapSource),
           ),
-          child: Text(l10n.mapSource),
-        ),
-        TextButton(
-          onPressed: () => openExternalLink(
-            dialogContext,
-            Uri.parse(
-              'https://wencuigis.info.bit.edu.cn/3dbuilding/#/building2',
+          TextButton(
+            onPressed: () => openExternalLink(
+              sheetContext,
+              Uri.parse(
+                'https://wencuigis.info.bit.edu.cn/3dbuilding/#/building2',
+              ),
+              failureTitle: l10n.openSchoolNavigationFailed,
             ),
-            failureTitle: l10n.openSchoolNavigationFailed,
+            child: Text(l10n.school3dNavigation),
           ),
-          child: Text(l10n.school3dNavigation),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext),
-          child: Text(l10n.close),
-        ),
-      ],
+        ],
+      ),
     );
   },
 );

@@ -1,7 +1,7 @@
 import 'package:bitree/agenda/deadline_clear_scope.dart';
 import 'package:bitree/agenda/deadline_source.dart';
 import 'package:bitree/agenda/model.dart';
-import 'package:bitree/agenda/ui/clear_deadlines_dialog.dart';
+import 'package:bitree/agenda/ui/clear_deadlines_sheet.dart';
 import 'package:bitree/ui/selection_controls.dart';
 import 'package:bitree/ui/sheet_layout.dart';
 import 'package:bitree/ui/theme.dart';

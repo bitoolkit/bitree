@@ -8,7 +8,9 @@ import '../../schedule/model.dart';
 import '../../sync/controller.dart';
 import '../../sync/ui/sync.dart';
 import '../../ui/app_page.dart';
+import '../../ui/design.dart';
 import '../../ui/external_link.dart';
+import '../../ui/sheet_layout.dart';
 import '../model.dart';
 
 class AcademicPage extends StatelessWidget {
@@ -182,40 +184,40 @@ class AcademicUpdatedAt extends StatelessWidget {
   }
 }
 
-Future<void> showGpaRules(BuildContext context) => showDialog<void>(
+Future<void> showGpaRules(BuildContext context) => showAppSheet<void>(
   context: context,
-  builder: (context) {
+  builder: (sheetContext) {
     final l10n = context.l10n;
-    return AlertDialog(
-      scrollable: true,
-      title: Text(l10n.gpaRulesTitle),
+    return SheetLayout(
+      header: SheetHeader(
+        title: Text(l10n.gpaRulesTitle),
+        actions: const [SheetCloseButton()],
+      ),
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(l10n.gpaRuleIntro),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           Text(l10n.gpaRulePercent),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           Text(l10n.gpaRuleFive),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           Text(l10n.gpaRuleWeighting),
         ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => openExternalLink(
-            context,
-            Uri.parse(gpaRulesUrl),
-            failureTitle: l10n.openGpaRulesFailed,
+      actions: SheetActionBar(
+        children: [
+          TextButton(
+            onPressed: () => openExternalLink(
+              sheetContext,
+              Uri.parse(gpaRulesUrl),
+              failureTitle: l10n.openGpaRulesFailed,
+            ),
+            child: Text(l10n.schoolSource),
           ),
-          child: Text(l10n.schoolSource),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(l10n.close),
-        ),
-      ],
+        ],
+      ),
     );
   },
 );

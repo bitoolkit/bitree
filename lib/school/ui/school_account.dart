@@ -6,7 +6,7 @@ import '../../l10n/l10n.dart';
 import '../../ui/app_dialog.dart';
 import '../../ui/app_notice.dart';
 import 'school_screen.dart';
-import 'school_verification_dialog.dart';
+import 'school_verification_sheet.dart';
 
 class SchoolAccount extends StatefulWidget {
   const SchoolAccount({super.key, required this.controller});

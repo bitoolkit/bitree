@@ -13,7 +13,7 @@ import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_notice.dart';
 import '../ics.dart';
 import '../model.dart';
-import 'week_range_dialog.dart';
+import 'week_range_sheet.dart';
 
 class ScheduleMenu extends StatefulWidget {
   const ScheduleMenu({super.key, required this.controller});

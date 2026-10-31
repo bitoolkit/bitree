@@ -106,3 +106,24 @@ class SheetLayout extends StatelessWidget {
     ),
   );
 }
+
+/// Standard action row used at the bottom of app sheets.
+class SheetActionBar extends StatelessWidget {
+  const SheetActionBar({
+    super.key,
+    required this.children,
+    this.alignment = MainAxisAlignment.end,
+  });
+
+  final List<Widget> children;
+  final MainAxisAlignment alignment;
+
+  @override
+  Widget build(BuildContext context) => OverflowBar(
+    alignment: alignment,
+    overflowAlignment: OverflowBarAlignment.end,
+    spacing: AppSpacing.md,
+    overflowSpacing: AppSpacing.sm,
+    children: children,
+  );
+}

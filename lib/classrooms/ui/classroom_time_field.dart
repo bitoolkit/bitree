@@ -98,7 +98,7 @@ class ClassroomTimeField extends StatelessWidget {
         }
         final selection = await showAppSheet<({ClassroomPeriod? period})>(
           context: context,
-          builder: (_) => _ClassroomTimeDialog(
+          builder: (_) => _ClassroomTimeSheet(
             initial: value ?? (start: current ?? 1, end: current ?? 2),
           ),
         );
@@ -110,16 +110,16 @@ class ClassroomTimeField extends StatelessWidget {
   }
 }
 
-class _ClassroomTimeDialog extends StatefulWidget {
-  const _ClassroomTimeDialog({required this.initial});
+class _ClassroomTimeSheet extends StatefulWidget {
+  const _ClassroomTimeSheet({required this.initial});
 
   final ClassroomPeriod initial;
 
   @override
-  State<_ClassroomTimeDialog> createState() => _ClassroomTimeDialogState();
+  State<_ClassroomTimeSheet> createState() => _ClassroomTimeSheetState();
 }
 
-class _ClassroomTimeDialogState extends State<_ClassroomTimeDialog> {
+class _ClassroomTimeSheetState extends State<_ClassroomTimeSheet> {
   late ClassroomPeriod _period = widget.initial;
   bool _choosingEnd = false;
 

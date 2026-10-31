@@ -7,7 +7,7 @@ import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../mooc/ui/mooc_sheet.dart';
 import '../../school/ui/school_screen.dart';
-import '../../school/ui/school_verification_dialog.dart';
+import '../../school/ui/school_verification_sheet.dart';
 import '../../ui/app_notice.dart';
 import '../../ui/design.dart';
 import '../../ui/section_label.dart';

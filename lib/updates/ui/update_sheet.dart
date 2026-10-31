@@ -2,11 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 import '../../l10n/l10n.dart';
+import '../../ui/design.dart';
 import '../../ui/external_link.dart';
+import '../../ui/sheet_layout.dart';
 import '../release.dart';
 
-class UpdateDialog extends StatefulWidget {
-  const UpdateDialog({
+Future<void> showUpdateSheet(
+  BuildContext context, {
+  required List<AppRelease> releases,
+  required bool preferDevelopment,
+}) => showAppSheet<void>(
+  context: context,
+  builder: (_) =>
+      UpdateSheet(releases: releases, preferDevelopment: preferDevelopment),
+);
+
+class UpdateSheet extends StatefulWidget {
+  const UpdateSheet({
     super.key,
     required this.releases,
     required this.preferDevelopment,
@@ -16,10 +28,10 @@ class UpdateDialog extends StatefulWidget {
   final bool preferDevelopment;
 
   @override
-  State<UpdateDialog> createState() => _UpdateDialogState();
+  State<UpdateSheet> createState() => _UpdateSheetState();
 }
 
-class _UpdateDialogState extends State<UpdateDialog> {
+class _UpdateSheetState extends State<UpdateSheet> {
   int _selected = 0;
 
   AppRelease get _release => widget.releases[_selected];
@@ -51,18 +63,23 @@ class _UpdateDialogState extends State<UpdateDialog> {
         ? l10n.developmentBuild
         : l10n.stableBuild;
     final actionStyle = ButtonStyle(
-      minimumSize: const WidgetStatePropertyAll(Size(0, 40)),
+      minimumSize: const WidgetStatePropertyAll(Size(0, appControlHeight)),
       padding: const WidgetStatePropertyAll(
-        EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
       ),
       textStyle: WidgetStatePropertyAll(
         theme.textTheme.labelMedium!.copyWith(fontSize: 13),
       ),
     );
 
-    return AlertDialog(
-      title: Text(l10n.updateAvailable),
-      scrollable: true,
+    return SheetLayout(
+      header: SheetHeader(
+        title: Text(l10n.updateAvailable),
+        actions: const [SheetCloseButton()],
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -110,32 +127,33 @@ class _UpdateDialogState extends State<UpdateDialog> {
           ],
         ],
       ),
-      actionsOverflowButtonSpacing: 8,
-      actions: [
-        TextButton(
-          style: actionStyle,
-          onPressed: () => Navigator.pop(context),
-          child: Text(l10n.later),
-        ),
-        TextButton(
-          style: actionStyle,
-          onPressed: () => openExternalLink(
-            context,
-            _release.url,
-            failureTitle: l10n.unableOpenReleasePage,
+      actions: SheetActionBar(
+        children: [
+          TextButton(
+            style: actionStyle,
+            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.later),
           ),
-          child: Text(l10n.releasePage),
-        ),
-        FilledButton(
-          style: actionStyle,
-          onPressed: _download,
-          child: Text(
-            _release.isDevelopment
-                ? l10n.downloadDevelopment
-                : l10n.downloadStable,
+          TextButton(
+            style: actionStyle,
+            onPressed: () => openExternalLink(
+              context,
+              _release.url,
+              failureTitle: l10n.unableOpenReleasePage,
+            ),
+            child: Text(l10n.releasePage),
           ),
-        ),
-      ],
+          FilledButton(
+            style: actionStyle,
+            onPressed: _download,
+            child: Text(
+              _release.isDevelopment
+                  ? l10n.downloadDevelopment
+                  : l10n.downloadStable,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -7,12 +7,13 @@ import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../schedule/model.dart';
 import '../../school/ui/school_screen.dart';
-import '../../school/ui/school_verification_dialog.dart';
+import '../../school/ui/school_verification_sheet.dart';
 import '../../ui/app_dropdown_field.dart';
 import '../../ui/app_page.dart';
 import '../../ui/campus_time_builder.dart';
 import '../../ui/design.dart';
 import '../../ui/dialog_layout.dart';
+import '../../ui/sheet_layout.dart';
 import '../../wencui/place.dart';
 import '../../wencui/ui/wencui_map_screen.dart';
 import '../controller.dart';
@@ -428,65 +429,62 @@ Future<void> _showRoom(
   SchoolBuilding building,
   ClassroomOccupancy room,
   DateTime date,
-) => showDialog<void>(
+) => showAppSheet<void>(
   context: context,
-  builder: (dialogContext) {
-    final l10n = dialogContext.l10n;
-    return AlertDialog(
-      title: Text('${building.name} ${room.name}'),
-      scrollable: true,
-      content: SizedBox(
-        width: double.maxFinite,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              '${dateText(date)} '
-              '${localizedShortWeekday(l10n, date.weekday)}',
-              style: Theme.of(dialogContext).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 12),
-            for (final block in room.periods)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(block.period.localizedTime(l10n)),
-                subtitle: Text(block.period.localizedSection(l10n)),
-                trailing: Text(
-                  block.busy ? l10n.busyStatus : l10n.freeStatus,
-                  style: TextStyle(
-                    color: block.busy
-                        ? Theme.of(dialogContext).colorScheme.onSurfaceVariant
-                        : Theme.of(dialogContext).colorScheme.primary,
-                  ),
+  builder: (sheetContext) {
+    final l10n = sheetContext.l10n;
+    return SheetLayout(
+      header: SheetHeader(
+        title: Text('${building.name} ${room.name}'),
+        actions: const [SheetCloseButton()],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            '${dateText(date)} '
+            '${localizedShortWeekday(l10n, date.weekday)}',
+            style: Theme.of(sheetContext).textTheme.bodySmall,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          for (final block in room.periods)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(block.period.localizedTime(l10n)),
+              subtitle: Text(block.period.localizedSection(l10n)),
+              trailing: Text(
+                block.busy ? l10n.busyStatus : l10n.freeStatus,
+                style: TextStyle(
+                  color: block.busy
+                      ? Theme.of(sheetContext).colorScheme.onSurfaceVariant
+                      : Theme.of(sheetContext).colorScheme.primary,
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
-      actions: [
-        if (WencuiPlace.parse('${building.name} ${room.name}') != null)
-          TextButton.icon(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              Navigator.of(context).push<void>(
-                MaterialPageRoute(
-                  builder: (_) => WencuiMapScreen(
-                    controller: controller,
-                    initialRoom: '${building.name} ${room.name}',
-                  ),
+      actions: WencuiPlace.parse('${building.name} ${room.name}') == null
+          ? null
+          : SheetActionBar(
+              children: [
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    Navigator.of(context).push<void>(
+                      MaterialPageRoute(
+                        builder: (_) => WencuiMapScreen(
+                          controller: controller,
+                          initialRoom: '${building.name} ${room.name}',
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.map_outlined, size: 18),
+                  label: Text(l10n.wencuiMap),
                 ),
-              );
-            },
-            icon: const Icon(Icons.map_outlined, size: 18),
-            label: Text(l10n.wencuiMap),
-          ),
-        TextButton.icon(
-          onPressed: () => Navigator.pop(dialogContext),
-          icon: const Icon(Icons.close_rounded, size: 18),
-          label: Text(l10n.close),
-        ),
-      ],
+              ],
+            ),
     );
   },
 );

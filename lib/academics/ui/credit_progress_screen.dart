@@ -9,7 +9,7 @@ import '../../sync/controller.dart';
 import '../../sync/ui/sync.dart';
 import '../model.dart';
 import 'academic_common.dart';
-import 'credit_targets_dialog.dart';
+import 'credit_targets_sheet.dart';
 import 'grade_detail.dart';
 
 class CreditProgressScreen extends StatelessWidget {
@@ -42,11 +42,7 @@ class CreditProgressScreen extends StatelessWidget {
             onPressed:
                 controller.school.username == null || controller.academics.busy
                 ? null
-                : () => showDialog<void>(
-                    context: context,
-                    builder: (_) =>
-                        CreditTargetsDialog(controller: controller.academics),
-                  ),
+                : () => editCreditTargets(context, controller.academics),
             icon: const Icon(Icons.tune_rounded),
           ),
           AcademicImportButton(
@@ -138,12 +134,7 @@ class CreditProgressScreen extends StatelessWidget {
                       controller.school.username == null ||
                           controller.academics.busy
                       ? null
-                      : () => showDialog<void>(
-                          context: context,
-                          builder: (_) => CreditTargetsDialog(
-                            controller: controller.academics,
-                          ),
-                        ),
+                      : () => editCreditTargets(context, controller.academics),
                   child: Text(l10n.setTargets),
                 ),
               ],
