@@ -11,6 +11,7 @@ import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_page.dart';
 import '../../ui/design.dart';
 import '../../ui/external_link.dart';
+import '../../ui/selection_controls.dart';
 import '../../ui/sheet_layout.dart';
 import '../atlas.dart';
 import '../place.dart';
@@ -497,13 +498,17 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
               (WencuiFeatureKind.lift, l10n.lift),
               (WencuiFeatureKind.restroom, l10n.restroom),
             ])
-              FilterChip(
-                shape: appControlShape,
-                avatar: Icon(wencuiFeatureIcon(kind), size: 18),
-                label: Text(label),
+              AppSelectionButton.compact(
                 selected: _facilities.contains(kind),
-                showCheckmark: false,
-                onSelected: (_) => _toggleFacility(kind, atlas),
+                onPressed: () => _toggleFacility(kind, atlas),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  spacing: AppSpacing.xs,
+                  children: [
+                    Icon(wencuiFeatureIcon(kind), size: 18),
+                    Text(label),
+                  ],
+                ),
               ),
             if (place?.wing.firstFloor == 1)
               TextButton.icon(

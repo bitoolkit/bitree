@@ -46,7 +46,7 @@ class AppSelectionBar extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 48),
+        constraints: const BoxConstraints(minHeight: appControlHeight),
         child: Row(
           children: [
             Checkbox(
@@ -59,8 +59,8 @@ class AppSelectionBar extends StatelessWidget {
                 onTap: canToggle ? toggleAll : null,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 8,
+                    horizontal: AppSpacing.xs,
+                    vertical: AppSpacing.sm,
                   ),
                   child: Row(
                     children: [
@@ -72,7 +72,7 @@ class AppSelectionBar extends StatelessWidget {
                           style: Theme.of(context).textTheme.labelLarge,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.sm),
                       Flexible(
                         flex: 2,
                         child: Text(
@@ -88,12 +88,14 @@ class AppSelectionBar extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(right: 4),
+              padding: const EdgeInsets.only(right: AppSpacing.xs),
               child: TextButton(
                 onPressed: enabled && !noneSelected ? onClear : null,
                 style: TextButton.styleFrom(
-                  minimumSize: const Size(48, 48),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minimumSize: appControlSize,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                  ),
                 ),
                 child: Text(l10n.clearSelection),
               ),
@@ -114,7 +116,7 @@ class AppSelectionTile extends StatelessWidget {
     required this.onChanged,
     this.subtitle,
     this.trailing,
-    this.contentPadding = const EdgeInsets.symmetric(horizontal: 4),
+    this.contentPadding = const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
     this.enabled = true,
   });
 
@@ -132,11 +134,42 @@ class AppSelectionTile extends StatelessWidget {
     controlAffinity: ListTileControlAffinity.leading,
     dense: true,
     visualDensity: VisualDensity.compact,
-    minTileHeight: 48,
+    minTileHeight: appControlHeight,
     minVerticalPadding: 0,
     title: title,
     subtitle: subtitle,
     secondary: trailing,
+    value: value,
+    onChanged: enabled ? onChanged : null,
+  );
+}
+
+/// A compact row for an immediate on/off setting rather than a selection.
+class AppToggleTile extends StatelessWidget {
+  const AppToggleTile({
+    super.key,
+    required this.value,
+    required this.title,
+    required this.onChanged,
+    this.subtitle,
+    this.enabled = true,
+  });
+
+  final bool value;
+  final Widget title;
+  final Widget? subtitle;
+  final ValueChanged<bool>? onChanged;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) => SwitchListTile(
+    contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+    dense: true,
+    visualDensity: VisualDensity.compact,
+    minTileHeight: appControlHeight,
+    minVerticalPadding: 0,
+    title: title,
+    subtitle: subtitle,
     value: value,
     onChanged: enabled ? onChanged : null,
   );
@@ -149,9 +182,23 @@ class AppSelectionButton extends StatelessWidget {
     required this.selected,
     required this.onPressed,
     required this.child,
-    this.minimumSize = const Size(0, 48),
-    this.padding = const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+    this.minimumSize = const Size(0, appControlHeight),
+    this.padding = const EdgeInsets.symmetric(
+      horizontal: AppSpacing.sm,
+      vertical: AppSpacing.sm,
+    ),
   });
+
+  const AppSelectionButton.compact({
+    super.key,
+    required this.selected,
+    required this.onPressed,
+    required this.child,
+  }) : minimumSize = const Size(0, appControlHeight),
+       padding = const EdgeInsets.symmetric(
+         horizontal: AppSpacing.sm,
+         vertical: AppSpacing.xs,
+       );
 
   final bool selected;
   final VoidCallback? onPressed;

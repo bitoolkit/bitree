@@ -122,7 +122,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('Custom classroom times fit the shared dialog at $size', (
+    testWidgets('Custom classroom times use the shared sheet at $size', (
       tester,
     ) async {
       ({int start, int end})? selected;
@@ -145,7 +145,8 @@ void main() {
       await tester.ensureVisible(custom);
       await tester.tap(custom);
       await tester.pumpAndSettle();
-      _expectWidth(tester, size);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byType(BottomSheet), findsOneWidget);
       await tester.tap(find.text('第3节'));
       await tester.tap(find.text('第4节'));
       await tester.tap(find.text('应用'));

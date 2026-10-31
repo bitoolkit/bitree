@@ -877,7 +877,6 @@
   "customSync": "Custom sync",
   "syncSchoolData": "School data",
   "syncDeadlineData": "Deadlines and coursework",
-  "deletedDdlMenu": "Deleted DDLs",
   "syncTooltip": "Sync",
   "viewSyncProgress": "View sync progress",
   "syncComplete": "Sync complete",

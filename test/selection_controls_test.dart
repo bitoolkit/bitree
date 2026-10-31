@@ -95,4 +95,32 @@ void main() {
     expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'Immediate settings use a switch instead of a selection checkbox',
+    (tester) async {
+      var value = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: bitreeTheme(Brightness.light),
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) => AppToggleTile(
+                title: const Text('包含本地课表'),
+                value: value,
+                onChanged: (next) => setState(() => value = next),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(Switch), findsOneWidget);
+      expect(find.byType(Checkbox), findsNothing);
+      await tester.tap(find.text('包含本地课表'));
+      await tester.pump();
+      expect(value, isTrue);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

@@ -1866,12 +1866,6 @@ abstract class AppLocalizations {
   /// **'Deadlines and coursework'**
   String get syncDeadlineData;
 
-  /// No description provided for @deletedDdlMenu.
-  ///
-  /// In en, this message translates to:
-  /// **'Deleted DDLs'**
-  String get deletedDdlMenu;
-
   /// No description provided for @syncTooltip.
   ///
   /// In en, this message translates to:

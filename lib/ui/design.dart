@@ -23,7 +23,8 @@ const appControlShape = RoundedRectangleBorder(
   borderRadius: AppCorners.control,
 );
 const appPanelShape = RoundedRectangleBorder(borderRadius: AppCorners.panel);
-const appControlSize = Size(48, 48);
+const appControlHeight = 48.0;
+const appControlSize = Size(48, appControlHeight);
 const appProgressHeight = 3.0;
 const appControlPadding = EdgeInsets.symmetric(
   horizontal: AppSpacing.lg,

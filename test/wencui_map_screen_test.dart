@@ -1,5 +1,6 @@
 import 'package:bitree/schedule/model.dart';
 import 'package:bitree/schedule/ui/course_detail.dart';
+import 'package:bitree/ui/selection_controls.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:bitree/wencui/atlas.dart';
 import 'package:bitree/wencui/place.dart';
@@ -128,7 +129,7 @@ void main() {
         .widget<InteractiveViewer>(find.byType(InteractiveViewer))
         .transformationController!;
     final roomScale = transform.value.getMaxScaleOnAxis();
-    await tester.tap(find.widgetWithText(FilterChip, '楼梯'));
+    await tester.tap(find.widgetWithText(AppSelectionButton, '楼梯'));
     await tester.pumpAndSettle();
     expect(transform.value.getMaxScaleOnAxis(), lessThan(roomScale));
     final stairs = atlas.features.firstWhere(

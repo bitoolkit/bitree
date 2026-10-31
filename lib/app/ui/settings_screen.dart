@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../agenda/deadline_clear_scope.dart';
 import '../../agenda/ui/clear_deadlines_dialog.dart';
-import '../../agenda/ui/deleted_deadlines.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../mooc/ui/mooc_sheet.dart';
@@ -80,8 +79,6 @@ class SettingsScreen extends StatelessWidget {
           versionLabel += '\n${l10n.settingsBuiltAt(date, time)}';
         }
         return AlertDialog(
-          titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-          contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
           scrollable: true,
           title: Row(
             children: [
@@ -348,15 +345,6 @@ class SettingsScreen extends StatelessWidget {
               ),
             ]),
           section(l10n.settingsLocalAgenda, [
-            ListTile(
-              contentPadding: tilePadding,
-              leading: const Icon(Icons.restore_from_trash_outlined),
-              title: Text(l10n.deletedDdlMenu),
-              trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-              onTap: !controller.agenda.ready || controller.agenda.busy
-                  ? null
-                  : () => showDeletedDeadlines(context, controller.agenda),
-            ),
             ListTile(
               contentPadding: tilePadding,
               leading: Icon(Icons.delete_outline_rounded, color: scheme.error),
