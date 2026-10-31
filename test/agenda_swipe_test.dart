@@ -115,6 +115,89 @@ void main() {
   });
 
   for (final kind in [PointerDeviceKind.touch, PointerDeviceKind.mouse]) {
+    testWidgets('An ordinary $kind swipe on a row changes page, not data', (
+      tester,
+    ) async {
+      final app = await showAgenda(tester);
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byKey(const ValueKey('task'))),
+        kind: kind,
+      );
+      await gesture.moveBy(
+        const Offset(-35, 0),
+        timeStamp: const Duration(milliseconds: 50),
+      );
+      await tester.pump();
+      // A pause during an ongoing page drag must not turn it into a row action.
+      await tester.pump(const Duration(milliseconds: 300));
+      await gesture.moveBy(
+        const Offset(-210, 0),
+        timeStamp: const Duration(milliseconds: 350),
+      );
+      await gesture.up(timeStamp: const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      expect(tester.widget<TabBar>(find.byType(TabBar)).controller!.index, 1);
+      expect(app.agenda.entries.single.done, isFalse);
+      expect(app.agenda.deletedDeadlines, isEmpty);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('A held diagonal drag scrolls without row actions', (
+    tester,
+  ) async {
+    final app = await showAgenda(tester, count: 20);
+    final row = find.byKey(const ValueKey('task11'));
+    final before = tester.getTopLeft(row);
+    final gesture = await tester.startGesture(tester.getCenter(row));
+    await tester.pump(const Duration(milliseconds: 250));
+    await gesture.moveBy(
+      const Offset(-20, -30),
+      timeStamp: const Duration(milliseconds: 250),
+    );
+    await tester.pump();
+    await gesture.moveBy(
+      const Offset(0, -150),
+      timeStamp: const Duration(milliseconds: 500),
+    );
+    await gesture.up(timeStamp: const Duration(milliseconds: 550));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(row).dy, lessThan(before.dy - 100));
+    expect(app.agenda.entries, hasLength(20));
+    expect(app.agenda.entries.every((entry) => !entry.done), isTrue);
+    expect(tester.widget<TabBar>(find.byType(TabBar)).controller!.index, 0);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('A trackpad swipe pages even after a pause on a row', (
+    tester,
+  ) async {
+    final app = await showAgenda(tester);
+    final gesture = await tester.createGesture(
+      kind: PointerDeviceKind.trackpad,
+    );
+    final origin = tester.getCenter(find.byKey(const ValueKey('task')));
+    await gesture.panZoomStart(origin);
+    await tester.pump(const Duration(milliseconds: 300));
+    await gesture.panZoomUpdate(
+      origin,
+      pan: const Offset(-30, 0),
+      timeStamp: const Duration(milliseconds: 300),
+    );
+    await gesture.panZoomUpdate(
+      origin,
+      pan: const Offset(-260, 0),
+      timeStamp: const Duration(milliseconds: 600),
+    );
+    await gesture.panZoomEnd(timeStamp: const Duration(milliseconds: 650));
+    await tester.pumpAndSettle();
+    expect(tester.widget<TabBar>(find.byType(TabBar)).controller!.index, 1);
+    expect(app.agenda.entries.single.done, isFalse);
+    expect(app.agenda.deletedDeadlines, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final kind in [PointerDeviceKind.touch, PointerDeviceKind.mouse]) {
     testWidgets(
       'A short $kind swipe reveals delete immediately, without changing data',
       (tester) async {
