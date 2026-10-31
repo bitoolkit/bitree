@@ -187,17 +187,15 @@ class _VerificationSheetState extends State<_VerificationSheet> {
             ],
           ),
         ),
-        actions: SheetActionBar(
-          children: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(l10n.cancel),
-            ),
-            FilledButton(
-              onPressed: _loading || _submitting ? null : _submit,
-              child: Text(_submitting ? l10n.schoolVerifying : l10n.confirm),
-            ),
-          ],
+        actions: SheetActionBar.split(
+          leading: TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.cancel),
+          ),
+          primary: FilledButton(
+            onPressed: _loading || _submitting ? null : _submit,
+            child: Text(_submitting ? l10n.schoolVerifying : l10n.confirm),
+          ),
         ),
       ),
     );

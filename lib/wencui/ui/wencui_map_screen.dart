@@ -44,7 +44,7 @@ void _showMapInfo(BuildContext context) => showAppSheet<void>(
         actions: const [SheetCloseButton()],
       ),
       content: Text(l10n.mapInfoBody),
-      actions: SheetActionBar(
+      actions: SheetActionBar.actions(
         children: [
           TextButton(
             onPressed: () => openExternalLink(

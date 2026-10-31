@@ -127,7 +127,7 @@ class _UpdateSheetState extends State<UpdateSheet> {
           ],
         ],
       ),
-      actions: SheetActionBar(
+      actions: SheetActionBar.actions(
         children: [
           TextButton(
             style: actionStyle,

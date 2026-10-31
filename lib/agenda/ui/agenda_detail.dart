@@ -189,42 +189,33 @@ Future<void> showAgendaEntry(
           ),
         ),
         actions: current.isDeadline
-            ? OverflowBar(
-                alignment: MainAxisAlignment.spaceBetween,
-                overflowAlignment: OverflowBarAlignment.end,
-                spacing: 12,
-                overflowSpacing: 8,
-                children: [
-                  TextButton.icon(
-                    onPressed: controller.agenda.busy ? null : edit,
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    label: Text(l10n.edit),
+            ? SheetActionBar.split(
+                leading: TextButton.icon(
+                  onPressed: controller.agenda.busy ? null : edit,
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  label: Text(l10n.edit),
+                ),
+                primary: FilledButton.icon(
+                  style: current.done
+                      ? FilledButton.styleFrom(
+                          backgroundColor: scheme.secondaryContainer,
+                          foregroundColor: scheme.onSecondaryContainer,
+                        )
+                      : null,
+                  onPressed: controller.agenda.busy
+                      ? null
+                      : () => toggleAgendaDone(controller.agenda, current),
+                  icon: Icon(
+                    current.done ? Icons.undo_rounded : Icons.check_rounded,
+                    size: 20,
                   ),
-                  FilledButton.icon(
-                    style: current.done
-                        ? FilledButton.styleFrom(
-                            backgroundColor: scheme.secondaryContainer,
-                            foregroundColor: scheme.onSecondaryContainer,
-                          )
-                        : null,
-                    onPressed: controller.agenda.busy
-                        ? null
-                        : () => toggleAgendaDone(controller.agenda, current),
-                    icon: Icon(
-                      current.done ? Icons.undo_rounded : Icons.check_rounded,
-                      size: 20,
-                    ),
-                    label: Text(
-                      current.done
-                          ? l10n.agendaMarkUndone
-                          : l10n.agendaMarkDone,
-                    ),
+                  label: Text(
+                    current.done ? l10n.agendaMarkUndone : l10n.agendaMarkDone,
                   ),
-                ],
+                ),
               )
-            : Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton.icon(
+            : SheetActionBar.primary(
+                primary: FilledButton.icon(
                   onPressed: controller.agenda.busy ? null : edit,
                   icon: const Icon(Icons.edit_outlined, size: 18),
                   label: Text(l10n.edit),

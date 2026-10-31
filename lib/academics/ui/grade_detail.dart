@@ -100,9 +100,8 @@ Future<void> showGradeDetails(
             ),
           ],
         ),
-        actions: SizedBox(
-          width: double.infinity,
-          child: FilledButton(
+        actions: SheetActionBar.primary(
+          primary: FilledButton(
             onPressed: () {
               Navigator.pop(context);
               Navigator.push(

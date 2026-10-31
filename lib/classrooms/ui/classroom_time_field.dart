@@ -235,20 +235,15 @@ class _ClassroomTimeSheetState extends State<_ClassroomTimeSheet> {
           );
         },
       ),
-      actions: OverflowBar(
-        alignment: MainAxisAlignment.end,
-        spacing: AppSpacing.md,
-        overflowSpacing: AppSpacing.sm,
-        children: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, (period: null)),
-            child: Text(l10n.allPeriods),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, (period: _period)),
-            child: Text(l10n.apply),
-          ),
-        ],
+      actions: SheetActionBar.split(
+        leading: TextButton(
+          onPressed: () => Navigator.pop(context, (period: null)),
+          child: Text(l10n.allPeriods),
+        ),
+        primary: FilledButton(
+          onPressed: () => Navigator.pop(context, (period: _period)),
+          child: Text(l10n.apply),
+        ),
       ),
     );
   }

@@ -53,24 +53,19 @@ class EditorSheet extends StatelessWidget {
                     ),
                   ),
                 ),
-              Row(
-                children: [
-                  if (onDelete != null) ...[
-                    IconButton(
-                      tooltip: context.l10n.delete,
-                      onPressed: saving ? null : onDelete,
-                      color: Theme.of(context).colorScheme.error,
-                      icon: const Icon(Icons.delete_outline),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: saving ? null : onSave,
-                      child: saveLabel,
-                    ),
-                  ),
-                ],
+              SheetActionBar.split(
+                leading: onDelete == null
+                    ? null
+                    : IconButton(
+                        tooltip: context.l10n.delete,
+                        onPressed: saving ? null : onDelete,
+                        color: Theme.of(context).colorScheme.error,
+                        icon: const Icon(Icons.delete_outline),
+                      ),
+                primary: FilledButton(
+                  onPressed: saving ? null : onSave,
+                  child: saveLabel,
+                ),
               ),
             ],
           ),

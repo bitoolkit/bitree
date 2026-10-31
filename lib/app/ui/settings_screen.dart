@@ -158,7 +158,7 @@ class SettingsScreen extends StatelessWidget {
               ),
             ],
           ),
-          actions: SheetActionBar(
+          actions: SheetActionBar.actions(
             children: [
               TextButton(
                 onPressed: () {

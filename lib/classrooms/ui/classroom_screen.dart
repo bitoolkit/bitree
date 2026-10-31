@@ -466,7 +466,7 @@ Future<void> _showRoom(
       ),
       actions: WencuiPlace.parse('${building.name} ${room.name}') == null
           ? null
-          : SheetActionBar(
+          : SheetActionBar.actions(
               children: [
                 TextButton.icon(
                   onPressed: () {

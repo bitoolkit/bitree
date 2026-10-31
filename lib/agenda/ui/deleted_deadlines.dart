@@ -132,20 +132,18 @@ class _DeletedDeadlinesSheetState extends State<_DeletedDeadlinesSheet> {
         ),
         actions: entries.isEmpty
             ? null
-            : SheetActionBar(
-                children: [
-                  FilledButton.icon(
-                    onPressed: enabled && selectedEntries.isNotEmpty
-                        ? () => _restore(selectedEntries)
-                        : null,
-                    icon: const Icon(Icons.restore_rounded, size: 18),
-                    label: Text(
-                      selectedEntries.length == entries.length
-                          ? l10n.deletedDeadlinesRestoreAll
-                          : l10n.deletedDeadlinesRestoreSelected,
-                    ),
+            : SheetActionBar.primary(
+                primary: FilledButton.icon(
+                  onPressed: enabled && selectedEntries.isNotEmpty
+                      ? () => _restore(selectedEntries)
+                      : null,
+                  icon: const Icon(Icons.restore_rounded, size: 18),
+                  label: Text(
+                    selectedEntries.length == entries.length
+                        ? l10n.deletedDeadlinesRestoreAll
+                        : l10n.deletedDeadlinesRestoreSelected,
                   ),
-                ],
+                ),
               ),
       );
     },

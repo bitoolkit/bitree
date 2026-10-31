@@ -122,30 +122,25 @@ class _ClearDeadlinesSheetState extends State<_ClearDeadlinesSheet> {
               Text(l10n.clearDeadlinesRecovery),
             ],
           ),
-          actions: OverflowBar(
-            alignment: MainAxisAlignment.end,
-            spacing: AppSpacing.md,
-            overflowSpacing: AppSpacing.sm,
-            children: [
-              TextButton(
-                onPressed: _saving ? null : () => Navigator.pop(context),
-                child: Text(l10n.cancel),
+          actions: SheetActionBar.split(
+            leading: TextButton(
+              onPressed: _saving ? null : () => Navigator.pop(context),
+              child: Text(l10n.cancel),
+            ),
+            primary: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: scheme.error,
+                foregroundColor: scheme.onError,
               ),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: scheme.error,
-                  foregroundColor: scheme.onError,
-                ),
-                onPressed: enabled && scopes.isNotEmpty && count > 0
-                    ? () => _clear(scopes, expectedIds)
-                    : null,
-                child: Text(
-                  _saving
-                      ? l10n.clearDeadlinesDeleting
-                      : l10n.clearDeadlinesDeleteCount(count),
-                ),
+              onPressed: enabled && scopes.isNotEmpty && count > 0
+                  ? () => _clear(scopes, expectedIds)
+                  : null,
+              child: Text(
+                _saving
+                    ? l10n.clearDeadlinesDeleting
+                    : l10n.clearDeadlinesDeleteCount(count),
               ),
-            ],
+            ),
           ),
         ),
       );

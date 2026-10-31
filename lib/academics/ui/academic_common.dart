@@ -206,7 +206,7 @@ Future<void> showGpaRules(BuildContext context) => showAppSheet<void>(
           Text(l10n.gpaRuleWeighting),
         ],
       ),
-      actions: SheetActionBar(
+      actions: SheetActionBar.actions(
         children: [
           TextButton(
             onPressed: () => openExternalLink(
