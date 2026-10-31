@@ -15,6 +15,7 @@ import 'package:bitree/sync/controller.dart';
 import 'package:bitree/sync/ui/sync.dart';
 import 'package:bitree/sync/ui/sync_button.dart';
 import 'package:bitree/sync/ui/sync_text.dart';
+import 'package:bitree/ui/selection_controls.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -435,15 +436,15 @@ void main() {
         tester.getTopLeft(find.text('学校数据')).dy,
         lessThan(tester.getTopLeft(find.text('DDL 与课业')).dy),
       );
-      expect(find.widgetWithText(FilterChip, '课表'), findsOneWidget);
-      expect(find.widgetWithText(FilterChip, '乐学 DDL'), findsOneWidget);
+      expect(find.widgetWithText(AppSelectionButton, '课表'), findsOneWidget);
+      expect(find.widgetWithText(AppSelectionButton, '乐学 DDL'), findsOneWidget);
 
       await tester.tap(find.text('清空'));
       await tester.pump();
       expect(
         tester
-            .widgetList<FilterChip>(find.byType(FilterChip))
-            .every((chip) => !chip.selected),
+            .widgetList<AppSelectionButton>(find.byType(AppSelectionButton))
+            .every((button) => !button.selected),
         isTrue,
       );
       expect(
@@ -457,8 +458,8 @@ void main() {
       await tester.pump();
       expect(
         tester
-            .widgetList<FilterChip>(find.byType(FilterChip))
-            .every((chip) => chip.selected),
+            .widgetList<AppSelectionButton>(find.byType(AppSelectionButton))
+            .every((button) => button.selected),
         isTrue,
       );
       expect(
@@ -498,7 +499,7 @@ void main() {
         ),
       );
       await openCustom(tester);
-      await tester.tap(find.widgetWithText(FilterChip, '课表'));
+      await tester.tap(find.widgetWithText(AppSelectionButton, '课表'));
       await tester.pump();
       await tester.tap(find.text('同步所选内容'));
       await tester.pump();
@@ -598,9 +599,9 @@ void main() {
         );
         await openCustom(tester);
         for (final title in ['课表', '考试安排', '中国大学MOOC DDL']) {
-          final chip = find.widgetWithText(FilterChip, title);
-          await tester.ensureVisible(chip);
-          await tester.tap(chip);
+          final choice = find.widgetWithText(AppSelectionButton, title);
+          await tester.ensureVisible(choice);
+          await tester.tap(choice);
           await tester.pump();
         }
         await tester.tap(find.text('同步所选内容'));

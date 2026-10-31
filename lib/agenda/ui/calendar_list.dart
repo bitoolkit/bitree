@@ -26,10 +26,8 @@ Future<void> showAgendaDay(
   DateTime date,
 ) async {
   final l10n = context.l10n;
-  final selected = await showModalBottomSheet<AgendaEntry>(
+  final selected = await showAppSheet<AgendaEntry>(
     context: context,
-    useSafeArea: true,
-    isScrollControlled: true,
     builder: (context) => CampusTimeBuilder(
       active: true,
       builder: (context, now) => ListenableBuilder(
@@ -48,58 +46,50 @@ Future<void> showAgendaDay(
             now: now,
             onTap: () => Navigator.pop(context, entry),
           );
-          return SafeArea(
-            top: false,
-            child: SheetLayout(
-              header: SheetHeader(
-                title: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(localizedAgendaDate(l10n, date)),
-                    if (pending.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        l10n.agendaCount(pending.length),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
+          return SheetLayout(
+            header: SheetHeader(
+              title: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(localizedAgendaDate(l10n, date)),
+                  if (pending.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      l10n.agendaCount(pending.length),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   ],
-                ),
-                actions: const [SheetCloseButton()],
+                ],
               ),
-              content: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (final entry in pending) row(entry),
-                    if (pending.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
-                        child: Text(
-                          l10n.agendaNoPendingShort,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                              ),
-                        ),
+              actions: const [SheetCloseButton()],
+            ),
+            contentPadding: appSheetListPadding,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final entry in pending) row(entry),
+                if (pending.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
+                    child: Text(
+                      l10n.agendaNoPendingShort,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-                    if (completed.isNotEmpty)
-                      ExpansionTile(
-                        title: Text(
-                          l10n.agendaCompletedCount(completed.length),
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                        shape: const Border(),
-                        collapsedShape: const Border(),
-                        children: [for (final entry in completed) row(entry)],
-                      ),
-                  ],
-                ),
-              ),
+                    ),
+                  ),
+                if (completed.isNotEmpty)
+                  ExpansionTile(
+                    title: Text(
+                      l10n.agendaCompletedCount(completed.length),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    shape: const Border(),
+                    collapsedShape: const Border(),
+                    children: [for (final entry in completed) row(entry)],
+                  ),
+              ],
             ),
           );
         },
@@ -128,61 +118,54 @@ Future<void> showCalendarItems(
   String? emptyMessage,
 }) async {
   final l10n = context.l10n;
-  final selected = await showModalBottomSheet<CalendarItem>(
+  final selected = await showAppSheet<CalendarItem>(
     context: context,
-    useSafeArea: true,
-    isScrollControlled: true,
-    builder: (context) => SafeArea(
-      top: false,
-      child: SheetLayout(
-        header: SheetHeader(
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(title, style: Theme.of(context).textTheme.titleLarge),
-              if (items.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  l10n.agendaCount(items.length),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
+    builder: (context) => SheetLayout(
+      header: SheetHeader(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.titleLarge),
+            if (items.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                l10n.agendaCount(items.length),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             ],
-          ),
-          actions: const [SheetCloseButton()],
+          ],
         ),
-        content: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (var index = 0; index < items.length; index++) ...[
-                if (index > 0)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Divider(height: 1),
-                  ),
-                _CalendarItemRow(
-                  item: items[index],
-                  now: campusNow(),
-                  showDate: showDates,
-                  onTap: () => Navigator.pop(context, items[index]),
+        actions: const [SheetCloseButton()],
+      ),
+      contentPadding: appSheetListPadding,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var index = 0; index < items.length; index++) ...[
+            if (index > 0)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Divider(height: 1),
+              ),
+            _CalendarItemRow(
+              item: items[index],
+              now: campusNow(),
+              showDate: showDates,
+              onTap: () => Navigator.pop(context, items[index]),
+            ),
+          ],
+          if (items.isEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 20, 12, 28),
+              child: Text(
+                emptyMessage ?? l10n.agendaDayEmpty,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-              ],
-              if (items.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 20, 12, 28),
-                  child: Text(
-                    emptyMessage ?? l10n.agendaDayEmpty,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
+              ),
+            ),
+        ],
       ),
     ),
   );

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../app/controller.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
+import '../../ui/app_dialog.dart';
 import '../../ui/app_notice.dart';
 import '../controller.dart';
 import '../model.dart';
@@ -30,28 +31,14 @@ Future<bool> deleteAgendaEntry(
   // The originating sheet can close while the undo action remains visible.
   final overlay = Overlay.of(context, rootOverlay: true);
   if (confirm) {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.agendaDeleteQuestion(entry.kind.localizedLabel(l10n))),
-        content: Text(entry.title),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Theme.of(context).colorScheme.onError,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(l10n.delete),
-          ),
-        ],
-      ),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: l10n.agendaDeleteQuestion(entry.kind.localizedLabel(l10n)),
+      body: entry.title,
+      confirmLabel: l10n.delete,
+      destructive: true,
     );
-    if (confirmed != true) return false;
+    if (!confirmed) return false;
   }
   final deleted = await controller.agenda.delete(entry);
   if (!overlay.mounted) return deleted;

@@ -25,51 +25,44 @@ class ConflictingCourses extends StatelessWidget {
 
   Future<void> _selectCourse(BuildContext context) async {
     final l10n = context.l10n;
-    final selected = await showModalBottomSheet<Course>(
+    final selected = await showAppSheet<Course>(
       context: context,
-      useSafeArea: true,
-      isScrollControlled: true,
-      builder: (context) => SafeArea(
-        top: false,
-        child: SheetLayout(
-          header: SheetHeader(
-            title: Text(l10n.chooseCourse),
-            actions: const [SheetCloseButton()],
-          ),
-          content: Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final course in courses)
-                  ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 6,
-                    ),
-                    leading: Container(
-                      width: 4,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: courseColors(context, course).accent,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    title: Text(course.name),
-                    subtitle: Text(
-                      [
-                        '${localizedCourseSection(l10n, course)} '
-                            '(${localizedCourseTime(l10n, course)})',
-                        if (course.room.isNotEmpty) course.room,
-                        if (course.teacher.isNotEmpty) course.teacher,
-                      ].join('\n'),
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () => Navigator.pop(context, course),
+      builder: (context) => SheetLayout(
+        header: SheetHeader(
+          title: Text(l10n.chooseCourse),
+          actions: const [SheetCloseButton()],
+        ),
+        contentPadding: appSheetListPadding,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final course in courses)
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.sm,
+                ),
+                leading: Container(
+                  width: 4,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: courseColors(context, course).accent,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-              ],
-            ),
-          ),
+                ),
+                title: Text(course.name),
+                subtitle: Text(
+                  [
+                    '${localizedCourseSection(l10n, course)} '
+                        '(${localizedCourseTime(l10n, course)})',
+                    if (course.room.isNotEmpty) course.room,
+                    if (course.teacher.isNotEmpty) course.teacher,
+                  ].join('\n'),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+                onTap: () => Navigator.pop(context, course),
+              ),
+          ],
         ),
       ),
     );

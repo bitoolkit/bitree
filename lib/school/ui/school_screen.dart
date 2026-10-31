@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../agenda/deadline_source.dart';
 import '../../app/controller.dart';
 import '../../l10n/l10n.dart';
+import '../../ui/app_page.dart';
 import '../storage.dart';
 import '../verification.dart';
 import 'school_verification_dialog.dart';
@@ -73,25 +74,16 @@ class _SchoolScreenState extends State<_SchoolScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(context.l10n.schoolLogin),
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(3),
-        child: SizedBox(
-          height: 3,
-          child: _running ? const LinearProgressIndicator(minHeight: 3) : null,
-        ),
-      ),
-    ),
-    body: SafeArea(
-      child: Center(
+  Widget build(BuildContext context) => AppRoutePage(
+    title: context.l10n.schoolLogin,
+    maxWidth: 448,
+    showProgress: _running,
+    child: Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 400),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: _buildForm(),
-          ),
+          child: _buildForm(),
         ),
       ),
     ),

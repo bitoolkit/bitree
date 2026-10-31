@@ -9,7 +9,6 @@ import '../../mooc/ui/mooc_sheet.dart';
 import '../../school/ui/school_screen.dart';
 import '../../school/ui/school_verification_dialog.dart';
 import '../../ui/app_notice.dart';
-import '../../ui/design.dart';
 import '../../ui/section_label.dart';
 import '../../ui/selection_controls.dart';
 import '../../ui/sheet_layout.dart';
@@ -74,10 +73,8 @@ Future<bool> startSync(
 }
 
 Future<void> customizeSync(BuildContext context, AppController app) async {
-  final selected = await showModalBottomSheet<Set<SyncTarget>>(
+  final selected = await showAppSheet<Set<SyncTarget>>(
     context: context,
-    useSafeArea: true,
-    isScrollControlled: true,
     builder: (_) => _CustomSyncSheet(app: app),
   );
   if (selected == null || !context.mounted) return;
@@ -88,10 +85,8 @@ Future<void> showSyncProgress(BuildContext context, AppController app) {
   final existing = _progressSheets[app.sync];
   if (existing != null) return existing;
   dismissAppNotice();
-  final sheet = showModalBottomSheet<void>(
+  final sheet = showAppSheet<void>(
     context: context,
-    useSafeArea: true,
-    isScrollControlled: true,
     builder: (_) => _SyncProgressSheet(app: app),
   );
   _progressSheets[app.sync] = sheet;
@@ -110,78 +105,69 @@ class _CustomSyncSheetState extends State<_CustomSyncSheet> {
   late final _selected = widget.app.sync.defaultTargets;
 
   @override
-  Widget build(BuildContext context) => SafeArea(
-    top: false,
-    child: SheetLayout(
-      header: SheetHeader(
-        title: Text(context.l10n.customSync),
-        actions: const [SheetCloseButton()],
-      ),
-      content: Padding(
-        padding: appSheetContentPadding,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AppSelectionBar(
-              selectedCount: _selected.length,
-              totalCount: _availableTargets.length,
-              summary: context.l10n.selectedItems(_selected.length),
-              onSelectAll: () =>
-                  setState(() => _selected.addAll(_availableTargets)),
-              onClear: () => setState(_selected.clear),
-            ),
-            const SizedBox(height: 16),
-            AppSectionLabel(context.l10n.syncSchoolData),
-            _SyncTargetChoices(
-              targets: _availableTargets.where(
-                (target) => target.category == SyncCategory.schoolData,
+  Widget build(BuildContext context) => SheetLayout(
+    header: SheetHeader(
+      title: Text(context.l10n.customSync),
+      actions: const [SheetCloseButton()],
+    ),
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppSelectionBar(
+          selectedCount: _selected.length,
+          totalCount: _availableTargets.length,
+          summary: context.l10n.selectedItems(_selected.length),
+          onSelectAll: () =>
+              setState(() => _selected.addAll(_availableTargets)),
+          onClear: () => setState(_selected.clear),
+        ),
+        const SizedBox(height: 16),
+        AppSectionLabel(context.l10n.syncSchoolData),
+        _SyncTargetChoices(
+          targets: _availableTargets.where(
+            (target) => target.category == SyncCategory.schoolData,
+          ),
+          selected: _selected,
+          onChanged: _setSelected,
+        ),
+        const SizedBox(height: 16),
+        AppSectionLabel(context.l10n.syncDeadlineData),
+        _SyncTargetChoices(
+          targets: _availableTargets.where(
+            (target) => target.category == SyncCategory.deadlineData,
+          ),
+          selected: _selected,
+          onChanged: _setSelected,
+        ),
+        if (_selected.contains(SyncTarget.mooc) &&
+            widget.app.mooc.needsLogin) ...[
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.login_rounded,
+                size: 18,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
-              selected: _selected,
-              onChanged: _setSelected,
-            ),
-            const SizedBox(height: 16),
-            AppSectionLabel(context.l10n.syncDeadlineData),
-            _SyncTargetChoices(
-              targets: _availableTargets.where(
-                (target) => target.category == SyncCategory.deadlineData,
-              ),
-              selected: _selected,
-              onChanged: _setSelected,
-            ),
-            if (_selected.contains(SyncTarget.mooc) &&
-                widget.app.mooc.needsLogin) ...[
-              const SizedBox(height: 8),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.login_rounded,
-                    size: 18,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      context.l10n.loginAfterSelection,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  context.l10n.loginAfterSelection,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ),
             ],
-          ],
-        ),
-      ),
-      actions: Padding(
-        padding: appSheetActionPadding,
-        child: FilledButton(
-          onPressed: _selected.isEmpty
-              ? null
-              : () => Navigator.pop(context, _selected),
-          child: Text(context.l10n.syncSelected),
-        ),
-      ),
+          ),
+        ],
+      ],
+    ),
+    actions: FilledButton(
+      onPressed: _selected.isEmpty
+          ? null
+          : () => Navigator.pop(context, _selected),
+      child: Text(context.l10n.syncSelected),
     ),
   );
 
@@ -213,10 +199,10 @@ class _SyncTargetChoices extends StatelessWidget {
     runSpacing: 8,
     children: [
       for (final target in targets)
-        FilterChip(
-          label: Text(target.localizedTitle(context.l10n)),
+        AppSelectionButton(
           selected: selected.contains(target),
-          onSelected: (checked) => onChanged(target, checked),
+          onPressed: () => onChanged(target, !selected.contains(target)),
+          child: Text(target.localizedTitle(context.l10n)),
         ),
     ],
   );
@@ -261,87 +247,71 @@ class _SyncProgressSheetState extends State<_SyncProgressSheet> {
       final theme = Theme.of(context);
       final results = model.results;
       final l10n = context.l10n;
-      return SafeArea(
-        top: false,
-        child: SheetLayout(
-          header: SheetHeader(
-            title: Text(l10n.syncProgress),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(l10n.collapse),
-              ),
-            ],
-          ),
-          content: Padding(
-            padding: appSheetContentPadding,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (model.term case final term?) ...[
-                  Text(term, style: theme.textTheme.bodySmall),
-                  const SizedBox(height: 6),
-                ],
-                Text(
-                  model.busy
-                      ? l10n.syncProcessed(results.length, model.targets.length)
-                      : model.cancelled
-                      ? l10n.syncCancelled
-                      : model.incompleteTargets.isEmpty
-                      ? l10n.syncComplete
-                      : l10n.syncPartial,
-                  style: theme.textTheme.titleMedium,
-                ),
-                const SizedBox(height: 12),
-                LinearProgressIndicator(
-                  value: model.targets.isEmpty
-                      ? 0
-                      : results.length / model.targets.length,
-                  minHeight: 3,
-                ),
-                const SizedBox(height: 16),
-                for (final target in model.targets)
-                  _SyncProgressRow(
-                    controller: model,
-                    target: target,
-                    l10n: l10n,
-                  ),
-              ],
+      return SheetLayout(
+        header: SheetHeader(
+          title: Text(l10n.syncProgress),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(l10n.collapse),
             ),
-          ),
-          actions: model.busy
-              ? Padding(
-                  padding: appSheetActionPadding,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          l10n.continueAfterCollapse,
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: model.cancelled ? null : model.cancel,
-                        child: Text(
-                          model.cancelled ? l10n.cancelling : l10n.cancelSync,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : model.incompleteTargets.isNotEmpty
-              ? Padding(
-                  padding: appSheetActionPadding,
-                  child: FilledButton(
-                    onPressed: _authenticating ? null : _retry,
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (model.term case final term?) ...[
+              Text(term, style: theme.textTheme.bodySmall),
+              const SizedBox(height: 6),
+            ],
+            Text(
+              model.busy
+                  ? l10n.syncProcessed(results.length, model.targets.length)
+                  : model.cancelled
+                  ? l10n.syncCancelled
+                  : model.incompleteTargets.isEmpty
+                  ? l10n.syncComplete
+                  : l10n.syncPartial,
+              style: theme.textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            LinearProgressIndicator(
+              value: model.targets.isEmpty
+                  ? 0
+                  : results.length / model.targets.length,
+              minHeight: 3,
+            ),
+            const SizedBox(height: 16),
+            for (final target in model.targets)
+              _SyncProgressRow(controller: model, target: target, l10n: l10n),
+          ],
+        ),
+        actions: model.busy
+            ? Row(
+                children: [
+                  Expanded(
                     child: Text(
-                      _authenticating ? l10n.verifying : l10n.retryIncomplete,
+                      l10n.continueAfterCollapse,
+                      style: theme.textTheme.bodySmall,
                     ),
                   ),
-                )
-              : null,
-        ),
+                  TextButton(
+                    onPressed: model.cancelled ? null : model.cancel,
+                    child: Text(
+                      model.cancelled ? l10n.cancelling : l10n.cancelSync,
+                    ),
+                  ),
+                ],
+              )
+            : model.incompleteTargets.isNotEmpty
+            ? FilledButton(
+                onPressed: _authenticating ? null : _retry,
+                child: Text(
+                  _authenticating ? l10n.verifying : l10n.retryIncomplete,
+                ),
+              )
+            : null,
       );
     },
   );

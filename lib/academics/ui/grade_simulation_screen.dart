@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/controller.dart';
 import '../../l10n/l10n.dart';
 import '../../sync/controller.dart';
+import '../../ui/app_dialog.dart';
 import '../../ui/selection_controls.dart';
 import '../model.dart';
 import 'academic_common.dart';
@@ -71,24 +72,13 @@ class _GradeSimulationScreenState extends State<GradeSimulationScreen> {
 
   Future<void> _remove(ProjectedCourse course) async {
     final l10n = context.l10n;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.removeSimulatedCourseQuestion),
-        content: Text(course.name),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l10n.cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(l10n.removeAction),
-          ),
-        ],
-      ),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: l10n.removeSimulatedCourseQuestion,
+      body: course.name,
+      confirmLabel: l10n.removeAction,
     );
-    if (confirmed == true && mounted) setState(() => _courses.remove(course));
+    if (confirmed && mounted) setState(() => _courses.remove(course));
   }
 
   @override

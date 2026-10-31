@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_notice.dart';
+import '../../ui/design.dart';
 import '../../ui/selection_controls.dart';
+import '../../ui/sheet_layout.dart';
 import '../controller.dart';
 import '../deadline_clear_scope.dart';
 
@@ -15,9 +17,10 @@ Future<void> showClearDeadlines(
     showAppNotice(context, context.l10n.clearDeadlinesUnavailable);
     return;
   }
-  final count = await showDialog<int>(
+  final count = await showAppSheet<int>(
     context: context,
-    barrierDismissible: false,
+    isDismissible: false,
+    enableDrag: false,
     builder: (_) => _ClearDeadlinesDialog(agenda: agenda),
   );
   if (!context.mounted || count == null) return;
@@ -70,15 +73,17 @@ class _ClearDeadlinesDialogState extends State<_ClearDeadlinesDialog> {
       final count = expectedIds.length;
       return PopScope(
         canPop: !_saving,
-        child: AlertDialog(
-          title: Text(l10n.clearDeadlinesTitle),
-          scrollable: true,
+        child: SheetLayout(
+          header: SheetHeader(
+            title: Text(l10n.clearDeadlinesTitle),
+            actions: [SheetCloseButton(enabled: !_saving)],
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(l10n.clearDeadlinesIntro),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               AppSelectionBar(
                 selectedCount: scopes.length,
                 totalCount: DeadlineClearScope.values.length,
@@ -108,35 +113,40 @@ class _ClearDeadlinesDialogState extends State<_ClearDeadlinesDialog> {
                         })
                       : null,
                 ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               Text(
                 l10n.clearDeadlinesWarning,
                 style: TextStyle(color: scheme.error),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               Text(l10n.clearDeadlinesRecovery),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: _saving ? null : () => Navigator.pop(context),
-              child: Text(l10n.cancel),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: scheme.error,
-                foregroundColor: scheme.onError,
+          actions: OverflowBar(
+            alignment: MainAxisAlignment.end,
+            spacing: AppSpacing.md,
+            overflowSpacing: AppSpacing.sm,
+            children: [
+              TextButton(
+                onPressed: _saving ? null : () => Navigator.pop(context),
+                child: Text(l10n.cancel),
               ),
-              onPressed: enabled && scopes.isNotEmpty && count > 0
-                  ? () => _clear(scopes, expectedIds)
-                  : null,
-              child: Text(
-                _saving
-                    ? l10n.clearDeadlinesDeleting
-                    : l10n.clearDeadlinesDeleteCount(count),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: scheme.error,
+                  foregroundColor: scheme.onError,
+                ),
+                onPressed: enabled && scopes.isNotEmpty && count > 0
+                    ? () => _clear(scopes, expectedIds)
+                    : null,
+                child: Text(
+                  _saving
+                      ? l10n.clearDeadlinesDeleting
+                      : l10n.clearDeadlinesDeleteCount(count),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     },

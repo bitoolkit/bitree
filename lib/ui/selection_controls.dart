@@ -46,7 +46,7 @@ class AppSelectionBar extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 52),
+        constraints: const BoxConstraints(minHeight: 48),
         child: Row(
           children: [
             Checkbox(
@@ -58,23 +58,29 @@ class AppSelectionBar extends StatelessWidget {
               child: InkWell(
                 onTap: canToggle ? toggleAll : null,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 8,
+                  ),
+                  child: Row(
                     children: [
-                      Text(
-                        l10n.selectAll,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelLarge,
+                      Flexible(
+                        child: Text(
+                          l10n.selectAll,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelLarge,
+                        ),
                       ),
-                      const SizedBox(height: 1),
-                      Text(
-                        summary,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall,
+                      const SizedBox(width: 8),
+                      Flexible(
+                        flex: 2,
+                        child: Text(
+                          summary,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
                       ),
                     ],
                   ),
@@ -87,7 +93,7 @@ class AppSelectionBar extends StatelessWidget {
                 onPressed: enabled && !noneSelected ? onClear : null,
                 style: TextButton.styleFrom(
                   minimumSize: const Size(48, 48),
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
                 ),
                 child: Text(l10n.clearSelection),
               ),
@@ -107,22 +113,75 @@ class AppSelectionTile extends StatelessWidget {
     required this.title,
     required this.onChanged,
     this.subtitle,
+    this.trailing,
+    this.contentPadding = const EdgeInsets.symmetric(horizontal: 4),
+    this.enabled = true,
   });
 
   final bool value;
   final Widget title;
   final Widget? subtitle;
+  final Widget? trailing;
   final ValueChanged<bool?>? onChanged;
+  final EdgeInsetsGeometry contentPadding;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) => CheckboxListTile(
-    contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+    contentPadding: contentPadding,
     controlAffinity: ListTileControlAffinity.leading,
     dense: true,
     visualDensity: VisualDensity.compact,
+    minTileHeight: 48,
+    minVerticalPadding: 0,
     title: title,
     subtitle: subtitle,
+    secondary: trailing,
     value: value,
-    onChanged: onChanged,
+    onChanged: enabled ? onChanged : null,
   );
+}
+
+/// A shared selected-state control for compact choice grids.
+class AppSelectionButton extends StatelessWidget {
+  const AppSelectionButton({
+    super.key,
+    required this.selected,
+    required this.onPressed,
+    required this.child,
+    this.minimumSize = const Size(0, 48),
+    this.padding = const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+  });
+
+  final bool selected;
+  final VoidCallback? onPressed;
+  final Widget child;
+  final Size minimumSize;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          minimumSize: minimumSize,
+          padding: padding,
+          backgroundColor: selected
+              ? scheme.primaryContainer
+              : scheme.surfaceContainerLow,
+          foregroundColor: selected
+              ? scheme.onPrimaryContainer
+              : scheme.onSurface,
+          side: BorderSide(
+            color: selected ? scheme.primary : scheme.outlineVariant,
+          ),
+        ),
+        child: child,
+      ),
+    );
+  }
 }

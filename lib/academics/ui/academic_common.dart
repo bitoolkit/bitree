@@ -7,6 +7,7 @@ import '../../l10n/l10n.dart';
 import '../../schedule/model.dart';
 import '../../sync/controller.dart';
 import '../../sync/ui/sync.dart';
+import '../../ui/app_page.dart';
 import '../../ui/external_link.dart';
 import '../model.dart';
 
@@ -25,34 +26,14 @@ class AcademicPage extends StatelessWidget {
   final bool loading;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      actions: actions,
-    ),
-    body: SafeArea(
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 880),
-          child: Column(
-            children: [
-              SizedBox(
-                height: 2,
-                child: loading
-                    ? const LinearProgressIndicator(minHeight: 2)
-                    : null,
-              ),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-                  children: children,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+  Widget build(BuildContext context) => AppRoutePage(
+    title: title,
+    actions: actions,
+    maxWidth: 880,
+    showProgress: loading,
+    child: ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      children: children,
     ),
   );
 }

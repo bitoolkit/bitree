@@ -15,9 +15,11 @@ void main() {
     AgendaKind kind = AgendaKind.deadline,
     int count = 1,
     bool deleted = false,
+    Size viewSize = const Size(390, 800),
+    double textScale = 1,
   }) async {
     tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(390, 800);
+    tester.view.physicalSize = viewSize;
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
     final app = TestAppController(
@@ -40,6 +42,11 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: bitreeTheme(Brightness.light),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child!,
+        ),
         home: Scaffold(
           body: CalendarScreen(controller: app, now: DateTime.utc(2099, 1, 1)),
         ),
@@ -114,6 +121,20 @@ void main() {
     expect(restoreButton, findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'The direct recovery entry fits a narrow screen with large text',
+    (tester) async {
+      await showAgenda(
+        tester,
+        deleted: true,
+        viewSize: const Size(320, 640),
+        textScale: 1.8,
+      );
+      expect(find.byTooltip('已删除的 DDL').hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   for (final kind in [PointerDeviceKind.touch, PointerDeviceKind.mouse]) {
     testWidgets('An ordinary $kind swipe on a row changes page, not data', (

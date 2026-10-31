@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../app/controller.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
+import '../../ui/app_dialog.dart';
 import '../../ui/app_notice.dart';
 import '../../ui/campus_time_builder.dart';
 import '../../ui/design.dart';
@@ -32,10 +33,8 @@ Future<void> showCourse(
                 .mondayAt(controller.timetable.week)
                 .add(Duration(days: course.weekday! - 1))
           : null);
-  return showModalBottomSheet<void>(
+  return showAppSheet<void>(
     context: context,
-    useSafeArea: true,
-    isScrollControlled: true,
     builder: (sheetContext) => StatefulBuilder(
       builder: (_, selectCourse) => CampusTimeBuilder(
         active: true,
@@ -151,120 +150,107 @@ class _CourseDetails extends StatelessWidget {
       ),
     );
 
-    return SafeArea(
-      top: false,
-      child: SheetLayout(
-        key: ValueKey(course.id),
-        header: SheetHeader(
-          title: Row(
-            children: [
-              Icon(
-                Icons.school_outlined,
-                size: 18,
-                color: progress != null
-                    ? colors.accent
-                    : theme.colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  status,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: progress != null
-                        ? colors.accent
-                        : theme.colorScheme.onSurfaceVariant,
-                  ),
+    return SheetLayout(
+      key: ValueKey(course.id),
+      header: SheetHeader(
+        title: Row(
+          children: [
+            Icon(
+              Icons.school_outlined,
+              size: 18,
+              color: progress != null
+                  ? colors.accent
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                status,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: progress != null
+                      ? colors.accent
+                      : theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-            ],
-          ),
-          actions: [SheetCloseButton(enabled: !controller.timetable.busy)],
+            ),
+          ],
         ),
-        content: Padding(
-          padding: appSheetContentPadding,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _CopyableCourseName(name: course.name),
-              detail(
-                Icons.schedule_outlined,
-                localizedCourseTime(l10n, course),
-                secondary:
-                    '${course.weekday == null ? '' : '${localizedWeekday(l10n, course.weekday!)} · '}'
-                    '${localizedCourseSection(l10n, course)} · '
-                    '${localizedWeeks(l10n, course.weeks)}',
-              ),
-              if (onMap case final openMap?)
-                WencuiLocationCard(
-                  place: WencuiPlace.parse(course.room, campus: course.campus)!,
-                  onTap: openMap,
-                )
-              else
-                detail(
-                  Icons.place_outlined,
-                  location.isEmpty ? l10n.locationPending : location,
-                ),
-              if (course.teacher.isNotEmpty)
-                detail(Icons.person_outline, course.teacher),
-              if (course.number.isNotEmpty) detail(Icons.tag, course.number),
-              if (course.description.isNotEmpty)
-                detail(Icons.notes_rounded, course.description),
-              if (progress != null) ...[
-                const SizedBox(height: 12),
-                LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 3,
-                  borderRadius: BorderRadius.circular(2),
-                  color: colors.accent,
-                  backgroundColor: colors.fill,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  l10n.minutesUntilEnd(
-                    (occurrence!.endsAt.difference(now).inSeconds / 60).ceil(),
-                  ),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-              if (next != null)
-                _NextCourse(
-                  course: course,
-                  next: next,
-                  onTap: () => onNext(next),
-                ),
-            ],
+        actions: [SheetCloseButton(enabled: !controller.timetable.busy)],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _CopyableCourseName(name: course.name),
+          detail(
+            Icons.schedule_outlined,
+            localizedCourseTime(l10n, course),
+            secondary:
+                '${course.weekday == null ? '' : '${localizedWeekday(l10n, course.weekday!)} · '}'
+                '${localizedCourseSection(l10n, course)} · '
+                '${localizedWeeks(l10n, course.weeks)}',
           ),
-        ),
-        actions: Padding(
-          padding: appSheetActionPadding,
-          child: Row(
-            children: [
-              Expanded(
-                child: FilledButton(
-                  onPressed: controller.timetable.busy ? null : onEdit,
-                  child: Text(l10n.courseEditorEditTitle),
-                ),
+          if (onMap case final openMap?)
+            WencuiLocationCard(
+              place: WencuiPlace.parse(course.room, campus: course.campus)!,
+              onTap: openMap,
+            )
+          else
+            detail(
+              Icons.place_outlined,
+              location.isEmpty ? l10n.locationPending : location,
+            ),
+          if (course.teacher.isNotEmpty)
+            detail(Icons.person_outline, course.teacher),
+          if (course.number.isNotEmpty) detail(Icons.tag, course.number),
+          if (course.description.isNotEmpty)
+            detail(Icons.notes_rounded, course.description),
+          if (progress != null) ...[
+            const SizedBox(height: 12),
+            LinearProgressIndicator(
+              value: progress,
+              minHeight: 3,
+              borderRadius: BorderRadius.circular(2),
+              color: colors.accent,
+              backgroundColor: colors.fill,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              l10n.minutesUntilEnd(
+                (occurrence!.endsAt.difference(now).inSeconds / 60).ceil(),
               ),
-              const SizedBox(width: 12),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: theme.colorScheme.error,
-                  side: BorderSide(
-                    color: theme.colorScheme.error.withValues(alpha: 0.4),
-                  ),
-                ),
-                onPressed: controller.timetable.busy
-                    ? null
-                    : () => _deleteCourse(context, controller, course),
-                icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                label: Text(l10n.delete),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
-            ],
+            ),
+          ],
+          if (next != null)
+            _NextCourse(course: course, next: next, onTap: () => onNext(next)),
+        ],
+      ),
+      actions: Row(
+        children: [
+          Expanded(
+            child: FilledButton(
+              onPressed: controller.timetable.busy ? null : onEdit,
+              child: Text(l10n.courseEditorEditTitle),
+            ),
           ),
-        ),
+          const SizedBox(width: 12),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: theme.colorScheme.error,
+              side: BorderSide(
+                color: theme.colorScheme.error.withValues(alpha: 0.4),
+              ),
+            ),
+            onPressed: controller.timetable.busy
+                ? null
+                : () => _deleteCourse(context, controller, course),
+            icon: const Icon(Icons.delete_outline_rounded, size: 18),
+            label: Text(l10n.delete),
+          ),
+        ],
       ),
     );
   }
@@ -410,28 +396,14 @@ Future<void> _deleteCourse(
   Course course,
 ) async {
   final l10n = context.l10n;
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text(l10n.deleteCourseQuestion),
-      content: Text(l10n.deleteCourseBody(course.name)),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: Text(l10n.cancel),
-        ),
-        FilledButton(
-          style: FilledButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.error,
-            foregroundColor: Theme.of(context).colorScheme.onError,
-          ),
-          onPressed: () => Navigator.pop(context, true),
-          child: Text(l10n.deleteCourse),
-        ),
-      ],
-    ),
+  final confirmed = await showAppConfirmDialog(
+    context,
+    title: l10n.deleteCourseQuestion,
+    body: l10n.deleteCourseBody(course.name),
+    confirmLabel: l10n.deleteCourse,
+    destructive: true,
   );
-  if (confirmed != true || !context.mounted) return;
+  if (!confirmed || !context.mounted) return;
 
   final success = await controller.timetable.deleteCourse(course);
   if (!context.mounted) return;

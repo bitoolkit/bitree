@@ -10,6 +10,7 @@ import '../../core/async/cancelable_request.dart';
 import '../../core/diagnostics.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
+import '../../ui/app_page.dart';
 import '../controller.dart';
 import '../cookie.dart';
 import '../credentials.dart';
@@ -234,56 +235,47 @@ class _MoocLoginState extends State<_MoocLogin> {
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: widget.controller,
-    builder: (context, _) => Scaffold(
-      appBar: AppBar(
-        title: Text(context.l10n.moocLoginTitle),
-        actions: [
-          IconButton(
-            tooltip: context.l10n.refreshLoginPage,
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: widget.controller.busy || (!_ready && _progress < 100)
-                ? null
-                : () {
-                    if (_ready) {
-                      _browser!.reload();
-                    } else {
-                      _prepare();
-                    }
-                  },
+    builder: (context, _) => AppRoutePage(
+      title: context.l10n.moocLoginTitle,
+      actions: [
+        IconButton(
+          tooltip: context.l10n.refreshLoginPage,
+          icon: const Icon(Icons.refresh_rounded),
+          onPressed: widget.controller.busy || (!_ready && _progress < 100)
+              ? null
+              : () {
+                  if (_ready) {
+                    _browser!.reload();
+                  } else {
+                    _prepare();
+                  }
+                },
+        ),
+        TextButton(
+          onPressed: !_ready || widget.controller.busy
+              ? null
+              : () => _capture(manual: true),
+          child: Text(
+            widget.controller.busy
+                ? context.l10n.saving
+                : context.l10n.completeLogin,
           ),
-          TextButton(
-            onPressed: !_ready || widget.controller.busy
-                ? null
-                : () => _capture(manual: true),
-            child: Text(
-              widget.controller.busy
-                  ? context.l10n.saving
-                  : context.l10n.completeLogin,
+        ),
+      ],
+      child: Column(
+        children: [
+          if (_progress < 100) LinearProgressIndicator(value: _progress / 100),
+          if (_message case final message?)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(message),
             ),
+          Expanded(
+            child: _ready
+                ? WebViewWidget(controller: _browser!)
+                : const SizedBox(),
           ),
         ],
-      ),
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            if (_progress < 100)
-              LinearProgressIndicator(value: _progress / 100),
-            if (_message case final message?)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: Text(message),
-              ),
-            Expanded(
-              child: _ready
-                  ? WebViewWidget(controller: _browser!)
-                  : const SizedBox(),
-            ),
-          ],
-        ),
       ),
     ),
   );

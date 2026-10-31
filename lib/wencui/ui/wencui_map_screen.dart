@@ -8,6 +8,7 @@ import '../../l10n/l10n.dart';
 import '../../schedule/location.dart';
 import '../../schedule/model.dart';
 import '../../ui/app_menu_anchor.dart';
+import '../../ui/app_page.dart';
 import '../../ui/design.dart';
 import '../../ui/external_link.dart';
 import '../../ui/sheet_layout.dart';
@@ -197,54 +198,43 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
     }
   }
 
-  void _showCourses(WencuiAtlas atlas) => showModalBottomSheet<void>(
+  void _showCourses(WencuiAtlas atlas) => showAppSheet<void>(
     context: context,
-    useSafeArea: true,
-    isScrollControlled: true,
     builder: (sheetContext) {
       final l10n = sheetContext.l10n;
-      return SafeArea(
-        top: false,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(sheetContext).height * .7,
-          ),
-          child: ListView(
-            shrinkWrap: true,
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
-            children: [
+      return SheetLayout(
+        header: SheetHeader(
+          title: Text(l10n.myWencuiCourses),
+          actions: const [SheetCloseButton()],
+        ),
+        contentPadding: appSheetListPadding,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final (:course, :place) in _courses)
               ListTile(
-                title: Text(
-                  l10n.myWencuiCourses,
-                  style: Theme.of(sheetContext).textTheme.titleLarge,
+                leading: CircleAvatar(
+                  backgroundColor: Theme.of(sheetContext)
+                      .colorScheme
+                      .primaryContainer,
+                  child: Text(place.wing.letter),
                 ),
-                trailing: const SheetCloseButton(),
+                title: Text(course.name),
+                subtitle: Text(
+                  [
+                    localizedWencuiPlace(l10n, place),
+                    if (course.weekday case final weekday?)
+                      localizedShortWeekday(l10n, weekday),
+                    localizedCourseSection(l10n, course),
+                  ].join(' · '),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _selectPlace(place, atlas, course: course);
+                },
               ),
-              for (final (:course, :place) in _courses)
-                ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Theme.of(sheetContext)
-                        .colorScheme
-                        .primaryContainer,
-                    child: Text(place.wing.letter),
-                  ),
-                  title: Text(course.name),
-                  subtitle: Text(
-                    [
-                      localizedWencuiPlace(l10n, place),
-                      if (course.weekday case final weekday?)
-                        localizedShortWeekday(l10n, weekday),
-                      localizedCourseSection(l10n, course),
-                    ].join(' · '),
-                  ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    _selectPlace(place, atlas, course: course);
-                  },
-                ),
-            ],
-          ),
+          ],
         ),
       );
     },
@@ -612,29 +602,24 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
   );
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(context.l10n.wencuiMap),
-      actions: [
-        IconButton(
-          tooltip: context.l10n.mapInfoTitle,
-          onPressed: () => _showMapInfo(context),
-          icon: const Icon(Icons.info_outline_rounded),
-        ),
-        const SizedBox(width: 8),
-      ],
-    ),
-    body: SafeArea(
-      child: ListenableBuilder(
-        listenable: widget.controller.timetable,
-        builder: (_, _) => FutureBuilder<WencuiAtlas>(
-          future: _loading,
-          builder: (context, snapshot) => snapshot.hasData
-              ? _content(snapshot.requireData)
-              : snapshot.hasError
-              ? Center(child: Text(context.l10n.mapLoadFailed))
-              : const Center(child: CircularProgressIndicator()),
-        ),
+  Widget build(BuildContext context) => AppRoutePage(
+    title: context.l10n.wencuiMap,
+    actions: [
+      IconButton(
+        tooltip: context.l10n.mapInfoTitle,
+        onPressed: () => _showMapInfo(context),
+        icon: const Icon(Icons.info_outline_rounded),
+      ),
+    ],
+    child: ListenableBuilder(
+      listenable: widget.controller.timetable,
+      builder: (_, _) => FutureBuilder<WencuiAtlas>(
+        future: _loading,
+        builder: (context, snapshot) => snapshot.hasData
+            ? _content(snapshot.requireData)
+            : snapshot.hasError
+            ? Center(child: Text(context.l10n.mapLoadFailed))
+            : const Center(child: CircularProgressIndicator()),
       ),
     ),
   );

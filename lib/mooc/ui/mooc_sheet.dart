@@ -4,7 +4,7 @@ import '../../core/async/cancelable_request.dart';
 import '../../core/error_message.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
-import '../../ui/design.dart';
+import '../../ui/app_dialog.dart';
 import '../../ui/editor_sheet.dart';
 import '../../ui/external_link.dart';
 import '../../ui/sheet_layout.dart';
@@ -16,10 +16,8 @@ Future<bool> showMoocAccount(
   BuildContext context,
   MoocController controller,
 ) async =>
-    await showModalBottomSheet<bool>(
+    await showAppSheet<bool>(
       context: context,
-      useSafeArea: true,
-      isScrollControlled: true,
       builder: (_) => _MoocSheet(controller: controller),
     ) ==
     true;
@@ -76,10 +74,8 @@ class _MoocSheetState extends State<_MoocSheet> {
   }
 
   Future<void> _cookie() async {
-    final success = await showModalBottomSheet<bool>(
+    final success = await showAppSheet<bool>(
       context: context,
-      useSafeArea: true,
-      isScrollControlled: true,
       builder: (_) => _CookieSheet(controller: widget.controller),
     );
     if (success == true && mounted) Navigator.pop(context, true);
@@ -87,24 +83,13 @@ class _MoocSheetState extends State<_MoocSheet> {
 
   Future<void> _disconnect() async {
     final l10n = context.l10n;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.moocSignOutQuestion),
-        content: Text(l10n.moocSignOutBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(l10n.exitAction),
-          ),
-        ],
-      ),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: l10n.moocSignOutQuestion,
+      body: l10n.moocSignOutBody,
+      confirmLabel: l10n.exitAction,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     try {
       await widget.controller.disconnect();
       if (mounted) setState(() => _error = null);
@@ -122,91 +107,81 @@ class _MoocSheetState extends State<_MoocSheet> {
       final scheme = theme.colorScheme;
       final enabled = !model.busy && !_loginOpen;
       final l10n = context.l10n;
-      return SafeArea(
-        top: false,
-        child: SheetLayout(
-          header: SheetHeader(
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(l10n.moocName),
-                if (model.account case final account?) ...[
-                  const SizedBox(height: 6),
+      return SheetLayout(
+        header: SheetHeader(
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.moocName),
+              if (model.account case final account?) ...[
+                const SizedBox(height: 6),
+                Text(
+                  account.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                if (model.needsLogin)
                   Text(
-                    account.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
+                    model.status.localizedLabel(l10n),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.error,
                     ),
                   ),
-                  if (model.needsLogin)
-                    Text(
-                      model.status.localizedLabel(l10n),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: scheme.error,
-                      ),
-                    ),
-                ],
               ],
-            ),
-            actions: const [SheetCloseButton()],
+            ],
           ),
-          content: Padding(
-            padding: appSheetContentPadding,
-            child: ListTileTheme(
-              data: theme.listTileTheme.copyWith(
-                contentPadding: EdgeInsets.zero,
-                minTileHeight: 48,
-                minVerticalPadding: 8,
+          actions: const [SheetCloseButton()],
+        ),
+        content: ListTileTheme(
+          data: theme.listTileTheme.copyWith(
+            contentPadding: EdgeInsets.zero,
+            minTileHeight: 48,
+            minVerticalPadding: 8,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.login_rounded),
+                title: Text(model.needsLogin ? l10n.webLogin : l10n.relogin),
+                subtitle: model.needsLogin ? Text(l10n.moocLoginMethods) : null,
+                trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+                enabled: enabled,
+                onTap: enabled ? _login : null,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.login_rounded),
-                    title: Text(
-                      model.needsLogin ? l10n.webLogin : l10n.relogin,
-                    ),
-                    subtitle: model.needsLogin
-                        ? Text(l10n.moocLoginMethods)
-                        : null,
-                    trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-                    enabled: enabled,
-                    onTap: enabled ? _login : null,
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.key_outlined),
-                    title: Text(l10n.useCookie),
-                    subtitle: model.needsLogin ? Text(l10n.backupLogin) : null,
-                    trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-                    enabled: enabled,
-                    onTap: enabled ? _cookie : null,
-                  ),
-                  if (model.account != null) ...[
-                    const Divider(height: 24),
-                    ListTile(
-                      leading: Icon(Icons.logout_rounded, color: scheme.error),
-                      title: Text(
-                        l10n.moocSignOutAccount,
-                        style: TextStyle(color: scheme.error),
-                      ),
-                      enabled: enabled,
-                      onTap: enabled ? _disconnect : null,
-                    ),
-                  ],
-                  if (_error case final error?)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 16),
-                      child: Text(
-                        error,
-                        style: TextStyle(color: theme.colorScheme.error),
-                      ),
-                    ),
-                ],
+              ListTile(
+                leading: const Icon(Icons.key_outlined),
+                title: Text(l10n.useCookie),
+                subtitle: model.needsLogin ? Text(l10n.backupLogin) : null,
+                trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+                enabled: enabled,
+                onTap: enabled ? _cookie : null,
               ),
-            ),
+              if (model.account != null) ...[
+                const Divider(height: 24),
+                ListTile(
+                  leading: Icon(Icons.logout_rounded, color: scheme.error),
+                  title: Text(
+                    l10n.moocSignOutAccount,
+                    style: TextStyle(color: scheme.error),
+                  ),
+                  enabled: enabled,
+                  onTap: enabled ? _disconnect : null,
+                ),
+              ],
+              if (_error case final error?)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Text(
+                    error,
+                    style: TextStyle(color: theme.colorScheme.error),
+                  ),
+                ),
+            ],
           ),
         ),
       );

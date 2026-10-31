@@ -199,44 +199,55 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  for (final (size, textScale) in [
-    (const Size(390, 844), 1.0),
-    (const Size(1440, 1000), 1.0),
-    (const Size(390, 844), 1.5),
+  for (final (size, textScale, splitHeader) in [
+    (const Size(390, 844), 1.0, false),
+    (const Size(1440, 1000), 1.0, false),
+    (const Size(390, 844), 1.5, true),
   ]) {
-    testWidgets(
-      'Week trigger stays compact in the real header at $size / $textScale',
-      (tester) async {
-        await _showWeekHeader(tester, size: size, textScale: textScale);
-        final trigger = tester.getRect(find.widgetWithText(TextButton, '第6周'));
-        final label = tester.getRect(find.text('第6周'));
-        expect(trigger.width, lessThanOrEqualTo(label.width + 48));
-        expect(label.left - trigger.left, greaterThanOrEqualTo(8));
-        final arrow = tester.getRect(
-          find.descendant(
-            of: find.byType(WeekSelector),
-            matching: find.byIcon(Icons.keyboard_arrow_down_rounded),
-          ),
-        );
-        expect(trigger.right - arrow.right, greaterThanOrEqualTo(8));
-        for (final tooltip in ['添加', '导入', '更多']) {
-          final action = tester.getRect(find.byTooltip(tooltip));
+    testWidgets('Week header stays usable at $size / $textScale', (
+      tester,
+    ) async {
+      await _showWeekHeader(tester, size: size, textScale: textScale);
+      final trigger = tester.getRect(find.widgetWithText(TextButton, '第6周'));
+      final label = tester.getRect(find.text('第6周'));
+      expect(trigger.width, lessThanOrEqualTo(label.width + 48));
+      expect(label.left - trigger.left, greaterThanOrEqualTo(8));
+      final arrow = tester.getRect(
+        find.descendant(
+          of: find.byType(WeekSelector),
+          matching: find.byIcon(Icons.keyboard_arrow_down_rounded),
+        ),
+      );
+      expect(trigger.right - arrow.right, greaterThanOrEqualTo(8));
+      final actions = [
+        for (final tooltip in ['添加', '导入', '更多'])
+          tester.getRect(find.byTooltip(tooltip)),
+      ];
+      final actionRowCenter = actions.first.center.dy;
+      for (final action in actions) {
+        expect(action.center.dy, closeTo(actionRowCenter, 0.1));
+      }
+      for (final tooltip in ['添加', '导入', '更多']) {
+        final action = tester.getRect(find.byTooltip(tooltip));
+        if (splitHeader) {
+          expect(action.top, greaterThanOrEqualTo(trigger.bottom));
+        } else {
           expect(action.center.dy, closeTo(trigger.center.dy, 0.1));
           expect(action.left, greaterThanOrEqualTo(trigger.right));
         }
-        final firstAction = tester.getRect(find.byTooltip('添加'));
-        await tester.tapAt(Offset(firstAction.left - 8, trigger.center.dy));
-        await tester.pumpAndSettle();
-        expect(_panel, findsNothing);
-        await tester.tap(find.text('第6周'));
-        await tester.pumpAndSettle();
-        final panel = tester.getRect(_panel);
-        expect(panel.left, closeTo(trigger.left, 0.1));
-        expect(panel.top, closeTo(trigger.bottom, 0.1));
-        expect(panel.right, lessThanOrEqualTo(size.width - 8));
-        expect(tester.takeException(), isNull);
-      },
-    );
+      }
+      final firstAction = actions.first;
+      await tester.tapAt(Offset(firstAction.left - 8, actionRowCenter));
+      await tester.pumpAndSettle();
+      expect(_panel, findsNothing);
+      await tester.tap(find.text('第6周'));
+      await tester.pumpAndSettle();
+      final panel = tester.getRect(_panel);
+      expect(panel.left, closeTo(trigger.left, 0.1));
+      expect(panel.top, closeTo(trigger.bottom, 0.1));
+      expect(panel.right, lessThanOrEqualTo(size.width - 8));
+      expect(tester.takeException(), isNull);
+    });
   }
 
   testWidgets('Week numbers are centered inside their menu cells', (

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/l10n.dart';
-import 'design.dart';
 import 'sheet_layout.dart';
 
 class EditorSheet extends StatelessWidget {
@@ -39,51 +38,41 @@ class EditorSheet extends StatelessWidget {
             title: Text(title),
             actions: [SheetCloseButton(enabled: !saving)],
           ),
-          content: Padding(
-            // Leave room for floating labels above the first field.
-            padding: appSheetContentPadding,
-            child: Form(key: formKey, child: child),
-          ),
-          actions: SafeArea(
-            top: false,
-            child: Padding(
-              padding: appSheetActionPadding,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (error case final message?)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        message,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
+          content: Form(key: formKey, child: child),
+          actions: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (error case final message?)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    message,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
                     ),
-                  Row(
-                    children: [
-                      if (onDelete != null) ...[
-                        IconButton(
-                          tooltip: context.l10n.delete,
-                          onPressed: saving ? null : onDelete,
-                          color: Theme.of(context).colorScheme.error,
-                          icon: const Icon(Icons.delete_outline),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      Expanded(
-                        child: FilledButton(
-                          onPressed: saving ? null : onSave,
-                          child: saveLabel,
-                        ),
-                      ),
-                    ],
+                  ),
+                ),
+              Row(
+                children: [
+                  if (onDelete != null) ...[
+                    IconButton(
+                      tooltip: context.l10n.delete,
+                      onPressed: saving ? null : onDelete,
+                      color: Theme.of(context).colorScheme.error,
+                      icon: const Icon(Icons.delete_outline),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: saving ? null : onSave,
+                      child: saveLabel,
+                    ),
                   ),
                 ],
               ),
-            ),
+            ],
           ),
         ),
       ),

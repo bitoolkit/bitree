@@ -259,38 +259,24 @@ class _CourseWeekPickerState extends State<CourseWeekPicker> {
                   itemBuilder: (context, index) {
                     final week = weeks[index];
                     final selected = selectedWeeks.contains(week);
-                    return Semantics(
+                    return AppSelectionButton(
                       selected: selected,
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          backgroundColor: selected
-                              ? theme.colorScheme.primary
-                              : Colors.transparent,
-                          foregroundColor: selected
-                              ? theme.colorScheme.onPrimary
-                              : theme.colorScheme.onSurfaceVariant,
-                          side: BorderSide(
-                            color: selected
-                                ? theme.colorScheme.primary
-                                : theme.colorScheme.outlineVariant,
-                          ),
-                        ),
-                        onPressed: !enabled
-                            ? null
-                            : () {
-                                final weeks = {...selectedWeeks};
-                                if (selected) {
-                                  weeks.remove(week);
-                                } else {
-                                  weeks.add(week);
-                                }
-                                onChanged(weeks);
-                              },
-                        child: Text(
-                          '$week',
-                          semanticsLabel: l10n.weekNumber(week),
-                        ),
+                      minimumSize: Size(0, dimensions.height),
+                      padding: EdgeInsets.zero,
+                      onPressed: !enabled
+                          ? null
+                          : () {
+                              final weeks = {...selectedWeeks};
+                              if (selected) {
+                                weeks.remove(week);
+                              } else {
+                                weeks.add(week);
+                              }
+                              onChanged(weeks);
+                            },
+                      child: Text(
+                        '$week',
+                        semanticsLabel: l10n.weekNumber(week),
                       ),
                     );
                   },

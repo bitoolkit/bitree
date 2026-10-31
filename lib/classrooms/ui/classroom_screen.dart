@@ -9,7 +9,9 @@ import '../../schedule/model.dart';
 import '../../school/ui/school_screen.dart';
 import '../../school/ui/school_verification_dialog.dart';
 import '../../ui/app_dropdown_field.dart';
+import '../../ui/app_page.dart';
 import '../../ui/campus_time_builder.dart';
+import '../../ui/design.dart';
 import '../../ui/dialog_layout.dart';
 import '../../wencui/place.dart';
 import '../../wencui/ui/wencui_map_screen.dart';
@@ -71,35 +73,26 @@ class _ClassroomScreenState extends State<ClassroomScreen> {
 
   Widget _build(BuildContext context) => CampusTimeBuilder(
     active: true,
-    builder: (context, now) => Scaffold(
-      appBar: AppBar(
-        title: Text(context.l10n.emptyClassroomQuery),
-        actions: [
-          IconButton(
-            tooltip: context.l10n.refresh,
-            onPressed: () => _queryState.load(refresh: true),
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 960),
-            child: CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                    child: _buildQuery(now),
-                  ),
-                ),
-                ..._buildResults(now),
-              ],
+    builder: (context, now) => AppRoutePage(
+      title: context.l10n.emptyClassroomQuery,
+      maxWidth: 960,
+      actions: [
+        IconButton(
+          tooltip: context.l10n.refresh,
+          onPressed: () => _queryState.load(refresh: true),
+          icon: const Icon(Icons.refresh_rounded),
+        ),
+      ],
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: _buildQuery(now),
             ),
           ),
-        ),
+          ..._buildResults(now),
+        ],
       ),
     ),
   );
@@ -265,7 +258,7 @@ class _ClassroomScreenState extends State<ClassroomScreen> {
               ),
               if (_queryState.busy) ...[
                 const SizedBox(height: 12),
-                const LinearProgressIndicator(minHeight: 2),
+                const LinearProgressIndicator(minHeight: appProgressHeight),
               ],
               if (!_queryState.busy && !_queryState.hasResult)
                 _QueryState(

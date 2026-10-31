@@ -4,7 +4,6 @@ import '../../app/controller.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../schedule/model.dart';
-import '../../ui/design.dart';
 import '../../ui/external_link.dart';
 import '../../ui/sheet_layout.dart';
 import '../model.dart';
@@ -16,10 +15,8 @@ Future<void> showAgendaEntry(
   BuildContext pageContext,
   AppController controller,
   AgendaEntry entry,
-) => showModalBottomSheet<void>(
+) => showAppSheet<void>(
   context: pageContext,
-  useSafeArea: true,
-  isScrollControlled: true,
   builder: (sheetContext) => ListenableBuilder(
     listenable: controller.agenda,
     builder: (context, _) {
@@ -59,200 +56,180 @@ Future<void> showAgendaEntry(
         ),
       );
 
-      return SafeArea(
-        top: false,
-        child: SheetLayout(
-          header: SheetHeader(
-            title: Wrap(
-              spacing: 12,
-              runSpacing: 4,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
+      return SheetLayout(
+        header: SheetHeader(
+          title: Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                current.kind.localizedLabel(l10n),
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              if (status != null)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      current.done
+                          ? Icons.check_circle_outline_rounded
+                          : Icons.schedule_rounded,
+                      size: 15,
+                      color: statusColor,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      status,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: statusColor,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+          actions: [
+            IconButton(
+              tooltip: l10n.delete,
+              onPressed: controller.agenda.busy
+                  ? null
+                  : () async {
+                      if (await deleteAgendaEntry(
+                            context,
+                            controller,
+                            current,
+                          ) &&
+                          sheetContext.mounted) {
+                        Navigator.pop(sheetContext);
+                      }
+                    },
+              icon: const Icon(Icons.delete_outline, size: 20),
+            ),
+            const SheetCloseButton(),
+          ],
+        ),
+        content: SelectionArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CompletionText(
+                current.title,
+                completed: current.done,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontSize: 26,
+                  height: 1.3,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (current.course.isNotEmpty) ...[
+                const SizedBox(height: 8),
                 Text(
-                  current.kind.localizedLabel(l10n),
-                  style: theme.textTheme.labelLarge?.copyWith(
+                  current.course,
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     color: scheme.onSurfaceVariant,
                   ),
                 ),
-                if (status != null)
+              ],
+              const SizedBox(height: 24),
+              _EntryTime(entry: current, now: now),
+              if (current.location.isNotEmpty ||
+                  current.source != null ||
+                  current.notes.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
+              ],
+              if (current.location.isNotEmpty)
+                metadata(
+                  Icons.location_on_outlined,
+                  Text(current.location, style: theme.textTheme.bodyMedium),
+                ),
+              if (current.source case final source?)
+                metadata(
+                  Icons.link_rounded,
                   Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        current.done
-                            ? Icons.check_circle_outline_rounded
-                            : Icons.schedule_rounded,
-                        size: 15,
-                        color: statusColor,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        status,
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: statusColor,
+                      Expanded(
+                        child: Text(
+                          source.localizedLabel(l10n),
+                          style: theme.textTheme.bodyMedium,
                         ),
                       ),
+                      if (current.url case final url?)
+                        TextButton.icon(
+                          onPressed: () => openExternalLink(
+                            context,
+                            url,
+                            failureTitle: l10n.agendaOpenLink,
+                          ),
+                          iconAlignment: IconAlignment.end,
+                          icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                          label: Text(l10n.agendaOpenLink),
+                        ),
                     ],
                   ),
+                ),
+              if (current.notes.isNotEmpty) ...[
+                if (current.location.isNotEmpty || current.source != null)
+                  const SizedBox(height: 16),
+                Text(
+                  l10n.agendaNotes,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(current.notes, style: theme.textTheme.bodyLarge),
               ],
-            ),
-            actions: [
-              IconButton(
-                tooltip: l10n.delete,
-                onPressed: controller.agenda.busy
-                    ? null
-                    : () async {
-                        if (await deleteAgendaEntry(
-                              context,
-                              controller,
-                              current,
-                            ) &&
-                            sheetContext.mounted) {
-                          Navigator.pop(sheetContext);
-                        }
-                      },
-                icon: const Icon(Icons.delete_outline, size: 20),
-              ),
-              const SheetCloseButton(),
             ],
           ),
-          content: Padding(
-            padding: appSheetContentPadding,
-            child: SelectionArea(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisSize: MainAxisSize.min,
+        ),
+        actions: current.isDeadline
+            ? OverflowBar(
+                alignment: MainAxisAlignment.spaceBetween,
+                overflowAlignment: OverflowBarAlignment.end,
+                spacing: 12,
+                overflowSpacing: 8,
                 children: [
-                  CompletionText(
-                    current.title,
-                    completed: current.done,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontSize: 26,
-                      height: 1.3,
-                      fontWeight: FontWeight.w600,
+                  TextButton.icon(
+                    onPressed: controller.agenda.busy ? null : edit,
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    label: Text(l10n.edit),
+                  ),
+                  FilledButton.icon(
+                    style: current.done
+                        ? FilledButton.styleFrom(
+                            backgroundColor: scheme.secondaryContainer,
+                            foregroundColor: scheme.onSecondaryContainer,
+                          )
+                        : null,
+                    onPressed: controller.agenda.busy
+                        ? null
+                        : () => toggleAgendaDone(controller.agenda, current),
+                    icon: Icon(
+                      current.done ? Icons.undo_rounded : Icons.check_rounded,
+                      size: 20,
+                    ),
+                    label: Text(
+                      current.done
+                          ? l10n.agendaMarkUndone
+                          : l10n.agendaMarkDone,
                     ),
                   ),
-                  if (current.course.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      current.course,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  _EntryTime(entry: current, now: now),
-                  if (current.location.isNotEmpty ||
-                      current.source != null ||
-                      current.notes.isNotEmpty) ...[
-                    const SizedBox(height: 20),
-                    const Divider(height: 1),
-                    const SizedBox(height: 12),
-                  ],
-                  if (current.location.isNotEmpty)
-                    metadata(
-                      Icons.location_on_outlined,
-                      Text(current.location, style: theme.textTheme.bodyMedium),
-                    ),
-                  if (current.source case final source?)
-                    metadata(
-                      Icons.link_rounded,
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              source.localizedLabel(l10n),
-                              style: theme.textTheme.bodyMedium,
-                            ),
-                          ),
-                          if (current.url case final url?)
-                            TextButton.icon(
-                              onPressed: () => openExternalLink(
-                                context,
-                                url,
-                                failureTitle: l10n.agendaOpenLink,
-                              ),
-                              iconAlignment: IconAlignment.end,
-                              icon: const Icon(
-                                Icons.open_in_new_rounded,
-                                size: 16,
-                              ),
-                              label: Text(l10n.agendaOpenLink),
-                            ),
-                        ],
-                      ),
-                    ),
-                  if (current.notes.isNotEmpty) ...[
-                    if (current.location.isNotEmpty || current.source != null)
-                      const SizedBox(height: 16),
-                    Text(
-                      l10n.agendaNotes,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(current.notes, style: theme.textTheme.bodyLarge),
-                  ],
                 ],
+              )
+            : Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton.icon(
+                  onPressed: controller.agenda.busy ? null : edit,
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  label: Text(l10n.edit),
+                ),
               ),
-            ),
-          ),
-          actions: SafeArea(
-            top: false,
-            child: Padding(
-              padding: appSheetActionPadding,
-              child: current.isDeadline
-                  ? OverflowBar(
-                      alignment: MainAxisAlignment.spaceBetween,
-                      overflowAlignment: OverflowBarAlignment.end,
-                      spacing: 12,
-                      overflowSpacing: 8,
-                      children: [
-                        TextButton.icon(
-                          onPressed: controller.agenda.busy ? null : edit,
-                          icon: const Icon(Icons.edit_outlined, size: 18),
-                          label: Text(l10n.edit),
-                        ),
-                        FilledButton.icon(
-                          style: current.done
-                              ? FilledButton.styleFrom(
-                                  backgroundColor: scheme.secondaryContainer,
-                                  foregroundColor: scheme.onSecondaryContainer,
-                                )
-                              : null,
-                          onPressed: controller.agenda.busy
-                              ? null
-                              : () => toggleAgendaDone(
-                                  controller.agenda,
-                                  current,
-                                ),
-                          icon: Icon(
-                            current.done
-                                ? Icons.undo_rounded
-                                : Icons.check_rounded,
-                            size: 20,
-                          ),
-                          label: Text(
-                            current.done
-                                ? l10n.agendaMarkUndone
-                                : l10n.agendaMarkDone,
-                          ),
-                        ),
-                      ],
-                    )
-                  : Align(
-                      alignment: Alignment.centerRight,
-                      child: FilledButton.icon(
-                        onPressed: controller.agenda.busy ? null : edit,
-                        icon: const Icon(Icons.edit_outlined, size: 18),
-                        label: Text(l10n.edit),
-                      ),
-                    ),
-            ),
-          ),
-        ),
       );
     },
   ),

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../core/diagnostics.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_notice.dart';
+import '../../ui/app_page.dart';
 
 class LogsScreen extends StatefulWidget {
   const LogsScreen({super.key});
@@ -68,50 +69,35 @@ class _LogsScreenState extends State<LogsScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.logsTitle),
-        actions: [
-          IconButton(
-            tooltip: l10n.refresh,
-            onPressed: _loading ? null : _load,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 960),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    l10n.logsRecent,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(child: _buildPreview(context)),
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    onPressed: _exporting ? null : _export,
-                    icon: _exporting
-                        ? const SizedBox.square(
-                            dimension: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.file_download_outlined, size: 20),
-                    label: Text(
-                      _exporting ? l10n.exportingLogs : l10n.exportLogs,
-                    ),
-                  ),
-                ],
-              ),
+    return AppRoutePage(
+      title: l10n.logsTitle,
+      actions: [
+        IconButton(
+          tooltip: l10n.refresh,
+          onPressed: _loading ? null : _load,
+          icon: const Icon(Icons.refresh_rounded),
+        ),
+      ],
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l10n.logsRecent, style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 12),
+            Expanded(child: _buildPreview(context)),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _exporting ? null : _export,
+              icon: _exporting
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.file_download_outlined, size: 20),
+              label: Text(_exporting ? l10n.exportingLogs : l10n.exportLogs),
             ),
-          ),
+          ],
         ),
       ),
     );

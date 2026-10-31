@@ -1,5 +1,15 @@
 import 'package:flutter/material.dart';
 
+abstract final class AppSpacing {
+  static const xxs = 2.0;
+  static const xs = 4.0;
+  static const sm = 8.0;
+  static const md = 12.0;
+  static const lg = 16.0;
+  static const xl = 24.0;
+  static const xxl = 32.0;
+}
+
 abstract final class AppCorners {
   static const controlRadius = Radius.circular(10);
   static const _panelRadius = Radius.circular(20);
@@ -14,11 +24,26 @@ const appControlShape = RoundedRectangleBorder(
 );
 const appPanelShape = RoundedRectangleBorder(borderRadius: AppCorners.panel);
 const appControlSize = Size(48, 48);
-const appControlPadding = EdgeInsets.symmetric(horizontal: 16, vertical: 12);
-const appSheetContentPadding = EdgeInsets.fromLTRB(24, 8, 24, 16);
+const appProgressHeight = 3.0;
+const appControlPadding = EdgeInsets.symmetric(
+  horizontal: AppSpacing.lg,
+  vertical: AppSpacing.md,
+);
+const appSheetContentPadding = EdgeInsets.fromLTRB(
+  AppSpacing.xl,
+  AppSpacing.sm,
+  AppSpacing.xl,
+  AppSpacing.lg,
+);
+const appSheetListPadding = EdgeInsets.fromLTRB(
+  AppSpacing.sm,
+  0,
+  AppSpacing.sm,
+  AppSpacing.md,
+);
 const appSheetActionPadding = EdgeInsets.symmetric(
-  horizontal: 24,
-  vertical: 12,
+  horizontal: AppSpacing.xl,
+  vertical: AppSpacing.md,
 );
 
 const appMenuMotion = AnimationStyle(
