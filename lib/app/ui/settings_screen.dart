@@ -212,7 +212,7 @@ class SettingsScreen extends StatelessWidget {
       padding: const EdgeInsets.only(top: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [AppSectionLabel(title), ...children],
+        children: [AppSectionHeader(title), ...children],
       ),
     );
 

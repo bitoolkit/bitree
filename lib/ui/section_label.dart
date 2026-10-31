@@ -29,12 +29,3 @@ class AppSectionHeader extends StatelessWidget {
     ),
   );
 }
-
-class AppSectionLabel extends StatelessWidget {
-  const AppSectionLabel(this.label, {super.key});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => AppSectionHeader(label);
-}
