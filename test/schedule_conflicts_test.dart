@@ -16,9 +16,11 @@ void main() {
     String name, {
     required int start,
     required int end,
+    String room = '',
   }) => Course(
     id: id,
     name: name,
+    room: room,
     weekday: DateTime.friday,
     startSection: start,
     endSection: end,
@@ -121,8 +123,8 @@ void main() {
     'A wide conflict card fills its height with distinct course bands',
     (tester) async {
       final courses = [
-        course('a', 'erwer', start: 6, end: 7),
-        course('b', '大学物理 A II', start: 6, end: 7),
+        course('a', 'erwer', room: '文萃楼 F704', start: 6, end: 7),
+        course('b', '大学物理 A II', room: '理教楼 105', start: 6, end: 7),
       ];
       final app = TestAppController(
         schedule: SemesterSchedule(
@@ -162,6 +164,8 @@ void main() {
       expect(first.height, closeTo(second.height, 1));
       expect(first.height, greaterThan(40));
       expect(first.bottom, lessThan(second.top));
+      expect(find.text('文萃楼 F704'), findsOneWidget);
+      expect(find.text('理教楼 105'), findsOneWidget);
       expect(find.byType(Tooltip), findsNothing);
       expect(tester.takeException(), isNull);
     },

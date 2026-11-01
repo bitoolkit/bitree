@@ -178,88 +178,97 @@ class _ConflictCourseRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final location = course.room.trim().isEmpty
+        ? context.l10n.locationPending
+        : course.room;
     final colors = courseColors(context, course);
     return ColoredBox(
       color: colors.fill,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: 3,
-            child: ColoredBox(color: colors.accent),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(6, 2, 3, 2),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final inline = constraints.maxWidth >= 88;
-                final showSection = constraints.maxHeight >= (inline ? 16 : 25);
-                final name = Text(
-                  course.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 10,
-                    height: 1.08,
-                    fontWeight: FontWeight.w600,
-                    color: colors.text,
-                  ),
-                );
-                final sectionText = Text(
-                  section,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 8.5,
-                    height: 1.05,
-                    fontWeight: FontWeight.w500,
-                    color: colors.secondaryText,
-                  ),
-                );
-                final content = inline
-                    ? Row(
-                        children: [
-                          Expanded(child: name),
-                          if (showSection) ...[
-                            const SizedBox(width: 3),
-                            ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 72),
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: colors.text.withValues(alpha: 0.08),
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 3,
-                                    vertical: 1,
-                                  ),
-                                  child: sectionText,
-                                ),
-                              ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(4, 2, 3, 2),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final inline = constraints.maxWidth >= 88;
+            final showDetails = constraints.maxHeight >= (inline ? 25 : 36);
+            final name = Text(
+              course.name,
+              maxLines: inline ? 1 : 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10,
+                height: 1.08,
+                fontWeight: FontWeight.w600,
+                color: colors.text,
+              ),
+            );
+            final locationText = Text(
+              location,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 8.5,
+                height: 1.05,
+                color: colors.secondaryText,
+              ),
+            );
+            final sectionText = Text(
+              section,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 8.5,
+                height: 1.05,
+                fontWeight: FontWeight.w500,
+                color: colors.secondaryText,
+              ),
+            );
+            final details = Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                name,
+                if (showDetails) ...[const SizedBox(height: 1), locationText],
+              ],
+            );
+            final content = inline
+                ? Row(
+                    children: [
+                      Expanded(child: details),
+                      if (showDetails) ...[
+                        const SizedBox(width: 3),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 72),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: colors.text.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(2),
                             ),
-                          ],
-                        ],
-                      )
-                    : Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          name,
-                          if (showSection) ...[
-                            const SizedBox(height: 1),
-                            sectionText,
-                          ],
-                        ],
-                      );
-                return Align(alignment: Alignment.centerLeft, child: content);
-              },
-            ),
-          ),
-        ],
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 3,
+                                vertical: 1,
+                              ),
+                              child: sectionText,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      details,
+                      if (showDetails) ...[
+                        const SizedBox(height: 1),
+                        sectionText,
+                      ],
+                    ],
+                  );
+            return Align(alignment: Alignment.centerLeft, child: content);
+          },
+        ),
       ),
     );
   }
