@@ -4,7 +4,8 @@ import '../l10n/l10n.dart';
 
 /// Shows a focused task over the current page and returns its result.
 ///
-/// Use dialogs for a decision, a short input, or brief reference content.
+/// Use dialogs for a decision, a short input, brief reference content, or a
+/// bounded one-time announcement.
 /// Use `showAppSheet` for object details, long forms, batch tools, and progress.
 Future<T?> showAppDialog<T>({
   required BuildContext context,

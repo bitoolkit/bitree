@@ -39,8 +39,14 @@ class SheetCloseButton extends StatelessWidget {
 }
 
 class SheetHeader extends StatelessWidget {
-  const SheetHeader({super.key, required this.title, required this.actions});
+  const SheetHeader({
+    super.key,
+    this.leading,
+    required this.title,
+    required this.actions,
+  });
 
+  final Widget? leading;
   final Widget title;
   final List<Widget> actions;
 
@@ -49,6 +55,7 @@ class SheetHeader extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(24, 0, 8, 8),
     child: Row(
       children: [
+        ?leading,
         Expanded(
           child: Semantics(
             header: true,
