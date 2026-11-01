@@ -102,6 +102,7 @@ void main() {
         expect(find.text(item.name), findsOneWidget);
         expect(find.text(item.sectionLabel), findsOneWidget);
       }
+      expect(find.text('教室待定'), findsNothing);
       expect(tester.takeException(), isNull);
 
       await tester.tap(find.byType(ConflictingCourses));

@@ -178,9 +178,7 @@ class _ConflictCourseRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final location = course.room.trim().isEmpty
-        ? context.l10n.locationPending
-        : course.room;
+    final location = course.room.trim();
     final colors = courseColors(context, course);
     return ColoredBox(
       color: colors.fill,
@@ -201,16 +199,18 @@ class _ConflictCourseRow extends StatelessWidget {
                 color: colors.text,
               ),
             );
-            final locationText = Text(
-              location,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 8.5,
-                height: 1.05,
-                color: colors.secondaryText,
-              ),
-            );
+            final locationText = location.isEmpty
+                ? null
+                : Text(
+                    location,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 8.5,
+                      height: 1.05,
+                      color: colors.secondaryText,
+                    ),
+                  );
             final sectionText = Text(
               section,
               maxLines: 1,
@@ -227,7 +227,10 @@ class _ConflictCourseRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 name,
-                if (showDetails) ...[const SizedBox(height: 1), locationText],
+                if (showDetails && locationText != null) ...[
+                  const SizedBox(height: 1),
+                  locationText,
+                ],
               ],
             );
             final content = inline
