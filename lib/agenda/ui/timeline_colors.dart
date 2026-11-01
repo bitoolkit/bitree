@@ -1,10 +1,79 @@
 import 'package:flutter/material.dart';
 
-import '../../schedule/building_palette.dart';
 import '../../ui/course_palette.dart';
 import '../deadline_source.dart';
 import '../model.dart';
 import '../physics_lab_deadlines.dart';
+
+typedef _TimelineColors = ({Color fill, Color text, Color accent});
+
+enum _TimelineTone {
+  exam(
+    light: (
+      fill: Color(0xFFF4DAAE),
+      text: Color(0xFF262626),
+      accent: Color(0xFF735102),
+    ),
+    dark: (
+      fill: Color(0xFF392B11),
+      text: Color(0xFFEEEEEE),
+      accent: Color(0xFFDFAF56),
+    ),
+  ),
+  physicsLabDeadline(
+    light: (
+      fill: Color(0xFFC7E1FE),
+      text: Color(0xFF262626),
+      accent: Color(0xFF1A5998),
+    ),
+    dark: (
+      fill: Color(0xFF1D2F44),
+      text: Color(0xFFEEEEEE),
+      accent: Color(0xFF81BCFE),
+    ),
+  ),
+  lexue(
+    light: (
+      fill: Color(0xFFFFD3C2),
+      text: Color(0xFF262626),
+      accent: Color(0xFF8D3C18),
+    ),
+    dark: (
+      fill: Color(0xFF41261B),
+      text: Color(0xFFEEEEEE),
+      accent: Color(0xFFF89D79),
+    ),
+  ),
+  eclass(
+    light: (
+      fill: Color(0xFFEBD3FF),
+      text: Color(0xFF262626),
+      accent: Color(0xFF6C4289),
+    ),
+    dark: (
+      fill: Color(0xFF35273F),
+      text: Color(0xFFEEEEEE),
+      accent: Color(0xFFCFA1F1),
+    ),
+  ),
+  mooc(
+    light: (
+      fill: Color(0xFFB8ECD1),
+      text: Color(0xFF262626),
+      accent: Color(0xFF026947),
+    ),
+    dark: (
+      fill: Color(0xFF163527),
+      text: Color(0xFFEEEEEE),
+      accent: Color(0xFF67CFA0),
+    ),
+  );
+
+  const _TimelineTone({required this.light, required this.dark});
+
+  final _TimelineColors light;
+  final _TimelineColors dark;
+}
 
 /// Source/type colors are specific to the timeline, not other agenda views.
 ({Color fill, Color text, Color accent}) agendaTimelineColors(
@@ -14,36 +83,31 @@ import '../physics_lab_deadlines.dart';
 ) {
   final theme = Theme.of(context);
   final scheme = theme.colorScheme;
-  final paletteName = switch (entry.kind) {
-    AgendaKind.exam => '物理实验中心',
-    AgendaKind.deadline =>
-      isPhysicsLabDeadline(entry)
-          ? '综合教学楼A'
-          : switch (entry.source) {
-              DeadlineSource.lexue => '工程训练中心',
-              DeadlineSource.eclass => '文化体育中心',
-              DeadlineSource.mooc => '文萃楼A',
-              null => null,
-            },
+
+  final physicsLabDeadline = isPhysicsLabDeadline(entry);
+  final tone = switch (entry.kind) {
     AgendaKind.event => null,
+    AgendaKind.exam => _TimelineTone.exam,
+    AgendaKind.deadline when physicsLabDeadline =>
+      _TimelineTone.physicsLabDeadline,
+    AgendaKind.deadline => switch (entry.source) {
+      DeadlineSource.lexue => _TimelineTone.lexue,
+      DeadlineSource.eclass => _TimelineTone.eclass,
+      DeadlineSource.mooc => _TimelineTone.mooc,
+      null => null,
+    },
   };
-  final palette = paletteName == null
-      ? null
-      : buildingPaletteNamed(paletteName);
   final finished = entry.isFinished(now);
   final fadeAll =
       finished && (entry.isDeadline || entry.kind == AgendaKind.exam);
   final fillAlpha = fadeAll ? 0.5 : (finished ? 0.55 : 1.0);
   final foregroundAlpha = fadeAll ? 0.5 : 1.0;
-  if (palette != null) {
-    // Keep source colours recognizable even when the app uses system colours.
-    final values = theme.brightness == Brightness.dark
-        ? palette.dark
-        : palette.light;
+  if (tone != null) {
+    final values = theme.brightness == Brightness.dark ? tone.dark : tone.light;
     return (
-      fill: Color(values.fill).withValues(alpha: fillAlpha),
-      text: Color(values.text).withValues(alpha: foregroundAlpha),
-      accent: Color(values.accent).withValues(alpha: foregroundAlpha),
+      fill: values.fill.withValues(alpha: fillAlpha),
+      text: values.text.withValues(alpha: foregroundAlpha),
+      accent: values.accent.withValues(alpha: foregroundAlpha),
     );
   }
 
@@ -56,28 +120,23 @@ import '../physics_lab_deadlines.dart';
     );
   }
 
+  final manualDeadline =
+      entry.isDeadline && entry.source == null && !physicsLabDeadline;
   final fill = finished
       ? scheme.surfaceContainerHighest
-      : switch (entry.kind) {
-          AgendaKind.event => scheme.primaryContainer,
-          AgendaKind.exam => scheme.tertiaryContainer,
-          AgendaKind.deadline => scheme.secondaryContainer,
-        };
+      : manualDeadline
+      ? scheme.secondaryContainer
+      : scheme.primaryContainer;
   final text = finished
       ? scheme.onSurfaceVariant
-      : switch (entry.kind) {
-          AgendaKind.event => scheme.onPrimaryContainer,
-          AgendaKind.exam => scheme.onTertiaryContainer,
-          AgendaKind.deadline => scheme.onSecondaryContainer,
-        };
-  final accent = switch (entry.kind) {
-    AgendaKind.event => scheme.primary,
-    AgendaKind.exam => scheme.tertiary,
-    AgendaKind.deadline => scheme.secondary,
-  };
+      : manualDeadline
+      ? scheme.onSecondaryContainer
+      : scheme.onPrimaryContainer;
   return (
     fill: fill.withValues(alpha: fillAlpha),
     text: text.withValues(alpha: foregroundAlpha),
-    accent: accent.withValues(alpha: foregroundAlpha),
+    accent: (manualDeadline ? scheme.secondary : scheme.primary).withValues(
+      alpha: foregroundAlpha,
+    ),
   );
 }
