@@ -245,19 +245,12 @@ class SchoolLogin {
       SchoolSmsVerification(
         phone: maskedPhone,
         sendCode: () async {
-          final result = await _json(
-            '/cas/api/protected/sms/publicNoToken/sendSmsCode',
-            body: {'phone': phoneId, 'businessNo': '0008'},
+          final response = await _request(
+            _sso.resolve('/cas/api/protected/sms/publicNoToken/sendSmsCode'),
+            jsonBody: {'phone': phoneId, 'businessNo': '0008'},
+            checkStatus: false,
           );
-          final message = _message(result);
-          if (result['code'] != 200 &&
-              !(message.contains('验证码') &&
-                  message.contains('有效期内') &&
-                  message.contains('重复发送'))) {
-            throw SchoolRequestError(
-              message.isEmpty ? '验证码发送失败，请重试。' : message,
-            );
-          }
+          return SchoolSmsCodeDelivery.fromResponse(response).resendAfter;
         },
         checkCode: (code) async {
           final result = await _json(

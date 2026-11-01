@@ -102,16 +102,29 @@ class AgendaController extends ChangeNotifier {
     List<AgendaEntry> incoming, {
     void Function()? checkActive,
   }) => _write((entries) {
-    final byId = {for (final entry in entries) entry.id: entry};
-    for (final entry in incoming) {
-      final saved = byId[entry.id];
-      final next = saved != null && saved.local ? saved : entry;
-      byId[entry.id] = next.copyWith(
-        done: entry.done || saved?.done == true,
-        deleted: saved?.deleted ?? false,
+    final unmatched = [...incoming];
+    final matched = <AgendaEntry>[];
+    final merged = <AgendaEntry>[];
+    for (final saved in entries) {
+      final index = unmatched.indexWhere(
+        (entry) => _sameRemoteEntry(saved, entry),
+      );
+      if (index < 0) {
+        if (matched.any((entry) => _sameRemoteEntry(saved, entry))) continue;
+        merged.add(saved);
+        continue;
+      }
+      final entry = unmatched.removeAt(index);
+      matched.add(entry);
+      final next = saved.local ? saved : entry;
+      merged.add(
+        next.copyWith(
+          done: saved.local ? entry.done || saved.done : entry.done,
+          deleted: saved.deleted,
+        ),
       );
     }
-    return byId.values.toList();
+    return [...merged, ...unmatched];
   }, checkActive: checkActive);
 
   int countDeadlines(DeadlineClearScope scope) =>
@@ -250,4 +263,43 @@ class AgendaController extends ChangeNotifier {
     _disposed = true;
     super.dispose();
   }
+}
+
+bool _sameRemoteEntry(AgendaEntry left, AgendaEntry right) {
+  if (left.id == right.id && left.source == right.source) return true;
+  if (left.kind != AgendaKind.deadline ||
+      right.kind != AgendaKind.deadline ||
+      left.source == null ||
+      left.source != right.source) {
+    return false;
+  }
+
+  final leftUrl = left.url;
+  final rightUrl = right.url;
+  if (leftUrl != null && rightUrl != null) {
+    if (leftUrl.scheme != rightUrl.scheme ||
+        leftUrl.host != rightUrl.host ||
+        leftUrl.path != rightUrl.path) {
+      return false;
+    }
+    final leftId = leftUrl.queryParameters['id'];
+    final rightId = rightUrl.queryParameters['id'];
+    if (leftId != null || rightId != null) return leftId == rightId;
+    final leftActivity = leftUrl.fragment;
+    final rightActivity = rightUrl.fragment;
+    if (leftActivity.isNotEmpty && rightActivity.isNotEmpty) {
+      return leftActivity == rightActivity;
+    }
+    return leftUrl.replace(fragment: '') == rightUrl.replace(fragment: '') &&
+        _sameDeadlineMetadata(left, right);
+  }
+
+  return _sameDeadlineMetadata(left, right);
+}
+
+bool _sameDeadlineMetadata(AgendaEntry left, AgendaEntry right) {
+  return left.course == right.course &&
+      left.title == right.title &&
+      left.startsAt == right.startsAt &&
+      left.allDay == right.allDay;
 }

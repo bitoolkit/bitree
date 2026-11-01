@@ -23,7 +23,7 @@ class TileSwipeAction {
   final Future<bool> Function() onInvoke;
 }
 
-/// Ordinary drags belong to scrolling or paging. Hold before dragging a row.
+/// Short swipes reveal a button; full swipes invoke it on release.
 /// The list owns row removal and its size animation.
 class SwipeActionTile extends StatefulWidget {
   const SwipeActionTile({
@@ -53,12 +53,15 @@ class _SwipeActionTileState extends State<SwipeActionTile>
     upperBound: 1,
   )..addListener(_positionChanged);
   double _width = 0;
+  ScrollPosition? _scrollPosition;
   bool _dragging = false;
   bool _wasReady = false;
   bool _running = false;
 
   double get _offset => _position.value * _width;
-  double get _threshold => (_width * 0.28).clamp(88, 144);
+  double get _threshold => (_width * 0.5).clamp(128, 216);
+  double get _actionWidth =>
+      MediaQuery.textScalerOf(context).scale(80).clamp(80, _width * 0.4);
   bool get _ready => _offset.abs() >= _threshold;
   TileSwipeAction? get _action =>
       _offset < 0 ? widget.leftAction : widget.rightAction;
@@ -76,7 +79,11 @@ class _SwipeActionTileState extends State<SwipeActionTile>
             target,
             duration: MediaQuery.disableAnimationsOf(context)
                 ? Duration.zero
-                : const Duration(milliseconds: 180),
+                : Duration(
+                    milliseconds:
+                        (180 * (target - _position.value).abs().clamp(0.45, 1))
+                            .round(),
+                  ),
             curve: Curves.easeOutCubic,
           )
           .orCancel;
@@ -88,7 +95,6 @@ class _SwipeActionTileState extends State<SwipeActionTile>
   void _start(DragStartDetails details) {
     _position.stop();
     _dragging = true;
-    HapticFeedback.selectionClick();
   }
 
   void _update(DragUpdateDetails details) {
@@ -102,17 +108,32 @@ class _SwipeActionTileState extends State<SwipeActionTile>
     if (!_dragging) return;
     _dragging = false;
     final action = _action;
-    if (!_ready || action == null) {
+    final velocity = details.primaryVelocity ?? 0;
+    if (velocity * _offset.sign < -400) {
       _settle(0);
-      return;
+    } else if (_ready && action != null) {
+      _invoke(action, _position.value.sign);
+    } else if (action != null &&
+        (_offset.abs() >= _actionWidth / 2 || velocity * _offset.sign > 600)) {
+      _settle(_position.value.sign * _actionWidth / _width);
+    } else {
+      _settle(0);
     }
-    _invoke(action, _position.value.sign);
   }
 
   void _cancel() {
     if (!_dragging) return;
+    _close();
+  }
+
+  void _close() {
+    if (_running) return;
     _dragging = false;
-    _settle(0);
+    if (_position.value != 0) _settle(0);
+  }
+
+  void _scrollingChanged() {
+    if (_scrollPosition!.isScrollingNotifier.value) _close();
   }
 
   Future<void> _invoke(TileSwipeAction action, double direction) async {
@@ -131,49 +152,61 @@ class _SwipeActionTileState extends State<SwipeActionTile>
     }
   }
 
-  Widget _background(TileSwipeAction action, Alignment alignment) =>
-      ExcludeSemantics(
-        child: ColoredBox(
-          color: action.background,
-          child: Align(
-            alignment: alignment,
-            child: SizedBox(
-              width: 88,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(action.icon, size: 22, color: action.foreground),
-                  const SizedBox(height: 4),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        _ready ? action.releaseLabel : action.label,
-                        maxLines: 1,
-                        style: Theme.of(context).textTheme.labelSmall
-                            ?.copyWith(color: action.foreground),
-                      ),
-                    ),
+  Widget _background(TileSwipeAction action, Alignment alignment) => Material(
+    color: action.background,
+    child: InkWell(
+      onTap: widget.enabled && !_running
+          ? () => _invoke(action, _position.value.sign)
+          : null,
+      child: Align(
+        alignment: alignment,
+        child: SizedBox(
+          width: _actionWidth,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(action.icon, size: 22, color: action.foreground),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    _ready ? action.releaseLabel : action.label,
+                    maxLines: 1,
+                    style: Theme.of(context).textTheme.labelSmall
+                        ?.copyWith(color: action.foreground),
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         ),
-      );
+      ),
+    ),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final position = Scrollable.maybeOf(context, axis: Axis.vertical)?.position;
+    if (position == _scrollPosition) return;
+    _scrollPosition?.isScrollingNotifier.removeListener(_scrollingChanged);
+    _scrollPosition = position;
+    _scrollPosition?.isScrollingNotifier.addListener(_scrollingChanged);
+  }
 
   @override
   void didUpdateWidget(covariant SwipeActionTile oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!widget.enabled && oldWidget.enabled && !_running) {
-      _dragging = false;
-      _settle(0);
+      _close();
     }
   }
 
   @override
   void dispose() {
+    _scrollPosition?.isScrollingNotifier.removeListener(_scrollingChanged);
     _position.dispose();
     super.dispose();
   }
@@ -195,52 +228,63 @@ class _SwipeActionTileState extends State<SwipeActionTile>
                       _invoke(right, 1),
               }
             : null,
-        child: ClipRect(
-          child: AbsorbPointer(
-            absorbing: _running,
-            child: RawGestureDetector(
-              behavior: HitTestBehavior.opaque,
-              gestures: {
-                if (enabled)
-                  _HeldHorizontalDragRecognizer:
-                      GestureRecognizerFactoryWithHandlers<
-                        _HeldHorizontalDragRecognizer
-                      >(
-                        () => _HeldHorizontalDragRecognizer(debugOwner: this),
-                        (recognizer) => recognizer
-                          ..allowLeft = widget.leftAction != null
-                          ..allowRight = widget.rightAction != null
-                          ..gestureSettings = MediaQuery.gestureSettingsOf(
-                            context,
-                          )
-                          ..onStart = _start
-                          ..onUpdate = _update
-                          ..onEnd = _end
-                          ..onCancel = _cancel,
+        child: TapRegion(
+          enabled: _offset != 0 && !_running,
+          onTapOutside: (_) => _close(),
+          child: ClipRect(
+            child: AbsorbPointer(
+              absorbing: _running,
+              child: RawGestureDetector(
+                behavior: HitTestBehavior.opaque,
+                gestures: {
+                  if (enabled)
+                    _RowDragRecognizer:
+                        GestureRecognizerFactoryWithHandlers<
+                          _RowDragRecognizer
+                        >(
+                          () => _RowDragRecognizer(debugOwner: this),
+                          (recognizer) => recognizer
+                            ..dragStartBehavior = DragStartBehavior.down
+                            ..allowLeft = widget.leftAction != null
+                            ..allowRight = widget.rightAction != null
+                            ..gestureSettings = MediaQuery.gestureSettingsOf(
+                              context,
+                            )
+                            ..onStart = _start
+                            ..onUpdate = _update
+                            ..onEnd = _end
+                            ..onCancel = _cancel,
+                        ),
+                },
+                child: Stack(
+                  children: [
+                    if (action != null && _offset != 0)
+                      Positioned.fill(
+                        child: ClipRect(
+                          clipper: _RevealedActionClipper(_offset),
+                          child: _background(
+                            action,
+                            _offset < 0
+                                ? Alignment.centerRight
+                                : Alignment.centerLeft,
+                          ),
+                        ),
                       ),
-              },
-              child: Stack(
-                children: [
-                  if (action != null && _offset != 0)
-                    Positioned.fill(
-                      child: ClipRect(
-                        clipper: _RevealedActionClipper(_offset),
-                        child: _background(
-                          action,
-                          _offset < 0
-                              ? Alignment.centerRight
-                              : Alignment.centerLeft,
+                    Transform.translate(
+                      offset: Offset(_offset, 0),
+                      child: GestureDetector(
+                        onTap: _offset != 0 ? _close : null,
+                        child: AbsorbPointer(
+                          absorbing: _offset != 0,
+                          child: Material(
+                            type: MaterialType.transparency,
+                            child: widget.child,
+                          ),
                         ),
                       ),
                     ),
-                  Transform.translate(
-                    offset: Offset(_offset, 0),
-                    child: Material(
-                      type: MaterialType.transparency,
-                      child: widget.child,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -265,8 +309,8 @@ class _RevealedActionClipper extends CustomClipper<Rect> {
       offset != oldClipper.offset;
 }
 
-class _HeldHorizontalDragRecognizer extends HorizontalDragGestureRecognizer {
-  _HeldHorizontalDragRecognizer({super.debugOwner})
+class _RowDragRecognizer extends HorizontalDragGestureRecognizer {
+  _RowDragRecognizer({super.debugOwner})
     : super(
         supportedDevices: {
           PointerDeviceKind.touch,
@@ -300,11 +344,9 @@ class _HeldHorizontalDragRecognizer extends HorizontalDragGestureRecognizer {
       final delta = event.position - _down!.position;
       final slop = computeHitSlop(event.kind, gestureSettings);
       if (delta.distance > slop) {
-        // Reject before the pager/scrollable resolves its arena. A slow drag
-        // that already started scrolling never turns into a row action later.
-        if (event.timeStamp - _down!.timeStamp <
-                const Duration(milliseconds: 220) ||
-            delta.dx.abs() < delta.dy.abs() * 1.6 ||
+        // Commit to an axis once: vertical and ambiguous diagonals belong to
+        // scrolling, even when both axes cross the slop in the same event.
+        if (delta.dx.abs() < delta.dy.abs() * 1.25 ||
             (delta.dx < 0 ? !allowLeft : !allowRight)) {
           resolve(GestureDisposition.rejected);
           if (_down != null) rejectGesture(event.pointer);

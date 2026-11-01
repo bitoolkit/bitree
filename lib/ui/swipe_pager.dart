@@ -9,14 +9,12 @@ class SwipePager extends StatefulWidget {
     required this.itemCount,
     required this.itemBuilder,
     required this.onChanged,
-    this.headerBuilder,
   });
 
   final int index;
   final int itemCount;
   final IndexedWidgetBuilder itemBuilder;
   final ValueChanged<int> onChanged;
-  final Widget Function(BuildContext, TabController)? headerBuilder;
 
   @override
   State<SwipePager> createState() => _SwipePagerState();
@@ -81,7 +79,7 @@ class _SwipePagerState extends State<SwipePager> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final behavior = ScrollConfiguration.of(context);
-    final pages = ScrollConfiguration(
+    return ScrollConfiguration(
       behavior: behavior.copyWith(
         dragDevices: {...behavior.dragDevices, PointerDeviceKind.mouse},
       ),
@@ -92,16 +90,6 @@ class _SwipePagerState extends State<SwipePager> with TickerProviderStateMixin {
             Builder(builder: (context) => widget.itemBuilder(context, index)),
         ],
       ),
-    );
-    final header = widget.headerBuilder;
-    if (header == null) return pages;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        header(context, _tabs!),
-        Expanded(child: pages),
-      ],
     );
   }
 }

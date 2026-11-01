@@ -291,39 +291,36 @@ void main() {
     },
   );
 
-  test(
-    'DDL sync preserves deletions and local edits while importing completion',
-    () async {
-      final store = MemoryAgendaStore([
-        deadline('deleted'),
-        deadline('edited', title: '本地标题', local: true),
-        deadline('finished', done: true),
-      ]);
-      final agenda = AgendaController(store);
-      addTearDown(agenda.dispose);
-      await agenda.load();
-      await agenda.delete(agenda.entries.first);
-      await agenda.mergeDeadlines([
-        deadline('deleted'),
-        deadline('edited', done: true),
-        deadline('finished'),
-        deadline('new'),
-      ]);
-      expect(agenda.entries.map((entry) => entry.id), [
-        'edited',
-        'finished',
-        'new',
-      ]);
-      expect(agenda.entries.first.title, '本地标题');
-      expect(agenda.entries.first.done, isTrue);
-      expect(agenda.entries.elementAt(1).done, isTrue);
-      expect(agenda.deletedDeadlines.single.id, 'deleted');
-      final restarted = AgendaController(store);
-      addTearDown(restarted.dispose);
-      await restarted.load();
-      expect(restarted.deletedDeadlines.single.id, 'deleted');
-      await restarted.restoreDeletedDeadlines();
-      expect(restarted.entries, hasLength(4));
-    },
-  );
+  test('DDL sync preserves deletions and local edits while following remote completion', () async {
+    final store = MemoryAgendaStore([
+      deadline('deleted'),
+      deadline('edited', title: '本地标题', local: true),
+      deadline('finished', done: true),
+    ]);
+    final agenda = AgendaController(store);
+    addTearDown(agenda.dispose);
+    await agenda.load();
+    await agenda.delete(agenda.entries.first);
+    await agenda.mergeDeadlines([
+      deadline('deleted'),
+      deadline('edited', done: true),
+      deadline('finished'),
+      deadline('new'),
+    ]);
+    expect(agenda.entries.map((entry) => entry.id), [
+      'edited',
+      'finished',
+      'new',
+    ]);
+    expect(agenda.entries.first.title, '本地标题');
+    expect(agenda.entries.first.done, isTrue);
+    expect(agenda.entries.elementAt(1).done, isFalse);
+    expect(agenda.deletedDeadlines.single.id, 'deleted');
+    final restarted = AgendaController(store);
+    addTearDown(restarted.dispose);
+    await restarted.load();
+    expect(restarted.deletedDeadlines.single.id, 'deleted');
+    await restarted.restoreDeletedDeadlines();
+    expect(restarted.entries, hasLength(4));
+  });
 }

@@ -1439,12 +1439,6 @@ abstract class AppLocalizations {
   /// **'Release to complete'**
   String get agendaSwipeDoneRelease;
 
-  /// No description provided for @agendaSwipeHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Hold, then swipe left to complete a DDL or right to delete'**
-  String get agendaSwipeHint;
-
   /// No description provided for @agendaDeleteQuestion.
   ///
   /// In en, this message translates to:

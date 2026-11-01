@@ -59,14 +59,18 @@ class _VerificationDialogState extends State<_VerificationDialog> {
           final image = await reload();
           if (mounted) setState(() => _image = image);
         case SchoolSmsVerification(:final sendCode):
-          await sendCode();
+          final resendAfter = await sendCode();
           if (!mounted) return;
-          setState(() => _resendSeconds = 60);
+          setState(
+            () => _resendSeconds = (resendAfter.inMilliseconds + 999) ~/ 1000,
+          );
           _timer?.cancel();
-          _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-            if (_resendSeconds == 1) timer.cancel();
-            setState(() => _resendSeconds--);
-          });
+          if (_resendSeconds > 0) {
+            _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+              if (_resendSeconds == 1) timer.cancel();
+              setState(() => _resendSeconds--);
+            });
+          }
       }
     } on Exception catch (failure, stack) {
       AppDiagnostics.instance.error('获取登录验证码', failure, stack);

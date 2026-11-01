@@ -11,7 +11,7 @@ import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'support/held_swipe.dart';
+import 'support/row_swipe.dart';
 import 'support/test_app.dart';
 
 final _date = calendarDate(campusNow()).add(const Duration(days: 5));
@@ -99,14 +99,14 @@ Future<TestAppController> _open(
 }
 
 void main() {
-  testWidgets('The day drawer shares held left completion and right deletion', (
+  testWidgets('The day drawer shares full left completion and right deletion', (
     tester,
   ) async {
     final controller = await _open(tester, [_deadline(), _deadline(id: 2)]);
-    await heldSwipe(
+    await swipeRow(
       tester,
       find.byKey(const ValueKey('deadline1')),
-      const Offset(-180, 0),
+      const Offset(-240, 0),
     );
     await tester.pumpAndSettle();
     expect(
@@ -116,10 +116,10 @@ void main() {
       isTrue,
     );
     expect(find.text('已完成 1'), findsOneWidget);
-    await heldSwipe(
+    await swipeRow(
       tester,
       find.byKey(const ValueKey('deadline2')),
-      const Offset(180, 0),
+      const Offset(240, 0),
     );
     await tester.pumpAndSettle();
     expect(controller.agenda.entries.single.id, 'deadline1');

@@ -636,7 +636,6 @@
   "agendaSwipeRestoreRelease": "Release to restore",
   "agendaSwipeDone": "Complete",
   "agendaSwipeDoneRelease": "Release to complete",
-  "agendaSwipeHint": "Hold, then swipe left to complete a DDL or right to delete",
   "agendaDeleteQuestion": "Delete {kind}?",
   "@agendaDeleteQuestion": {
     "placeholders": {

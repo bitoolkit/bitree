@@ -10,7 +10,6 @@ import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_menu_trigger.dart';
 import '../../ui/app_page.dart';
 import '../../ui/pull_to_reveal_list.dart';
-import '../../ui/swipe_pager.dart';
 import '../model.dart';
 import '../view_mode.dart';
 import 'agenda_list_tile.dart';
@@ -78,36 +77,31 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ],
     );
 
-    Widget statusHeader(TabController tabs) => Column(
+    Widget statusHeader() => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TabBar(
-          controller: tabs,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          indicatorSize: TabBarIndicatorSize.label,
-          labelPadding: const EdgeInsets.symmetric(horizontal: 12),
-          labelColor: scheme.primary,
-          unselectedLabelColor: scheme.onSurfaceVariant,
-          labelStyle: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w400,
-          ),
-          tabs: [
-            Tab(text: l10n.agendaPendingTab(entries.length - doneCount)),
-            Tab(text: l10n.agendaCompletedTab(doneCount)),
-          ],
-        ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
-          child: Text(
-            l10n.agendaSwipeHint,
-            style: Theme.of(context).textTheme.bodySmall
-                ?.copyWith(color: scheme.onSurfaceVariant),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: SegmentedButton<int>(
+            showSelectedIcon: false,
+            segments: [
+              ButtonSegment(
+                value: 0,
+                label: Text(
+                  l10n.agendaPendingTab(entries.length - doneCount),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              ButtonSegment(
+                value: 1,
+                label: Text(
+                  l10n.agendaCompletedTab(doneCount),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+            selected: {_status},
+            onSelectionChanged: (selection) => _setStatus(selection.single),
           ),
         ),
         loadStatus(),
@@ -155,24 +149,31 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ),
       ],
-      // Keep both presentations alive so toggling views preserves the browsing
-      // position. The timeline is not inside SwipePager: horizontal gestures
-      // belong to time navigation rather than the completion-status pager.
+      // Keep browsing positions while changing presentation or completion
+      // filter. Horizontal gestures belong to rows or timeline navigation.
       child: IndexedStack(
         index: timeline ? 1 : 0,
         children: [
-          SwipePager(
-            index: _status,
-            itemCount: 2,
-            onChanged: _setStatus,
-            headerBuilder: (context, tabs) => statusHeader(tabs),
-            itemBuilder: (context, index) => _AgendaStatusList(
-              key: ValueKey((_kind, index)),
-              controller: controller,
-              entries: entries,
-              completed: index == 1,
-              now: now,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              statusHeader(),
+              Expanded(
+                child: IndexedStack(
+                  index: _status,
+                  children: [
+                    for (var index = 0; index < 2; index++)
+                      _AgendaStatusList(
+                        key: ValueKey((_kind, index)),
+                        controller: controller,
+                        entries: entries,
+                        completed: index == 1,
+                        now: now,
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

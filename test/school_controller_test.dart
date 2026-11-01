@@ -173,6 +173,8 @@ void main() {
             );
           case '/lexue.bit.edu.cn/calendar/export_execute.php':
             request.response.write('BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n');
+          case '/lexue.bit.edu.cn/my/':
+            request.response.write('<html><body></body></html>');
           case '/zy-eclass.bit.edu.cn/user/courses':
             request.response.headers.contentType = ContentType.json;
             request.response.write('{}');

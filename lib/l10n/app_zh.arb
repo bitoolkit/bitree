@@ -221,7 +221,6 @@
   "agendaSwipeRestoreRelease": "松手恢复",
   "agendaSwipeDone": "完成",
   "agendaSwipeDoneRelease": "松手完成",
-  "agendaSwipeHint": "按住后左滑完成 DDL，右滑删除",
   "agendaDeleteQuestion": "删除{kind}？",
   "agendaRestored": "已恢复“{title}”",
   "agendaDeleted": "已删除“{title}”",
