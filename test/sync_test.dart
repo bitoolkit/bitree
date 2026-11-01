@@ -15,6 +15,7 @@ import 'package:bitree/sync/controller.dart';
 import 'package:bitree/sync/ui/sync.dart';
 import 'package:bitree/sync/ui/sync_button.dart';
 import 'package:bitree/sync/ui/sync_text.dart';
+import 'package:bitree/ui/selection_controls.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -144,6 +145,52 @@ void main() {
                 ))
             : null,
       );
+
+  test('Sync targets keep session dependencies separate from UI groups', () {
+    expect(
+      {
+        for (final target in SyncTarget.values)
+          target: (
+            category: target.category,
+            usesSchoolSession: target.usesSchoolSession,
+          ),
+      },
+      {
+        SyncTarget.schedule: (
+          category: SyncCategory.schoolData,
+          usesSchoolSession: true,
+        ),
+        SyncTarget.exams: (
+          category: SyncCategory.schoolData,
+          usesSchoolSession: true,
+        ),
+        SyncTarget.grades: (
+          category: SyncCategory.schoolData,
+          usesSchoolSession: true,
+        ),
+        SyncTarget.studyPlan: (
+          category: SyncCategory.schoolData,
+          usesSchoolSession: true,
+        ),
+        SyncTarget.lexue: (
+          category: SyncCategory.deadlineData,
+          usesSchoolSession: true,
+        ),
+        SyncTarget.eclass: (
+          category: SyncCategory.deadlineData,
+          usesSchoolSession: true,
+        ),
+        SyncTarget.mooc: (
+          category: SyncCategory.deadlineData,
+          usesSchoolSession: false,
+        ),
+        SyncTarget.physicsLab: (
+          category: SyncCategory.deadlineData,
+          usesSchoolSession: false,
+        ),
+      },
+    );
+  });
 
   test('One round shares repeated starts, preserves its semester and generates labs after timetable import', () async {
     final service = _SchoolService();
@@ -367,6 +414,65 @@ void main() {
   );
 
   testWidgets(
+    'Custom sync groups sources semantically and shares all and clear controls',
+    (tester) async {
+      final model = app(_SchoolService());
+      await model.initialize();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: bitreeTheme(Brightness.light),
+          home: Scaffold(body: SyncButton(controller: model)),
+        ),
+      );
+
+      await tester.tap(find.byTooltip('同步'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('自定义同步'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('学校数据'), findsOneWidget);
+      expect(find.text('DDL 与课业'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('学校数据')).dy,
+        lessThan(tester.getTopLeft(find.text('DDL 与课业')).dy),
+      );
+      expect(find.widgetWithText(AppSelectionButton, '课表'), findsOneWidget);
+      expect(find.widgetWithText(AppSelectionButton, '乐学 DDL'), findsOneWidget);
+
+      await tester.tap(find.text('清空'));
+      await tester.pump();
+      expect(
+        tester
+            .widgetList<AppSelectionButton>(find.byType(AppSelectionButton))
+            .every((button) => !button.selected),
+        isTrue,
+      );
+      expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(FilledButton, '同步所选内容'))
+            .onPressed,
+        isNull,
+      );
+
+      await tester.tap(find.byType(Checkbox));
+      await tester.pump();
+      expect(
+        tester
+            .widgetList<AppSelectionButton>(find.byType(AppSelectionButton))
+            .every((button) => button.selected),
+        isTrue,
+      );
+      expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(FilledButton, '同步所选内容'))
+            .onPressed,
+        isNotNull,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'Custom sync stays active after progress is collapsed and the page changes',
     (tester) async {
       final service = _SchoolService();
@@ -393,7 +499,7 @@ void main() {
         ),
       );
       await openCustom(tester);
-      await tester.tap(find.text('课表'));
+      await tester.tap(find.widgetWithText(AppSelectionButton, '课表'));
       await tester.pump();
       await tester.tap(find.text('同步所选内容'));
       await tester.pump();
@@ -493,8 +599,9 @@ void main() {
         );
         await openCustom(tester);
         for (final title in ['课表', '考试安排', '中国大学MOOC DDL']) {
-          await tester.ensureVisible(find.text(title));
-          await tester.tap(find.text(title));
+          final choice = find.widgetWithText(AppSelectionButton, title);
+          await tester.ensureVisible(choice);
+          await tester.tap(choice);
           await tester.pump();
         }
         await tester.tap(find.text('同步所选内容'));

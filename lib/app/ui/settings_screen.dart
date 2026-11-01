@@ -10,10 +10,12 @@ import '../../schedule/ui/week_range_dialog.dart';
 import '../../school/ui/school_account.dart';
 import '../../sync/controller.dart';
 import '../../sync/ui/sync.dart';
+import '../../ui/app_dialog.dart';
 import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_menu_trigger.dart';
 import '../../ui/app_page.dart';
 import '../../ui/external_link.dart';
+import '../../ui/section_label.dart';
 import '../../updates/version.dart';
 import '../controller.dart';
 import 'logs_screen.dart';
@@ -47,28 +49,14 @@ class SettingsScreen extends StatelessWidget {
 
   Future<void> _clearSchedule(BuildContext context) async {
     final l10n = context.l10n;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.settingsDeleteScheduleQuestion),
-        content: Text(l10n.settingsDeleteScheduleBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Theme.of(context).colorScheme.onError,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(l10n.settingsDeleteSchedule),
-          ),
-        ],
-      ),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: l10n.settingsDeleteScheduleQuestion,
+      body: l10n.settingsDeleteScheduleBody,
+      confirmLabel: l10n.settingsDeleteSchedule,
+      destructive: true,
     );
-    if (confirmed == true) await controller.timetable.clear();
+    if (confirmed) await controller.timetable.clear();
   }
 
   Future<void> _showAbout(BuildContext context) async {
@@ -226,11 +214,7 @@ class SettingsScreen extends StatelessWidget {
       padding: const EdgeInsets.only(top: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _SectionLabel(title),
-          const SizedBox(height: 8),
-          ...children,
-        ],
+        children: [AppSectionLabel(title), ...children],
       ),
     );
 
@@ -428,19 +412,4 @@ class SettingsScreen extends StatelessWidget {
       ),
     );
   }
-}
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Text(
-    text,
-    style: TextStyle(
-      fontSize: 13,
-      fontWeight: FontWeight.w600,
-      color: Theme.of(context).colorScheme.onSurfaceVariant,
-    ),
-  );
 }

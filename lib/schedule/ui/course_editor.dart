@@ -6,6 +6,7 @@ import '../../l10n/l10n.dart';
 import '../../ui/app_dropdown_field.dart';
 import '../../ui/dialog_layout.dart';
 import '../../ui/editor_sheet.dart';
+import '../../ui/sheet_layout.dart';
 import '../model.dart';
 import '../selection.dart';
 import 'course_period_fields.dart';
@@ -17,10 +18,8 @@ Future<void> editCourse(
   AppController controller, {
   Course? course,
   TimetableSelection? selection,
-}) => showModalBottomSheet<void>(
+}) => showAppSheet<void>(
   context: context,
-  isScrollControlled: true,
-  useSafeArea: true,
   builder: (_) => _CourseEditor(
     controller: controller,
     course: course,

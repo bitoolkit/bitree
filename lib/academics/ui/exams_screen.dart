@@ -10,6 +10,7 @@ import '../../schedule/model.dart';
 import '../../sync/controller.dart';
 import '../../sync/ui/sync.dart';
 import '../../ui/app_dropdown_field.dart';
+import '../../ui/selection_controls.dart';
 import '../exam_conflicts.dart';
 import 'academic_common.dart';
 
@@ -87,9 +88,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
               ],
               onChanged: (value) => setState(() => _term = value),
             ),
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            controlAffinity: ListTileControlAffinity.leading,
+          AppSelectionTile(
             title: Text(l10n.checkLocalSchedule),
             value: _includeClasses,
             onChanged: (value) => setState(() => _includeClasses = value!),

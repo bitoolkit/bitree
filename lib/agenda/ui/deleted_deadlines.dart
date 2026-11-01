@@ -11,10 +11,8 @@ import '../model.dart';
 Future<void> showDeletedDeadlines(
   BuildContext context,
   AgendaController controller,
-) => showModalBottomSheet<void>(
+) => showAppSheet<void>(
   context: context,
-  useSafeArea: true,
-  isScrollControlled: true,
   builder: (sheetContext) => ListenableBuilder(
     listenable: controller,
     builder: (context, _) {
@@ -40,66 +38,51 @@ Future<void> showDeletedDeadlines(
         }
       }
 
-      return SafeArea(
-        top: false,
-        child: SheetLayout(
-          header: SheetHeader(
-            title: Text(l10n.deletedDeadlinesTitle),
-            actions: [
-              IconButton(
-                tooltip: l10n.close,
-                onPressed: () => Navigator.pop(sheetContext),
-                icon: const Icon(Icons.close_rounded, size: 20),
+      return SheetLayout(
+        header: SheetHeader(
+          title: Text(l10n.deletedDeadlinesTitle),
+          actions: const [SheetCloseButton()],
+        ),
+        contentPadding: appSheetListPadding,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (entries.isEmpty)
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: 32),
+                child: Text(l10n.deletedDeadlinesNone),
               ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (entries.isEmpty)
-                Padding(
-                  padding: EdgeInsets.symmetric(vertical: 32),
-                  child: Text(l10n.deletedDeadlinesNone),
+            for (final entry in entries)
+              ListTile(
+                key: ValueKey(entry.id),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+                title: Text(
+                  entry.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              for (final entry in entries)
-                ListTile(
-                  key: ValueKey(entry.id),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-                  title: Text(
-                    entry.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
+                subtitle: Text(
+                  [
                     [
-                      [
-                        entry.source?.localizedLabel(l10n) ??
-                            l10n.deadlineManual,
-                        if (entry.course.isNotEmpty) entry.course,
-                      ].join('  '),
-                      '${localizedAgendaDate(l10n, entry.startsAt)} '
-                          '${localizedAgendaTime(l10n, entry)}',
-                    ].join('\n'),
-                  ),
-                  trailing: TextButton(
-                    onPressed: controller.busy ? null : () => restore(entry),
-                    child: Text(l10n.deletedDeadlinesRestoreAction),
-                  ),
+                      entry.source?.localizedLabel(l10n) ?? l10n.deadlineManual,
+                      if (entry.course.isNotEmpty) entry.course,
+                    ].join('  '),
+                    '${localizedAgendaDate(l10n, entry.startsAt)} '
+                        '${localizedAgendaTime(l10n, entry)}',
+                  ].join('\n'),
                 ),
-            ],
-          ),
-          actions: SafeArea(
-            top: false,
-            child: Padding(
-              padding: appSheetActionPadding,
-              child: FilledButton(
-                onPressed: controller.busy || entries.isEmpty
-                    ? null
-                    : () => restore(),
-                child: Text(l10n.deletedDeadlinesRestoreAll),
+                trailing: TextButton(
+                  onPressed: controller.busy ? null : () => restore(entry),
+                  child: Text(l10n.deletedDeadlinesRestoreAction),
+                ),
               ),
-            ),
-          ),
+          ],
+        ),
+        actions: FilledButton(
+          onPressed: controller.busy || entries.isEmpty
+              ? null
+              : () => restore(),
+          child: Text(l10n.deletedDeadlinesRestoreAll),
         ),
       );
     },

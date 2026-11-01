@@ -7,6 +7,7 @@ import '../../l10n/l10n.dart';
 import '../../schedule/model.dart';
 import '../../ui/app_dropdown_field.dart';
 import '../../ui/design.dart';
+import '../../ui/selection_controls.dart';
 import '../model.dart';
 
 enum _TimePreset { all, current, morning, afternoon, evening, custom }
@@ -211,45 +212,30 @@ class _ClassroomTimeDialogState extends State<_ClassroomTimeDialog> {
                     )
                       SizedBox(
                         width: width,
-                        child: Semantics(
+                        child: AppSelectionButton(
                           selected: _period.contains(section),
-                          child: OutlinedButton(
-                            onPressed: () => _select(section),
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size(0, 54),
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 7,
-                                horizontal: 3,
+                          minimumSize: const Size(0, 54),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 7,
+                            horizontal: 3,
+                          ),
+                          onPressed: () => _select(section),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                l10n.sectionShort(section),
+                                style: const TextStyle(fontSize: 13),
                               ),
-                              backgroundColor: _period.contains(section)
-                                  ? scheme.primaryContainer
-                                  : null,
-                              foregroundColor: _period.contains(section)
-                                  ? scheme.onPrimaryContainer
-                                  : scheme.onSurface,
-                              side: BorderSide(
-                                color: _period.contains(section)
-                                    ? scheme.primary
-                                    : scheme.outlineVariant,
+                              const SizedBox(height: 2),
+                              Text(
+                                (
+                                  start: section,
+                                  end: section,
+                                ).localizedTime(l10n),
+                                style: const TextStyle(fontSize: 11),
                               ),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  l10n.sectionShort(section),
-                                  style: const TextStyle(fontSize: 13),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  (
-                                    start: section,
-                                    end: section,
-                                  ).localizedTime(l10n),
-                                  style: const TextStyle(fontSize: 11),
-                                ),
-                              ],
-                            ),
+                            ],
                           ),
                         ),
                       ),

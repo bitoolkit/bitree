@@ -8,6 +8,7 @@ import '../../schedule/selection.dart';
 import '../../ui/dialog_layout.dart';
 import '../../ui/editor_sheet.dart';
 import '../../ui/external_link.dart';
+import '../../ui/sheet_layout.dart';
 import '../model.dart';
 import 'agenda_operations.dart';
 
@@ -19,10 +20,8 @@ Future<void> editAgenda(
   TimetableSelection? selection,
   DateTime? date,
   String? term,
-}) => showModalBottomSheet<void>(
+}) => showAppSheet<void>(
   context: context,
-  useSafeArea: true,
-  isScrollControlled: true,
   builder: (_) => _AgendaEditor(
     controller: controller,
     entry: entry,

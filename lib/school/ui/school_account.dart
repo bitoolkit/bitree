@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/controller.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
+import '../../ui/app_dialog.dart';
 import '../../ui/app_notice.dart';
 import 'school_screen.dart';
 import 'school_verification_dialog.dart';
@@ -42,24 +43,13 @@ class _SchoolAccountState extends State<SchoolAccount> {
 
   Future<void> _signOut() async {
     final l10n = context.l10n;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.schoolSignOutQuestion),
-        content: Text(l10n.schoolSignOutBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(l10n.schoolSignOutAction),
-          ),
-        ],
-      ),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: l10n.schoolSignOutQuestion,
+      body: l10n.schoolSignOutBody,
+      confirmLabel: l10n.schoolSignOutAction,
     );
-    if (confirmed == true) await widget.controller.school.signOut();
+    if (confirmed) await widget.controller.school.signOut();
   }
 
   @override
