@@ -806,7 +806,7 @@
   "syncAll": "Sync all",
   "customSync": "Custom sync",
   "syncSchoolData": "School data",
-  "syncDeadlineData": "Deadlines and coursework",
+  "syncDeadlineData": "DDL sources",
   "syncTooltip": "Sync",
   "viewSyncProgress": "View sync progress",
   "syncComplete": "Sync complete",

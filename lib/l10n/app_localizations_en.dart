@@ -1023,7 +1023,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncSchoolData => 'School data';
 
   @override
-  String get syncDeadlineData => 'Deadlines and coursework';
+  String get syncDeadlineData => 'DDL sources';
 
   @override
   String get syncTooltip => 'Sync';

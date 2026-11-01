@@ -974,7 +974,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get syncSchoolData => '学校数据';
 
   @override
-  String get syncDeadlineData => 'DDL 与课业';
+  String get syncDeadlineData => 'DDL 来源';
 
   @override
   String get syncTooltip => '同步';

@@ -1755,7 +1755,7 @@ abstract class AppLocalizations {
   /// No description provided for @syncDeadlineData.
   ///
   /// In en, this message translates to:
-  /// **'Deadlines and coursework'**
+  /// **'DDL sources'**
   String get syncDeadlineData;
 
   /// No description provided for @syncTooltip.

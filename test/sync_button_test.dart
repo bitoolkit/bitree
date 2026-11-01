@@ -55,6 +55,7 @@ void main() {
     expect(find.text('成绩'), findsNothing);
     expect(find.text('学分进度'), findsNothing);
     expect(find.text('课表'), findsOneWidget);
+    expect(find.text('DDL 来源'), findsOneWidget);
     expect(find.text('大物实验 DDL'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
