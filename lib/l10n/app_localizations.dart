@@ -1716,6 +1716,12 @@ abstract class AppLocalizations {
   /// **'Restore'**
   String get deletedDeadlinesRestoreAction;
 
+  /// No description provided for @deletedDeadlinesRestoreSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore selected'**
+  String get deletedDeadlinesRestoreSelected;
+
   /// No description provided for @deletedDeadlinesRestored.
   ///
   /// In en, this message translates to:
@@ -1727,6 +1733,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Restored all DDLs'**
   String get deletedDeadlinesRestoredAll;
+
+  /// No description provided for @deletedDeadlinesRestoredCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Restored {count} DDLs'**
+  String deletedDeadlinesRestoredCount(int count);
 
   /// No description provided for @deadlineManual.
   ///
@@ -1865,12 +1877,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Deadlines and coursework'**
   String get syncDeadlineData;
-
-  /// No description provided for @deletedDdlMenu.
-  ///
-  /// In en, this message translates to:
-  /// **'Deleted DDLs'**
-  String get deletedDdlMenu;
 
   /// No description provided for @syncTooltip.
   ///

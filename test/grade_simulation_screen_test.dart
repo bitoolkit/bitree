@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:bitree/academics/ui/grade_simulation_screen.dart';
 import 'package:bitree/schedule/model.dart';
+import 'package:bitree/ui/editor_sheet.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -46,10 +49,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('添加试算课程'), findsOneWidget);
-    final surface = find.byWidgetPredicate(
-      (widget) => widget is Material && widget.type == MaterialType.card,
-    );
-    expect(tester.getSize(surface).width, (size.width - 48).clamp(0, 360));
+    expect(find.byType(AlertDialog), findsNothing);
+    final sheet = find.byType(EditorSheet);
+    expect(sheet, findsOneWidget);
+    expect(tester.getSize(sheet).width, math.min(560, size.width));
   }
 
   for (final size in [const Size(390, 844), const Size(1200, 800)]) {

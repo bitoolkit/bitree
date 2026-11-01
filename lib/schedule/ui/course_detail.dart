@@ -228,29 +228,24 @@ class _CourseDetails extends StatelessWidget {
             _NextCourse(course: course, next: next, onTap: () => onNext(next)),
         ],
       ),
-      actions: Row(
-        children: [
-          Expanded(
-            child: FilledButton(
-              onPressed: controller.timetable.busy ? null : onEdit,
-              child: Text(l10n.courseEditorEditTitle),
+      actions: SheetActionBar.split(
+        leading: OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: theme.colorScheme.error,
+            side: BorderSide(
+              color: theme.colorScheme.error.withValues(alpha: 0.4),
             ),
           ),
-          const SizedBox(width: 12),
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: theme.colorScheme.error,
-              side: BorderSide(
-                color: theme.colorScheme.error.withValues(alpha: 0.4),
-              ),
-            ),
-            onPressed: controller.timetable.busy
-                ? null
-                : () => _deleteCourse(context, controller, course),
-            icon: const Icon(Icons.delete_outline_rounded, size: 18),
-            label: Text(l10n.delete),
-          ),
-        ],
+          onPressed: controller.timetable.busy
+              ? null
+              : () => _deleteCourse(context, controller, course),
+          icon: const Icon(Icons.delete_outline_rounded, size: 18),
+          label: Text(l10n.delete),
+        ),
+        primary: FilledButton(
+          onPressed: controller.timetable.busy ? null : onEdit,
+          child: Text(l10n.courseEditorEditTitle),
+        ),
       ),
     );
   }

@@ -968,12 +968,20 @@ class AppLocalizationsZh extends AppLocalizations {
   String get deletedDeadlinesRestoreAction => '恢复';
 
   @override
+  String get deletedDeadlinesRestoreSelected => '恢复所选';
+
+  @override
   String deletedDeadlinesRestored(String title) {
     return '已恢复“$title”';
   }
 
   @override
   String get deletedDeadlinesRestoredAll => '已恢复全部 DDL';
+
+  @override
+  String deletedDeadlinesRestoredCount(int count) {
+    return '已恢复 $count 条 DDL';
+  }
 
   @override
   String get deadlineManual => '手动添加';
@@ -1045,9 +1053,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get syncDeadlineData => 'DDL 与课业';
-
-  @override
-  String get deletedDdlMenu => '已删除的 DDL';
 
   @override
   String get syncTooltip => '同步';

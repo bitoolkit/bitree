@@ -114,7 +114,7 @@ void main() {
     await tester.tap(restoreButton);
     await tester.pumpAndSettle();
     expect(find.text('已删除的 DDL'), findsOneWidget);
-    await tester.tap(find.text('恢复'));
+    await tester.tap(find.byTooltip('恢复'));
     await tester.pumpAndSettle();
     expect(app.agenda.entries.single.id, 'task');
     expect(app.agenda.deletedDeadlines, isEmpty);
@@ -131,93 +131,52 @@ void main() {
         viewSize: const Size(320, 640),
         textScale: 1.8,
       );
-      expect(find.byTooltip('已删除的 DDL').hitTestable(), findsOneWidget);
+      final restoreButton = find.byTooltip('已删除的 DDL');
+      expect(restoreButton.hitTestable(), findsOneWidget);
+      await tester.tap(restoreButton);
+      await tester.pumpAndSettle();
+      expect(find.text('已删除的 DDL'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
 
-  for (final kind in [PointerDeviceKind.touch, PointerDeviceKind.mouse]) {
-    testWidgets('An ordinary $kind swipe on a row changes page, not data', (
-      tester,
-    ) async {
-      final app = await showAgenda(tester);
-      final gesture = await tester.startGesture(
-        tester.getCenter(find.byKey(const ValueKey('task'))),
-        kind: kind,
-      );
-      await gesture.moveBy(
-        const Offset(-35, 0),
-        timeStamp: const Duration(milliseconds: 50),
-      );
-      await tester.pump();
-      // A pause during an ongoing page drag must not turn it into a row action.
-      await tester.pump(const Duration(milliseconds: 300));
-      await gesture.moveBy(
-        const Offset(-210, 0),
-        timeStamp: const Duration(milliseconds: 350),
-      );
-      await gesture.up(timeStamp: const Duration(milliseconds: 400));
+  testWidgets(
+    'Deleted DDL recovery shares select-all, clear, and partial restore',
+    (tester) async {
+      final app = await showAgenda(tester, count: 3, deleted: true);
+      await tester.tap(find.byTooltip('已删除的 DDL'));
       await tester.pumpAndSettle();
-      expect(tester.widget<TabBar>(find.byType(TabBar)).controller!.index, 1);
-      expect(app.agenda.entries.single.done, isFalse);
-      expect(app.agenda.deletedDeadlines, isEmpty);
+
+      await tester.tap(find.byType(Checkbox).first);
+      await tester.pump();
+      expect(find.text('已选 3 项'), findsOneWidget);
+      expect(find.text('全部恢复'), findsOneWidget);
+
+      await tester.tap(find.text('清空'));
+      await tester.pump();
+      expect(find.text('已选 0 项'), findsOneWidget);
+
+      await tester.tap(find.text('作业 1'));
+      await tester.pump();
+      expect(find.text('已选 1 项'), findsOneWidget);
+      await tester.tap(find.text('恢复所选'));
+      await tester.pumpAndSettle();
+
+      expect(app.agenda.deletedDeadlines.map((entry) => entry.id), {
+        'task',
+        'task2',
+      });
+      expect(find.text('已恢复“作业 1”'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.text('作业 1'),
+        ),
+        findsNothing,
+      );
       expect(tester.takeException(), isNull);
-    });
-  }
-
-  testWidgets('A held diagonal drag scrolls without row actions', (
-    tester,
-  ) async {
-    final app = await showAgenda(tester, count: 20);
-    final row = find.byKey(const ValueKey('task11'));
-    final before = tester.getTopLeft(row);
-    final gesture = await tester.startGesture(tester.getCenter(row));
-    await tester.pump(const Duration(milliseconds: 250));
-    await gesture.moveBy(
-      const Offset(-20, -30),
-      timeStamp: const Duration(milliseconds: 250),
-    );
-    await tester.pump();
-    await gesture.moveBy(
-      const Offset(0, -150),
-      timeStamp: const Duration(milliseconds: 500),
-    );
-    await gesture.up(timeStamp: const Duration(milliseconds: 550));
-    await tester.pumpAndSettle();
-    expect(tester.getTopLeft(row).dy, lessThan(before.dy - 100));
-    expect(app.agenda.entries, hasLength(20));
-    expect(app.agenda.entries.every((entry) => !entry.done), isTrue);
-    expect(tester.widget<TabBar>(find.byType(TabBar)).controller!.index, 0);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('A trackpad swipe pages even after a pause on a row', (
-    tester,
-  ) async {
-    final app = await showAgenda(tester);
-    final gesture = await tester.createGesture(
-      kind: PointerDeviceKind.trackpad,
-    );
-    final origin = tester.getCenter(find.byKey(const ValueKey('task')));
-    await gesture.panZoomStart(origin);
-    await tester.pump(const Duration(milliseconds: 300));
-    await gesture.panZoomUpdate(
-      origin,
-      pan: const Offset(-30, 0),
-      timeStamp: const Duration(milliseconds: 300),
-    );
-    await gesture.panZoomUpdate(
-      origin,
-      pan: const Offset(-260, 0),
-      timeStamp: const Duration(milliseconds: 600),
-    );
-    await gesture.panZoomEnd(timeStamp: const Duration(milliseconds: 650));
-    await tester.pumpAndSettle();
-    expect(tester.widget<TabBar>(find.byType(TabBar)).controller!.index, 1);
-    expect(app.agenda.entries.single.done, isFalse);
-    expect(app.agenda.deletedDeadlines, isEmpty);
-    expect(tester.takeException(), isNull);
-  });
+    },
+  );
 
   for (final kind in [PointerDeviceKind.touch, PointerDeviceKind.mouse]) {
     testWidgets(

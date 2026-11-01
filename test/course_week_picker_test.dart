@@ -1,4 +1,5 @@
 import 'package:bitree/schedule/ui/course_week_picker.dart';
+import 'package:bitree/ui/selection_controls.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -40,6 +41,8 @@ void main() {
 
       expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isNull);
       expect(find.text('已选 1 项'), findsOneWidget);
+      expect(find.byType(ActionChip), findsNothing);
+      expect(find.byType(AppSelectionButton), findsNWidgets(7));
       await tester.tap(find.byType(Checkbox));
       await tester.pump();
       expect(selected, {-2, -1, 1, 2, 3});

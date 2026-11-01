@@ -6,7 +6,7 @@ import '../../l10n/l10n.dart';
 import '../../ui/app_page.dart';
 import '../storage.dart';
 import '../verification.dart';
-import 'school_verification_dialog.dart';
+import 'school_verification_sheet.dart';
 
 Future<bool?> openSchoolLogin(
   BuildContext context,

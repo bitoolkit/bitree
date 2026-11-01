@@ -6,7 +6,7 @@ import '../../l10n/l10n.dart';
 import '../../ui/app_notice.dart';
 import '../repository.dart';
 import '../version.dart';
-import 'update_dialog.dart';
+import 'update_sheet.dart';
 
 Future<void> checkForUpdates(
   BuildContext context, {
@@ -32,12 +32,10 @@ Future<void> checkForUpdates(
       return;
     }
 
-    await showDialog<void>(
-      context: context,
-      builder: (_) => UpdateDialog(
-        releases: releases,
-        preferDevelopment: installed.contains('-'),
-      ),
+    await showUpdateSheet(
+      context,
+      releases: releases,
+      preferDevelopment: installed.contains('-'),
     );
 
     await updates.markNotified(releases);

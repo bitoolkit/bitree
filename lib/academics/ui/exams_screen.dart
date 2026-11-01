@@ -88,10 +88,10 @@ class _ExamsScreenState extends State<ExamsScreen> {
               ],
               onChanged: (value) => setState(() => _term = value),
             ),
-          AppSelectionTile(
+          AppToggleTile(
             title: Text(l10n.checkLocalSchedule),
             value: _includeClasses,
-            onChanged: (value) => setState(() => _includeClasses = value!),
+            onChanged: (value) => setState(() => _includeClasses = value),
           ),
           if (_includeClasses && controller.timetable.schedules.isEmpty)
             Padding(

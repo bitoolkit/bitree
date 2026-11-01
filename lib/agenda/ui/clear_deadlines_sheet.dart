@@ -21,22 +21,22 @@ Future<void> showClearDeadlines(
     context: context,
     isDismissible: false,
     enableDrag: false,
-    builder: (_) => _ClearDeadlinesDialog(agenda: agenda),
+    builder: (_) => _ClearDeadlinesSheet(agenda: agenda),
   );
   if (!context.mounted || count == null) return;
   showAppNotice(context, context.l10n.clearDeadlinesDeleted(count));
 }
 
-class _ClearDeadlinesDialog extends StatefulWidget {
-  const _ClearDeadlinesDialog({required this.agenda});
+class _ClearDeadlinesSheet extends StatefulWidget {
+  const _ClearDeadlinesSheet({required this.agenda});
 
   final AgendaController agenda;
 
   @override
-  State<_ClearDeadlinesDialog> createState() => _ClearDeadlinesDialogState();
+  State<_ClearDeadlinesSheet> createState() => _ClearDeadlinesSheetState();
 }
 
-class _ClearDeadlinesDialogState extends State<_ClearDeadlinesDialog> {
+class _ClearDeadlinesSheetState extends State<_ClearDeadlinesSheet> {
   final _selected = <DeadlineClearScope>{};
   bool _saving = false;
 
@@ -122,30 +122,25 @@ class _ClearDeadlinesDialogState extends State<_ClearDeadlinesDialog> {
               Text(l10n.clearDeadlinesRecovery),
             ],
           ),
-          actions: OverflowBar(
-            alignment: MainAxisAlignment.end,
-            spacing: AppSpacing.md,
-            overflowSpacing: AppSpacing.sm,
-            children: [
-              TextButton(
-                onPressed: _saving ? null : () => Navigator.pop(context),
-                child: Text(l10n.cancel),
+          actions: SheetActionBar.split(
+            leading: TextButton(
+              onPressed: _saving ? null : () => Navigator.pop(context),
+              child: Text(l10n.cancel),
+            ),
+            primary: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: scheme.error,
+                foregroundColor: scheme.onError,
               ),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: scheme.error,
-                  foregroundColor: scheme.onError,
-                ),
-                onPressed: enabled && scopes.isNotEmpty && count > 0
-                    ? () => _clear(scopes, expectedIds)
-                    : null,
-                child: Text(
-                  _saving
-                      ? l10n.clearDeadlinesDeleting
-                      : l10n.clearDeadlinesDeleteCount(count),
-                ),
+              onPressed: enabled && scopes.isNotEmpty && count > 0
+                  ? () => _clear(scopes, expectedIds)
+                  : null,
+              child: Text(
+                _saving
+                    ? l10n.clearDeadlinesDeleting
+                    : l10n.clearDeadlinesDeleteCount(count),
               ),
-            ],
+            ),
           ),
         ),
       );

@@ -56,14 +56,25 @@ class AgendaController extends ChangeNotifier {
     (entries) => [...entries.where((item) => item.id != entry.id), entry],
   );
 
-  Future<bool> restore(AgendaEntry entry) => _write(
-    (entries) => [
-      for (final item in entries)
-        item.id == entry.id ? item.copyWith(deleted: false) : item,
-      if (!entries.any((item) => item.id == entry.id))
-        entry.copyWith(deleted: false),
-    ],
-  );
+  Future<bool> restore(AgendaEntry entry) => restoreEntries([entry]);
+
+  /// Restores saved entries in one write and re-inserts records that were
+  /// physically removed by a non-DDL deletion.
+  Future<bool> restoreEntries(Iterable<AgendaEntry> selected) {
+    final byId = {for (final entry in selected) entry.id: entry};
+    return _write((entries) {
+      final existingIds = {for (final entry in entries) entry.id};
+      return [
+        for (final entry in entries)
+          if (byId.containsKey(entry.id))
+            entry.copyWith(deleted: false)
+          else
+            entry,
+        for (final entry in byId.values)
+          if (!existingIds.contains(entry.id)) entry.copyWith(deleted: false),
+      ];
+    });
+  }
 
   Future<bool> delete(AgendaEntry entry) => _write(
     (entries) => [
@@ -75,9 +86,7 @@ class AgendaController extends ChangeNotifier {
     ],
   );
 
-  Future<bool> restoreDeletedDeadlines() => _write(
-    (entries) => [for (final entry in entries) entry.copyWith(deleted: false)],
-  );
+  Future<bool> restoreDeletedDeadlines() => restoreEntries(deletedDeadlines);
 
   Future<bool> replaceExams(
     String term,

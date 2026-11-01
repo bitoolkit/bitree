@@ -4,10 +4,11 @@ import '../../app/controller.dart';
 import '../../l10n/l10n.dart';
 import '../../sync/controller.dart';
 import '../../ui/app_dialog.dart';
+import '../../ui/section_label.dart';
 import '../../ui/selection_controls.dart';
 import '../model.dart';
 import 'academic_common.dart';
-import 'projected_course_dialog.dart';
+import 'projected_course_sheet.dart';
 
 class GradeSimulationScreen extends StatefulWidget {
   const GradeSimulationScreen({
@@ -51,13 +52,11 @@ class _GradeSimulationScreenState extends State<GradeSimulationScreen> {
   }
 
   Future<void> _edit([ProjectedCourse? course]) async {
-    final next = await showDialog<ProjectedCourse>(
-      context: context,
-      builder: (_) => ProjectedCourseDialog(
-        grades: widget.controller.academics.record.grades,
-        courses: widget.controller.timetable.schedule?.courses ?? const [],
-        course: course,
-      ),
+    final next = await showProjectedCourseSheet(
+      context,
+      grades: widget.controller.academics.record.grades,
+      courses: widget.controller.timetable.schedule?.courses ?? const [],
+      course: course,
     );
     if (next == null || !mounted) return;
     setState(() {
@@ -200,15 +199,13 @@ class _GradeSimulationScreenState extends State<GradeSimulationScreen> {
               ],
             ),
           ),
-          Row(
-            children: [
-              Expanded(child: Text(l10n.simulatedCourses)),
-              TextButton.icon(
-                onPressed: _edit,
-                icon: const Icon(Icons.add_rounded),
-                label: Text(l10n.addCourse),
-              ),
-            ],
+          AppSectionHeader(
+            l10n.simulatedCourses,
+            trailing: TextButton.icon(
+              onPressed: _edit,
+              icon: const Icon(Icons.add_rounded),
+              label: Text(l10n.addCourse),
+            ),
           ),
           for (final course in _courses)
             ListTile(
@@ -240,10 +237,10 @@ class _GradeSimulationScreenState extends State<GradeSimulationScreen> {
                 ],
               ),
             ),
-          AppSelectionTile(
+          AppToggleTile(
             title: Text(l10n.retakeUsesHighest),
             value: _replaceRetakes,
-            onChanged: (value) => setState(() => _replaceRetakes = value!),
+            onChanged: (value) => setState(() => _replaceRetakes = value),
           ),
           Text(
             _replaceRetakes

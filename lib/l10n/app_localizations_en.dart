@@ -1035,12 +1035,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deletedDeadlinesRestoreAction => 'Restore';
 
   @override
+  String get deletedDeadlinesRestoreSelected => 'Restore selected';
+
+  @override
   String deletedDeadlinesRestored(String title) {
     return 'Restored “$title”';
   }
 
   @override
   String get deletedDeadlinesRestoredAll => 'Restored all DDLs';
+
+  @override
+  String deletedDeadlinesRestoredCount(int count) {
+    return 'Restored $count DDLs';
+  }
 
   @override
   String get deadlineManual => 'Manually created';
@@ -1117,9 +1125,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get syncDeadlineData => 'Deadlines and coursework';
-
-  @override
-  String get deletedDdlMenu => 'Deleted DDLs';
 
   @override
   String get syncTooltip => 'Sync';

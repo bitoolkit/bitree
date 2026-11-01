@@ -57,7 +57,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Deleted deadlines are managed from local agenda settings', (
+  testWidgets('Deleted deadlines are not duplicated in settings', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -90,12 +90,8 @@ void main() {
     );
 
     await tester.scrollUntilVisible(find.text('本地日程'), 300);
-    expect(find.text('已删除的 DDL'), findsOneWidget);
-    await tester.tap(find.text('已删除的 DDL'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('全部恢复'), findsOneWidget);
-    expect(find.text('恢复'), findsOneWidget);
+    expect(find.text('已删除的 DDL'), findsNothing);
+    expect(find.text('删除 DDL'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../l10n/l10n.dart';
+import '../../ui/design.dart';
+import '../../ui/section_label.dart';
 import '../../ui/selection_controls.dart';
 
 enum _WeekPreset {
@@ -43,7 +45,7 @@ class CourseWeekPicker extends StatefulWidget {
 }
 
 class _CourseWeekPickerState extends State<CourseWeekPicker> {
-  static const _spacing = 4.0;
+  static const _spacing = AppSpacing.xs;
   final _grid = GlobalKey();
   ({int start, int end, Set<int> before})? _range;
   Offset? _dragPosition;
@@ -150,7 +152,6 @@ class _CourseWeekPickerState extends State<CourseWeekPicker> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
     final weeks = widget.weeks;
     final selectedWeeks = widget.selectedWeeks;
     final enabled = widget.enabled;
@@ -158,28 +159,25 @@ class _CourseWeekPickerState extends State<CourseWeekPicker> {
     final hasSummerWeeks = weeks.any((week) => week < 0);
     final hasRegularWeeks = weeks.any((week) => week > 0);
     final selectedCount = weeks.where(selectedWeeks.contains).length;
+    bool presetSelected(_WeekPreset preset) {
+      final presetWeeks = preset.weeksIn(weeks);
+      return selectedWeeks.length == presetWeeks.length &&
+          selectedWeeks.containsAll(presetWeeks);
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                l10n.courseEditorWeeks,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
+        AppSectionHeader(
+          l10n.courseEditorWeeks,
+          trailing: TextButton.icon(
+            onPressed: enabled ? widget.onManageRange : null,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
             ),
-            TextButton.icon(
-              onPressed: enabled ? widget.onManageRange : null,
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                textStyle: theme.textTheme.labelMedium,
-              ),
-              icon: const Icon(Icons.tune_rounded, size: 18),
-              label: Text(l10n.weekManagement),
-            ),
-          ],
+            icon: const Icon(Icons.tune_rounded, size: 18),
+            label: Text(l10n.weekManagement),
+          ),
         ),
         AppSelectionBar(
           selectedCount: selectedCount,
@@ -190,24 +188,25 @@ class _CourseWeekPickerState extends State<CourseWeekPicker> {
           onClear: () => onChanged({}),
         ),
         if (hasSummerWeeks || hasRegularWeeks) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Wrap(
-            spacing: 8,
-            runSpacing: 4,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.xs,
             children: [
               for (final preset in _WeekPreset.values)
                 if ((preset == _WeekPreset.summer && hasSummerWeeks) ||
                     (preset == _WeekPreset.regular && hasRegularWeeks))
-                  ActionChip(
-                    label: Text(preset.label(l10n)),
+                  AppSelectionButton.compact(
+                    selected: presetSelected(preset),
                     onPressed: enabled
                         ? () => onChanged(preset.weeksIn(weeks))
                         : null,
+                    child: Text(preset.label(l10n)),
                   ),
             ],
           ),
         ],
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
         LayoutBuilder(
           builder: (context, constraints) {
             final dimensions = _dimensions(constraints.maxWidth);

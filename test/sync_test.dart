@@ -436,15 +436,15 @@ void main() {
         tester.getTopLeft(find.text('学校数据')).dy,
         lessThan(tester.getTopLeft(find.text('DDL 与课业')).dy),
       );
-      expect(find.widgetWithText(AppSelectionButton, '课表'), findsOneWidget);
-      expect(find.widgetWithText(AppSelectionButton, '乐学 DDL'), findsOneWidget);
+      expect(find.widgetWithText(AppSelectionTile, '课表'), findsOneWidget);
+      expect(find.widgetWithText(AppSelectionTile, '乐学 DDL'), findsOneWidget);
 
       await tester.tap(find.text('清空'));
       await tester.pump();
       expect(
         tester
-            .widgetList<AppSelectionButton>(find.byType(AppSelectionButton))
-            .every((button) => !button.selected),
+            .widgetList<AppSelectionTile>(find.byType(AppSelectionTile))
+            .every((tile) => !tile.value),
         isTrue,
       );
       expect(
@@ -454,12 +454,12 @@ void main() {
         isNull,
       );
 
-      await tester.tap(find.byType(Checkbox));
+      await tester.tap(find.byType(Checkbox).first);
       await tester.pump();
       expect(
         tester
-            .widgetList<AppSelectionButton>(find.byType(AppSelectionButton))
-            .every((button) => button.selected),
+            .widgetList<AppSelectionTile>(find.byType(AppSelectionTile))
+            .every((tile) => tile.value),
         isTrue,
       );
       expect(
@@ -499,7 +499,7 @@ void main() {
         ),
       );
       await openCustom(tester);
-      await tester.tap(find.widgetWithText(AppSelectionButton, '课表'));
+      await tester.tap(find.widgetWithText(AppSelectionTile, '课表'));
       await tester.pump();
       await tester.tap(find.text('同步所选内容'));
       await tester.pump();
@@ -599,7 +599,7 @@ void main() {
         );
         await openCustom(tester);
         for (final title in ['课表', '考试安排', '中国大学MOOC DDL']) {
-          final choice = find.widgetWithText(AppSelectionButton, title);
+          final choice = find.widgetWithText(AppSelectionTile, title);
           await tester.ensureVisible(choice);
           await tester.tap(choice);
           await tester.pump();

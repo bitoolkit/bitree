@@ -7,8 +7,9 @@ import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../mooc/ui/mooc_sheet.dart';
 import '../../school/ui/school_screen.dart';
-import '../../school/ui/school_verification_dialog.dart';
+import '../../school/ui/school_verification_sheet.dart';
 import '../../ui/app_notice.dart';
+import '../../ui/design.dart';
 import '../../ui/section_label.dart';
 import '../../ui/selection_controls.dart';
 import '../../ui/sheet_layout.dart';
@@ -122,8 +123,8 @@ class _CustomSyncSheetState extends State<_CustomSyncSheet> {
               setState(() => _selected.addAll(_availableTargets)),
           onClear: () => setState(_selected.clear),
         ),
-        const SizedBox(height: 16),
-        AppSectionLabel(context.l10n.syncSchoolData),
+        const SizedBox(height: AppSpacing.md),
+        AppSectionHeader(context.l10n.syncSchoolData),
         _SyncTargetChoices(
           targets: _availableTargets.where(
             (target) => target.category == SyncCategory.schoolData,
@@ -131,8 +132,8 @@ class _CustomSyncSheetState extends State<_CustomSyncSheet> {
           selected: _selected,
           onChanged: _setSelected,
         ),
-        const SizedBox(height: 16),
-        AppSectionLabel(context.l10n.syncDeadlineData),
+        const SizedBox(height: AppSpacing.md),
+        AppSectionHeader(context.l10n.syncDeadlineData),
         _SyncTargetChoices(
           targets: _availableTargets.where(
             (target) => target.category == SyncCategory.deadlineData,
@@ -142,7 +143,7 @@ class _CustomSyncSheetState extends State<_CustomSyncSheet> {
         ),
         if (_selected.contains(SyncTarget.mooc) &&
             widget.app.mooc.needsLogin) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -151,7 +152,7 @@ class _CustomSyncSheetState extends State<_CustomSyncSheet> {
                 size: 18,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   context.l10n.loginAfterSelection,
@@ -163,11 +164,13 @@ class _CustomSyncSheetState extends State<_CustomSyncSheet> {
         ],
       ],
     ),
-    actions: FilledButton(
-      onPressed: _selected.isEmpty
-          ? null
-          : () => Navigator.pop(context, _selected),
-      child: Text(context.l10n.syncSelected),
+    actions: SheetActionBar.primary(
+      primary: FilledButton(
+        onPressed: _selected.isEmpty
+            ? null
+            : () => Navigator.pop(context, _selected),
+        child: Text(context.l10n.syncSelected),
+      ),
     ),
   );
 
@@ -194,15 +197,14 @@ class _SyncTargetChoices extends StatelessWidget {
   final void Function(SyncTarget target, bool checked) onChanged;
 
   @override
-  Widget build(BuildContext context) => Wrap(
-    spacing: 8,
-    runSpacing: 8,
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       for (final target in targets)
-        AppSelectionButton(
-          selected: selected.contains(target),
-          onPressed: () => onChanged(target, !selected.contains(target)),
-          child: Text(target.localizedTitle(context.l10n)),
+        AppSelectionTile(
+          value: selected.contains(target),
+          title: Text(target.localizedTitle(context.l10n)),
+          onChanged: (checked) => onChanged(target, checked ?? false),
         ),
     ],
   );
@@ -305,10 +307,12 @@ class _SyncProgressSheetState extends State<_SyncProgressSheet> {
                 ],
               )
             : model.incompleteTargets.isNotEmpty
-            ? FilledButton(
-                onPressed: _authenticating ? null : _retry,
-                child: Text(
-                  _authenticating ? l10n.verifying : l10n.retryIncomplete,
+            ? SheetActionBar.primary(
+                primary: FilledButton(
+                  onPressed: _authenticating ? null : _retry,
+                  child: Text(
+                    _authenticating ? l10n.verifying : l10n.retryIncomplete,
+                  ),
                 ),
               )
             : null,

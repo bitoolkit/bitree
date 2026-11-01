@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../agenda/deadline_clear_scope.dart';
-import '../../agenda/ui/clear_deadlines_dialog.dart';
-import '../../agenda/ui/deleted_deadlines.dart';
+import '../../agenda/ui/clear_deadlines_sheet.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../mooc/ui/mooc_sheet.dart';
-import '../../schedule/ui/week_range_dialog.dart';
+import '../../schedule/ui/week_range_sheet.dart';
 import '../../school/ui/school_account.dart';
 import '../../sync/controller.dart';
 import '../../sync/ui/sync.dart';
@@ -16,6 +15,7 @@ import '../../ui/app_menu_trigger.dart';
 import '../../ui/app_page.dart';
 import '../../ui/external_link.dart';
 import '../../ui/section_label.dart';
+import '../../ui/sheet_layout.dart';
 import '../../updates/version.dart';
 import '../controller.dart';
 import 'logs_screen.dart';
@@ -65,11 +65,11 @@ class SettingsScreen extends StatelessWidget {
     final builtAt = appBuildTime?.toLocal();
     if (!context.mounted) return;
 
-    await showDialog<void>(
+    await showAppSheet<void>(
       context: context,
-      builder: (dialogContext) {
-        final theme = Theme.of(dialogContext);
-        final localizations = MaterialLocalizations.of(dialogContext);
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        final localizations = MaterialLocalizations.of(sheetContext);
         var versionLabel = version;
         if (builtAt != null) {
           final date = localizations.formatCompactDate(builtAt);
@@ -79,47 +79,47 @@ class SettingsScreen extends StatelessWidget {
           );
           versionLabel += '\n${l10n.settingsBuiltAt(date, time)}';
         }
-        return AlertDialog(
-          titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-          contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-          scrollable: true,
-          title: Row(
-            children: [
-              Image.asset('assets/brand/bitree.png', width: 40, height: 40),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Wrap(
-                      spacing: 8,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(
-                          'BITree',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
+        return SheetLayout(
+          header: SheetHeader(
+            title: Row(
+              children: [
+                Image.asset('assets/brand/bitree.png', width: 40, height: 40),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Wrap(
+                        spacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(
+                            'BITree',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                        Text(
-                          l10n.appChineseName,
-                          style: theme.textTheme.titleMedium,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      versionLabel,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                          Text(
+                            l10n.appChineseName,
+                            style: theme.textTheme.titleMedium,
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 2),
+                      Text(
+                        versionLabel,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
+            actions: const [SheetCloseButton()],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -131,7 +131,7 @@ class SettingsScreen extends StatelessWidget {
                 link: true,
                 child: InkWell(
                   onTap: () => openExternalLink(
-                    dialogContext,
+                    sheetContext,
                     Uri.https('github.com', '/bitoolkit'),
                     failureTitle: l10n.aboutOpenBitoolkitFailed,
                   ),
@@ -158,36 +158,34 @@ class SettingsScreen extends StatelessWidget {
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-                showLicensePage(
-                  context: context,
-                  applicationName: l10n.aboutLicenseName,
-                  applicationVersion: version,
-                  applicationIcon: Image.asset(
-                    'assets/brand/bitree.png',
-                    width: 40,
-                    height: 40,
-                  ),
-                );
-              },
-              child: Text(l10n.settingsLicenses),
-            ),
-            TextButton(
-              onPressed: () => openExternalLink(
-                dialogContext,
-                Uri.https('github.com', '/bitoolkit/bitree'),
-                failureTitle: l10n.aboutOpenGitHubFailed,
+          actions: SheetActionBar.actions(
+            children: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(sheetContext);
+                  showLicensePage(
+                    context: context,
+                    applicationName: l10n.aboutLicenseName,
+                    applicationVersion: version,
+                    applicationIcon: Image.asset(
+                      'assets/brand/bitree.png',
+                      width: 40,
+                      height: 40,
+                    ),
+                  );
+                },
+                child: Text(l10n.settingsLicenses),
               ),
-              child: const Text('GitHub'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(l10n.close),
-            ),
-          ],
+              TextButton(
+                onPressed: () => openExternalLink(
+                  sheetContext,
+                  Uri.https('github.com', '/bitoolkit/bitree'),
+                  failureTitle: l10n.aboutOpenGitHubFailed,
+                ),
+                child: const Text('GitHub'),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -214,7 +212,7 @@ class SettingsScreen extends StatelessWidget {
       padding: const EdgeInsets.only(top: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [AppSectionLabel(title), ...children],
+        children: [AppSectionHeader(title), ...children],
       ),
     );
 
@@ -348,15 +346,6 @@ class SettingsScreen extends StatelessWidget {
               ),
             ]),
           section(l10n.settingsLocalAgenda, [
-            ListTile(
-              contentPadding: tilePadding,
-              leading: const Icon(Icons.restore_from_trash_outlined),
-              title: Text(l10n.deletedDdlMenu),
-              trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-              onTap: !controller.agenda.ready || controller.agenda.busy
-                  ? null
-                  : () => showDeletedDeadlines(context, controller.agenda),
-            ),
             ListTile(
               contentPadding: tilePadding,
               leading: Icon(Icons.delete_outline_rounded, color: scheme.error),

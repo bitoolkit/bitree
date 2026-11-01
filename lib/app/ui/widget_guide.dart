@@ -61,9 +61,11 @@ Future<void> showWidgetGuide(BuildContext context) => showAppSheet<void>(
           ),
         ],
       ),
-      actions: FilledButton(
-        onPressed: () => Navigator.pop(context),
-        child: Text(l10n.gotIt),
+      actions: SheetActionBar.primary(
+        primary: FilledButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.gotIt),
+        ),
       ),
     );
   },
