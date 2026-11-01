@@ -3,10 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../l10n/formats.dart';
+import '../../l10n/l10n.dart';
 import '../../schedule/model.dart';
 import '../../ui/design.dart';
 import '../model.dart';
-import 'agenda_time.dart';
 import 'calendar_list.dart';
 
 class AgendaReminder extends StatefulWidget {
@@ -108,18 +109,19 @@ class _AgendaReminderState extends State<AgendaReminder>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final visible = _visible && widget.active && widget.entries.isNotEmpty;
     final entry = widget.entries.firstOrNull;
     final caption = entry == null
         ? ''
         : entry.overdue(widget.now)
-        ? '${agendaClockLabel(entry)} 已逾期'
+        ? l10n.agendaReminderOverdue(localizedAgendaClock(l10n, entry))
         : entry.isDeadline || entry.allDay
-        ? entry.timeLabel
+        ? localizedAgendaTime(l10n, entry)
         : entry.startsAt.isAfter(widget.now)
-        ? '${agendaClockLabel(entry)} 开始'
-        : '进行中';
+        ? l10n.agendaReminderStarts(localizedAgendaClock(l10n, entry))
+        : l10n.inProgress;
 
     return IgnorePointer(
       ignoring: !visible,
@@ -186,7 +188,9 @@ class _AgendaReminderState extends State<AgendaReminder>
                                       runSpacing: 2,
                                       children: [
                                         Text(
-                                          '${widget.entries.length}项待办',
+                                          l10n.agendaReminderCount(
+                                            widget.entries.length,
+                                          ),
                                           style: const TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w500,
@@ -219,7 +223,7 @@ class _AgendaReminderState extends State<AgendaReminder>
                             ),
                           ),
                           IconButton(
-                            tooltip: '收起待办提醒',
+                            tooltip: l10n.agendaReminderCollapse,
                             onPressed: _dismiss,
                             icon: const Icon(Icons.close_rounded, size: 20),
                           ),

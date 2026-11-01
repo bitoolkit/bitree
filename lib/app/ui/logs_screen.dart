@@ -4,7 +4,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/diagnostics.dart';
+import '../../l10n/l10n.dart';
 import '../../ui/app_notice.dart';
+import '../../ui/app_page.dart';
 
 class LogsScreen extends StatefulWidget {
   const LogsScreen({super.key});
@@ -36,7 +38,7 @@ class _LogsScreenState extends State<LogsScreen> {
     try {
       final preview = await AppDiagnostics.instance.recentLines();
       if (mounted) setState(() => _preview = preview);
-    } catch (failure, stack) {
+    } on Exception catch (failure, stack) {
       AppDiagnostics.instance.report('读取日志', failure, stack);
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -44,6 +46,7 @@ class _LogsScreenState extends State<LogsScreen> {
   }
 
   Future<void> _export() async {
+    final l10n = context.l10n;
     setState(() => _exporting = true);
     try {
       final bytes = await AppDiagnostics.instance.export();
@@ -53,10 +56,10 @@ class _LogsScreenState extends State<LogsScreen> {
         fileName: 'BITree-logs-$date.txt',
         bytes: bytes,
         mimeType: 'text/plain',
-        dialogTitle: '导出日志',
+        dialogTitle: l10n.exportLogs,
       );
-      if (mounted && saved != null) showAppNotice(context, '已导出日志');
-    } catch (failure, stack) {
+      if (mounted && saved != null) showAppNotice(context, l10n.logsExported);
+    } on Exception catch (failure, stack) {
       AppDiagnostics.instance.report('导出日志', failure, stack);
     } finally {
       if (mounted) setState(() => _exporting = false);
@@ -64,53 +67,44 @@ class _LogsScreenState extends State<LogsScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Text('日志'),
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return AppRoutePage(
+      title: l10n.logsTitle,
       actions: [
         IconButton(
-          tooltip: '刷新',
+          tooltip: l10n.refresh,
           onPressed: _loading ? null : _load,
           icon: const Icon(Icons.refresh_rounded),
         ),
       ],
-    ),
-    body: SafeArea(
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 960),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  '最近 100 行，本地保留七天',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 12),
-                Expanded(child: _buildPreview(context)),
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                  onPressed: _exporting ? null : _export,
-                  icon: _exporting
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.file_download_outlined, size: 20),
-                  label: Text(_exporting ? '导出中…' : '导出日志'),
-                ),
-              ],
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l10n.logsRecent, style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 12),
+            Expanded(child: _buildPreview(context)),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _exporting ? null : _export,
+              icon: _exporting
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.file_download_outlined, size: 20),
+              label: Text(_exporting ? l10n.exportingLogs : l10n.exportLogs),
             ),
-          ),
+          ],
         ),
       ),
-    ),
-  );
+    );
+  }
 
   Widget _buildPreview(BuildContext context) {
+    final l10n = context.l10n;
     if (_loading) return const Center(child: CircularProgressIndicator());
     final preview = _preview;
     if (preview == null) {
@@ -118,11 +112,11 @@ class _LogsScreenState extends State<LogsScreen> {
         child: TextButton.icon(
           onPressed: _load,
           icon: const Icon(Icons.refresh_rounded),
-          label: const Text('重新读取日志'),
+          label: Text(l10n.reloadLogs),
         ),
       );
     }
-    if (preview.isEmpty) return const Center(child: Text('暂无日志'));
+    if (preview.isEmpty) return Center(child: Text(l10n.noLogs));
 
     return SingleChildScrollView(
       controller: _scroll,

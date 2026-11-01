@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../l10n/formats.dart';
+import '../../l10n/l10n.dart';
 import '../../schedule/ui/conflicting_courses.dart';
 import '../../schedule/ui/course_tile.dart';
 import '../../ui/course_palette.dart';
@@ -25,6 +27,7 @@ class CalendarBlockTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     if (items.every((item) => item.course != null)) {
       return items.length == 1
           ? CourseTile(
@@ -62,7 +65,12 @@ class CalendarBlockTile extends StatelessWidget {
         ? scheme.primary
         : Color(palette.accent);
     final summary = items
-        .map((item) => '${item.kindLabel} ${item.title}\n${item.timeLabel}')
+        .map(
+          (item) =>
+              '${item.entry?.kind.localizedLabel(l10n) ?? l10n.course} '
+              '${item.title}\n'
+              '${item.entry == null ? localizedCourseTime(l10n, item.course!) : localizedAgendaTime(l10n, item.entry!)}',
+        )
         .join('\n');
     return Semantics(
       button: true,
@@ -80,7 +88,12 @@ class CalendarBlockTile extends StatelessWidget {
           child: InkWell(
             onTap: () => items.length == 1
                 ? openCalendarItem(context, controller, items.single)
-                : showCalendarItems(context, controller, '选择安排', items),
+                : showCalendarItems(
+                    context,
+                    controller,
+                    l10n.agendaChooseItems,
+                    items,
+                  ),
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final scale = MediaQuery.textScalerOf(context).scale(1);
@@ -96,7 +109,9 @@ class CalendarBlockTile extends StatelessWidget {
                       if (constraints.maxHeight >= 48 * scale &&
                           (exam || items.length > 1)) ...[
                         Text(
-                          items.length == 1 ? '考试' : '${items.length} 项',
+                          items.length == 1
+                              ? l10n.exam
+                              : l10n.agendaItemCount(items.length),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(

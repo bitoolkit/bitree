@@ -194,7 +194,7 @@ void main() {
             : AccountStatus.imageRequired;
         final notice = expectLater(
           AppDiagnostics.instance.messages,
-          emits('${status.label}，请在设置中完成验证。'),
+          emits('学校登录验证未完成，请在设置中完成验证。'),
         );
         final success = await HttpOverrides.runWithHttpOverrides(
           app.school.restoreAccount,

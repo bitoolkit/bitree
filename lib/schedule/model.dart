@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import '../core/json.dart';
+
 /// Calendar dates are UTC midnights so DST never changes academic week numbers.
 DateTime calendarDate(DateTime value) =>
     DateTime.utc(value.year, value.month, value.day);
@@ -189,18 +191,21 @@ class Course {
   };
 
   factory Course.fromJson(Map<String, dynamic> json) => Course(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    teacher: json['teacher'] as String,
-    room: json['room'] as String,
-    campus: json['campus'] as String,
-    number: json['number'] as String,
-    description: json['description'] as String,
-    weekday: json['weekday'] as int?,
-    startSection: json['startSection'] as int?,
-    endSection: json['endSection'] as int?,
-    weeks: (json['weeks'] as List).cast<int>(),
-    local: json['local'] as bool,
+    id: jsonStringField(json, 'id'),
+    name: jsonStringField(json, 'name'),
+    teacher: jsonStringField(json, 'teacher'),
+    room: jsonStringField(json, 'room'),
+    campus: jsonStringField(json, 'campus'),
+    number: jsonStringField(json, 'number'),
+    description: jsonStringField(json, 'description'),
+    weekday: jsonIntFieldOrNull(json, 'weekday'),
+    startSection: jsonIntFieldOrNull(json, 'startSection'),
+    endSection: jsonIntFieldOrNull(json, 'endSection'),
+    weeks: [
+      for (final value in jsonListField(json, 'weeks'))
+        jsonInt(value, 'weeks[]'),
+    ],
+    local: jsonBoolField(json, 'local'),
   );
 }
 
@@ -367,17 +372,14 @@ class SemesterSchedule {
 
   factory SemesterSchedule.fromJson(Map<String, dynamic> json) =>
       SemesterSchedule(
-        term: json['term'] as String,
-        firstMonday: DateTime.parse(json['firstMonday'] as String),
-        firstWeek: json['firstWeek'] as int?,
-        lastWeek: json['lastWeek'] as int?,
-        courses: (json['courses'] as List)
-            .map(
-              (row) => Course.fromJson(Map<String, dynamic>.from(row as Map)),
-            )
-            .toList(),
-        syncedAt: json['syncedAt'] == null
-            ? null
-            : DateTime.parse(json['syncedAt'] as String),
+        term: jsonStringField(json, 'term'),
+        firstMonday: jsonDateTime('firstMonday', json['firstMonday']),
+        firstWeek: jsonIntFieldOrNull(json, 'firstWeek'),
+        lastWeek: jsonIntFieldOrNull(json, 'lastWeek'),
+        courses: [
+          for (final row in jsonListField(json, 'courses'))
+            Course.fromJson(jsonObject(row, 'courses[]')),
+        ],
+        syncedAt: jsonDateTimeOrNull('syncedAt', json['syncedAt']),
       );
 }

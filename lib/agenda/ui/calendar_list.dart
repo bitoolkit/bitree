@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../l10n/formats.dart';
+import '../../l10n/l10n.dart';
 import '../../schedule/model.dart';
 import '../../schedule/ui/course_detail.dart';
 import '../../ui/campus_time_builder.dart';
@@ -10,7 +12,6 @@ import '../calendar.dart';
 import '../model.dart';
 import 'agenda_detail.dart';
 import 'agenda_list_tile.dart';
-import 'agenda_time.dart';
 import 'completion_text.dart';
 
 IconData agendaIcon(AgendaKind kind) => switch (kind) {
@@ -24,10 +25,9 @@ Future<void> showAgendaDay(
   AppController controller,
   DateTime date,
 ) async {
-  final selected = await showModalBottomSheet<AgendaEntry>(
+  final l10n = context.l10n;
+  final selected = await showAppSheet<AgendaEntry>(
     context: context,
-    useSafeArea: true,
-    isScrollControlled: true,
     builder: (context) => CampusTimeBuilder(
       active: true,
       builder: (context, now) => ListenableBuilder(
@@ -46,64 +46,50 @@ Future<void> showAgendaDay(
             now: now,
             onTap: () => Navigator.pop(context, entry),
           );
-          return SafeArea(
-            top: false,
-            child: SheetLayout(
-              header: SheetHeader(
-                title: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(agendaDateLabel(date)),
-                    if (pending.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        '${pending.length}项日程',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
+          return SheetLayout(
+            header: SheetHeader(
+              title: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(localizedAgendaDate(l10n, date)),
+                  if (pending.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      l10n.agendaCount(pending.length),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   ],
-                ),
-                actions: [
-                  IconButton(
-                    tooltip: '关闭',
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close_rounded, size: 20),
-                  ),
                 ],
               ),
-              content: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (final entry in pending) row(entry),
-                    if (pending.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
-                        child: Text(
-                          '没有未完成的日程',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                              ),
-                        ),
+              actions: const [SheetCloseButton()],
+            ),
+            contentPadding: appSheetListPadding,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final entry in pending) row(entry),
+                if (pending.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
+                    child: Text(
+                      l10n.agendaNoPendingShort,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-                    if (completed.isNotEmpty)
-                      ExpansionTile(
-                        title: Text(
-                          '已完成 ${completed.length}',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                        shape: const Border(),
-                        collapsedShape: const Border(),
-                        children: [for (final entry in completed) row(entry)],
-                      ),
-                  ],
-                ),
-              ),
+                    ),
+                  ),
+                if (completed.isNotEmpty)
+                  ExpansionTile(
+                    title: Text(
+                      l10n.agendaCompletedCount(completed.length),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    shape: const Border(),
+                    collapsedShape: const Border(),
+                    children: [for (final entry in completed) row(entry)],
+                  ),
+              ],
             ),
           );
         },
@@ -129,69 +115,57 @@ Future<void> showCalendarItems(
   String title,
   List<CalendarItem> items, {
   bool showDates = false,
-  String emptyMessage = '这一天没有安排',
+  String? emptyMessage,
 }) async {
-  final selected = await showModalBottomSheet<CalendarItem>(
+  final l10n = context.l10n;
+  final selected = await showAppSheet<CalendarItem>(
     context: context,
-    useSafeArea: true,
-    isScrollControlled: true,
-    builder: (context) => SafeArea(
-      top: false,
-      child: SheetLayout(
-        header: SheetHeader(
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(title, style: Theme.of(context).textTheme.titleLarge),
-              if (items.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  '${items.length}项日程',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
+    builder: (context) => SheetLayout(
+      header: SheetHeader(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.titleLarge),
+            if (items.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                l10n.agendaCount(items.length),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             ],
-          ),
-          actions: [
-            IconButton(
-              tooltip: '关闭',
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.close_rounded, size: 20),
-            ),
           ],
         ),
-        content: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (var index = 0; index < items.length; index++) ...[
-                if (index > 0)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Divider(height: 1),
-                  ),
-                _CalendarItemRow(
-                  item: items[index],
-                  now: campusNow(),
-                  showDate: showDates,
-                  onTap: () => Navigator.pop(context, items[index]),
+        actions: const [SheetCloseButton()],
+      ),
+      contentPadding: appSheetListPadding,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var index = 0; index < items.length; index++) ...[
+            if (index > 0)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Divider(height: 1),
+              ),
+            _CalendarItemRow(
+              item: items[index],
+              now: campusNow(),
+              showDate: showDates,
+              onTap: () => Navigator.pop(context, items[index]),
+            ),
+          ],
+          if (items.isEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 20, 12, 28),
+              child: Text(
+                emptyMessage ?? l10n.agendaDayEmpty,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-              ],
-              if (items.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 20, 12, 28),
-                  child: Text(
-                    emptyMessage,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
+              ),
+            ),
+        ],
       ),
     ),
   );
@@ -215,6 +189,7 @@ class _CalendarItemRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final entry = item.entry;
@@ -237,13 +212,13 @@ class _CalendarItemRow extends StatelessWidget {
     );
     final clock = entry == null
         ? clockText(item.startsAt)
-        : agendaClockLabel(entry);
+        : localizedAgendaClock(l10n, entry);
     final caption = entry == null
-        ? '${clockText(item.endsAt!)} 结束'
-        : agendaTimeCaption(entry, now);
+        ? l10n.endsAt(clockText(item.endsAt!))
+        : localizedAgendaTimeCaption(l10n, entry, now);
     final metadata = [
-      item.kindLabel,
-      if (entry?.source case final source?) source.label,
+      entry?.kind.localizedLabel(l10n) ?? l10n.course,
+      if (entry?.source case final source?) source.localizedLabel(l10n),
     ].join(' · ');
 
     Widget time({required bool inline}) => Column(
@@ -298,7 +273,7 @@ class _CalendarItemRow extends StatelessWidget {
         if (showDate) ...[
           const SizedBox(height: 4),
           Text(
-            agendaDateLabel(item.startsAt),
+            localizedAgendaDate(l10n, item.startsAt),
             style: theme.textTheme.bodySmall,
           ),
         ],

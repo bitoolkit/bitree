@@ -43,7 +43,11 @@ int? _optionalInt(Object? value) {
   final text = value?.toString();
   if (text == null || text.isEmpty || text == '0') return null;
 
-  return int.parse(text);
+  final parsed = int.tryParse(text);
+  if (parsed == null) {
+    throw FormatException('课表节次格式不正确：$text');
+  }
+  return parsed;
 }
 
 int _maskStartOffset(List<Map<String, dynamic>> rows) {

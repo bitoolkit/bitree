@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../l10n/formats.dart';
+import '../../l10n/l10n.dart';
+import '../../ui/app_dialog.dart';
 import '../../ui/app_notice.dart';
 import 'school_screen.dart';
 import 'school_verification_dialog.dart';
@@ -28,39 +31,25 @@ class _SchoolAccountState extends State<SchoolAccount> {
   }
 
   Future<void> _login() async {
-    await openSchoolPage(
-      context,
-      widget.controller,
-      action: SchoolAction.signIn,
-    );
+    await openSchoolLogin(context, widget.controller);
   }
 
   Future<void> _verify() async {
     final success = await widget.controller.school.restoreAccount(
       verify: (request) => verifySchoolLogin(context, request),
     );
-    if (success && mounted) showAppNotice(context, '学校账号验证完成');
+    if (success && mounted) showAppNotice(context, context.l10n.schoolVerified);
   }
 
   Future<void> _signOut() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('退出学校账号？'),
-        content: const Text('将移除此设备上的登录信息，保留本地课表和日程。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('退出登录'),
-          ),
-        ],
-      ),
+    final l10n = context.l10n;
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: l10n.schoolSignOutQuestion,
+      body: l10n.schoolSignOutBody,
+      confirmLabel: l10n.schoolSignOutAction,
     );
-    if (confirmed == true) await widget.controller.school.signOut();
+    if (confirmed) await widget.controller.school.signOut();
   }
 
   @override
@@ -70,6 +59,7 @@ class _SchoolAccountState extends State<SchoolAccount> {
   );
 
   Widget _build(BuildContext context) {
+    final l10n = context.l10n;
     final controller = widget.controller;
     final hasAccount = controller.school.username != null;
     final needsVerification = controller.school.verificationRequired;
@@ -90,9 +80,9 @@ class _SchoolAccountState extends State<SchoolAccount> {
         size: 36,
         color: hasAccount ? scheme.primary : null,
       ),
-      title: Text(controller.school.username ?? '登录学校账号'),
+      title: Text(controller.school.username ?? l10n.schoolLogin),
       subtitle: hasAccount || needsVerification
-          ? Text(controller.school.accountStatus.label)
+          ? Text(controller.school.accountStatus.localizedLabel(l10n))
           : null,
       trailing: hasAccount
           ? Row(
@@ -103,16 +93,21 @@ class _SchoolAccountState extends State<SchoolAccount> {
                     onPressed: canLogin
                         ? () => _perform(needsVerification ? _verify : _login)
                         : null,
-                    child: Text(needsVerification ? '验证' : '登录'),
+                    child: Text(
+                      needsVerification ? l10n.verifyAction : l10n.schoolLogin,
+                    ),
                   ),
                 IconButton(
-                  tooltip: '退出学校账号',
+                  tooltip: l10n.schoolSignOutAction,
                   onPressed: enabled ? () => _perform(_signOut) : null,
                   icon: const Icon(Icons.logout_rounded, size: 20),
                 ),
               ],
             )
-          : const Icon(Icons.chevron_right_rounded, size: 20),
+          : const SizedBox.square(
+              dimension: 48,
+              child: Center(child: Icon(Icons.chevron_right_rounded, size: 20)),
+            ),
       onTap: canTap ? () => _perform(onTap) : null,
     );
   }

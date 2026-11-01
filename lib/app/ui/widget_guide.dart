@@ -1,90 +1,75 @@
 import 'package:flutter/material.dart';
 
-import '../../ui/design.dart';
+import '../../l10n/l10n.dart';
 import '../../ui/sheet_layout.dart';
 
-Future<void> showWidgetGuide(BuildContext context) =>
-    showModalBottomSheet<void>(
-      context: context,
-      useSafeArea: true,
-      isScrollControlled: true,
-      builder: (context) {
-        final theme = Theme.of(context);
+Future<void> showWidgetGuide(BuildContext context) => showAppSheet<void>(
+  context: context,
+  builder: (context) {
+    final theme = Theme.of(context);
+    final l10n = context.l10n;
 
-        Widget step(int number, String text) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 28,
-                child: Text(
-                  '$number',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+    Widget step(int number, String text) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 28,
+            child: Text(
+              '$number',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w600,
               ),
-              Expanded(child: Text(text, style: theme.textTheme.bodyLarge)),
-            ],
+            ),
           ),
-        );
+          Expanded(child: Text(text, style: theme.textTheme.bodyLarge)),
+        ],
+      ),
+    );
 
-        return SafeArea(
-          top: false,
-          child: SheetLayout(
-            header: SheetHeader(
-              title: const Text('桌面日程表'),
-              actions: [
-                IconButton(
-                  tooltip: '关闭',
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close_rounded, size: 20),
-                ),
+    return SheetLayout(
+      header: SheetHeader(
+        title: Text(l10n.widgetGuideTitle),
+        actions: const [SheetCloseButton()],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _WidgetSize(columns: 1, label: l10n.widgetSingleColumn),
+                _WidgetSize(columns: 2, label: l10n.widgetDoubleColumn),
               ],
             ),
-            content: Padding(
-              padding: appSheetContentPadding,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _WidgetSize(columns: 1, label: '2×2 单列'),
-                        _WidgetSize(columns: 2, label: '2×4 双列'),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  step(1, '长按桌面空白处，打开“小组件”。'),
-                  step(2, '找到 BITree 日程表，选择单列或双列样式，拖到桌面。'),
-                  step(3, '上下滑动，查看课程、考试、DDL 和活动。'),
-                  const SizedBox(height: 8),
-                  Text(
-                    '当天安排结束后，21:00 起显示明天的日程。',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            actions: Padding(
-              padding: appSheetActionPadding,
-              child: FilledButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('知道了'),
-              ),
+          ),
+          const SizedBox(height: 8),
+          step(1, l10n.widgetStepOpen),
+          step(2, l10n.widgetStepFind),
+          step(3, l10n.widgetStepScroll),
+          const SizedBox(height: 8),
+          Text(
+            l10n.widgetGuideTomorrow,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-        );
-      },
+        ],
+      ),
+      actions: SheetActionBar.primary(
+        primary: FilledButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.gotIt),
+        ),
+      ),
     );
+  },
+);
 
 class _WidgetSize extends StatelessWidget {
   const _WidgetSize({required this.columns, required this.label});

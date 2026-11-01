@@ -19,7 +19,12 @@ class JsonFile {
     final file = await _file();
     if (!await file.exists()) return null;
 
-    return decode(jsonDecode(await file.readAsString()));
+    final text = await file.readAsString();
+    try {
+      return decode(jsonDecode(text));
+    } on FormatException catch (failure) {
+      throw FormatException('$name 内容损坏：${failure.message}');
+    }
   }
 
   Future<void> write(Object value) async {

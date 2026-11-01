@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import '../../agenda/ui/agenda_reminder.dart';
 import '../../app/controller.dart';
 import '../../app/ui/add_menu.dart';
-import '../../school/ui/school_import_button.dart';
-import '../../school/ui/school_screen.dart';
+import '../../l10n/l10n.dart';
+import '../../sync/ui/sync.dart';
+import '../../sync/ui/sync_button.dart';
+import '../../ui/app_dialog.dart';
 import '../../ui/app_page.dart';
 import '../model.dart';
 import 'course_detail.dart';
@@ -37,6 +39,7 @@ class HomeScreen extends StatelessWidget {
   );
 
   Widget _build(BuildContext context) {
+    final l10n = context.l10n;
     final schedule = controller.timetable.schedule;
     final currentSemester = semesterAt(controller.timetable.schedules, now);
     final currentWeek = currentSemester?.term == schedule?.term
@@ -51,7 +54,7 @@ class HomeScreen extends StatelessWidget {
 
     return AppPage(
       title: schedule == null
-          ? const Text('首页')
+          ? Text(l10n.homeTitle)
           : LayoutBuilder(
               builder: (context, constraints) {
                 final selector = WeekSelector(controller: controller);
@@ -66,7 +69,7 @@ class HomeScreen extends StatelessWidget {
                         controller.timetable.week != currentWeek)
                       if (compact)
                         IconButton(
-                          tooltip: '回到本周',
+                          tooltip: l10n.backToThisWeek,
                           onPressed: () =>
                               controller.timetable.selectWeek(currentWeek),
                           icon: const Icon(Icons.today_outlined, size: 20),
@@ -78,7 +81,7 @@ class HomeScreen extends StatelessWidget {
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 8),
                           ),
-                          child: const Text('回到本周'),
+                          child: Text(l10n.backToThisWeek),
                         ),
                   ],
                 );
@@ -86,7 +89,7 @@ class HomeScreen extends StatelessWidget {
             ),
       actions: [
         AddButton(controller: controller, date: selectedDate),
-        SchoolImportButton(controller: controller),
+        SyncButton(controller: controller),
         ScheduleMenu(controller: controller),
       ],
       child: Stack(
@@ -106,24 +109,18 @@ class HomeScreen extends StatelessWidget {
                           alignment: WrapAlignment.center,
                           children: [
                             FilledButton.icon(
-                              onPressed:
-                                  controller.timetable.busy ||
-                                      controller.school.busy
+                              onPressed: controller.timetable.busy
                                   ? null
-                                  : () => openSchoolPage(
-                                      context,
-                                      controller,
-                                      action: SchoolAction.importSchedule,
-                                    ),
+                                  : () => startSync(context, controller),
                               icon: const Icon(Icons.input_rounded, size: 20),
-                              label: Text(SchoolAction.importSchedule.label),
+                              label: Text(l10n.syncAll),
                             ),
                             OutlinedButton.icon(
                               onPressed: controller.timetable.busy
                                   ? null
                                   : () => editCourse(context, controller),
                               icon: const Icon(Icons.add_rounded, size: 20),
-                              label: const Text('添加课程'),
+                              label: Text(l10n.addCourse),
                             ),
                           ],
                         ),
@@ -145,7 +142,7 @@ class HomeScreen extends StatelessWidget {
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () => _unscheduled(context),
-                    child: const Text('时间待定的课程'),
+                    child: Text(l10n.timedCourses),
                   ),
                 ),
             ],
@@ -172,10 +169,10 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _unscheduled(BuildContext context) => showDialog<void>(
+  Future<void> _unscheduled(BuildContext context) => showAppDialog<void>(
     context: context,
     builder: (dialogContext) => SimpleDialog(
-      title: const Text('时间待定的课程'),
+      title: Text(context.l10n.timedCourses),
       children: [
         for (final course in controller.timetable.schedule!.courses.where(
           (course) => !course.isScheduled,

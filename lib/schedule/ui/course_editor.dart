@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../l10n/formats.dart';
+import '../../l10n/l10n.dart';
 import '../../ui/app_dropdown_field.dart';
 import '../../ui/dialog_layout.dart';
 import '../../ui/editor_sheet.dart';
+import '../../ui/sheet_layout.dart';
 import '../model.dart';
 import '../selection.dart';
 import 'course_period_fields.dart';
@@ -15,10 +18,8 @@ Future<void> editCourse(
   AppController controller, {
   Course? course,
   TimetableSelection? selection,
-}) => showModalBottomSheet<void>(
+}) => showAppSheet<void>(
   context: context,
-  isScrollControlled: true,
-  useSafeArea: true,
   builder: (_) => _CourseEditor(
     controller: controller,
     course: course,
@@ -108,7 +109,7 @@ class _CourseEditorState extends State<_CourseEditor> {
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
     if (_weeks.isEmpty) {
-      setState(() => _error = '至少选择一个上课周次');
+      setState(() => _error = context.l10n.courseEditorWeeksRequired);
       return;
     }
     setState(() {
@@ -156,10 +157,13 @@ class _CourseEditorState extends State<_CourseEditor> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final weeks = academicWeeks(_firstWeek, _lastWeek);
     return EditorSheet(
-      title: widget.course == null ? '添加课程' : '编辑课程',
-      saveLabel: Text(_saving ? '保存中…' : '保存课程'),
+      title: widget.course == null
+          ? l10n.courseEditorAddTitle
+          : l10n.courseEditorEditTitle,
+      saveLabel: Text(_saving ? l10n.saving : l10n.courseEditorSave),
       formKey: _form,
       saving: _saving,
       error: _error,
@@ -172,8 +176,9 @@ class _CourseEditorState extends State<_CourseEditor> {
             TextFormField(
               controller: _term,
               enabled: !_saving,
-              decoration: const InputDecoration(labelText: '学期'),
-              validator: (value) => value!.trim().isEmpty ? '请输入学期' : null,
+              decoration: InputDecoration(labelText: l10n.courseEditorTerm),
+              validator: (value) =>
+                  value!.trim().isEmpty ? l10n.courseEditorTermRequired : null,
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
@@ -191,14 +196,13 @@ class _CourseEditorState extends State<_CourseEditor> {
                         lastDate: DateTime(2100),
                         selectableDayPredicate: (date) =>
                             date.weekday == DateTime.monday,
-                        helpText: '选择第一周周一',
                       );
                       if (date != null) {
                         setState(() => _monday = calendarDate(date));
                       }
                     },
               icon: const Icon(Icons.calendar_today_outlined, size: 18),
-              label: Text('第一周周一：${dateText(_monday)}'),
+              label: Text(l10n.courseEditorMondayLabel(dateText(_monday))),
             ),
             const SizedBox(height: 12),
           ],
@@ -206,8 +210,9 @@ class _CourseEditorState extends State<_CourseEditor> {
             controller: _name,
             enabled: !_saving,
             textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(labelText: '课程名称'),
-            validator: (value) => value!.trim().isEmpty ? '请输入课程名称' : null,
+            decoration: InputDecoration(labelText: l10n.courseEditorName),
+            validator: (value) =>
+                value!.trim().isEmpty ? l10n.courseEditorNameRequired : null,
           ),
           const SizedBox(height: 12),
           LayoutBuilder(
@@ -216,12 +221,14 @@ class _CourseEditorState extends State<_CourseEditor> {
                 controller: _room,
                 enabled: !_saving,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(labelText: '教室（选填）'),
+                decoration: InputDecoration(labelText: l10n.courseEditorRoom),
               );
               final teacher = TextFormField(
                 controller: _teacher,
                 enabled: !_saving,
-                decoration: const InputDecoration(labelText: '教师（选填）'),
+                decoration: InputDecoration(
+                  labelText: l10n.courseEditorTeacher,
+                ),
               );
               final scale = MediaQuery.textScalerOf(context).scale(1);
               if (constraints.maxWidth < 300 * scale) {
@@ -241,10 +248,10 @@ class _CourseEditorState extends State<_CourseEditor> {
           const SizedBox(height: 12),
           AppDropdownField<int>(
             value: _day,
-            label: '星期',
+            label: l10n.courseEditorWeekday,
             entries: [
               for (var i = 1; i <= 7; i++)
-                DropdownMenuEntry(value: i, label: weekdays[i - 1]),
+                DropdownMenuEntry(value: i, label: localizedWeekday(l10n, i)),
             ],
             onChanged: _saving ? null : (value) => setState(() => _day = value),
           ),

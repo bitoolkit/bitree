@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 
+import '../../l10n/formats.dart';
+import '../../l10n/l10n.dart';
 import '../../ui/design.dart';
 import '../atlas.dart';
 import '../place.dart';
@@ -253,6 +255,7 @@ class _WencuiFloorMapState extends State<WencuiFloorMap>
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
+      final l10n = context.l10n;
       final viewport = constraints.biggest;
       if (viewport != _viewport || widget.floor != _shownFloor) {
         final previousViewport = _viewport;
@@ -326,6 +329,7 @@ class _WencuiFloorMapState extends State<WencuiFloorMap>
                             foreground: scheme.onSurface,
                             facilities: widget.facilities,
                             onSelected: widget.onSelected,
+                            l10n: l10n,
                           ),
                           child: WencuiFloorImage(floor: widget.floor),
                         ),
@@ -360,9 +364,12 @@ class _WencuiFloorMapState extends State<WencuiFloorMap>
               child: Material(
                 color: scheme.surfaceContainerLow,
                 borderRadius: AppCorners.compact,
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  child: Text('上东 · 左北'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  child: Text(l10n.mapLegend),
                 ),
               ),
             ),
@@ -378,7 +385,7 @@ class _WencuiFloorMapState extends State<WencuiFloorMap>
                       horizontal: 10,
                       vertical: 6,
                     ),
-                    child: Text(_hover!.title),
+                    child: Text(localizedWencuiFeatureTitle(l10n, _hover!)),
                   ),
                 ),
               ),
@@ -392,23 +399,23 @@ class _WencuiFloorMapState extends State<WencuiFloorMap>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      tooltip: '缩小地图',
+                      tooltip: l10n.zoomOut,
                       onPressed: () => _zoom(1 / 1.5),
                       icon: const Icon(Icons.remove_rounded),
                     ),
                     IconButton(
-                      tooltip: '放大地图',
+                      tooltip: l10n.zoomIn,
                       onPressed: () => _zoom(1.5),
                       icon: const Icon(Icons.add_rounded),
                     ),
                     IconButton(
-                      tooltip: '查看整层',
+                      tooltip: l10n.fitFloor,
                       onPressed: () => _fit(whole: true),
                       icon: const Icon(Icons.fit_screen_rounded),
                     ),
                     if (widget.controller._focus != null)
                       IconButton(
-                        tooltip: '回到选中位置',
+                        tooltip: l10n.returnToSelection,
                         onPressed: _fit,
                         icon: const Icon(Icons.my_location_rounded),
                       ),
@@ -423,12 +430,10 @@ class _WencuiFloorMapState extends State<WencuiFloorMap>
   );
 
   Widget _wingButton(WencuiWing wing, Offset position, Size viewport) {
+    final l10n = context.l10n;
     final center = MatrixUtils.transformPoint(
       _transform.value,
-      Offset(
-        position.dx * _imageSize.width,
-        position.dy * _imageSize.height,
-      ),
+      Offset(position.dx * _imageSize.width, position.dy * _imageSize.height),
     );
     if (!(Offset.zero & viewport).contains(center)) {
       return const SizedBox.shrink();
@@ -441,7 +446,7 @@ class _WencuiFloorMapState extends State<WencuiFloorMap>
       height: 28,
       child: Semantics(
         key: ValueKey('wencui-wing-${wing.letter}'),
-        label: '放大文萃楼${wing.name}',
+        label: l10n.enlargeWing(localizedWencuiWing(l10n, wing)),
         button: true,
         onTap: () => widget.onWingSelected(wing),
         child: Material(
@@ -477,6 +482,7 @@ class _MapFeatures extends CustomPainter {
     required this.foreground,
     required this.facilities,
     required this.onSelected,
+    required this.l10n,
   });
   final List<WencuiFeature> features;
   final WencuiFeature? selected;
@@ -487,6 +493,7 @@ class _MapFeatures extends CustomPainter {
   final Color foreground;
   final Set<WencuiFeatureKind> facilities;
   final ValueChanged<WencuiFeature> onSelected;
+  final AppLocalizations l10n;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -564,7 +571,10 @@ class _MapFeatures extends CustomPainter {
                       height: 44 / scale,
                     )),
               properties: SemanticsProperties(
-                label: '${feature.title}，${feature.floor}层',
+                label: l10n.featureSemantics(
+                  localizedWencuiFeatureLabel(l10n, feature),
+                  feature.floor,
+                ),
                 button: true,
                 selected: feature == selected,
                 textDirection: TextDirection.ltr,
@@ -581,11 +591,13 @@ class _MapFeatures extends CustomPainter {
       old.accent != accent ||
       old.surface != surface ||
       old.foreground != foreground ||
+      old.l10n != l10n ||
       !setEquals(old.facilities, facilities);
   @override
   bool shouldRebuildSemantics(_MapFeatures old) =>
       old.features != features ||
       old.selected != selected ||
       old.scale != scale ||
+      old.l10n != l10n ||
       !setEquals(old.facilities, facilities);
 }

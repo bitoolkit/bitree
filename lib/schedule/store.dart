@@ -1,42 +1,47 @@
+import '../core/json.dart';
 import '../core/platform/desktop_widget.dart';
 import '../core/storage/json_file.dart';
 import 'model.dart';
 
+typedef ScheduleLibrary = ({
+  String? selectedTerm,
+  Map<String, SemesterSchedule> schedules,
+});
+
 class ScheduleStore {
   final _file = const JsonFile('schedule.json');
 
-  Future<({String? selectedTerm, Map<String, SemesterSchedule> schedules})>
-  read() async {
-    final library = await _readLibrary();
-    final semesters = library['semesters'] as Map<String, dynamic>;
+  Future<ScheduleLibrary> read() async =>
+      await _file.read(_decode) ??
+      (selectedTerm: null, schedules: const <String, SemesterSchedule>{});
+
+  ScheduleLibrary _decode(Object? value) {
+    final library = jsonObject(value, '课表');
+    final semesters = jsonObjectField(library, 'semesters');
     return (
-      selectedTerm: library['selectedTerm'] as String?,
-      schedules: semesters.map(
-        (term, value) => MapEntry(
-          term,
-          SemesterSchedule.fromJson(value as Map<String, dynamic>),
-        ),
-      ),
+      selectedTerm: jsonStringFieldOrNull(library, 'selectedTerm'),
+      schedules: {
+        for (final entry in semesters.entries)
+          entry.key: SemesterSchedule.fromJson(
+            jsonObject(entry.value, 'semesters.${entry.key}'),
+          ),
+      },
     );
   }
 
-  Future<Map<String, dynamic>> _readLibrary() async {
-    return await _file.read((json) => json as Map<String, dynamic>) ??
-        {'selectedTerm': null, 'semesters': <String, dynamic>{}};
-  }
-
-  Future<void> write(SemesterSchedule schedule) async {
-    final library = await _readLibrary();
-    final semesters = library['semesters'] as Map<String, dynamic>;
-    semesters[schedule.term] = schedule.toJson();
-    library['selectedTerm'] = schedule.term;
-
-    await _file.write(library);
-    await updateDesktopWidget();
+  Future<void> write(ScheduleLibrary library) async {
+    await _file.write({
+      'selectedTerm': library.selectedTerm,
+      'semesters': {
+        for (final entry in library.schedules.entries)
+          entry.key: entry.value.toJson(),
+      },
+    });
+    refreshDesktopWidget();
   }
 
   Future<void> clear() async {
     await _file.delete();
-    await updateDesktopWidget();
+    refreshDesktopWidget();
   }
 }

@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 
 import '../school/errors.dart';
-import '../school/storage.dart';
 
 String errorMessage(Object error) => switch (error) {
   SchoolConnectionError() => errorMessage(error.cause),

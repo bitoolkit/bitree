@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../classrooms/model.dart';
+import '../core/json.dart';
 import '../schedule/model.dart';
 import 'session.dart';
 
@@ -24,15 +25,18 @@ Future<ClassroomDirectory> fetchClassroomDirectory(
   return ClassroomDirectory(
     campuses: [
       for (final row in campuses)
-        SchoolCampus(code: row['DM'] as String, name: row['MC'] as String),
+        SchoolCampus(
+          code: jsonStringField(row, 'DM'),
+          name: jsonStringField(row, 'MC'),
+        ),
     ],
     buildings: [
       for (final row in buildings)
-        if ((row['JXLMC'] as String).trim() != '文萃楼')
+        if (jsonStringField(row, 'JXLMC').trim() != '文萃楼')
           SchoolBuilding(
-            code: row['JXLDM'] as String,
-            name: row['JXLMC'] as String,
-            campusCode: row['XXXQDM'] as String?,
+            code: jsonStringField(row, 'JXLDM'),
+            name: jsonStringField(row, 'JXLMC'),
+            campusCode: jsonStringFieldOrNull(row, 'XXXQDM'),
           ),
     ],
   );
@@ -47,17 +51,22 @@ Future<List<BuildingOccupancy>> fetchClassroomOccupancy(
 
   // Use the school's calendar, independently of the user's local timetable.
   final current = await _query(session, 'dqxnxqcx');
-  final term = (current['rows'] as List).first as Map<String, dynamic>;
+  final termRows = [
+    for (final row in jsonListField(current, 'rows'))
+      jsonObject(row, 'dqxnxqcx.rows[]'),
+  ];
+  if (termRows.isEmpty) throw const FormatException('学校未返回当前学期');
+  final term = termRows.first;
   final day = await _query(session, 'rqzhzcjc', {
     'RQ': dateText(date),
-    'XN': term['XNDM'].toString(),
-    'XQ': term['XQDM'].toString(),
+    'XN': jsonScalarField(term, 'XNDM'),
+    'XQ': jsonScalarField(term, 'XQDM'),
   });
 
   final form = {
-    'XNXQDM': term['DM'] as String,
-    'ZC': day['ZC'].toString(),
-    'XQ': day['XQJ'].toString(),
+    'XNXQDM': jsonStringField(term, 'DM'),
+    'ZC': jsonScalarField(day, 'ZC'),
+    'XQ': jsonScalarField(day, 'XQJ'),
     'RQ': dateText(date),
   };
 
@@ -100,11 +109,14 @@ Future<List<ClassroomOccupancy>> _buildingOccupancy(
       ...form,
       'pageNumber': '$page',
     });
-    final rows = (response['rows'] as List).cast<Map<String, dynamic>>();
+    final rows = [
+      for (final row in jsonListField(response, 'rows'))
+        jsonObject(row, 'cxjsqk.rows[]'),
+    ];
     for (final row in rows) {
       rooms.add(
         ClassroomOccupancy(
-          name: row['JASMC'] as String,
+          name: jsonStringField(row, 'JASMC'),
           busySections: {
             for (var section = 1; section <= sectionTimes.length; section++)
               // Each entry describes a booking; 1_ marks an occupied section.
@@ -116,7 +128,10 @@ Future<List<ClassroomOccupancy>> _buildingOccupancy(
         ),
       );
     }
-    final total = int.parse(response['totalSize'].toString());
+    final total = int.tryParse(response['totalSize'].toString());
+    if (total == null) {
+      throw const FormatException('教室查询结果缺少有效总数');
+    }
     if (page * pageSize >= total) return rooms;
     page++;
   }
@@ -151,8 +166,13 @@ Future<Map<String, dynamic>> _query(
     app: 'kxjas',
     form: form,
   );
-  return response['datas'][name] as Map<String, dynamic>;
+  return jsonObjectField(jsonObjectField(response, 'datas'), name);
 }
 
-List<Map<String, dynamic>> _rows(Map<String, dynamic> response, String name) =>
-    (response['datas'][name]['rows'] as List).cast<Map<String, dynamic>>();
+List<Map<String, dynamic>> _rows(Map<String, dynamic> response, String name) {
+  final result = jsonObjectField(jsonObjectField(response, 'datas'), name);
+  return [
+    for (final row in jsonListField(result, 'rows'))
+      jsonObject(row, '$name.rows[]'),
+  ];
+}

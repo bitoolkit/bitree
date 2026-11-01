@@ -6,11 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/row_swipe.dart';
+
 void main() {
   Future<void> showTile(
     WidgetTester tester,
-    Future<bool> Function() invoke,
-  ) async {
+    Future<bool> Function() invoke, {
+    bool enabled = true,
+  }) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -20,20 +23,20 @@ void main() {
               child: SizedBox(
                 width: 390,
                 child: SwipeActionTile(
-                  enabled: true,
+                  enabled: enabled,
                   leftAction: TileSwipeAction(
-                    label: '删除',
-                    releaseLabel: '松手删除',
-                    icon: Icons.delete_outline,
-                    background: Colors.red,
-                    foreground: Colors.white,
-                    onInvoke: invoke,
-                  ),
-                  rightAction: TileSwipeAction(
                     label: '完成',
                     releaseLabel: '松手完成',
                     icon: Icons.check,
                     background: Colors.green,
+                    foreground: Colors.white,
+                    onInvoke: invoke,
+                  ),
+                  rightAction: TileSwipeAction(
+                    label: '删除',
+                    releaseLabel: '松手删除',
+                    icon: Icons.delete_outline,
+                    background: Colors.red,
                     foreground: Colors.white,
                     onInvoke: invoke,
                   ),
@@ -62,11 +65,11 @@ void main() {
     final content = find.byKey(const ValueKey('content'));
     final bounds = tester.getRect(find.byType(SwipeActionTile));
     for (final distance in [-120.0, 120.0]) {
-      final gesture = await tester.startGesture(tester.getCenter(content));
-      await gesture.moveBy(Offset(distance.sign * 20, 0));
-      await tester.pump();
-      await gesture.moveBy(Offset(distance, 0));
-      await tester.pump();
+      final gesture = await startRowSwipe(
+        tester,
+        content,
+        Offset(distance.sign * 24 + distance, 0),
+      );
       expect(
         tester.getRect(content).left,
         distance < 0 ? lessThan(bounds.left) : greaterThan(bounds.left),
@@ -101,7 +104,7 @@ void main() {
         expect(outsideRight, Colors.transparent);
         expect(inside.toARGB32(), Colors.blue.toARGB32());
       });
-      await gesture.up();
+      await gesture.cancel();
       await tester.pumpAndSettle();
       expect(tester.getRect(content), bounds);
     }
@@ -118,7 +121,7 @@ void main() {
       });
       final content = find.byKey(const ValueKey('content'));
       final before = tester.getRect(content);
-      await tester.drag(content, const Offset(-120, 0));
+      await swipeRow(tester, content, const Offset(-250, 0));
       await tester.pump();
       final released = tester.getRect(content);
       expect(released.left, lessThan(before.left));
@@ -145,12 +148,123 @@ void main() {
     });
     final content = find.byKey(const ValueKey('content'));
     final before = tester.getRect(content);
-    final gesture = await tester.startGesture(tester.getCenter(content));
-    await gesture.moveBy(const Offset(-40, 0));
-    await tester.pump(const Duration(milliseconds: 300));
+    await swipeRow(tester, content, const Offset(-20, 0));
+    await tester.pumpAndSettle();
+    expect(calls, 0);
+    expect(tester.getRect(content), before);
+  });
+
+  testWidgets(
+    'A short swipe docks at the button, and tapping outside closes it',
+    (tester) async {
+      var calls = 0;
+      await showTile(tester, () async {
+        calls++;
+        return false;
+      });
+      final content = find.byKey(const ValueKey('content'));
+      final before = tester.getRect(content);
+      await swipeRow(tester, content, const Offset(90, 0));
+      await tester.pumpAndSettle();
+      expect(tester.getRect(content).left, closeTo(before.left + 80, 1));
+      expect(find.text('删除'), findsOneWidget);
+      expect(calls, 0);
+      await tester.tapAt(const Offset(24, 24));
+      await tester.pumpAndSettle();
+      expect(tester.getRect(content), before);
+      expect(find.text('删除'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'Dragging an open row continues at its current offset and can commit',
+    (tester) async {
+      var calls = 0;
+      await showTile(tester, () async {
+        calls++;
+        return false;
+      });
+      final content = find.byKey(const ValueKey('content'));
+      final before = tester.getRect(content);
+      await swipeRow(tester, content, const Offset(80, 0));
+      await tester.pumpAndSettle();
+      final gesture = await tester.startGesture(tester.getCenter(content));
+      await gesture.moveBy(
+        const Offset(24, 0),
+        timeStamp: const Duration(milliseconds: 30),
+      );
+      await tester.pump();
+      expect(tester.getRect(content).left, closeTo(before.left + 104, 1));
+      await gesture.moveBy(
+        const Offset(140, 0),
+        timeStamp: const Duration(milliseconds: 160),
+      );
+      await gesture.up(timeStamp: const Duration(milliseconds: 240));
+      await tester.pumpAndSettle();
+      expect(calls, 1);
+      expect(tester.getRect(content), before);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('Cancelling a committed drag restores it without an action', (
+    tester,
+  ) async {
+    var calls = 0;
+    await showTile(tester, () async {
+      calls++;
+      return false;
+    });
+    final content = find.byKey(const ValueKey('content'));
+    final before = tester.getRect(content);
+    final gesture = await startRowSwipe(tester, content, const Offset(250, 0));
+    expect(find.text('松手删除'), findsOneWidget);
+    await gesture.cancel();
+    await tester.pumpAndSettle();
+    expect(calls, 0);
+    expect(tester.getRect(content), before);
+  });
+
+  testWidgets('Dragging back below the threshold cancels the action', (
+    tester,
+  ) async {
+    var calls = 0;
+    await showTile(tester, () async {
+      calls++;
+      return false;
+    });
+    final content = find.byKey(const ValueKey('content'));
+    final before = tester.getRect(content);
+    final gesture = await startRowSwipe(tester, content, const Offset(-250, 0));
+    expect(find.text('松手完成'), findsOneWidget);
+    await gesture.moveBy(
+      const Offset(220, 0),
+      timeStamp: const Duration(milliseconds: 600),
+    );
+    await gesture.up(timeStamp: const Duration(milliseconds: 650));
+    await tester.pumpAndSettle();
+    expect(calls, 0);
+    expect(tester.getRect(content), before);
+  });
+
+  testWidgets('Disabling an active row cancels and restores its drag', (
+    tester,
+  ) async {
+    var calls = 0;
+    Future<bool> invoke() async {
+      calls++;
+      return false;
+    }
+
+    await showTile(tester, invoke);
+    final content = find.byKey(const ValueKey('content'));
+    final before = tester.getRect(content);
+    final gesture = await startRowSwipe(tester, content, const Offset(-250, 0));
+    await showTile(tester, invoke, enabled: false);
     await gesture.up();
     await tester.pumpAndSettle();
     expect(calls, 0);
     expect(tester.getRect(content), before);
+    expect(tester.takeException(), isNull);
   });
 }

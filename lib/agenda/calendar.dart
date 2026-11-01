@@ -3,29 +3,40 @@ import '../schedule/selection.dart';
 import 'model.dart';
 
 class CalendarItem {
-  CalendarItem.course(Course value, DateTime date)
-    : course = value,
-      entry = null,
-      title = value.name,
-      location = value.room,
-      startsAt = TimetableSelection(
-        date: date,
-        startSection: value.startSection!,
-        endSection: value.endSection!,
-      ).startsAt,
-      endsAt = TimetableSelection(
-        date: date,
-        startSection: value.startSection!,
-        endSection: value.endSection!,
-      ).endsAt;
+  factory CalendarItem.course(Course value, DateTime date) {
+    final selection = TimetableSelection(
+      date: date,
+      startSection: value.startSection!,
+      endSection: value.endSection!,
+    );
+    return CalendarItem._(
+      course: value,
+      entry: null,
+      title: value.name,
+      location: value.room,
+      startsAt: selection.startsAt,
+      endsAt: selection.endsAt,
+    );
+  }
 
   CalendarItem.agenda(AgendaEntry value)
-    : course = null,
-      entry = value,
-      title = value.title,
-      location = value.location,
-      startsAt = value.startsAt,
-      endsAt = value.endsAt;
+    : this._(
+        course: null,
+        entry: value,
+        title: value.title,
+        location: value.location,
+        startsAt: value.startsAt,
+        endsAt: value.endsAt,
+      );
+
+  const CalendarItem._({
+    required this.course,
+    required this.entry,
+    required this.title,
+    required this.location,
+    required this.startsAt,
+    required this.endsAt,
+  });
 
   final Course? course;
   final AgendaEntry? entry;
@@ -62,6 +73,10 @@ List<CalendarItem> calendarItemsOn(
 }
 
 /// Breaks collapse to the boundary between teaching periods.
+final _sectionMinuteBounds = [
+  for (final period in sectionTimes) (_minutes(period.$1), _minutes(period.$2)),
+];
+
 double timetableOffset(DateTime time, DateTime date) {
   final day = calendarDate(date);
   if (time.isBefore(day)) return 0;
@@ -69,18 +84,17 @@ double timetableOffset(DateTime time, DateTime date) {
     return sectionTimes.length.toDouble();
   }
   final minute = time.hour * 60 + time.minute;
-  for (var i = 0; i < sectionTimes.length; i++) {
-    int minutes(String clock) {
-      final parts = clock.split(':').map(int.parse).toList();
-      return parts[0] * 60 + parts[1];
-    }
-
-    final start = minutes(sectionTimes[i].$1);
-    final end = minutes(sectionTimes[i].$2);
+  for (var i = 0; i < _sectionMinuteBounds.length; i++) {
+    final (start, end) = _sectionMinuteBounds[i];
     if (minute <= start) return i.toDouble();
     if (minute < end) return i + (minute - start) / (end - start);
   }
   return sectionTimes.length.toDouble();
+}
+
+int _minutes(String clock) {
+  final [hour, minute] = clock.split(':').map(int.parse).toList();
+  return hour * 60 + minute;
 }
 
 bool outsideTimetable(CalendarItem item, DateTime date) =>

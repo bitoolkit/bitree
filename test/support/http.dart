@@ -33,6 +33,9 @@ class LocalHttpClient extends Fake implements HttpClient {
   Future<HttpClientRequest> getUrl(Uri url) => openUrl('GET', url);
 
   @override
+  Future<HttpClientRequest> postUrl(Uri url) => openUrl('POST', url);
+
+  @override
   Future<HttpClientRequest> openUrl(String method, Uri url) {
     firstUrl ??= url;
     return delegate.openUrl(

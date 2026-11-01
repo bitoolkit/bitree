@@ -1,5 +1,5 @@
 name: bitree
-description: "面向北京理工大学的本地跨平台工具集"
+description: "面向北京理工大学的妙妙小工具"
 publish_to: 'none'
 version: 0.3.0
 
@@ -12,6 +12,7 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+  intl: any
   flutter_secure_storage: ^11.0.0
   cookie_jar: ^4.0.8
   html: ^0.15.7
@@ -23,13 +24,17 @@ dependencies:
   package_info_plus: ^10.2.2
   pub_semver: ^2.2.1
   flutter_markdown_plus: ^1.0.12
+  webview_all: ^1.4.7
+  webview_all_android: ^1.4.7
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  webview_platform_interface: ^1.4.7
 
 flutter:
+  generate: true
   uses-material-design: true
   assets:
     - assets/brand/bitree.png

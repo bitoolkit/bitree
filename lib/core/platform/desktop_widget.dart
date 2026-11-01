@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
@@ -30,4 +31,8 @@ Future<void> updateDesktopWidget({
   } catch (failure, stack) {
     AppDiagnostics.instance.report('更新桌面组件', failure, stack);
   }
+}
+
+void refreshDesktopWidget() {
+  unawaited(updateDesktopWidget());
 }

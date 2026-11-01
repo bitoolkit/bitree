@@ -1,15 +1,18 @@
 import 'dart:convert';
 
+import '../l10n/app_localizations.dart';
+import '../l10n/formats.dart';
 import 'model.dart';
 
-String scheduleToIcs(SemesterSchedule schedule) {
+String scheduleToIcs(SemesterSchedule schedule, AppLocalizations l10n) {
   final stamp = _timestamp(DateTime.now());
+  final productLocale = l10n.localeName.startsWith('zh') ? 'ZH-CN' : 'EN';
   final lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//BITree//Schedule//ZH-CN',
+    'PRODID:-//BITree//Schedule//$productLocale',
     'CALSCALE:GREGORIAN',
-    'X-WR-CALNAME:${_escapeText('BITree ${schedule.termLabel}')}',
+    'X-WR-CALNAME:${_escapeText(l10n.icsCalendarName(localizedTerm(l10n, schedule)))}',
   ];
 
   for (final course in schedule.courses.where((course) => course.isScheduled)) {
@@ -33,9 +36,12 @@ String scheduleToIcs(SemesterSchedule schedule) {
         '$week',
       ].map(Uri.encodeComponent).join('/');
       final description = [
-        '第 $week 周 ${course.sectionLabel}',
-        if (course.teacher.isNotEmpty) '教师：${course.teacher}',
-        if (course.number.isNotEmpty) '课程号：${course.number}',
+        l10n.icsEventDescription(
+          l10n.weekNumber(week),
+          localizedCourseSection(l10n, course),
+        ),
+        if (course.teacher.isNotEmpty) l10n.icsTeacher(course.teacher),
+        if (course.number.isNotEmpty) l10n.icsCourseNumber(course.number),
         if (course.description.isNotEmpty) course.description,
       ].join('\n');
 

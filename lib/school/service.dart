@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../agenda/model.dart';
 import '../core/async/read_cache.dart';
+import '../core/json.dart';
 import '../schedule/model.dart';
 import 'exams.dart';
 import 'schedule.dart';
@@ -27,7 +28,7 @@ class SchoolService {
       return _rows(
         response,
         'xnxqcx',
-      ).map((row) => row['DM'] as String).toList();
+      ).map((row) => jsonStringField(row, 'DM')).toList();
     });
     final calendar = await session.json(
       'wdkbByController/cxzkbrq.do',
@@ -35,9 +36,13 @@ class SchoolService {
         'requestParamStr': jsonEncode({'XNXQDM': selectedTerm, 'ZC': '1'}),
       },
     );
-    final monday = (calendar['data'] as List).cast<Map>().firstWhere(
-      (row) => row['XQ'].toString() == '1',
-    );
+    final monday = jsonListField(calendar, 'data')
+        .map((row) => jsonObject(row, 'data[]'))
+        .where((row) => jsonScalarField(row, 'XQ') == '1')
+        .firstOrNull;
+    if (monday == null) {
+      throw const FormatException('学校日历缺少第一周周一');
+    }
     final response = await session.json(
       'modules/xskcb/cxxszhxqkb.do',
       form: {'XNXQDM': selectedTerm},
@@ -45,7 +50,7 @@ class SchoolService {
     return (
       schedule: parseSchoolSchedule(
         term: selectedTerm,
-        termStartMonday: DateTime.parse(monday['RQ'] as String),
+        termStartMonday: jsonDateTime('RQ', monday['RQ']),
         rows: _rows(response, 'cxxszhxqkb'),
       ),
       terms: terms,
@@ -67,7 +72,9 @@ class SchoolService {
   Future<String> _currentTerm(SchoolSession session, String account) =>
       _currentTerms.read(account, () async {
         final response = await session.json('modules/jshkcb/dqxnxq.do');
-        return _rows(response, 'dqxnxq').first['DM'] as String;
+        final rows = _rows(response, 'dqxnxq');
+        if (rows.isEmpty) throw const FormatException('学校未返回当前学期');
+        return jsonStringField(rows.first, 'DM');
       });
 
   void clearCache() {
@@ -75,7 +82,11 @@ class SchoolService {
     _availableTerms.clear();
   }
 
-  List<Map<String, dynamic>> _rows(Map<String, dynamic> response, String key) =>
-      ((response['datas'] as Map)[key]['rows'] as List)
-          .cast<Map<String, dynamic>>();
+  List<Map<String, dynamic>> _rows(Map<String, dynamic> response, String key) {
+    final app = jsonObjectField(jsonObjectField(response, 'datas'), key);
+    return [
+      for (final row in jsonListField(app, 'rows'))
+        jsonObject(row, '$key.rows[]'),
+    ];
+  }
 }

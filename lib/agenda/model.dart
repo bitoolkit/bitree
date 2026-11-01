@@ -1,3 +1,4 @@
+import '../core/json.dart';
 import '../schedule/model.dart';
 import 'deadline_source.dart';
 
@@ -36,12 +37,14 @@ class AgendaEntry {
         (endsAt == null || !endsAt!.isAfter(startsAt))) {
       throw const FormatException('结束时间必须晚于开始时间');
     }
-    if (url != null &&
-        (source == null ||
-            url!.scheme != 'https' ||
-            url!.host != source!.host ||
-            url!.userInfo.isNotEmpty)) {
-      throw const FormatException('作业链接不属于对应的学校平台');
+    final entryUrl = url;
+    final entrySource = source;
+    if (entryUrl != null &&
+        (entrySource == null ||
+            entryUrl.scheme != 'https' ||
+            entryUrl.host != entrySource.host ||
+            entryUrl.userInfo.isNotEmpty)) {
+      throw const FormatException('作业链接不属于对应的来源平台');
     }
   }
 
@@ -70,13 +73,6 @@ class AgendaEntry {
 
   bool isFinished(DateTime now) => isDeadline ? done : !endsAt!.isAfter(now);
 
-  bool occursOn(DateTime date) {
-    final day = calendarDate(date);
-    if (isDeadline) return calendarDate(startsAt) == day;
-    return startsAt.isBefore(day.add(const Duration(days: 1))) &&
-        endsAt!.isAfter(day);
-  }
-
   String get timeLabel {
     if (allDay) return '全天';
     if (isDeadline) return '${clockText(startsAt)} 截止';
@@ -84,6 +80,13 @@ class AgendaEntry {
     final sameDay = calendarDate(startsAt) == calendarDate(end);
     return '${clockText(startsAt)}–'
         '${sameDay ? '' : '${end.month}月${end.day}日 '}${clockText(end)}';
+  }
+
+  bool occursOn(DateTime date) {
+    final day = calendarDate(date);
+    if (isDeadline) return calendarDate(startsAt) == day;
+    return startsAt.isBefore(day.add(const Duration(days: 1))) &&
+        endsAt!.isAfter(day);
   }
 
   AgendaEntry copyWith({bool? done, bool? deleted}) => AgendaEntry(
@@ -122,27 +125,44 @@ class AgendaEntry {
     'url': url?.toString(),
   };
 
-  factory AgendaEntry.fromJson(Map<String, dynamic> json) => AgendaEntry(
-    id: json['id'] as String,
-    title: json['title'] as String,
-    kind: AgendaKind.values.byName(json['kind'] as String),
-    startsAt: DateTime.parse(json['startsAt'] as String),
-    endsAt: json['endsAt'] == null
+  factory AgendaEntry.fromJson(Map<String, dynamic> json) {
+    final kindName = jsonStringField(json, 'kind');
+    final kind = AgendaKind.values
+        .where((value) => value.name == kindName)
+        .firstOrNull;
+    if (kind == null) throw FormatException('kind 格式不正确');
+
+    final sourceName = jsonStringFieldOrNull(json, 'source');
+    final source = sourceName == null
         ? null
-        : DateTime.parse(json['endsAt'] as String),
-    allDay: json['allDay'] as bool,
-    location: json['location'] as String,
-    notes: json['notes'] as String,
-    done: json['done'] as bool,
-    deleted: json['deleted'] as bool? ?? false,
-    term: json['term'] as String?,
-    local: json['local'] as bool,
-    source: json['source'] == null
-        ? null
-        : DeadlineSource.values.byName(json['source'] as String),
-    course: json['course'] as String? ?? '',
-    url: json['url'] == null ? null : Uri.parse(json['url'] as String),
-  );
+        : DeadlineSource.values
+              .where((value) => value.name == sourceName)
+              .firstOrNull;
+    if (sourceName != null && source == null) {
+      throw FormatException('source 格式不正确');
+    }
+
+    final rawUrl = jsonStringFieldOrNull(json, 'url');
+    return AgendaEntry(
+      id: jsonStringField(json, 'id'),
+      title: jsonStringField(json, 'title'),
+      kind: kind,
+      startsAt: jsonDateTime('startsAt', json['startsAt']),
+      endsAt: jsonDateTimeOrNull('endsAt', json['endsAt']),
+      allDay: jsonBoolField(json, 'allDay'),
+      location: jsonStringField(json, 'location'),
+      notes: jsonStringField(json, 'notes'),
+      done: jsonBoolField(json, 'done'),
+      deleted: jsonBoolField(json, 'deleted', fallback: false),
+      term: jsonStringFieldOrNull(json, 'term'),
+      local: jsonBoolField(json, 'local'),
+      source: source,
+      course: jsonStringFieldOrNull(json, 'course') ?? '',
+      url: rawUrl == null
+          ? null
+          : Uri.tryParse(rawUrl) ?? (throw FormatException('url 格式不正确')),
+    );
+  }
 }
 
 String clockText(DateTime value) =>

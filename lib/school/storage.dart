@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import 'errors.dart';
 import 'network.dart';
 
 const _secureStorage = FlutterSecureStorage(
@@ -67,8 +68,12 @@ class SchoolStorage {
     ),
   );
 
-  Future<List<Cookie>> cookiesFor(SchoolNetwork network, Uri source) =>
-      _cookiesFor(network).loadForRequest(source);
+  Future<List<Cookie>> cookiesFor(SchoolNetwork network, Uri source) async {
+    final cookies = await _cookiesFor(network).loadForRequest(source);
+    return source.scheme == 'https'
+        ? cookies
+        : cookies.where((cookie) => !cookie.secure).toList(growable: false);
+  }
 
   Future<void> saveCookies(
     SchoolNetwork network,
@@ -112,16 +117,6 @@ class SchoolStorage {
     );
     _cookies.clear();
   }
-}
-
-class SchoolStorageError implements Exception {
-  const SchoolStorageError(this.message, [this.cause]);
-
-  final String message;
-  final Exception? cause;
-
-  @override
-  String toString() => message;
 }
 
 Future<T> _accessStorage<T>(Future<T> Function() operation) async {

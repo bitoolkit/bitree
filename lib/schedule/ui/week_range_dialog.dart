@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../l10n/l10n.dart';
+import '../../ui/app_dialog.dart';
+import '../../ui/design.dart';
 import '../model.dart';
 
 Future<({int first, int last})?> showWeekRangeDialog(
@@ -8,7 +11,7 @@ Future<({int first, int last})?> showWeekRangeDialog(
   required int first,
   required int last,
   AppController? controller,
-}) => showDialog<({int first, int last})>(
+}) => showAppDialog<({int first, int last})>(
   context: context,
   builder: (_) =>
       _WeekRangeDialog(first: first, last: last, controller: controller),
@@ -57,8 +60,8 @@ class _WeekRangeDialogState extends State<_WeekRangeDialog> {
 
   String? _validateWeek(String? value) {
     final week = int.tryParse(value!.trim());
-    if (week == null) return '请输入整数周次';
-    if (week == 0) return '没有第 0 周';
+    if (week == null) return context.l10n.weekIntegerRequired;
+    if (week == 0) return context.l10n.weekZeroInvalid;
     return null;
   }
 
@@ -81,18 +84,14 @@ class _WeekRangeDialogState extends State<_WeekRangeDialog> {
     );
     final controller = widget.controller;
     if (controller != null) {
-      setState(() {
-        _saving = true;
-      });
+      setState(() => _saving = true);
       final saved = await controller.timetable.setWeekRange(
         first: range.first,
         last: range.last,
       );
       if (!mounted) return;
       if (!saved) {
-        setState(() {
-          _saving = false;
-        });
+        setState(() => _saving = false);
         return;
       }
     }
@@ -114,7 +113,7 @@ class _WeekRangeDialogState extends State<_WeekRangeDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: Theme.of(context).textTheme.labelLarge),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
         Semantics(
           label: label,
           child: TextFormField(
@@ -128,14 +127,14 @@ class _WeekRangeDialogState extends State<_WeekRangeDialog> {
               contentPadding: const EdgeInsets.symmetric(vertical: 14),
               errorMaxLines: 3,
               prefixIcon: IconButton(
-                tooltip: '减少一周',
+                tooltip: context.l10n.decreaseWeek,
                 onPressed: _saving || (last && !canMoveInward)
                     ? null
                     : () => _step(field, -1),
                 icon: const Icon(Icons.remove_rounded, size: 20),
               ),
               suffixIcon: IconButton(
-                tooltip: '增加一周',
+                tooltip: context.l10n.increaseWeek,
                 onPressed: _saving || (!last && !canMoveInward)
                     ? null
                     : () => _step(field, 1),
@@ -147,7 +146,7 @@ class _WeekRangeDialogState extends State<_WeekRangeDialog> {
               if (error != null || !last) return error;
               final first = int.tryParse(_first.text.trim());
               return first != null && int.parse(value!.trim()) < first
-                  ? '截止周不能早于开始周'
+                  ? context.l10n.weekOrderInvalid
                   : null;
             },
             onFieldSubmitted: last ? (_) => _save() : null,
@@ -159,16 +158,17 @@ class _WeekRangeDialogState extends State<_WeekRangeDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final minimumFieldWidth =
         96 + MediaQuery.textScalerOf(context).scale(15) * 4 + 16;
-    final first = _input('开始周', _first);
-    final last = _input('截止周', _last, last: true);
+    final first = _input(l10n.weekStart, _first);
+    final last = _input(l10n.weekEnd, _last, last: true);
 
     return PopScope(
       canPop: !_saving,
       child: AlertDialog(
-        title: const Text('周数管理'),
         scrollable: true,
+        title: Text(l10n.weekRangeDialogTitle),
         content: LayoutBuilder(
           builder: (context, constraints) => Form(
             key: _form,
@@ -176,13 +176,19 @@ class _WeekRangeDialogState extends State<_WeekRangeDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (constraints.maxWidth >= minimumFieldWidth * 2 + 24)
+                if (constraints.maxWidth >=
+                    minimumFieldWidth * 2 + AppSpacing.xl)
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(child: first),
                       const Padding(
-                        padding: EdgeInsets.fromLTRB(8, 42, 8, 0),
+                        padding: EdgeInsets.fromLTRB(
+                          AppSpacing.sm,
+                          42,
+                          AppSpacing.sm,
+                          0,
+                        ),
                         child: Text('—'),
                       ),
                       Expanded(child: last),
@@ -190,7 +196,7 @@ class _WeekRangeDialogState extends State<_WeekRangeDialog> {
                   )
                 else ...[
                   first,
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
                   last,
                 ],
               ],
@@ -200,11 +206,11 @@ class _WeekRangeDialogState extends State<_WeekRangeDialog> {
         actions: [
           TextButton(
             onPressed: _saving ? null : () => Navigator.pop(context),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: _saving ? null : _save,
-            child: Text(_saving ? '保存中…' : '确定'),
+            child: Text(_saving ? l10n.saving : l10n.confirm),
           ),
         ],
       ),

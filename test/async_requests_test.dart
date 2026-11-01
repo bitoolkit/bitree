@@ -61,8 +61,14 @@ void main() {
     expect(cancelled, isTrue);
     expect(replacementStarted, isFalse);
     closed.complete();
-    expect(await old, isNull);
+    await expectLater(old, throwsA(isA<RequestCancelled>()));
     expect(await latest, 2);
     expect(replacementStarted, isTrue);
+  });
+
+  test('A null result is not treated as cancellation', () async {
+    final requests = LatestRequest();
+
+    expect(await requests.run<int?>((_) async => null), isNull);
   });
 }

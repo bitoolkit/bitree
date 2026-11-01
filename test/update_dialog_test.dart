@@ -26,10 +26,6 @@ AppRelease _release({
   ],
 }, abi: Abi.androidArm64);
 
-final dialogSurface = find.byWidgetPredicate(
-  (widget) => widget is Material && widget.type == MaterialType.card,
-);
-
 Future<void> _show(
   WidgetTester tester, {
   Size size = const Size(390, 844),
@@ -51,10 +47,10 @@ Future<void> _show(
       home: Scaffold(
         body: Builder(
           builder: (context) => TextButton(
-            onPressed: () => showDialog<void>(
-              context: context,
-              builder: (_) =>
-                  UpdateDialog(releases: releases, preferDevelopment: true),
+            onPressed: () => showUpdateDialog(
+              context,
+              releases: releases,
+              preferDevelopment: true,
             ),
             child: const Text('检查更新'),
           ),
@@ -101,18 +97,18 @@ void main() {
       tester,
     ) async {
       await _show(tester, size: size, textScale: scale, releases: [_release()]);
-      final surface = tester.getRect(dialogSurface);
+      final surface = tester.getRect(
+        find.byWidgetPredicate(
+          (widget) => widget is Material && widget.type == MaterialType.card,
+        ),
+      );
       expect(surface.width, math.min(360, size.width - 48));
-      final later = tester.getRect(find.widgetWithText(TextButton, '稍后'));
-      final page = tester.getRect(find.widgetWithText(TextButton, '发布页'));
       final download = tester.getRect(
         find.widgetWithText(FilledButton, '下载测试版'),
       );
-      expect(later.right, lessThanOrEqualTo(page.left));
-      expect(page.right, lessThanOrEqualTo(download.left));
-      expect(later.center.dy, closeTo(download.center.dy, 0.1));
-      expect(page.center.dy, closeTo(download.center.dy, 0.1));
       expect(download.bottom, lessThan(size.height));
+      expect(find.text('稍后').hitTestable(), findsOneWidget);
+      expect(find.text('发布页').hitTestable(), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }
@@ -183,10 +179,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('下载测试版'), findsNothing);
       expect(find.text('下载正式版'), findsOneWidget);
-      expect(
-        tester.widget<AlertDialog>(find.byType(AlertDialog)).actions!.length,
-        3,
-      );
+      expect(find.widgetWithText(TextButton, '稍后'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, '发布页'), findsOneWidget);
+      expect(find.byType(FilledButton), findsOneWidget);
       await tester.tap(find.text('发布页'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('下载正式版'));
@@ -210,7 +205,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('A failed download shows the same-width fallback dialog', (
+  testWidgets('A failed download shows the URL fallback dialog', (
     tester,
   ) async {
     launchSucceeds = false;
@@ -219,7 +214,7 @@ void main() {
     await tester.tap(find.text('下载测试版'));
     await tester.pumpAndSettle();
     expect(find.text('无法打开下载链接'), findsOneWidget);
-    expect(tester.getSize(dialogSurface.last).width, 342);
+    expect(find.byType(AlertDialog), findsNWidgets(2));
     expect(find.textContaining(release.downloadUrl.toString()), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

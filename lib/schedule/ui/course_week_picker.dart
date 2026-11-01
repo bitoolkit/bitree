@@ -4,21 +4,23 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-enum _WeekSelection {
-  all('全选'),
-  none('全不选'),
-  summer('小学期'),
-  regular('非小学期');
+import '../../l10n/l10n.dart';
+import '../../ui/design.dart';
+import '../../ui/section_label.dart';
+import '../../ui/selection_controls.dart';
 
-  const _WeekSelection(this.label);
-
-  final String label;
+enum _WeekPreset {
+  summer,
+  regular;
 
   Set<int> weeksIn(List<int> weeks) => switch (this) {
-    all => weeks.toSet(),
-    none => {},
     summer => weeks.where((week) => week < 0).toSet(),
     regular => weeks.where((week) => week > 0).toSet(),
+  };
+
+  String label(AppLocalizations l10n) => switch (this) {
+    summer => l10n.weekSelectionSummer,
+    regular => l10n.weekSelectionRegular,
   };
 }
 
@@ -43,7 +45,7 @@ class CourseWeekPicker extends StatefulWidget {
 }
 
 class _CourseWeekPickerState extends State<CourseWeekPicker> {
-  static const _spacing = 4.0;
+  static const _spacing = AppSpacing.xs;
   final _grid = GlobalKey();
   ({int start, int end, Set<int> before})? _range;
   Offset? _dragPosition;
@@ -149,70 +151,62 @@ class _CourseWeekPickerState extends State<CourseWeekPicker> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final l10n = context.l10n;
     final weeks = widget.weeks;
     final selectedWeeks = widget.selectedWeeks;
     final enabled = widget.enabled;
     final onChanged = widget.onChanged;
     final hasSummerWeeks = weeks.any((week) => week < 0);
     final hasRegularWeeks = weeks.any((week) => week > 0);
+    final selectedCount = weeks.where(selectedWeeks.contains).length;
+    bool presetSelected(_WeekPreset preset) {
+      final presetWeeks = preset.weeksIn(weeks);
+      return selectedWeeks.length == presetWeeks.length &&
+          selectedWeeks.containsAll(presetWeeks);
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            const Expanded(
-              child: Text(
-                '上课周次',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
+        AppSectionHeader(
+          l10n.courseEditorWeeks,
+          trailing: TextButton.icon(
+            onPressed: enabled ? widget.onManageRange : null,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
             ),
-            TextButton.icon(
-              onPressed: enabled ? widget.onManageRange : null,
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                textStyle: theme.textTheme.labelMedium,
-              ),
-              icon: const Icon(Icons.tune_rounded, size: 18),
-              label: const Text('周数管理'),
-            ),
-          ],
+            icon: const Icon(Icons.tune_rounded, size: 18),
+            label: Text(l10n.weekManagement),
+          ),
         ),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final minimumWidth =
-                MediaQuery.textScalerOf(context).scale(14) * 4 + 16;
-            final columns = constraints.maxWidth >= minimumWidth * 4 ? 4 : 2;
-            final width = constraints.maxWidth / columns;
-
-            return Wrap(
-              children: [
-                for (final selection in _WeekSelection.values)
-                  SizedBox(
-                    width: width,
-                    child: TextButton(
-                      style: TextButton.styleFrom(
-                        minimumSize: const Size(48, 36),
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        textStyle: theme.textTheme.labelMedium,
-                      ),
-                      onPressed:
-                          !enabled ||
-                              (selection == _WeekSelection.summer &&
-                                  !hasSummerWeeks) ||
-                              (selection == _WeekSelection.regular &&
-                                  !hasRegularWeeks)
-                          ? null
-                          : () => onChanged(selection.weeksIn(weeks)),
-                      child: Text(selection.label),
-                    ),
+        AppSelectionBar(
+          selectedCount: selectedCount,
+          totalCount: weeks.length,
+          summary: l10n.selectedItems(selectedCount),
+          enabled: enabled,
+          onSelectAll: () => onChanged(weeks.toSet()),
+          onClear: () => onChanged({}),
+        ),
+        if (hasSummerWeeks || hasRegularWeeks) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.xs,
+            children: [
+              for (final preset in _WeekPreset.values)
+                if ((preset == _WeekPreset.summer && hasSummerWeeks) ||
+                    (preset == _WeekPreset.regular && hasRegularWeeks))
+                  AppSelectionButton.compact(
+                    selected: presetSelected(preset),
+                    onPressed: enabled
+                        ? () => onChanged(preset.weeksIn(weeks))
+                        : null,
+                    child: Text(preset.label(l10n)),
                   ),
-              ],
-            );
-          },
-        ),
-        const SizedBox(height: 8),
+            ],
+          ),
+        ],
+        const SizedBox(height: AppSpacing.sm),
         LayoutBuilder(
           builder: (context, constraints) {
             final dimensions = _dimensions(constraints.maxWidth);
@@ -264,35 +258,24 @@ class _CourseWeekPickerState extends State<CourseWeekPicker> {
                   itemBuilder: (context, index) {
                     final week = weeks[index];
                     final selected = selectedWeeks.contains(week);
-                    return Semantics(
+                    return AppSelectionButton(
                       selected: selected,
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          backgroundColor: selected
-                              ? theme.colorScheme.primary
-                              : Colors.transparent,
-                          foregroundColor: selected
-                              ? theme.colorScheme.onPrimary
-                              : theme.colorScheme.onSurfaceVariant,
-                          side: BorderSide(
-                            color: selected
-                                ? theme.colorScheme.primary
-                                : theme.colorScheme.outlineVariant,
-                          ),
-                        ),
-                        onPressed: !enabled
-                            ? null
-                            : () {
-                                final weeks = {...selectedWeeks};
-                                if (selected) {
-                                  weeks.remove(week);
-                                } else {
-                                  weeks.add(week);
-                                }
-                                onChanged(weeks);
-                              },
-                        child: Text('$week', semanticsLabel: '第 $week 周'),
+                      minimumSize: Size(0, dimensions.height),
+                      padding: EdgeInsets.zero,
+                      onPressed: !enabled
+                          ? null
+                          : () {
+                              final weeks = {...selectedWeeks};
+                              if (selected) {
+                                weeks.remove(week);
+                              } else {
+                                weeks.add(week);
+                              }
+                              onChanged(weeks);
+                            },
+                      child: Text(
+                        '$week',
+                        semanticsLabel: l10n.weekNumber(week),
                       ),
                     );
                   },

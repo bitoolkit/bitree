@@ -4,9 +4,13 @@ import '../../agenda/model.dart';
 import '../../agenda/ui/agenda_detail.dart';
 import '../../agenda/ui/calendar_list.dart';
 import '../../app/controller.dart';
+import '../../l10n/formats.dart';
+import '../../l10n/l10n.dart';
 import '../../schedule/model.dart';
-import '../../school/ui/school_screen.dart';
+import '../../sync/controller.dart';
+import '../../sync/ui/sync.dart';
 import '../../ui/app_dropdown_field.dart';
+import '../../ui/selection_controls.dart';
 import '../exam_conflicts.dart';
 import 'academic_common.dart';
 
@@ -61,40 +65,39 @@ class _ExamsScreenState extends State<ExamsScreen> {
         days.putIfAbsent(calendarDate(exam.startsAt), () => []).add(exam);
       }
       final theme = Theme.of(context);
+      final l10n = context.l10n;
       return AcademicPage(
-        title: '考试安排与冲突检查',
+        title: l10n.examScheduleAndConflicts,
         loading: controller.school.busy,
         actions: [
           AcademicImportButton(
             controller: controller,
-            action: SchoolAction.importExams,
+            action: SyncTarget.exams,
             term: term,
           ),
         ],
         children: [
           if (terms.isNotEmpty)
             AppDropdownField<String?>(
-              label: '学期',
+              label: l10n.settingsTerm,
               value: term,
               entries: [
-                const DropdownMenuEntry(value: null, label: '全部学期'),
+                DropdownMenuEntry(value: null, label: l10n.allSemesters),
                 for (final value in terms)
                   DropdownMenuEntry(value: value, label: value),
               ],
               onChanged: (value) => setState(() => _term = value),
             ),
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            controlAffinity: ListTileControlAffinity.leading,
-            title: const Text('同时检查本地课表'),
+          AppToggleTile(
+            title: Text(l10n.checkLocalSchedule),
             value: _includeClasses,
-            onChanged: (value) => setState(() => _includeClasses = value!),
+            onChanged: (value) => setState(() => _includeClasses = value),
           ),
           if (_includeClasses && controller.timetable.schedules.isEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Text(
-                '同步课表后，可检查考试与课程的时间冲突。',
+                l10n.syncScheduleConflictHint,
                 style: theme.textTheme.bodySmall,
               ),
             ),
@@ -105,7 +108,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
                 Icons.warning_amber_rounded,
                 color: theme.colorScheme.error,
               ),
-              title: Text('发现 ${conflicts.length} 处时间冲突'),
+              title: Text(l10n.timeConflictsFound(conflicts.length)),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.push(
                 context,
@@ -123,7 +126,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 20, bottom: 8),
               child: Text(
-                agendaDateLabel(day.key),
+                localizedAgendaDate(l10n, day.key),
                 style: theme.textTheme.bodySmall,
               ),
             ),
@@ -142,24 +145,26 @@ class _ExamsScreenState extends State<ExamsScreen> {
           ],
           if (exams.isEmpty)
             AcademicEmpty(
-              title: !_showPast && selected.isNotEmpty ? '没有即将到来的考试' : '暂无考试安排',
-              label: SchoolAction.importExams.label,
-              onPressed: controller.school.busy
-                  ? null
-                  : () => openSchoolPage(
-                      context,
-                      controller,
-                      action: SchoolAction.importExams,
-                      term: term,
-                    ),
+              title: !_showPast && selected.isNotEmpty
+                  ? l10n.noUpcomingExams
+                  : l10n.noExams,
+              label: SyncTarget.exams.localizedAction(l10n),
+              onPressed: () => startSync(
+                context,
+                controller,
+                targets: {SyncTarget.exams},
+                term: term,
+              ),
             ),
           if (selected.any((exam) => exam.isFinished(now)))
             TextButton(
               onPressed: () => setState(() => _showPast = !_showPast),
-              child: Text(_showPast ? '隐藏已结束考试' : '查看已结束考试'),
+              child: Text(
+                _showPast ? l10n.hideFinishedExams : l10n.showFinishedExams,
+              ),
             ),
           const SizedBox(height: 16),
-          Text('考试与日程共用记录，同步、编辑和删除会在两处同时生效。', style: theme.textTheme.bodySmall),
+          Text(l10n.examAgendaSharedNote, style: theme.textTheme.bodySmall),
         ],
       );
     },
@@ -177,30 +182,37 @@ class _ExamTile extends StatelessWidget {
   final List<ExamConflict> conflicts;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    contentPadding: EdgeInsets.zero,
-    title: Text(exam.title),
-    subtitle: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          [
-            exam.timeLabel,
-            exam.location,
-          ].where((value) => value.isNotEmpty).join('  '),
-        ),
-        for (final conflict in conflicts)
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(exam.title),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Text(
-            conflict.other.course != null
-                ? '与${conflict.other.title}上课时间重叠'
-                : '与${conflict.exam.entry?.id == exam.id ? conflict.other.title : conflict.exam.title}考试时间重叠',
-            style: TextStyle(color: Theme.of(context).colorScheme.error),
+            [
+              localizedAgendaTime(l10n, exam),
+              exam.location,
+            ].where((value) => value.isNotEmpty).join('  '),
           ),
-      ],
-    ),
-    trailing: const Icon(Icons.chevron_right_rounded),
-    onTap: () => showAgendaEntry(context, controller, exam),
-  );
+          for (final conflict in conflicts)
+            Text(
+              conflict.other.course != null
+                  ? l10n.overlapsClass(conflict.other.title)
+                  : l10n.overlapsExam(
+                      conflict.exam.entry?.id == exam.id
+                          ? conflict.other.title
+                          : conflict.exam.title,
+                    ),
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+        ],
+      ),
+      trailing: const Icon(Icons.chevron_right_rounded),
+      onTap: () => showAgendaEntry(context, controller, exam),
+    );
+  }
 }
 
 class _ExamConflictsScreen extends StatelessWidget {
@@ -235,18 +247,21 @@ class _ExamConflictsScreen extends StatelessWidget {
         includeClasses: includeClasses,
       );
       return AcademicPage(
-        title: '时间冲突',
+        title: context.l10n.timeConflict,
         children: [
           if (conflicts.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 48),
-              child: Text('没有时间冲突'),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 48),
+              child: Text(context.l10n.noTimeConflict),
             ),
           for (final conflict in conflicts) ...[
             Padding(
               padding: const EdgeInsets.only(top: 20, bottom: 4),
               child: Text(
-                '${agendaDateLabel(conflict.exam.startsAt)}  重叠 ${conflict.minutes} 分钟',
+                context.l10n.overlapMinutes(
+                  localizedAgendaDate(context.l10n, conflict.exam.startsAt),
+                  conflict.minutes,
+                ),
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
@@ -256,7 +271,7 @@ class _ExamConflictsScreen extends StatelessWidget {
                 title: Text(item.title),
                 subtitle: Text(
                   [
-                    item.timeLabel,
+                    localizedCalendarItemTime(context.l10n, item),
                     item.location,
                   ].where((value) => value.isNotEmpty).join('  '),
                 ),

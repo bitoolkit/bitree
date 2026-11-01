@@ -1,8 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
+import '../../l10n/l10n.dart';
+import '../../ui/app_dialog.dart';
+import '../../ui/design.dart';
 import '../../ui/external_link.dart';
 import '../release.dart';
+
+Future<void> showUpdateDialog(
+  BuildContext context, {
+  required List<AppRelease> releases,
+  required bool preferDevelopment,
+}) => showAppDialog<void>(
+  context: context,
+  builder: (_) =>
+      UpdateDialog(releases: releases, preferDevelopment: preferDevelopment),
+);
 
 class UpdateDialog extends StatefulWidget {
   const UpdateDialog({
@@ -33,10 +46,11 @@ class _UpdateDialogState extends State<UpdateDialog> {
   }
 
   Future<void> _download() async {
+    final l10n = context.l10n;
     final opened = await openExternalLink(
       context,
       _release.downloadUrl,
-      failureTitle: '无法打开下载链接',
+      failureTitle: l10n.unableOpenDownload,
     );
     if (opened && mounted) Navigator.pop(context);
   }
@@ -44,10 +58,17 @@ class _UpdateDialogState extends State<UpdateDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = context.l10n;
+    final channel = _release.isDevelopment
+        ? l10n.developmentBuild
+        : l10n.stableBuild;
     final actionStyle = ButtonStyle(
       minimumSize: const WidgetStatePropertyAll(Size(0, 40)),
       padding: const WidgetStatePropertyAll(
-        EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
       ),
       textStyle: WidgetStatePropertyAll(
         theme.textTheme.labelMedium!.copyWith(fontSize: 13),
@@ -55,7 +76,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
     );
 
     return AlertDialog(
-      title: const Text('发现可用更新'),
+      title: Text(l10n.updateAvailable),
       scrollable: true,
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -68,21 +89,25 @@ class _UpdateDialogState extends State<UpdateDialog> {
                 for (final (index, release) in widget.releases.indexed)
                   ButtonSegment(
                     value: index,
-                    label: Text(release.isDevelopment ? '测试版' : '正式版'),
+                    label: Text(
+                      release.isDevelopment
+                          ? l10n.developmentBuild
+                          : l10n.stableBuild,
+                    ),
                   ),
               ],
               selected: {_selected},
               onSelectionChanged: (selection) =>
                   setState(() => _selected = selection.single),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
           ],
           Text(
-            '${_release.isDevelopment ? '测试版' : '正式版'} ${_release.version}',
+            l10n.releaseVersion(channel, _release.version),
             style: theme.textTheme.titleMedium,
           ),
           if (_release.notes.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             MarkdownBody(
               data: _release.notes,
               selectable: true,
@@ -93,30 +118,37 @@ class _UpdateDialogState extends State<UpdateDialog> {
                 await openExternalLink(
                   context,
                   Uri.parse(href),
-                  failureTitle: '无法打开链接',
+                  failureTitle: l10n.unableOpenLink,
                 );
               },
             ),
           ],
         ],
       ),
-      actionsOverflowButtonSpacing: 8,
+      actionsOverflowButtonSpacing: AppSpacing.sm,
       actions: [
         TextButton(
           style: actionStyle,
           onPressed: () => Navigator.pop(context),
-          child: const Text('稍后'),
+          child: Text(l10n.later),
         ),
         TextButton(
           style: actionStyle,
-          onPressed: () =>
-              openExternalLink(context, _release.url, failureTitle: '无法打开发布页'),
-          child: const Text('发布页'),
+          onPressed: () => openExternalLink(
+            context,
+            _release.url,
+            failureTitle: l10n.unableOpenReleasePage,
+          ),
+          child: Text(l10n.releasePage),
         ),
         FilledButton(
           style: actionStyle,
           onPressed: _download,
-          child: Text(_release.isDevelopment ? '下载测试版' : '下载正式版'),
+          child: Text(
+            _release.isDevelopment
+                ? l10n.downloadDevelopment
+                : l10n.downloadStable,
+          ),
         ),
       ],
     );

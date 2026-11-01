@@ -32,6 +32,16 @@ class SchoolConnectionError implements Exception {
   String toString() => cause.toString();
 }
 
+class SchoolStorageError implements Exception {
+  const SchoolStorageError(this.message, [this.cause]);
+
+  final String message;
+  final Exception? cause;
+
+  @override
+  String toString() => message;
+}
+
 String? schoolPageError(String text) {
   if (text.contains('Illegal referrer')) {
     return '教学中心拒绝了请求来源，请稍后重试。';

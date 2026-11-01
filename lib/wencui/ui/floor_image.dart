@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
+
 const wencuiFloorSize = Size(1500, 1000);
 
 /// The source plans all share this aspect ratio and normalized coordinates.
@@ -15,7 +17,7 @@ class WencuiFloorImage extends StatelessWidget {
       fit: BoxFit.contain,
       width: wencuiFloorSize.width,
       height: wencuiFloorSize.height,
-      semanticLabel: '文萃楼$floor层平面图，上东、左北',
+      semanticLabel: context.l10n.floorPlanSemantics(floor),
     );
     if (Theme.of(context).brightness == Brightness.light) return image;
     return ColorFiltered(

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 
+import '../l10n/l10n.dart';
 import 'animated_sliver_list.dart';
 import 'reveal_scroll_controller.dart';
 
@@ -140,7 +141,7 @@ class _PullToRevealListState extends State<PullToRevealList>
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(context).colorScheme.error,
             ),
-            child: const Text('收回'),
+            child: Text(context.l10n.takeBack),
           ),
         ),
       ],
@@ -162,7 +163,9 @@ class _PullToRevealListState extends State<PullToRevealList>
     return Semantics(
       customSemanticsActions: {
         if (_canReveal)
-          CustomSemanticsAction(label: '查看${widget.hiddenLabel}'): () =>
+          CustomSemanticsAction(
+            label: context.l10n.viewHidden(widget.hiddenLabel),
+          ): () =>
               _setRevealed(true),
       },
       child: Listener(
@@ -236,8 +239,13 @@ class _PullToRevealListState extends State<PullToRevealList>
                                   const SizedBox(width: 6),
                                   Flexible(
                                     child: Text(
-                                      '${_pull >= _threshold ? '松开查看' : '下拉查看'}'
-                                      '${widget.hiddenLabel}',
+                                      _pull >= _threshold
+                                          ? context.l10n.releaseToView(
+                                              widget.hiddenLabel,
+                                            )
+                                          : context.l10n.pullToView(
+                                              widget.hiddenLabel,
+                                            ),
                                       style: TextStyle(color: scheme.error),
                                     ),
                                   ),

@@ -33,6 +33,7 @@ class ClassroomController extends ChangeNotifier {
   ClassroomPeriod? _period;
   List<BuildingOccupancy>? _occupancy;
   bool _busy = false;
+  bool _disposed = false;
 
   ClassroomDirectory? get directory => _directory;
   String? get campusCode => _campusCode;
@@ -87,18 +88,23 @@ class ClassroomController extends ChangeNotifier {
   }
 
   Future<void> _run(Future<void> Function(CancellationToken) query) async {
+    if (_disposed) return;
     _busy = true;
-    notifyListeners();
-    await _requests.run((cancellation) async {
-      try {
-        await query(cancellation);
-      } finally {
-        if (!cancellation.isCancelled) {
-          _busy = false;
-          notifyListeners();
+    _notify();
+    try {
+      await _requests.run((cancellation) async {
+        try {
+          await query(cancellation);
+        } finally {
+          if (!cancellation.isCancelled) {
+            _busy = false;
+            _notify();
+          }
         }
-      }
-    });
+      });
+    } on RequestCancelled {
+      // A newer query owns the busy state.
+    }
   }
 
   Future<void> load({bool refresh = false}) => _run((cancellation) async {
@@ -123,7 +129,7 @@ class ClassroomController extends ChangeNotifier {
       _occupancy = null;
     }
     if (!buildings.any(_matchesBuilding)) _buildingFilter = null;
-    notifyListeners();
+    _notify();
     await _fetch(cancellation, refresh: refresh);
   });
 
@@ -163,26 +169,31 @@ class ClassroomController extends ChangeNotifier {
   }
 
   Future<void> selectDate(DateTime date) async {
-    date = calendarDate(date);
-    if (_date == date) return;
-    _date = date;
+    final selected = calendarDate(date);
+    if (_date == selected) return;
+    _date = selected;
     _occupancy = null;
     await query();
   }
 
   void selectBuilding(String? value) {
     _buildingFilter = value;
-    notifyListeners();
+    _notify();
   }
 
   void selectPeriod(ClassroomPeriod? value) {
     _period = value;
-    notifyListeners();
+    _notify();
   }
 
   @override
   void dispose() {
+    _disposed = true;
     _requests.cancel();
     super.dispose();
+  }
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
   }
 }

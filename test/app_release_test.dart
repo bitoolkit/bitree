@@ -121,4 +121,35 @@ void main() {
     expect(release.isDevelopment, isTrue);
     expect(release.downloadUrl.path, endsWith('abc1234-android-arm64-v8a.apk'));
   });
+
+  test('Missing optional release fields use safe defaults', () {
+    final data = _release(['BITree-v0.2.0-android-arm64-v8a.apk'])
+      ..remove('body')
+      ..remove('prerelease')
+      ..remove('assets');
+
+    final release = AppRelease.fromGitHub(data, abi: Abi.androidArm64);
+
+    expect(release.downloadUrl, release.url);
+    expect(release.notes, isEmpty);
+    expect(release.isDevelopment, isFalse);
+  });
+
+  test('Rejects non-HTTPS release and download links', () {
+    final data = _release(['BITree-v0.2.0-android-arm64-v8a.apk']);
+    data['html_url'] = 'http://github.com/bitoolkit/bitree/releases/tag/v0.2.0';
+    expect(
+      () => AppRelease.fromGitHub(data, abi: Abi.androidArm64),
+      throwsFormatException,
+    );
+
+    data['html_url'] =
+        'https://github.com/bitoolkit/bitree/releases/tag/v0.2.0';
+    (data['assets'] as List).single['browser_download_url'] =
+        'http://downloads.example/app.apk';
+    expect(
+      () => AppRelease.fromGitHub(data, abi: Abi.androidArm64),
+      throwsFormatException,
+    );
+  });
 }

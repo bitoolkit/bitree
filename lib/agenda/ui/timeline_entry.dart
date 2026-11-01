@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/formats.dart';
+import '../../l10n/l10n.dart';
 import '../../schedule/model.dart';
 import '../model.dart';
 import 'timeline_colors.dart';
@@ -25,18 +27,24 @@ class AgendaTimelineEntry extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final colors = agendaTimelineColors(context, entry, now);
     final scale = math.max(
       1.0,
       MediaQuery.textScalerOf(context).scale(14) / 14,
     );
     final date = entry.startsAt;
-    final caption = _caption(entry);
+    final caption = _caption(l10n, entry);
     final radius = entry.isDeadline ? null : BorderRadius.circular(8);
-    final description =
-        '${entry.kind.label}，${entry.title}，'
-        '${date.year}年${date.month}月${date.day}日 ${caption.replaceAll('\n', ' ')}'
-        '${entry.location.isEmpty ? '' : '，${entry.location}'}';
+    final description = l10n.agendaTimelineSemanticsEntry(
+      entry.kind.localizedLabel(l10n),
+      entry.title,
+      '${localizedYearMonthDay(l10n, date.year, date.month, date.day)} '
+          '${caption.replaceAll('\n', ' ')}',
+      '',
+      entry.location.isEmpty ? '' : l10n.listSeparator + entry.location,
+      '',
+    );
     final kindIcon = switch (entry.kind) {
       AgendaKind.event => Icons.event_outlined,
       AgendaKind.exam => Icons.school_outlined,
@@ -44,7 +52,7 @@ class AgendaTimelineEntry extends StatelessWidget {
     };
     final source = entry.course.isNotEmpty
         ? entry.course
-        : entry.source?.label ?? entry.kind.label;
+        : entry.source?.localizedLabel(l10n) ?? entry.kind.localizedLabel(l10n);
     final title = Text(
       entry.title,
       maxLines: 1,
@@ -65,7 +73,7 @@ class AgendaTimelineEntry extends StatelessWidget {
       onTap: onTap,
       child: ExcludeSemantics(
         child: Tooltip(
-          message: _preview(entry, now),
+          message: _preview(l10n, entry, now),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
@@ -200,16 +208,16 @@ class AgendaTimelineEntry extends StatelessWidget {
 
 String _day(DateTime date) => '${date.month}/${date.day}';
 
-String _caption(AgendaEntry entry) {
+String _caption(AppLocalizations l10n, AgendaEntry entry) {
   if (entry.isDeadline) {
-    return entry.allDay ? '全天截止' : '${clockText(entry.dueAt)} 截止';
+    return entry.allDay ? l10n.allDayUntil : l10n.dueAt(clockText(entry.dueAt));
   }
   final end = entry.endsAt!;
   if (entry.allDay) {
     final lastDay = end.subtract(const Duration(days: 1));
     return calendarDate(lastDay) == calendarDate(entry.startsAt)
-        ? '全天'
-        : '${_day(entry.startsAt)}–${_day(lastDay)}\n全天';
+        ? l10n.allDay
+        : '${_day(entry.startsAt)}–${_day(lastDay)}\n${l10n.allDay}';
   }
   if (calendarDate(entry.startsAt) == calendarDate(end)) {
     return '${clockText(entry.startsAt)}–${clockText(end)}';
@@ -218,29 +226,38 @@ String _caption(AgendaEntry entry) {
       '→ ${_day(end)} ${clockText(end)}';
 }
 
-String _fullDate(DateTime date) =>
-    '${dateText(date)} ${weekdays[date.weekday - 1]}';
-String _fullTime(DateTime date) => '${_fullDate(date)} ${clockText(date)}';
+String _fullDate(AppLocalizations l10n, DateTime date) =>
+    '${dateText(date)} ${localizedShortWeekday(l10n, date.weekday)}';
+String _fullTime(AppLocalizations l10n, DateTime date) =>
+    '${_fullDate(l10n, date)} ${clockText(date)}';
 
-String _preview(AgendaEntry entry, DateTime now) => [
-  '${entry.kind.label} · ${entry.title}',
+String _preview(AppLocalizations l10n, AgendaEntry entry, DateTime now) => [
+  '${entry.kind.localizedLabel(l10n)} · ${entry.title}',
   if (entry.isDeadline)
     entry.allDay
-        ? '截止：${_fullDate(entry.startsAt)} 当天结束前'
-        : '截止：${_fullTime(entry.dueAt)}'
+        ? l10n.agendaTimelineDue(
+            '${_fullDate(l10n, entry.startsAt)} '
+            '${l10n.agendaDueBeforeEndOfDay}',
+          )
+        : l10n.agendaTimelineDue(_fullTime(l10n, entry.dueAt))
   else if (entry.allDay) ...[
-    '开始：${_fullDate(entry.startsAt)} 全天',
-    '结束：${_fullDate(entry.endsAt!.subtract(const Duration(days: 1)))} 全天',
+    l10n.agendaTimelineStarts(
+      '${_fullDate(l10n, entry.startsAt)} ${l10n.allDay}',
+    ),
+    l10n.agendaTimelineEnds(
+      '${_fullDate(l10n, entry.endsAt!.subtract(const Duration(days: 1)))} '
+      '${l10n.allDay}',
+    ),
   ] else ...[
-    '开始：${_fullTime(entry.startsAt)}',
-    '结束：${_fullTime(entry.endsAt!)}',
+    l10n.agendaTimelineStarts(_fullTime(l10n, entry.startsAt)),
+    l10n.agendaTimelineEnds(_fullTime(l10n, entry.endsAt!)),
   ],
-  if (entry.course.isNotEmpty) '课程：${entry.course}',
-  if (entry.location.isNotEmpty) '地点：${entry.location}',
+  if (entry.course.isNotEmpty) l10n.agendaTimelineCourse(entry.course),
+  if (entry.location.isNotEmpty) l10n.agendaTimelineLocation(entry.location),
   if (entry.done)
-    '状态：已完成'
+    l10n.agendaTimelineStatusCompleted
   else if (entry.overdue(now))
-    '状态：已逾期'
+    l10n.agendaTimelineStatusOverdue
   else if (entry.isFinished(now))
-    '状态：已结束',
+    l10n.agendaTimelineStatusEnded,
 ].join('\n');

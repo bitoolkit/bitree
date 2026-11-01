@@ -3,18 +3,26 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../agenda/deadline_clear_scope.dart';
-import '../../agenda/ui/clear_deadlines_dialog.dart';
+import '../../agenda/ui/clear_deadlines_sheet.dart';
+import '../../l10n/formats.dart';
+import '../../l10n/l10n.dart';
+import '../../mooc/ui/mooc_sheet.dart';
 import '../../schedule/ui/week_range_dialog.dart';
 import '../../school/ui/school_account.dart';
-import '../../school/ui/school_screen.dart';
+import '../../sync/controller.dart';
+import '../../sync/ui/sync.dart';
+import '../../ui/app_dialog.dart';
 import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_menu_trigger.dart';
 import '../../ui/app_page.dart';
 import '../../ui/external_link.dart';
+import '../../ui/section_label.dart';
 import '../../updates/version.dart';
 import '../controller.dart';
 import 'appearance_screen.dart';
 import 'logs_screen.dart';
+
+const _projectDescription = '面向北京理工大学的妙妙小工具';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({
@@ -33,10 +41,10 @@ class SettingsScreen extends StatelessWidget {
         term,
         importTerm: (term) async {
           if (!context.mounted) return false;
-          return await openSchoolPage(
+          return await startSync(
                 context,
                 controller,
-                action: SchoolAction.importSchedule,
+                targets: {SyncTarget.schedule},
                 term: term,
               ) ==
               true;
@@ -44,31 +52,19 @@ class SettingsScreen extends StatelessWidget {
       );
 
   Future<void> _clearSchedule(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('删除本地课表？'),
-        content: const Text('将删除所有学期的课表，包括手动添加的课程。删除后无法恢复。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Theme.of(context).colorScheme.onError,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('删除课表'),
-          ),
-        ],
-      ),
+    final l10n = context.l10n;
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: l10n.settingsDeleteScheduleQuestion,
+      body: l10n.settingsDeleteScheduleBody,
+      confirmLabel: l10n.settingsDeleteSchedule,
+      destructive: true,
     );
-    if (confirmed == true) await controller.timetable.clear();
+    if (confirmed) await controller.timetable.clear();
   }
 
   Future<void> _showAbout(BuildContext context) async {
+    final l10n = context.l10n;
     final version = await appVersion();
     final builtAt = appBuildTime?.toLocal();
     if (!context.mounted) return;
@@ -76,7 +72,7 @@ class SettingsScreen extends StatelessWidget {
     var iconTaps = 0;
     Timer? resetTaps;
 
-    await showDialog<void>(
+    await showAppDialog<void>(
       context: context,
       builder: (dialogContext) {
         final theme = Theme.of(dialogContext);
@@ -88,7 +84,7 @@ class SettingsScreen extends StatelessWidget {
             TimeOfDay.fromDateTime(builtAt),
             alwaysUse24HourFormat: true,
           );
-          versionLabel += '\n构建于 $date $time';
+          versionLabel += '\n${l10n.settingsBuiltAt(date, time)}';
         }
         return AlertDialog(
           titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
@@ -145,7 +141,10 @@ class SettingsScreen extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        Text('理枝', style: theme.textTheme.titleMedium),
+                        Text(
+                          l10n.appChineseName,
+                          style: theme.textTheme.titleMedium,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 2),
@@ -164,7 +163,7 @@ class SettingsScreen extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('面向北京理工大学的本地跨平台工具集。'),
+              const Text(_projectDescription),
               const SizedBox(height: 12),
               Semantics(
                 link: true,
@@ -172,7 +171,7 @@ class SettingsScreen extends StatelessWidget {
                   onTap: () => openExternalLink(
                     dialogContext,
                     Uri.https('github.com', '/bitoolkit'),
-                    failureTitle: '无法打开 BIToolkit',
+                    failureTitle: l10n.aboutOpenBitoolkitFailed,
                   ),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -203,7 +202,7 @@ class SettingsScreen extends StatelessWidget {
                 Navigator.pop(dialogContext);
                 showLicensePage(
                   context: context,
-                  applicationName: 'BITree 理枝',
+                  applicationName: l10n.aboutLicenseName,
                   applicationVersion: version,
                   applicationIcon: Image.asset(
                     'assets/brand/bitree.png',
@@ -212,19 +211,19 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 );
               },
-              child: const Text('查看许可'),
+              child: Text(l10n.settingsLicenses),
             ),
             TextButton(
               onPressed: () => openExternalLink(
                 dialogContext,
                 Uri.https('github.com', '/bitoolkit/bitree'),
-                failureTitle: '无法打开 GitHub',
+                failureTitle: l10n.aboutOpenGitHubFailed,
               ),
               child: const Text('GitHub'),
             ),
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('关闭'),
+              child: Text(l10n.close),
             ),
           ],
         );
@@ -244,6 +243,7 @@ class SettingsScreen extends StatelessWidget {
   );
 
   Widget _build(BuildContext context) {
+    final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final deadlineCount = controller.agenda.countDeadlinesIn(
       DeadlineClearScope.values,
@@ -253,22 +253,19 @@ class SettingsScreen extends StatelessWidget {
       padding: const EdgeInsets.only(top: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _SectionLabel(title),
-          const SizedBox(height: 8),
-          ...children,
-        ],
+        children: [AppSectionHeader(title), ...children],
       ),
     );
 
     const tilePadding = EdgeInsets.symmetric(vertical: 2);
 
     return AppPage(
-      title: const Text('设置'),
+      title: Text(l10n.navSettings),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
           SchoolAccount(controller: controller),
+          MoocAccountTile(controller: controller.mooc),
           Padding(
             padding: const EdgeInsets.only(top: 24),
             child: ListTile(
@@ -288,8 +285,35 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
           ),
+          section(l10n.language, [
+            SegmentedButton<AppLanguage>(
+              expandedInsets: EdgeInsets.zero,
+              showSelectedIcon: false,
+              segments: [
+                ButtonSegment(
+                  value: AppLanguage.system,
+                  label: Text(
+                    l10n.followSystem,
+                    maxLines: 2,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                ButtonSegment(
+                  value: AppLanguage.chinese,
+                  label: Text(l10n.languageChinese),
+                ),
+                ButtonSegment(
+                  value: AppLanguage.english,
+                  label: Text(l10n.languageEnglish),
+                ),
+              ],
+              selected: {controller.language},
+              onSelectionChanged: (selection) =>
+                  controller.setLanguage(selection.single),
+            ),
+          ]),
           if (controller.timetable.schedule != null)
-            section('本地课表', [
+            section(l10n.settingsLocalSchedule, [
               LayoutBuilder(
                 builder: (context, constraints) => AppMenuAnchor(
                   menuWidth: constraints.maxWidth,
@@ -313,8 +337,10 @@ class SettingsScreen extends StatelessWidget {
                   builder: (context, menu, isOpen) => ListTile(
                     contentPadding: tilePadding,
                     leading: const Icon(Icons.calendar_month_outlined),
-                    title: const Text('学期'),
-                    subtitle: Text(controller.timetable.schedule!.termLabel),
+                    title: Text(l10n.settingsTerm),
+                    subtitle: Text(
+                      localizedTerm(l10n, controller.timetable.schedule!),
+                    ),
                     trailing: AppMenuArrow(isOpen: isOpen),
                     onTap: controller.timetable.busy
                         ? null
@@ -325,9 +351,12 @@ class SettingsScreen extends StatelessWidget {
               ListTile(
                 contentPadding: tilePadding,
                 leading: const Icon(Icons.date_range_outlined),
-                title: const Text('周数管理'),
+                title: Text(l10n.settingsWeekManagement),
                 subtitle: Text(
-                  '${controller.timetable.schedule!.firstWeek} - ${controller.timetable.schedule!.lastWeek} 周',
+                  l10n.weekRangeShort(
+                    controller.timetable.schedule!.firstWeek,
+                    controller.timetable.schedule!.lastWeek,
+                  ),
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded, size: 20),
                 onTap: controller.timetable.busy
@@ -340,21 +369,24 @@ class SettingsScreen extends StatelessWidget {
                   Icons.delete_outline_rounded,
                   color: scheme.error,
                 ),
-                title: Text('删除本地课表', style: TextStyle(color: scheme.error)),
+                title: Text(
+                  l10n.settingsDeleteLocalSchedule,
+                  style: TextStyle(color: scheme.error),
+                ),
                 onTap: controller.timetable.busy
                     ? null
                     : () => _clearSchedule(context),
               ),
             ]),
-          section('本地日程', [
+          section(l10n.settingsLocalAgenda, [
             ListTile(
               contentPadding: tilePadding,
               leading: Icon(Icons.delete_outline_rounded, color: scheme.error),
-              title: Text('删除 DDL', style: TextStyle(color: scheme.error)),
-              subtitle: Text(
-                '可勾选手动创建、大物实验、乐学和新延河课堂来源\n'
-                '共 $deadlineCount 条（所有学期，含已完成、已删除）',
+              title: Text(
+                l10n.settingsDeleteDeadlines,
+                style: TextStyle(color: scheme.error),
               ),
+              subtitle: Text(l10n.settingsDeleteDeadlinesBody(deadlineCount)),
               onTap:
                   !controller.agenda.ready ||
                       controller.agenda.busy ||
@@ -363,11 +395,11 @@ class SettingsScreen extends StatelessWidget {
                   : () => showClearDeadlines(context, controller.agenda),
             ),
           ]),
-          section('应用', [
+          section(l10n.settingsApplication, [
             ListTile(
               contentPadding: tilePadding,
               leading: const Icon(Icons.description_outlined),
-              title: const Text('导出日志'),
+              title: Text(l10n.settingsExportLogs),
               trailing: const Icon(Icons.chevron_right_rounded, size: 20),
               onTap: () => Navigator.of(context).push<void>(
                 MaterialPageRoute(builder: (_) => const LogsScreen()),
@@ -376,7 +408,11 @@ class SettingsScreen extends StatelessWidget {
             ListTile(
               contentPadding: tilePadding,
               leading: const Icon(Icons.system_update_outlined),
-              title: Text(checkingForUpdates ? '正在检查更新…' : '检查更新'),
+              title: Text(
+                checkingForUpdates
+                    ? l10n.settingsCheckingUpdates
+                    : l10n.settingsCheckUpdates,
+              ),
               trailing: checkingForUpdates
                   ? const SizedBox(
                       width: 20,
@@ -389,7 +425,7 @@ class SettingsScreen extends StatelessWidget {
             ListTile(
               contentPadding: tilePadding,
               leading: const Icon(Icons.info_outline_rounded),
-              title: const Text('关于 BITree'),
+              title: Text(l10n.settingsAbout),
               trailing: const Icon(Icons.chevron_right_rounded, size: 20),
               onTap: () => _showAbout(context),
             ),
@@ -398,19 +434,4 @@ class SettingsScreen extends StatelessWidget {
       ),
     );
   }
-}
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Text(
-    text,
-    style: TextStyle(
-      fontSize: 13,
-      fontWeight: FontWeight.w600,
-      color: Theme.of(context).colorScheme.onSurfaceVariant,
-    ),
-  );
 }

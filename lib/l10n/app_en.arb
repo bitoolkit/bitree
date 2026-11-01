@@ -1,0 +1,1586 @@
+{
+  "@@locale": "en",
+  "appName": "BITree",
+  "appChineseName": "理枝",
+  "navHome": "Home",
+  "navAgenda": "Agenda",
+  "navTools": "Tools",
+  "navSettings": "Settings",
+  "followSystem": "System",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+  "appearance": "Appearance",
+  "language": "Language",
+  "languageChinese": "简体中文",
+  "languageEnglish": "English",
+  "cancel": "Cancel",
+  "close": "Close",
+  "save": "Save",
+  "saving": "Saving…",
+  "delete": "Delete",
+  "remove": "Remove",
+  "restore": "Restore",
+  "refresh": "Refresh",
+  "reload": "Reload",
+  "confirm": "Confirm",
+  "view": "View",
+  "showAll": "Show all",
+  "edit": "Edit",
+  "undo": "Undo",
+  "add": "Add",
+  "all": "All",
+  "more": "More",
+  "today": "Today",
+  "tomorrow": "Tomorrow",
+  "yesterday": "Yesterday",
+  "course": "Course",
+  "schedule": "Schedule",
+  "agenda": "Event",
+  "exam": "Exam",
+  "deadline": "DDL",
+  "activity": "Event",
+  "itemCount": "{count, plural, =1{1 item} other{{count} items}}",
+  "@itemCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "weekNumber": "Week {week}",
+  "@weekNumber": {
+    "placeholders": {
+      "week": {
+        "type": "int"
+      }
+    }
+  },
+  "weekNumberCompact": "Week {week}",
+  "@weekNumberCompact": {
+    "placeholders": {
+      "week": {
+        "type": "int"
+      }
+    }
+  },
+  "thisWeekSuffix": ", this week",
+  "schoolWeek": "School schedule",
+  "chooseWeek": "Choose week",
+  "weekRangeShort": "{first} - {last} weeks",
+  "@weekRangeShort": {
+    "placeholders": {
+      "first": {
+        "type": "int"
+      },
+      "last": {
+        "type": "int"
+      }
+    }
+  },
+  "weekList": "Weeks {ranges}",
+  "@weekList": {
+    "placeholders": {
+      "ranges": {
+        "type": "String"
+      }
+    }
+  },
+  "weeksPending": "Weeks TBD",
+  "listSeparator": ", ",
+  "weekdayMonday": "Monday",
+  "weekdayTuesday": "Tuesday",
+  "weekdayWednesday": "Wednesday",
+  "weekdayThursday": "Thursday",
+  "weekdayFriday": "Friday",
+  "weekdaySaturday": "Saturday",
+  "weekdaySunday": "Sunday",
+  "weekdayShortMonday": "Mon",
+  "weekdayShortTuesday": "Tue",
+  "weekdayShortWednesday": "Wed",
+  "weekdayShortThursday": "Thu",
+  "weekdayShortFriday": "Fri",
+  "weekdayShortSaturday": "Sat",
+  "weekdayShortSunday": "Sun",
+  "weekdayNarrowMonday": "M",
+  "weekdayNarrowTuesday": "T",
+  "weekdayNarrowWednesday": "W",
+  "weekdayNarrowThursday": "T",
+  "weekdayNarrowFriday": "F",
+  "weekdayNarrowSaturday": "S",
+  "weekdayNarrowSunday": "S",
+  "monthNames": "Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec",
+  "monthDay": "{month} {day}",
+  "@monthDay": {
+    "placeholders": {
+      "month": {
+        "type": "String"
+      },
+      "day": {
+        "type": "int"
+      }
+    }
+  },
+  "yearMonthDay": "{month} {day}, {year}",
+  "@yearMonthDay": {
+    "placeholders": {
+      "month": {
+        "type": "String"
+      },
+      "day": {
+        "type": "int"
+      },
+      "year": {
+        "type": "int"
+      }
+    }
+  },
+  "dateWithWeekday": "{weekday}, {date}",
+  "@dateWithWeekday": {
+    "placeholders": {
+      "weekday": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "relativeDateWithWeekday": "{relative}, {weekday}, {date}",
+  "@relativeDateWithWeekday": {
+    "placeholders": {
+      "relative": {
+        "type": "String"
+      },
+      "weekday": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "termFall": "Fall {years}",
+  "@termFall": {
+    "placeholders": {
+      "years": {
+        "type": "String"
+      }
+    }
+  },
+  "termSpring": "Spring {years}",
+  "@termSpring": {
+    "placeholders": {
+      "years": {
+        "type": "String"
+      }
+    }
+  },
+  "sectionPending": "Section TBD",
+  "sectionSingle": "Section {section}",
+  "@sectionSingle": {
+    "placeholders": {
+      "section": {
+        "type": "int"
+      }
+    }
+  },
+  "sectionRange": "Sections {start}–{end}",
+  "@sectionRange": {
+    "placeholders": {
+      "start": {
+        "type": "int"
+      },
+      "end": {
+        "type": "int"
+      }
+    }
+  },
+  "sectionRangeCompact": "Periods {start}–{end}",
+  "@sectionRangeCompact": {
+    "placeholders": {
+      "start": {
+        "type": "int"
+      },
+      "end": {
+        "type": "int"
+      }
+    }
+  },
+  "timePending": "Time TBD",
+  "locationPending": "Room TBD",
+  "allDay": "All day",
+  "allDayUntil": "All-day deadline",
+  "dueAt": "Due {time}",
+  "@dueAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "endsAt": "Ends {time}",
+  "@endsAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "completed": "Completed",
+  "overdue": "Overdue",
+  "ended": "Ended",
+  "inProgress": "In progress",
+  "due": "Due",
+  "start": "Start",
+  "end": "End",
+  "settingsDeleteScheduleQuestion": "Delete the local schedule?",
+  "settingsDeleteScheduleBody": "Delete schedules for every term, including manually added courses. This cannot be undone.",
+  "settingsDeleteSchedule": "Delete schedule",
+  "settingsTerm": "Term",
+  "settingsWeekManagement": "Week range",
+  "settingsDeleteLocalSchedule": "Delete local schedule",
+  "settingsDeleteDeadlines": "Delete DDLs",
+  "settingsDeleteDeadlinesBody": "{count} total across all terms, including completed and deleted items",
+  "@settingsDeleteDeadlinesBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsLocalSchedule": "Local schedule",
+  "settingsLocalAgenda": "Local agenda",
+  "settingsApplication": "Application",
+  "settingsExportLogs": "Export logs",
+  "settingsCheckUpdates": "Check for updates",
+  "settingsCheckingUpdates": "Checking for updates…",
+  "settingsAbout": "About BITree",
+  "settingsBuiltAt": "Built {date} at {time}",
+  "@settingsBuiltAt": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsLicenses": "Licenses",
+  "aboutOpenBitoolkitFailed": "Could not open BIToolkit",
+  "aboutOpenGitHubFailed": "Could not open GitHub",
+  "aboutLicenseName": "BITree 理枝",
+  "homeTitle": "Home",
+  "backToThisWeek": "Back to this week",
+  "timedCourses": "Courses without a fixed time",
+  "addCourse": "Add course",
+  "chooseCourse": "Choose a course",
+  "coursesOverlap": "{count, plural, =1{1 course has a time conflict, {summary}. Choose a course} other{{count} courses have time conflicts, {summary}. Choose a course}}",
+  "@coursesOverlap": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "summary": {
+        "type": "String"
+      }
+    }
+  },
+  "courseOverlapCount": "{count, plural, =1{1 course} other{{count} courses}}",
+  "@courseOverlapCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "courseOngoingUntil": "In class · ends {time}",
+  "@courseOngoingUntil": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "minutesUntilEnd": "{count, plural, =1{1 minute left} other{{count} minutes left}}",
+  "@minutesUntilEnd": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "courseNext": "Next class",
+  "sameBuilding": "Same building",
+  "sameArea": "Move within the same area",
+  "differentArea": "Move across campus areas",
+  "copyCourseNameSuccess": "Course name copied",
+  "copyCourseNameFailure": "Copy failed. Try again.",
+  "deleteCourseQuestion": "Delete this course?",
+  "deleteCourseBody": "Remove “{course}” from the local schedule.",
+  "@deleteCourseBody": {
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteCourse": "Delete course",
+  "courseDetailsSemantics": "{name}, {time}, {room}{progress}, view details",
+  "@courseDetailsSemantics": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      },
+      "room": {
+        "type": "String"
+      },
+      "progress": {
+        "type": "String"
+      }
+    }
+  },
+  "courseIsToday": ", today",
+  "courseIsOngoing": ", in progress",
+  "courseEditorAddTitle": "Add course",
+  "courseEditorEditTitle": "Edit course",
+  "courseEditorSave": "Save course",
+  "courseEditorTerm": "Term",
+  "courseEditorTermRequired": "Enter a term",
+  "courseEditorMondayLabel": "Monday of week 1: {date}",
+  "@courseEditorMondayLabel": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "courseEditorName": "Course name",
+  "courseEditorNameRequired": "Enter a course name",
+  "courseEditorRoom": "Room (optional)",
+  "courseEditorTeacher": "Instructor (optional)",
+  "courseEditorWeekday": "Weekday",
+  "courseEditorWeeksRequired": "Select at least one week",
+  "courseEditorWeeks": "Weeks",
+  "courseEditorPeriodStart": "Starting section",
+  "courseEditorPeriodEnd": "Ending section",
+  "coursePeriodRange": "Section {section}{linebreak}({start}–{end})",
+  "@coursePeriodRange": {
+    "placeholders": {
+      "section": {
+        "type": "int"
+      },
+      "linebreak": {
+        "type": "String"
+      },
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "weekSelectionSummer": "Summer term",
+  "weekSelectionRegular": "Regular term",
+  "weekManagement": "Week range",
+  "weekIntegerRequired": "Enter a whole-number week",
+  "weekZeroInvalid": "Week 0 does not exist",
+  "decreaseWeek": "Remove one week",
+  "increaseWeek": "Add one week",
+  "weekOrderInvalid": "The end week cannot be before the start week",
+  "weekStart": "Start week",
+  "weekEnd": "End week",
+  "weekRangeDialogTitle": "Week range",
+  "monthHeader": "{month}",
+  "@monthHeader": {
+    "placeholders": {
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "timetableDaySemantics": "{weekday}, {date}{today}{agenda}",
+  "@timetableDaySemantics": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "weekday": {
+        "type": "String"
+      },
+      "today": {
+        "type": "String"
+      },
+      "agenda": {
+        "type": "String"
+      }
+    }
+  },
+  "timetableTodaySuffix": ", today",
+  "timetableAgendaSuffix": ", {count} agenda items",
+  "@timetableAgendaSuffix": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sectionSemantics": "Section {section}, {start}–{end}",
+  "@sectionSemantics": {
+    "placeholders": {
+      "section": {
+        "type": "int"
+      },
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "exportSchedule": "Export schedule",
+  "exportScheduleEmpty": "No courses to export",
+  "exportScheduleSuccess": "Schedule exported",
+  "exportScheduleSkipped": "Schedule exported; skipped {count} courses without a fixed time",
+  "@exportScheduleSkipped": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "desktopAgendaWidget": "Desktop agenda",
+  "exportIcs": "Export ICS",
+  "icsCalendarName": "BITree {term}",
+  "@icsCalendarName": {
+    "placeholders": {
+      "term": {
+        "type": "String"
+      }
+    }
+  },
+  "icsEventDescription": "{week}, {section}",
+  "@icsEventDescription": {
+    "placeholders": {
+      "week": {
+        "type": "String"
+      },
+      "section": {
+        "type": "String"
+      }
+    }
+  },
+  "icsTeacher": "Instructor: {teacher}",
+  "@icsTeacher": {
+    "placeholders": {
+      "teacher": {
+        "type": "String"
+      }
+    }
+  },
+  "icsCourseNumber": "Course number: {number}",
+  "@icsCourseNumber": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "agendaTitle": "Agenda",
+  "agendaReload": "Reload agenda",
+  "agendaPendingTab": "To do {count}",
+  "@agendaPendingTab": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "agendaCompletedTab": "Completed {count}",
+  "@agendaCompletedTab": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "agendaSwitchToList": "Switch to list",
+  "agendaSwitchToTimeline": "Switch to timeline",
+  "agendaOverdueHiddenLabel": "{count, plural, =1{1 overdue agenda item} other{{count} overdue agenda items}}",
+  "@agendaOverdueHiddenLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "agendaNoCompleted": "No completed agenda items yet",
+  "agendaNoUpcoming": "No upcoming agenda items",
+  "agendaNoPending": "No pending agenda items",
+  "agendaType": "Agenda type",
+  "agendaCount": "{count, plural, =1{1 agenda item} other{{count} agenda items}}",
+  "@agendaCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "agendaNoPendingShort": "No pending agenda items",
+  "agendaCompletedCount": "Completed {count}",
+  "@agendaCompletedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "agendaDayEmpty": "Nothing scheduled for this day",
+  "agendaChooseItems": "Choose an item",
+  "agendaItemCount": "{count, plural, =1{1 item} other{{count} items}}",
+  "@agendaItemCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "agendaMarkDone": "Mark complete",
+  "agendaMarkUndone": "Mark incomplete",
+  "agendaNotes": "Notes",
+  "agendaOpenLink": "Open assignment",
+  "agendaDueBeforeEndOfDay": "Before the end of that day",
+  "agendaSwipeDelete": "Delete",
+  "agendaSwipeDeleteRelease": "Release to delete",
+  "agendaSwipeRestore": "Mark incomplete",
+  "agendaSwipeRestoreRelease": "Release to restore",
+  "agendaSwipeDone": "Complete",
+  "agendaSwipeDoneRelease": "Release to complete",
+  "agendaDeleteQuestion": "Delete {kind}?",
+  "@agendaDeleteQuestion": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "agendaRestored": "Restored “{title}”",
+  "@agendaRestored": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "agendaDeleted": "Deleted “{title}”",
+  "@agendaDeleted": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "agendaAddTitle": "Add {kind}",
+  "@agendaAddTitle": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "addAgenda": "Add event",
+  "addDeadline": "Add DDL",
+  "agendaEditTitle": "Edit {kind}",
+  "@agendaEditTitle": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "agendaName": "Name",
+  "agendaNameRequired": "Enter a name",
+  "agendaAllDay": "All day",
+  "agendaLocationOptional": "Location (optional)",
+  "agendaNotesOptional": "Notes (optional)",
+  "agendaEndAfterStart": "The end must be later than the start",
+  "agendaReminderOverdue": "{time} · overdue",
+  "@agendaReminderOverdue": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "agendaReminderStarts": "{time} · starts",
+  "@agendaReminderStarts": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "agendaReminderCount": "{count} to do",
+  "@agendaReminderCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "agendaReminderCollapse": "Collapse reminders",
+  "agendaTimelineOneDay": "1 day / cell",
+  "agendaTimelineOneHour": "1 hour / cell",
+  "agendaTimelineHours": "{hours} hours / cell",
+  "@agendaTimelineHours": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "agendaTimelineZoom": "Timeline zoom",
+  "agendaTimelineEmpty": "No agenda items",
+  "agendaTimelineStarts": "Starts: {time}",
+  "@agendaTimelineStarts": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "agendaTimelineEnds": "Ends: {time}",
+  "@agendaTimelineEnds": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "agendaTimelineDue": "Due: {time}",
+  "@agendaTimelineDue": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "agendaTimelineCourse": "Course: {course}",
+  "@agendaTimelineCourse": {
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "agendaTimelineLocation": "Location: {location}",
+  "@agendaTimelineLocation": {
+    "placeholders": {
+      "location": {
+        "type": "String"
+      }
+    }
+  },
+  "agendaTimelineSemanticsEntry": "{kind}, {title}, {time}{course}{location}{status}",
+  "@agendaTimelineSemanticsEntry": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      },
+      "course": {
+        "type": "String"
+      },
+      "location": {
+        "type": "String"
+      },
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "agendaTimelineStatusCompleted": "Status: completed",
+  "agendaTimelineStatusOverdue": "Status: overdue",
+  "agendaTimelineStatusEnded": "Status: ended",
+  "clearDeadlinesTitle": "Delete DDLs",
+  "clearDeadlinesSourceCount": "{source} ({count})",
+  "@clearDeadlinesSourceCount": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearDeadlinesSelection": "{categories} selected · {count} total",
+  "@clearDeadlinesSelection": {
+    "placeholders": {
+      "categories": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearDeadlinesWarning": "Deleted items will not appear in “Deleted DDLs.” Platform and physics lab DDLs can be regenerated.",
+  "clearDeadlinesDeleteCount": "Delete {count} DDLs",
+  "@clearDeadlinesDeleteCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearDeadlinesDeleting": "Deleting…",
+  "clearDeadlinesUnavailable": "The agenda is not loaded or is being saved. Try again.",
+  "clearDeadlinesDeleted": "Deleted {count} DDLs",
+  "@clearDeadlinesDeleted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "deletedDeadlinesTitle": "Deleted DDLs",
+  "deletedDeadlinesNone": "No deleted DDLs",
+  "deletedDeadlinesRestoreAll": "Restore all",
+  "deletedDeadlinesRestoreAction": "Restore",
+  "deletedDeadlinesRestoreSelected": "Restore selected",
+  "deletedDeadlinesRestored": "Restored “{title}”",
+  "@deletedDeadlinesRestored": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "deletedDeadlinesRestoredAll": "Restored all DDLs",
+  "deletedDeadlinesRestoredCount": "Restored {count} DDLs",
+  "@deletedDeadlinesRestoredCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "deadlineManual": "Manually created",
+  "deadlineManualScope": "Manually created DDLs",
+  "deadlinePhysicsLab": "Physics lab DDLs",
+  "deadlineLexue": "Lexue DDLs",
+  "deadlineEclass": "E-Learning DDLs",
+  "deadlineMooc": "MOOC DDLs",
+  "deadlineSourceLexue": "Lexue",
+  "deadlineSourceEclass": "E-Learning",
+  "deadlineSourceMooc": "China University MOOC",
+  "agendaKindEvent": "Event",
+  "agendaKindDeadline": "DDL",
+  "agendaKindExam": "Exam",
+  "timeRange": "{start}–{end}",
+  "@timeRange": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "syncAll": "Sync all",
+  "customSync": "Custom sync",
+  "syncSchoolData": "School data",
+  "syncDeadlineData": "Deadlines and coursework",
+  "syncTooltip": "Sync",
+  "viewSyncProgress": "View sync progress",
+  "syncComplete": "Sync complete",
+  "syncPartial": "Some items were not synchronized",
+  "selectedItems": "{count} selected",
+  "@selectedItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "selectAll": "Select all",
+  "clearSelection": "Clear",
+  "loginAfterSelection": "Not signed in; sign in after selecting",
+  "syncSelected": "Sync selected",
+  "syncProgress": "Sync progress",
+  "collapse": "Collapse",
+  "syncProcessed": "Processed {done} / {total}",
+  "@syncProcessed": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "syncCancelled": "Sync cancelled",
+  "continueAfterCollapse": "Continues after collapsing",
+  "cancelSync": "Cancel sync",
+  "cancelling": "Cancelling…",
+  "verifying": "Verifying…",
+  "retryIncomplete": "Retry incomplete items",
+  "syncTargetSchedule": "Schedule",
+  "syncTargetExams": "Exam schedule",
+  "syncTargetGrades": "Grades",
+  "syncTargetStudyPlan": "Credit progress",
+  "syncTargetLexue": "Lexue DDLs",
+  "syncTargetEclass": "E-Learning DDLs",
+  "syncTargetMooc": "MOOC DDLs",
+  "syncTargetPhysicsLab": "Physics lab DDLs",
+  "syncActionSchedule": "Sync schedule",
+  "syncActionExams": "Sync exam schedule",
+  "syncActionGrades": "Sync grades",
+  "syncActionStudyPlan": "Sync credit progress",
+  "syncActionLexue": "Sync Lexue DDLs",
+  "syncActionEclass": "Sync E-Learning DDLs",
+  "syncActionMooc": "Sync MOOC DDLs",
+  "syncActionPhysicsLab": "Update physics lab DDLs",
+  "syncing": "Synchronizing…",
+  "waitingForSchool": "Waiting for the school request",
+  "waitingToSync": "Waiting to sync",
+  "cancelled": "Cancelled",
+  "synced": "Synced",
+  "syncNotFinished": "Sync did not finish. Try again.",
+  "noScheduleAvailable": "No schedule available",
+  "physicsLabSaveFailed": "Could not save physics lab DDLs",
+  "physicsLabPreviewReport": "Pre-lab report {course}",
+  "@physicsLabPreviewReport": {
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "physicsLabReport": "Lab report {course}",
+  "@physicsLabReport": {
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "physicsLabGeneratedNotes": "Generated from the {term} schedule\nClass: {date} {time}",
+  "@physicsLabGeneratedNotes": {
+    "placeholders": {
+      "term": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "updatedDdlCount": "Updated {count} DDLs",
+  "@updatedDdlCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncResultSaveFailed": "Could not save the sync result",
+  "syncedDdlCount": "Synced {count} DDLs",
+  "@syncedDdlCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncFailed": "Sync failed. Try again.",
+  "schoolLoginRequired": "Sign in to your school account",
+  "syncVerificationRequired": "Complete school sign-in verification",
+  "accountUnverified": "Not connected",
+  "accountSignedIn": "Signed in",
+  "accountSignedOut": "Signed out",
+  "accountExpired": "Sign in again",
+  "accountSmsRequired": "SMS verification required",
+  "accountImageRequired": "Image verification required",
+  "moocName": "China University MOOC",
+  "moocSignOutQuestion": "Sign out of China University MOOC?",
+  "moocSignOutBody": "Imported DDLs will remain after you sign out.",
+  "exitAction": "Exit",
+  "webLogin": "Web sign-in",
+  "relogin": "Sign in again",
+  "moocLoginMethods": "Phone, email, verification code, or QR code",
+  "useCookie": "Use cookies",
+  "backupLogin": "Backup sign-in method",
+  "moocSignOutAccount": "Sign out",
+  "moocConnectionCancelled": "Connection cancelled",
+  "moocConnecting": "Connecting…",
+  "connect": "Connect",
+  "moocCookieInstructions": "Copy the Cookie from developer tools while signed in. Use this only if web sign-in does not work.",
+  "moocPasteCookie": "Paste a Cookie",
+  "openMoocFailed": "Could not open MOOC",
+  "openOfficialLogin": "Open official sign-in page",
+  "moocLoginTitle": "Sign in to China University MOOC",
+  "refreshLoginPage": "Refresh sign-in page",
+  "completeLogin": "Finish sign-in",
+  "moocLoginPageLoadFailed": "The sign-in page could not load. Check your connection and refresh.",
+  "moocLoginPageOpenFailed": "Could not open the sign-in page. Try again.",
+  "moocOpenAppFailed": "Could not open the app. Choose another sign-in method on the page.",
+  "moocCompleteLoginFirst": "Complete sign-in on the page first.",
+  "moocAccountReadFailed": "Could not read the MOOC account. Refresh the sign-in page.",
+  "moocSessionNotReady": "The login session is not ready yet. Try again shortly.",
+  "moocSavingLogin": "Saving sign-in…",
+  "moocLoginStateReadFailed": "Could not read the sign-in state. Refresh or tap “Finish sign-in” to retry.",
+  "moocConnected": "Connected",
+  "moocNeedsLogin": "Sign in again",
+  "moocSignedOut": "Not signed in",
+  "moocLoginRequired": "Sign in to your China University MOOC account",
+  "moocReadingCourses": "Reading MOOC courses…",
+  "moocReadingSpocCourses": "Reading SPOC courses…",
+  "moocReadingCourse": "Reading {done}/{total}: {course}",
+  "@moocReadingCourse": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "moocNoSession": "No China University MOOC session was found. Sign in first.",
+  "moocLoginExpired": "The China University MOOC session expired. Sign in again.",
+  "moocRequestBusy": "MOOC is already handling a request. Try again shortly.",
+  "moocReadAccountFailed": "Could not read the saved MOOC sign-in. Sign in again.",
+  "moocSaveResultFailed": "Could not save the sync result. Try again shortly.",
+  "schoolLogin": "Sign in to school account",
+  "schoolStudentId": "Student ID",
+  "schoolEnterStudentId": "Enter your student ID",
+  "schoolPassword": "Password",
+  "schoolEnterPassword": "Enter your password",
+  "schoolShowPassword": "Show password",
+  "schoolHidePassword": "Hide password",
+  "schoolLoggingIn": "Signing in…",
+  "schoolSignOutQuestion": "Sign out of the school account?",
+  "schoolSignOutBody": "The local schedule and agenda will remain after you sign out.",
+  "schoolSignOutAction": "Sign out",
+  "verifyAction": "Verify",
+  "schoolVerified": "School account verified",
+  "schoolSmsVerification": "SMS verification",
+  "schoolImageVerification": "Image verification",
+  "schoolSentToPhone": "Sent to {phone}",
+  "@schoolSentToPhone": {
+    "placeholders": {
+      "phone": {
+        "type": "String"
+      }
+    }
+  },
+  "schoolVerificationCode": "Verification code",
+  "schoolEnterVerificationCode": "Enter the verification code",
+  "schoolRefreshImage": "New image",
+  "schoolResendIn": "Resend in {seconds}s",
+  "@schoolResendIn": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "schoolResend": "Resend",
+  "schoolVerifying": "Verifying…",
+  "toolsTitle": "Tools",
+  "gradesAndAcademics": "Grades and academics",
+  "gradeSimulation": "Grade projection",
+  "creditProgress": "Degree credit progress",
+  "examScheduleTool": "Exam schedule and conflict check",
+  "emptyClassroomQuery": "Find empty classrooms",
+  "wencuiMap": "Wencui map",
+  "logsTitle": "Logs",
+  "logsRecent": "Last 100 lines, kept locally for seven days",
+  "exportingLogs": "Exporting…",
+  "exportLogs": "Export logs",
+  "reloadLogs": "Reload logs",
+  "noLogs": "No logs",
+  "logsExported": "Logs exported",
+  "widgetGuideTitle": "Desktop agenda",
+  "widgetSingleColumn": "2×2 single column",
+  "widgetDoubleColumn": "2×4 double column",
+  "widgetStepOpen": "Touch and hold an empty area of the desktop, then open Widgets.",
+  "widgetStepFind": "Find the BITree agenda, choose a single- or double-column layout, and drag it to the desktop.",
+  "widgetStepScroll": "Scroll up or down to see courses, exams, DDLs, and events.",
+  "widgetGuideTomorrow": "After today's schedule ends, tomorrow's agenda is shown from 21:00.",
+  "gotIt": "Got it",
+  "openInBrowser": "Open this link in a browser:\n{url}",
+  "@openInBrowser": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "takeBack": "Take back",
+  "viewHidden": "View {label}",
+  "@viewHidden": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "releaseToView": "Release to view {label}",
+  "@releaseToView": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "pullToView": "Pull down to view {label}",
+  "@pullToView": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "gpaRules": "GPA rules",
+  "gpaRulesTitle": "GPA calculation rules",
+  "gpaRuleIntro": "Uses the Beijing Institute of Technology undergraduate GPA calculation method (trial).",
+  "gpaRulePercent": "Percentage scores: 60 and above use 4 − 3 × (100 − score)² ÷ 1600, rounded to one decimal place; below 60 is 0.",
+  "gpaRuleFive": "Five-level scores: Excellent 4.0, Good 3.6, Average 2.8, Pass 1.7, Fail 0.",
+  "gpaRuleWeighting": "Weighted by credits. Only the highest result for a course is used; failed university elective courses do not count toward GPA. Pass/fail courses contribute credits only, and the weighted average uses percentage scores only.",
+  "openGpaRulesFailed": "Could not open the GPA rules",
+  "schoolSource": "School source",
+  "syncedAt": "Synchronized {date} {time}",
+  "@syncedAt": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "failedCourse": "Not passed",
+  "noSyncedGrades": "No grades have been synchronized",
+  "allSemesters": "All semesters",
+  "averageGpa": "Average GPA",
+  "weightedAverageScore": "Weighted average",
+  "earnedCredits": "Credits earned",
+  "courseGrades": "Course grades",
+  "termPerformance": "Term performance",
+  "onlyFailedCourses": "Showing failed courses only",
+  "coursesNotPassed": "{count} courses not passed",
+  "@coursesNotPassed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "termCoursesNotPassed": "{count} courses were not passed this term",
+  "@termCoursesNotPassed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noGradesThisTerm": "No grades in this semester",
+  "weightedAverageValue": "Weighted average {value}",
+  "@weightedAverageValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "creditProgressTitle": "Degree credit progress",
+  "reviewCreditTargets": "Review credit targets",
+  "academicReadFailed": "Academic data is temporarily unavailable",
+  "noCreditRecords": "No credit records yet",
+  "creditsFromGrades": "Credits earned from grades",
+  "completedCreditsSchool": "Credits completed in school records",
+  "schoolRequiredCredits": "Credits required by the school",
+  "reviewTargetCredits": "Reviewed target credits",
+  "creditsRemaining": "Credits remaining",
+  "notAvailable": "Not available",
+  "requiredCoursesPending": "{count} required courses still to pass",
+  "@requiredCoursesPending": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingRequiredCourses": "Required courses still to pass",
+  "reviewByCategory": "Review by course category",
+  "setTargets": "Set targets",
+  "syncGradesForCredit": "Sync grades to view category credits",
+  "creditCategoryNote": "Category credits use synchronized grades and count each course once. In-progress credits are not included; final graduation review is by the school.",
+  "noCategoryGrades": "No course grades in this category",
+  "credits": "{count} credits",
+  "@credits": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "creditProgressValue": "{earned} / {target}",
+  "@creditProgressValue": {
+    "placeholders": {
+      "earned": {
+        "type": "String"
+      },
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "creditTargetNotSet": "No category target set",
+  "creditsStillNeeded": "{count} more credits needed",
+  "@creditsStillNeeded": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "totalCreditTarget": "Total credit target",
+  "leaveBlankSchoolRequirement": "Leave blank to use the school requirement",
+  "categoryCreditTarget": "{category} credit target",
+  "@categoryCreditTarget": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "leaveBlankCancelTarget": "Leave blank to cancel this category target",
+  "addCourseCategory": "Add course category",
+  "addCategory": "Add category",
+  "enterNonNegativeCredits": "Enter a non-negative number of credits",
+  "examScheduleAndConflicts": "Exam schedule and conflict check",
+  "checkLocalSchedule": "Also check the local schedule",
+  "syncScheduleConflictHint": "Sync a schedule to check conflicts.",
+  "timeConflictsFound": "{count} time conflicts found",
+  "@timeConflictsFound": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noUpcomingExams": "No upcoming exams",
+  "noExams": "No exams scheduled",
+  "hideFinishedExams": "Hide finished exams",
+  "showFinishedExams": "Show finished exams",
+  "examAgendaSharedNote": "Exams and agenda items share records. Edits and deletions affect both places.",
+  "overlapsClass": "Overlaps {title} class time",
+  "@overlapsClass": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "overlapsExam": "Overlaps {title} exam time",
+  "@overlapsExam": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "timeConflict": "Time conflict",
+  "noTimeConflict": "No time conflicts",
+  "overlapMinutes": "{date}  Overlap: {minutes} minutes",
+  "@overlapMinutes": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "courseGradeTitle": "Course grade",
+  "courseNumber": "Course number",
+  "courseCredits": "Course credits",
+  "courseAttribute": "Course attribute",
+  "courseCategory": "Course category",
+  "examType": "Exam type",
+  "courseGpa": "Course GPA",
+  "notCounted": "Not counted",
+  "creditReviewCategory": "Credit review category",
+  "simulateRetake": "Project retake grade",
+  "removeSimulatedCourseQuestion": "Remove projected course?",
+  "removeAction": "Remove",
+  "currentGpaCredits": "Current GPA credits {credits}, average GPA {gpa}",
+  "@currentGpaCredits": {
+    "placeholders": {
+      "credits": {
+        "type": "String"
+      },
+      "gpa": {
+        "type": "String"
+      }
+    }
+  },
+  "simulateByCourse": "Project by course",
+  "targetBackCalculation": "Target back-calculation",
+  "targetCumulativeGpa": "Target cumulative GPA",
+  "enterGpaRange": "Enter a GPA from 0 to 4",
+  "requiredPerCourse": "Each projected course must reach",
+  "projectedCumulativeGpa": "Projected cumulative GPA",
+  "addSimulatedCourseFirst": "Add a projected course first",
+  "targetUnreachable": "Target cannot be reached even with full marks",
+  "scoreValue": "{score} points",
+  "@scoreValue": {
+    "placeholders": {
+      "score": {
+        "type": "String"
+      }
+    }
+  },
+  "gpaChange": "Cumulative GPA change {value}",
+  "@gpaChange": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "simulatedCourses": "Projected courses",
+  "retake": "Retake",
+  "editAction": "Edit",
+  "removeSimulatedCourse": "Remove projected course",
+  "retakeUsesHighest": "Use the highest retake grade",
+  "simulationDoesNotChange": "Projection does not change grades.",
+  "simulationIncludesBoth": "Projection counts both the original and retake grades, unlike the school's highest-grade rule.",
+  "addProjectedCourse": "Add projected course",
+  "editProjectedCourse": "Edit projected course",
+  "selectCourseOptional": "Select course (optional)",
+  "manualEntry": "Enter manually",
+  "retakeSuffix": "{name} (retake)",
+  "@retakeSuffix": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "courseName": "Course name",
+  "enterCourseName": "Enter a course name",
+  "enterPositiveCredits": "Enter credits greater than 0",
+  "expectedScore": "Expected score",
+  "enterScoreRange": "Enter a score from 0 to 100",
+  "loadBuildings": "Load buildings",
+  "noQueryableCampuses": "No campuses available to query",
+  "reloadAction": "Reload",
+  "campus": "Campus",
+  "date": "Date",
+  "todayDate": "Today {date}",
+  "@todayDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "tomorrowDate": "Tomorrow {date}",
+  "@tomorrowDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "otherDate": "Other date",
+  "building": "Building",
+  "allBuildings": "All buildings",
+  "wencuiBuildingAll": "Wencui Building (all)",
+  "classroomFreeTime": "Classroom availability",
+  "roomsMatchingPeriod": "Rooms matching the selected time",
+  "querying": "Querying…",
+  "roomCount": "{count} rooms",
+  "@roomCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "showsFreePeriods": "Shows each room's free periods for the day",
+  "freeThroughoutPeriod": "Free throughout {period}",
+  "@freeThroughoutPeriod": {
+    "placeholders": {
+      "period": {
+        "type": "String"
+      }
+    }
+  },
+  "loginToQuery": "Sign in to query empty classrooms",
+  "queryIncomplete": "Query did not finish",
+  "queryAgain": "Query again",
+  "noBuildingInfo": "No building information for this campus yet",
+  "noFreeClassrooms": "No empty classrooms during this period",
+  "noFreePeriods": "No free periods that day",
+  "reloadBuildings": "Reload buildings",
+  "viewAnyPeriod": "View any period",
+  "viewAllBuildings": "View all buildings",
+  "changeDate": "Change date",
+  "freeMeansNoClass": "Free means no class is scheduled during that period",
+  "busyStatus": "Class",
+  "freeStatus": "Free",
+  "allPeriods": "Any period",
+  "currentPeriod": "Current period",
+  "morning": "Morning",
+  "afternoon": "Afternoon",
+  "evening": "Evening",
+  "customPeriods": "Choose periods",
+  "freeTime": "Free time",
+  "viewAllFreePeriods": "View all free periods for the day",
+  "chooseOneOrMoreSections": "Choose one or more consecutive periods",
+  "chooseFreePeriod": "Choose free periods",
+  "periodSelectionHint": "Choose the start and end periods. A single period can be applied immediately.",
+  "freeThroughoutSections": "Free throughout {period}",
+  "@freeThroughoutSections": {
+    "placeholders": {
+      "period": {
+        "type": "String"
+      }
+    }
+  },
+  "sectionShort": "Period {section}",
+  "@sectionShort": {
+    "placeholders": {
+      "section": {
+        "type": "int"
+      }
+    }
+  },
+  "periodAndSection": "{time} ({section})",
+  "@periodAndSection": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "section": {
+        "type": "String"
+      }
+    }
+  },
+  "apply": "Apply",
+  "mapInfoTitle": "Map help",
+  "mapInfoBody": "Tap a building to zoom in, then tap a room to see its location. Use two fingers, the wheel, or the buttons to zoom.\n\nFloor plans face east-up and north-left. Room numbers not in the index show only their building.\n\nBase maps come from the school's Wencui map. Passage access may differ on site.",
+  "mapSource": "Map source",
+  "school3dNavigation": "School 3D map",
+  "openMapSourceFailed": "Could not open the map source",
+  "openSchoolNavigationFailed": "Could not open the school map",
+  "myWencuiCourses": "My Wencui courses",
+  "viewBuildingBounds": "View building bounds",
+  "wencuiCourseSearchHint": "Room number, course name, stairs, or lift",
+  "wencuiSearchHint": "Room number or course name, e.g. F704",
+  "noMapResults": "No result. Try F704, J1006, or a course name from the schedule.",
+  "upperFloor": "Floor above",
+  "lowerFloor": "Floor below",
+  "currentFloor": "Floor {floor}",
+  "@currentFloor": {
+    "placeholders": {
+      "floor": {
+        "type": "int"
+      }
+    }
+  },
+  "selectFloorSemantics": "Select floor; currently floor {floor}",
+  "@selectFloorSemantics": {
+    "placeholders": {
+      "floor": {
+        "type": "int"
+      }
+    }
+  },
+  "tapBuildingOrSearch": "Tap a building to zoom in, or search for a room",
+  "viewingFloor": "{details}, viewing floor {floor}",
+  "@viewingFloor": {
+    "placeholders": {
+      "details": {
+        "type": "String"
+      },
+      "floor": {
+        "type": "int"
+      }
+    }
+  },
+  "clearDestination": "Clear destination",
+  "roomNotMarked": "{room} is not marked on this floor plan. Showing the {wing} bounds.",
+  "@roomNotMarked": {
+    "placeholders": {
+      "room": {
+        "type": "String"
+      },
+      "wing": {
+        "type": "String"
+      }
+    }
+  },
+  "selectedFeature": "Selected: {title}",
+  "@selectedFeature": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "stairs": "Stairs",
+  "lift": "Lift",
+  "restroom": "Restroom",
+  "firstFloorEntrance": "Ground-floor entrance",
+  "backToBuilding": "Back to building",
+  "backToRoom": "Back to room",
+  "mapLoadFailed": "Could not load the map. Try again. Export logs from Settings for details.",
+  "mapLegend": "East ↑ · North ←",
+  "zoomOut": "Zoom out",
+  "zoomIn": "Zoom in",
+  "fitFloor": "Fit floor",
+  "returnToSelection": "Return to selection",
+  "enlargeWing": "Enlarge Wencui Building {wing}",
+  "@enlargeWing": {
+    "placeholders": {
+      "wing": {
+        "type": "String"
+      }
+    }
+  },
+  "featureSemantics": "{title}, floor {floor}",
+  "@featureSemantics": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "floor": {
+        "type": "int"
+      }
+    }
+  },
+  "floorPlanSemantics": "Wencui Building floor {floor} plan, east up, north left",
+  "@floorPlanSemantics": {
+    "placeholders": {
+      "floor": {
+        "type": "int"
+      }
+    }
+  },
+  "wencuiLocation": "Wencui Building {room}",
+  "@wencuiLocation": {
+    "placeholders": {
+      "room": {
+        "type": "String"
+      }
+    }
+  },
+  "wencuiWingFloor": "{wing} · Floor {floor}",
+  "@wencuiWingFloor": {
+    "placeholders": {
+      "wing": {
+        "type": "String"
+      },
+      "floor": {
+        "type": "int"
+      }
+    }
+  },
+  "wencuiWing": "Wing {wing}",
+  "@wencuiWing": {
+    "placeholders": {
+      "wing": {
+        "type": "String"
+      }
+    }
+  },
+  "wencuiFeatureLocation": "{place} · {feature}",
+  "@wencuiFeatureLocation": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      },
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
+  "wencuiWingFloorRange": "{wing} · Floors {first}–{last}",
+  "@wencuiWingFloorRange": {
+    "placeholders": {
+      "wing": {
+        "type": "String"
+      },
+      "first": {
+        "type": "int"
+      },
+      "last": {
+        "type": "int"
+      }
+    }
+  },
+  "viewClassroomLocation": "View classroom location",
+  "latestVersion": "You're on the latest version",
+  "updateCheckFailed": "Could not check for updates. Check your connection and try again.",
+  "updateAvailable": "Update available",
+  "developmentBuild": "Beta",
+  "stableBuild": "Stable",
+  "unableOpenDownload": "Could not open the download link",
+  "unableOpenLink": "Could not open the link",
+  "later": "Later",
+  "releasePage": "Release page",
+  "unableOpenReleasePage": "Could not open the release page",
+  "downloadDevelopment": "Download beta",
+  "downloadStable": "Download stable",
+  "releaseNotesUnchanged": "This build has no code changes.",
+  "releaseNotesUnavailable": "Release notes are currently unavailable.",
+  "releaseMoreChanges": "Plus {count} more changes. [View full changes]({url}).",
+  "@releaseMoreChanges": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "releaseVersion": "{channel} {version}",
+  "@releaseVersion": {
+    "placeholders": {
+      "channel": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  }
+}

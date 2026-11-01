@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'design.dart';
+import '../l10n/l10n.dart';
 import 'sheet_layout.dart';
 
 class EditorSheet extends StatelessWidget {
@@ -13,6 +13,7 @@ class EditorSheet extends StatelessWidget {
     required this.saveLabel,
     required this.child,
     this.onDelete,
+    this.onBack,
     this.error,
   });
 
@@ -23,6 +24,7 @@ class EditorSheet extends StatelessWidget {
   final Widget saveLabel;
   final Widget child;
   final VoidCallback? onDelete;
+  final VoidCallback? onBack;
   final String? error;
 
   @override
@@ -35,60 +37,47 @@ class EditorSheet extends StatelessWidget {
         ),
         child: SheetLayout(
           header: SheetHeader(
+            leading: onBack == null
+                ? null
+                : IconButton(
+                    tooltip: MaterialLocalizations.of(context)
+                        .backButtonTooltip,
+                    onPressed: saving ? null : onBack,
+                    icon: const Icon(Icons.arrow_back_rounded, size: 20),
+                  ),
             title: Text(title),
-            actions: [
-              IconButton(
-                tooltip: '关闭',
-                onPressed: saving ? null : () => Navigator.pop(context),
-                icon: const Icon(Icons.close_rounded, size: 20),
+            actions: [SheetCloseButton(enabled: !saving)],
+          ),
+          content: Form(key: formKey, child: child),
+          actions: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (error case final message?)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    message,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
+              SheetActionBar.split(
+                leading: onDelete == null
+                    ? null
+                    : IconButton(
+                        tooltip: context.l10n.delete,
+                        onPressed: saving ? null : onDelete,
+                        color: Theme.of(context).colorScheme.error,
+                        icon: const Icon(Icons.delete_outline),
+                      ),
+                primary: FilledButton(
+                  onPressed: saving ? null : onSave,
+                  child: saveLabel,
+                ),
               ),
             ],
-          ),
-          content: Padding(
-            // Leave room for floating labels above the first field.
-            padding: appSheetContentPadding,
-            child: Form(key: formKey, child: child),
-          ),
-          actions: SafeArea(
-            top: false,
-            child: Padding(
-              padding: appSheetActionPadding,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (error case final message?)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        message,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                    ),
-                  Row(
-                    children: [
-                      if (onDelete != null) ...[
-                        IconButton(
-                          tooltip: '删除',
-                          onPressed: saving ? null : onDelete,
-                          color: Theme.of(context).colorScheme.error,
-                          icon: const Icon(Icons.delete_outline),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      Expanded(
-                        child: FilledButton(
-                          onPressed: saving ? null : onSave,
-                          child: saveLabel,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
           ),
         ),
       ),

@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import '../core/json.dart';
+
 const gpaRulesUrl =
     'https://soe.bit.edu.cn/rcpy/bk/ffa622a7030b45bdadf33415bdffa364.htm';
 
@@ -84,15 +86,15 @@ class CourseGrade {
   };
 
   factory CourseGrade.fromJson(Map<String, dynamic> json) => CourseGrade(
-    id: json['id'] as String,
-    number: json['number'] as String,
-    name: json['name'] as String,
-    term: json['term'] as String,
-    credits: (json['credits'] as num).toDouble(),
-    result: json['result'] as String,
-    attribute: json['attribute'] as String,
-    category: json['category'] as String,
-    examType: json['examType'] as String,
+    id: jsonStringField(json, 'id'),
+    number: jsonStringField(json, 'number'),
+    name: jsonStringField(json, 'name'),
+    term: jsonStringField(json, 'term'),
+    credits: jsonDoubleField(json, 'credits'),
+    result: jsonStringField(json, 'result'),
+    attribute: jsonStringField(json, 'attribute'),
+    category: jsonStringField(json, 'category'),
+    examType: jsonStringField(json, 'examType'),
   );
 }
 
@@ -175,10 +177,10 @@ class StudyPlan {
   };
 
   factory StudyPlan.fromJson(Map<String, dynamic> json) => StudyPlan(
-    major: json['major'] as String,
-    year: json['year'] as String,
-    requiredCredits: (json['requiredCredits'] as num?)?.toDouble(),
-    completedCredits: (json['completedCredits'] as num?)?.toDouble(),
+    major: jsonStringField(json, 'major'),
+    year: jsonStringField(json, 'year'),
+    requiredCredits: jsonDoubleFieldOrNull(json, 'requiredCredits'),
+    completedCredits: jsonDoubleFieldOrNull(json, 'completedCredits'),
   );
 }
 
@@ -247,24 +249,27 @@ class AcademicRecord {
   };
 
   factory AcademicRecord.fromJson(Map<String, dynamic> json) => AcademicRecord(
-    grades: (json['grades'] as List)
-        .map((row) => CourseGrade.fromJson(row as Map<String, dynamic>))
-        .toList(),
+    grades: [
+      for (final row in jsonListField(json, 'grades'))
+        CourseGrade.fromJson(jsonObject(row, 'grades[]')),
+    ],
     plan: json['plan'] == null
         ? null
-        : StudyPlan.fromJson(json['plan'] as Map<String, dynamic>),
-    gradesUpdatedAt: json['gradesUpdatedAt'] == null
-        ? null
-        : DateTime.parse(json['gradesUpdatedAt'] as String),
-    planUpdatedAt: json['planUpdatedAt'] == null
-        ? null
-        : DateTime.parse(json['planUpdatedAt'] as String),
-    targetCredits: (json['targetCredits'] as num?)?.toDouble(),
-    categoryTargets: (json['categoryTargets'] as Map<String, dynamic>).map(
-      (key, value) => MapEntry(key, (value as num).toDouble()),
+        : StudyPlan.fromJson(jsonObjectField(json, 'plan')),
+    gradesUpdatedAt: jsonDateTimeOrNull(
+      'gradesUpdatedAt',
+      json['gradesUpdatedAt'],
     ),
-    categoryOverrides: (json['categoryOverrides'] as Map<String, dynamic>)
-        .cast<String, String>(),
+    planUpdatedAt: jsonDateTimeOrNull('planUpdatedAt', json['planUpdatedAt']),
+    targetCredits: jsonDoubleFieldOrNull(json, 'targetCredits'),
+    categoryTargets: {
+      for (final entry in jsonObjectField(json, 'categoryTargets').entries)
+        entry.key: jsonDouble(entry.value, 'categoryTargets.${entry.key}'),
+    },
+    categoryOverrides: {
+      for (final entry in jsonObjectField(json, 'categoryOverrides').entries)
+        entry.key: jsonString(entry.value, 'categoryOverrides.${entry.key}'),
+    },
   );
 }
 

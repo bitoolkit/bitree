@@ -47,6 +47,7 @@
       gtk3
       libgcrypt
       libsecret
+      webkitgtk_4_1
     ];
 
   env = {

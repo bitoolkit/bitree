@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import '../../app/controller.dart';
 import '../../app/ui/widget_guide.dart';
 import '../../core/diagnostics.dart';
+import '../../l10n/l10n.dart';
 import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_notice.dart';
 import '../ics.dart';
@@ -32,7 +33,7 @@ class _ScheduleMenuState extends State<ScheduleMenu> {
         .where((course) => !course.isScheduled)
         .length;
     if (skipped == schedule.courses.length) {
-      showAppNotice(context, '没有可导出的课程，请先添加课程或设置上课时间。');
+      showAppNotice(context, context.l10n.exportScheduleEmpty);
       return;
     }
     setState(() => _exporting = true);
@@ -43,16 +44,20 @@ class _ScheduleMenuState extends State<ScheduleMenu> {
       );
       final saved = await FilePicker.saveFile(
         fileName: 'BITree-$term.ics',
-        bytes: Uint8List.fromList(utf8.encode(scheduleToIcs(schedule))),
+        bytes: Uint8List.fromList(
+          utf8.encode(scheduleToIcs(schedule, context.l10n)),
+        ),
         mimeType: 'text/calendar',
-        dialogTitle: '导出课表',
+        dialogTitle: context.l10n.exportSchedule,
       );
       if (!mounted || saved == null) return;
       showAppNotice(
         context,
-        skipped == 0 ? '已导出课表' : '已导出课表，跳过 $skipped 门时间待定的课程',
+        skipped == 0
+            ? context.l10n.exportScheduleSuccess
+            : context.l10n.exportScheduleSkipped(skipped),
       );
-    } catch (failure, stack) {
+    } on Exception catch (failure, stack) {
       AppDiagnostics.instance.report('导出课表', failure, stack);
     } finally {
       if (mounted) setState(() => _exporting = false);
@@ -61,6 +66,7 @@ class _ScheduleMenuState extends State<ScheduleMenu> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final schedule = widget.controller.timetable.schedule;
     final enabled = !widget.controller.timetable.busy;
     return AppMenuAnchor(
@@ -70,24 +76,24 @@ class _ScheduleMenuState extends State<ScheduleMenu> {
           onPressed: schedule == null || !enabled
               ? null
               : () => manageTermWeeks(context, widget.controller),
-          child: const Text('周数管理'),
+          child: Text(l10n.weekManagement),
         ),
         if (Platform.isAndroid)
           AppMenuItemButton(
             onPressed: () => showWidgetGuide(context),
             leadingIcon: const Icon(Icons.widgets_outlined),
-            child: const Text('桌面日程表'),
+            child: Text(l10n.desktopAgendaWidget),
           ),
         AppMenuItemButton(
           onPressed: schedule == null || !enabled || _exporting
               ? null
               : () => _export(schedule),
           leadingIcon: const Icon(Icons.file_download_outlined),
-          child: const Text('导出 ICS'),
+          child: Text(l10n.exportIcs),
         ),
       ],
       builder: (context, menu, isOpen) => IconButton(
-        tooltip: '更多',
+        tooltip: l10n.more,
         onPressed: _exporting
             ? null
             : () => isOpen ? menu.close() : menu.open(),

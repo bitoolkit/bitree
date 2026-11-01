@@ -28,10 +28,21 @@ void main() {
       firstWeek: -3,
       courses: const [],
     );
-    await ScheduleStore().write(semester);
+    final spring = SemesterSchedule(
+      term: '2025-2026-2',
+      firstMonday: DateTime.utc(2026, 2, 23),
+      firstWeek: 1,
+      lastWeek: 20,
+      courses: const [],
+    );
+    await ScheduleStore().write((
+      selectedTerm: semester.term,
+      schedules: {semester.term: semester, spring.term: spring},
+    ));
     final saved = await ScheduleStore().read();
     expect(saved.selectedTerm, semester.term);
     expect(saved.schedules[semester.term]!.firstWeek, -3);
+    expect(saved.schedules[spring.term]!.lastWeek, 20);
     final scheduleJson = jsonDecode(
       await File('${directory.path}/schedule.json').readAsString(),
     ) as Map;
@@ -56,9 +67,14 @@ void main() {
       categories: {'必修': 90},
     );
     await AcademicStore().write('student', record);
+    await AcademicStore().write(
+      'another-student',
+      const AcademicRecord(targetCredits: 120),
+    );
     final academic = await AcademicStore().read('student');
     expect(academic.targetCredits, 150);
     expect(academic.categoryTargets, {'必修': 90});
+    expect((await AcademicStore().read('another-student')).targetCredits, 120);
     expect(
       academic
           .withCreditTargets(total: null, categories: const {})

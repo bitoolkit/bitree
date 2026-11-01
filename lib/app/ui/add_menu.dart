@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../agenda/model.dart';
 import '../../agenda/ui/agenda_editor.dart';
+import '../../l10n/l10n.dart';
 import '../../schedule/selection.dart';
 import '../../schedule/ui/course_editor.dart';
 import '../../ui/app_menu_anchor.dart';
@@ -29,6 +30,7 @@ class AddMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final agendaEnabled = controller.agenda.ready && !controller.agenda.busy;
     return AppMenuAnchor(
       controller: menuController,
@@ -39,11 +41,11 @@ class AddMenu extends StatelessWidget {
               ? null
               : () => editCourse(context, controller, selection: selection),
           leadingIcon: const Icon(Icons.school_outlined),
-          child: const Text('添加课程'),
+          child: Text(l10n.addCourse),
         ),
-        for (final (kind, label, icon) in const [
-          (AgendaKind.event, '添加日程', Icons.event_outlined),
-          (AgendaKind.deadline, '添加 DDL', Icons.flag_outlined),
+        for (final (kind, label, icon) in [
+          (AgendaKind.event, l10n.addAgenda, Icons.event_outlined),
+          (AgendaKind.deadline, l10n.addDeadline, Icons.flag_outlined),
         ])
           AppMenuItemButton(
             onPressed: agendaEnabled
@@ -77,7 +79,7 @@ class AddButton extends StatelessWidget {
     controller: controller,
     date: date,
     builder: (context, menu, isOpen) => IconButton(
-      tooltip: '添加',
+      tooltip: context.l10n.add,
       onPressed: controller.timetable.busy || controller.agenda.busy
           ? null
           : () => isOpen ? menu.close() : menu.open(),

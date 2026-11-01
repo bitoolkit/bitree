@@ -2,9 +2,13 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/formats.dart';
+import '../../l10n/l10n.dart';
 import '../../schedule/model.dart';
+import '../../ui/app_dialog.dart';
 import '../../ui/app_dropdown_field.dart';
 import '../../ui/design.dart';
+import '../../ui/selection_controls.dart';
 import '../model.dart';
 
 enum _TimePreset { all, current, morning, afternoon, evening, custom }
@@ -25,6 +29,7 @@ class ClassroomTimeField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final current = date == calendarDate(now)
         ? currentClassroomSection(now)
         : null;
@@ -42,16 +47,16 @@ class ClassroomTimeField extends StatelessWidget {
                   ?.key ??
               _TimePreset.custom;
     final names = {
-      _TimePreset.all: '不限时段',
-      _TimePreset.current: '当前这节',
-      _TimePreset.morning: '上午',
-      _TimePreset.afternoon: '下午',
-      _TimePreset.evening: '晚上',
-      _TimePreset.custom: '自选课次',
+      _TimePreset.all: l10n.allPeriods,
+      _TimePreset.current: l10n.currentPeriod,
+      _TimePreset.morning: l10n.morning,
+      _TimePreset.afternoon: l10n.afternoon,
+      _TimePreset.evening: l10n.evening,
+      _TimePreset.custom: l10n.customPeriods,
     };
 
     return AppDropdownField<_TimePreset>(
-      label: '空闲时段',
+      label: l10n.freeTime,
       value: selected,
       textStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 13),
       entries: [
@@ -63,7 +68,7 @@ class ClassroomTimeField extends StatelessWidget {
           DropdownMenuEntry(
             value: preset,
             label: preset == selected && value != null
-                ? value!.timeLabel
+                ? value!.localizedTime(l10n)
                 : names[preset]!,
             labelWidget: Padding(
               padding: const EdgeInsets.symmetric(vertical: 3),
@@ -74,10 +79,12 @@ class ClassroomTimeField extends StatelessWidget {
                   Text(names[preset]!),
                   const SizedBox(height: 2),
                   Text(switch (preset) {
-                    _TimePreset.all => '查看当天所有空闲时段',
-                    _TimePreset.custom => '选择一节或连续几节',
-                    _ =>
-                      '${ranges[preset]!.timeLabel}（${ranges[preset]!.sectionLabel}）',
+                    _TimePreset.all => l10n.viewAllFreePeriods,
+                    _TimePreset.custom => l10n.chooseOneOrMoreSections,
+                    _ => l10n.periodAndSection(
+                      ranges[preset]!.localizedTime(l10n),
+                      ranges[preset]!.localizedSection(l10n),
+                    ),
                   }, style: Theme.of(context).textTheme.bodySmall),
                 ],
               ),
@@ -89,7 +96,7 @@ class ClassroomTimeField extends StatelessWidget {
           onChanged(ranges[preset]);
           return;
         }
-        final selection = await showDialog<({ClassroomPeriod? period})>(
+        final selection = await showAppDialog<({ClassroomPeriod? period})>(
           context: context,
           builder: (_) => _ClassroomTimeDialog(
             initial: value ?? (start: current ?? 1, end: current ?? 2),
@@ -132,6 +139,7 @@ class _ClassroomTimeDialogState extends State<_ClassroomTimeDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final l10n = context.l10n;
 
     return ScrollConfiguration(
       behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
@@ -141,9 +149,9 @@ class _ClassroomTimeDialogState extends State<_ClassroomTimeDialog> {
         scrollable: true,
         title: Row(
           children: [
-            const Expanded(child: Text('选择空闲时段')),
+            Expanded(child: Text(l10n.chooseFreePeriod)),
             IconButton(
-              tooltip: '关闭',
+              tooltip: l10n.close,
               onPressed: () => Navigator.pop(context),
               icon: const Icon(Icons.close_rounded, size: 20),
             ),
@@ -162,7 +170,7 @@ class _ClassroomTimeDialogState extends State<_ClassroomTimeDialog> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  '先选起始课次，再选结束课次。只用一节可直接应用。',
+                  l10n.periodSelectionHint,
                   style: theme.textTheme.bodySmall,
                 ),
                 const SizedBox(height: 12),
@@ -179,12 +187,14 @@ class _ClassroomTimeDialogState extends State<_ClassroomTimeDialog> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          _period.timeLabel,
+                          _period.localizedTime(l10n),
                           style: theme.textTheme.titleMedium,
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${_period.sectionLabel}内全程空闲',
+                          l10n.freeThroughoutSections(
+                            _period.localizedSection(l10n),
+                          ),
                           style: theme.textTheme.bodySmall,
                         ),
                       ],
@@ -203,42 +213,30 @@ class _ClassroomTimeDialogState extends State<_ClassroomTimeDialog> {
                     )
                       SizedBox(
                         width: width,
-                        child: Semantics(
+                        child: AppSelectionButton(
                           selected: _period.contains(section),
-                          child: OutlinedButton(
-                            onPressed: () => _select(section),
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size(0, 54),
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 7,
-                                horizontal: 3,
+                          minimumSize: const Size(0, 54),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 7,
+                            horizontal: 3,
+                          ),
+                          onPressed: () => _select(section),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                l10n.sectionShort(section),
+                                style: const TextStyle(fontSize: 13),
                               ),
-                              backgroundColor: _period.contains(section)
-                                  ? scheme.primaryContainer
-                                  : null,
-                              foregroundColor: _period.contains(section)
-                                  ? scheme.onPrimaryContainer
-                                  : scheme.onSurface,
-                              side: BorderSide(
-                                color: _period.contains(section)
-                                    ? scheme.primary
-                                    : scheme.outlineVariant,
+                              const SizedBox(height: 2),
+                              Text(
+                                (
+                                  start: section,
+                                  end: section,
+                                ).localizedTime(l10n),
+                                style: const TextStyle(fontSize: 11),
                               ),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '第$section节',
-                                  style: const TextStyle(fontSize: 13),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  (start: section, end: section).timeLabel,
-                                  style: const TextStyle(fontSize: 11),
-                                ),
-                              ],
-                            ),
+                            ],
                           ),
                         ),
                       ),
@@ -251,11 +249,11 @@ class _ClassroomTimeDialogState extends State<_ClassroomTimeDialog> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, (period: null)),
-            child: const Text('不限时段'),
+            child: Text(l10n.allPeriods),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, (period: _period)),
-            child: const Text('应用'),
+            child: Text(l10n.apply),
           ),
         ],
       ),

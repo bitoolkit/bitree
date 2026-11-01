@@ -1,9 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/diagnostics.dart';
+import '../../l10n/l10n.dart';
 import '../../ui/app_notice.dart';
 import '../repository.dart';
 import '../version.dart';
@@ -13,8 +12,9 @@ Future<void> checkForUpdates(
   BuildContext context, {
   bool silent = false,
 }) async {
+  final l10n = context.l10n;
   try {
-    final updates = UpdateRepository(SharedPreferencesAsync());
+    final updates = UpdateRepository(SharedPreferencesAsync(), l10n: l10n);
     final installed = await appVersion();
     final releases = await updates.check(
       installed,
@@ -27,21 +27,19 @@ Future<void> checkForUpdates(
 
     if (releases.isEmpty) {
       if (!silent) {
-        showAppNotice(context, '已是最新版本');
+        showAppNotice(context, l10n.latestVersion);
       }
       return;
     }
 
-    await showDialog<void>(
-      context: context,
-      builder: (_) => UpdateDialog(
-        releases: releases,
-        preferDevelopment: installed.contains('-'),
-      ),
+    await showUpdateDialog(
+      context,
+      releases: releases,
+      preferDevelopment: installed.contains('-'),
     );
 
     await updates.markNotified(releases);
-  } catch (failure, stack) {
+  } on Exception catch (failure, stack) {
     if (silent || !context.mounted) {
       AppDiagnostics.instance.error('检查更新', failure, stack);
     } else {
@@ -49,9 +47,7 @@ Future<void> checkForUpdates(
         '检查更新',
         failure,
         stack,
-        message: failure is HttpException
-            ? failure.message
-            : '检查更新失败，请检查网络后重试。',
+        message: l10n.updateCheckFailed,
       );
     }
   }

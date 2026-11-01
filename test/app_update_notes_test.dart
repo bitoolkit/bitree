@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
 
+import 'package:bitree/l10n/app_localizations_en.dart';
+import 'package:bitree/l10n/app_localizations_zh.dart';
 import 'package:bitree/updates/release.dart';
 import 'package:bitree/updates/repository.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -114,7 +116,11 @@ void main() {
 
   Future<List<AppRelease>> read(String installed, {DateTime? builtAt}) =>
       HttpOverrides.runWithHttpOverrides(
-        () => availableAppReleases(installed, builtAt: builtAt),
+        () => availableAppReleases(
+          installed,
+          builtAt: builtAt,
+          l10n: AppLocalizationsZh(),
+        ),
         network,
       );
 
@@ -187,6 +193,23 @@ void main() {
     },
   );
 
+  test(
+    'A stable release without published_at still compares its version',
+    () async {
+      development = null;
+      stable = _release(development: false)..remove('published_at');
+      changes['1111111...v0.3.0'] = _commits(1);
+
+      final release = (await read(
+        'v0.3.0-dev.1111111',
+        builtAt: DateTime.utc(2026, 10, 28),
+      )).single;
+
+      expect(release.version, 'v0.3.0');
+      expect(release.notes, contains('变更 1'));
+    },
+  );
+
   test('Stable and development choices keep separate version ranges', () async {
     stable = _release(development: false);
     changes['v0.2.0...v0.3.0'] = _commits(1);
@@ -243,6 +266,20 @@ void main() {
     expect(requests.where((url) => url.path.contains('/compare/')), isEmpty);
   });
 
+  test('Generated update summaries follow the selected language', () async {
+    changes['1111111...3333333'] = _commits(8);
+    final release = (await HttpOverrides.runWithHttpOverrides(
+      () => availableAppReleases(
+        'v0.3.0-dev.1111111',
+        l10n: AppLocalizationsEn(),
+      ),
+      network,
+    )).single;
+
+    expect(release.notes, contains('Plus 2 more changes.'));
+    expect(release.notes, contains('[View full changes]'));
+  });
+
   test(
     'Rebuilding the same commit does not request or repeat historical notes',
     () async {
@@ -250,7 +287,7 @@ void main() {
         'v0.3.0-dev.3333333',
         builtAt: DateTime.utc(2026, 10, 26),
       )).single;
-      expect(release.notes, contains('没有新增代码变更'));
+      expect(release.notes, contains('此版本没有代码变更。'));
       expect(requests.where((url) => url.path.contains('/compare/')), isEmpty);
     },
   );
@@ -258,7 +295,7 @@ void main() {
   test('An empty comparison does not fall back to cumulative notes', () async {
     changes['1111111...3333333'] = [];
     final release = (await read('v0.3.0-dev.1111111')).single;
-    expect(release.notes, contains('没有新增代码变更'));
+    expect(release.notes, contains('此版本没有代码变更。'));
     expect(release.notes, isNot(contains('旧变更')));
   });
 
@@ -272,7 +309,7 @@ void main() {
         expect(release.version, developmentVersion);
         expect(release.url.path, endsWith('/v0.3.0-dev'));
         expect(release.downloadUrl, release.url);
-        expect(release.notes, '更新说明暂时无法读取，请查看发布页。');
+        expect(release.notes, '暂时无法读取更新说明。');
         expect(release.notes, isNot(contains('旧变更')));
       },
     );
@@ -293,9 +330,10 @@ void main() {
       DateTime? builtAt,
       bool automatic = true,
     }) => HttpOverrides.runWithHttpOverrides(
-      () =>
-          UpdateRepository(preferences)
-              .check(installed, builtAt: builtAt, automatic: automatic),
+      () => UpdateRepository(
+        preferences,
+        l10n: AppLocalizationsZh(),
+      ).check(installed, builtAt: builtAt, automatic: automatic),
       network,
     );
 
@@ -348,7 +386,10 @@ void main() {
 
     test('Notified stable versions stay quiet, while manual checks refresh both channels', () async {
       final shown = await check();
-      await UpdateRepository(preferences).markNotified(shown);
+      await UpdateRepository(
+        preferences,
+        l10n: AppLocalizationsZh(),
+      ).markNotified(shown);
       requests.clear();
       expect(await check(), isEmpty);
       expect(requests, isEmpty);
@@ -433,6 +474,22 @@ void main() {
             jsonDecode((await preferences.getString('updates.cache'))!) as Map;
         expect(saved['installed'], 'v0.2.0');
         expect(saved['releases'], hasLength(2));
+      },
+    );
+
+    test(
+      'An out-of-range cached timestamp is replaced by fresh results',
+      () async {
+        await check();
+        final saved = jsonDecode(
+          (await preferences.getString('updates.cache'))!,
+        ) as Map<String, dynamic>;
+        saved['checkedAt'] = 8640000000000001;
+        await preferences.setString('updates.cache', jsonEncode(saved));
+        requests.clear();
+
+        expect(await check(), hasLength(1));
+        expect(requests, isNotEmpty);
       },
     );
 

@@ -39,7 +39,7 @@ class SchoolAccess {
 
   Future<T> readLearningPlatform<T>(
     DeadlineSource source,
-    VerifySchoolLogin verify,
+    VerifySchoolLogin? verify,
     Future<T> Function(SchoolSession, SchoolResponse) operation,
   ) => _run(source.loginPage, (session) async {
     final login = SchoolLogin(session, verify);

@@ -1,4 +1,5 @@
 import '../agenda/model.dart';
+import '../core/json.dart';
 import 'session.dart';
 
 Future<({String term, List<AgendaEntry> exams})> fetchSchoolExams(
@@ -11,12 +12,21 @@ Future<({String term, List<AgendaEntry> exams})> fetchSchoolExams(
     app: 'wdksapMobile',
     form: {'XNXQDM': term, '*order': '-KSRQ'},
   );
-  final rows = (response['datas']['cxxsksap']['rows'] as List).cast<Map>();
+  final rows = [
+    for (final row in jsonListField(
+      jsonObjectField(jsonObjectField(response, 'datas'), 'cxxsksap'),
+      'rows',
+    ))
+      jsonObject(row, 'cxxsksap.rows[]'),
+  ];
   final exams = rows.map((row) {
-    final date = DateTime.parse(row['KSRQ'] as String);
+    final date = jsonDateTime('KSRQ', row['KSRQ']);
     final times = RegExp(r'(\d{2}):(\d{2})')
-        .allMatches(row['KSSJMS'] as String)
+        .allMatches(jsonStringField(row, 'KSSJMS'))
         .toList();
+    if (times.length < 2) {
+      throw const FormatException('考试时间格式不正确');
+    }
 
     DateTime at(RegExpMatch time) => DateTime.utc(
       date.year,
@@ -27,14 +37,15 @@ Future<({String term, List<AgendaEntry> exams})> fetchSchoolExams(
     );
 
     final start = at(times[0]);
-    final subject = row['KCM'] as String;
+    final subject = jsonStringField(row, 'KCM');
+    final courseCode = jsonStringField(row, 'KCH');
     return AgendaEntry(
-      id: 'exam-$term-${row['KCH']}-$subject-${start.toIso8601String()}',
+      id: 'exam-$term-$courseCode-$subject-${start.toIso8601String()}',
       title: subject,
       kind: AgendaKind.exam,
       startsAt: start,
       endsAt: at(times[1]),
-      location: row['JASMC'] as String? ?? '',
+      location: jsonStringFieldOrNull(row, 'JASMC') ?? '',
       notes: [
         if (row['ZWH'] case final String seat when seat.isNotEmpty) '座位号：$seat',
         if (row['KSMC'] case final String mode when mode.isNotEmpty) mode,

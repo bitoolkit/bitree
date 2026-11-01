@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/diagnostics.dart';
+import '../../core/error_message.dart';
+import '../../l10n/l10n.dart';
+import '../../ui/app_dialog.dart';
+import '../../ui/design.dart';
 import '../verification.dart';
 
 Future<String?> verifySchoolLogin(
@@ -11,7 +15,7 @@ Future<String?> verifySchoolLogin(
   SchoolVerification request,
 ) {
   if (!context.mounted) return Future.value(null);
-  return showDialog<String>(
+  return showAppDialog<String>(
     context: context,
     builder: (_) => _VerificationDialog(request: request),
   );
@@ -34,6 +38,7 @@ class _VerificationDialogState extends State<_VerificationDialog> {
   bool _submitting = false;
   int _resendSeconds = 0;
   Timer? _timer;
+  String? _error;
 
   @override
   void initState() {
@@ -48,6 +53,7 @@ class _VerificationDialogState extends State<_VerificationDialog> {
   Future<void> _refresh() async {
     setState(() {
       _loading = true;
+      _error = null;
     });
     try {
       switch (widget.request) {
@@ -55,17 +61,22 @@ class _VerificationDialogState extends State<_VerificationDialog> {
           final image = await reload();
           if (mounted) setState(() => _image = image);
         case SchoolSmsVerification(:final sendCode):
-          await sendCode();
+          final resendAfter = await sendCode();
           if (!mounted) return;
-          setState(() => _resendSeconds = 60);
+          setState(
+            () => _resendSeconds = (resendAfter.inMilliseconds + 999) ~/ 1000,
+          );
           _timer?.cancel();
-          _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-            if (_resendSeconds == 1) timer.cancel();
-            setState(() => _resendSeconds--);
-          });
+          if (_resendSeconds > 0) {
+            _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+              if (_resendSeconds == 1) timer.cancel();
+              setState(() => _resendSeconds--);
+            });
+          }
       }
-    } catch (failure, stack) {
-      AppDiagnostics.instance.report('获取登录验证码', failure, stack);
+    } on Exception catch (failure, stack) {
+      AppDiagnostics.instance.error('获取登录验证码', failure, stack);
+      if (mounted) setState(() => _error = errorMessage(failure));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -75,6 +86,7 @@ class _VerificationDialogState extends State<_VerificationDialog> {
     if (_submitting || _loading || !_form.currentState!.validate()) return;
     setState(() {
       _submitting = true;
+      _error = null;
     });
     try {
       final code = _code.text.trim();
@@ -82,8 +94,9 @@ class _VerificationDialogState extends State<_VerificationDialog> {
         await checkCode(code);
       }
       if (mounted) Navigator.pop(context, code);
-    } catch (failure, stack) {
-      AppDiagnostics.instance.report('校验登录验证码', failure, stack);
+    } on Exception catch (failure, stack) {
+      AppDiagnostics.instance.error('校验登录验证码', failure, stack);
+      if (mounted) setState(() => _error = errorMessage(failure));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -99,9 +112,12 @@ class _VerificationDialogState extends State<_VerificationDialog> {
   @override
   Widget build(BuildContext context) {
     final sms = widget.request is SchoolSmsVerification;
+    final l10n = context.l10n;
     return AlertDialog(
       scrollable: true,
-      title: Text(sms ? '短信验证' : '图形验证'),
+      title: Text(
+        sms ? l10n.schoolSmsVerification : l10n.schoolImageVerification,
+      ),
       content: Form(
         key: _form,
         child: Column(
@@ -110,8 +126,8 @@ class _VerificationDialogState extends State<_VerificationDialog> {
           children: [
             if (widget.request case SchoolSmsVerification(:final phone))
               Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Text('发送至 $phone'),
+                padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+                child: Text(l10n.schoolSentToPhone(phone)),
               ),
             if (!sms) ...[
               SizedBox(
@@ -122,13 +138,15 @@ class _VerificationDialogState extends State<_VerificationDialog> {
                     ? null
                     : Image.memory(_image!, fit: BoxFit.contain),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
             ],
             TextFormField(
               controller: _code,
               autofocus: true,
               enabled: !_submitting && !_loading,
-              decoration: const InputDecoration(labelText: '验证码'),
+              decoration: InputDecoration(
+                labelText: l10n.schoolVerificationCode,
+              ),
               keyboardType: sms ? TextInputType.number : TextInputType.text,
               textInputAction: TextInputAction.done,
               autofillHints: sms ? const [AutofillHints.oneTimeCode] : null,
@@ -137,8 +155,9 @@ class _VerificationDialogState extends State<_VerificationDialog> {
                   : null,
               autocorrect: false,
               enableSuggestions: false,
-              validator: (value) =>
-                  value == null || value.trim().isEmpty ? '请输入验证码' : null,
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? l10n.schoolEnterVerificationCode
+                  : null,
               onFieldSubmitted: (_) => _submit(),
             ),
             Align(
@@ -149,24 +168,29 @@ class _VerificationDialogState extends State<_VerificationDialog> {
                     : _refresh,
                 child: Text(
                   !sms
-                      ? '换一张'
+                      ? l10n.schoolRefreshImage
                       : _resendSeconds > 0
-                      ? '$_resendSeconds 秒后重发'
-                      : '重新发送',
+                      ? l10n.schoolResendIn(_resendSeconds)
+                      : l10n.schoolResend,
                 ),
               ),
             ),
+            if (_error case final error?)
+              Text(
+                error,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
           ],
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('取消'),
+          child: Text(l10n.cancel),
         ),
         FilledButton(
           onPressed: _loading || _submitting ? null : _submit,
-          child: Text(_submitting ? '验证中…' : '确认'),
+          child: Text(_submitting ? l10n.schoolVerifying : l10n.confirm),
         ),
       ],
     );

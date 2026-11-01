@@ -2,17 +2,19 @@ import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
 import '../../app/ui/add_menu.dart';
+import '../../l10n/formats.dart';
+import '../../l10n/l10n.dart';
 import '../../schedule/model.dart';
-import '../../school/ui/school_import_button.dart';
+import '../../sync/ui/sync_button.dart';
 import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_menu_trigger.dart';
 import '../../ui/app_page.dart';
 import '../../ui/pull_to_reveal_list.dart';
-import '../../ui/swipe_pager.dart';
 import '../model.dart';
 import '../view_mode.dart';
 import 'agenda_list_tile.dart';
 import 'agenda_timeline.dart';
+import 'deleted_deadlines.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({
@@ -50,6 +52,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   );
 
   Widget _build(BuildContext context) {
+    final l10n = context.l10n;
     final controller = widget.controller;
     final now = widget.now;
     final scheme = Theme.of(context).colorScheme;
@@ -57,6 +60,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         .where((entry) => _kind == null || entry.kind == _kind)
         .toList();
     final doneCount = entries.where((entry) => entry.isFinished(now)).length;
+    final deletedDeadlineCount = controller.agenda.deletedDeadlines.length;
     final timeline = controller.agendaViewMode.value == AgendaViewMode.timeline;
 
     Widget loadStatus() => Column(
@@ -68,31 +72,37 @@ class _CalendarScreenState extends State<CalendarScreen> {
           TextButton.icon(
             onPressed: controller.agenda.load,
             icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text('重新加载日程'),
+            label: Text(l10n.agendaReload),
           ),
       ],
     );
 
-    Widget statusHeader(TabController tabs) => Column(
+    Widget statusHeader() => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TabBar(
-          controller: tabs,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          indicatorSize: TabBarIndicatorSize.label,
-          labelPadding: const EdgeInsets.symmetric(horizontal: 12),
-          labelColor: scheme.primary,
-          unselectedLabelColor: scheme.onSurfaceVariant,
-          labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-          unselectedLabelStyle: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w400,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: SegmentedButton<int>(
+            showSelectedIcon: false,
+            segments: [
+              ButtonSegment(
+                value: 0,
+                label: Text(
+                  l10n.agendaPendingTab(entries.length - doneCount),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              ButtonSegment(
+                value: 1,
+                label: Text(
+                  l10n.agendaCompletedTab(doneCount),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+            selected: {_status},
+            onSelectionChanged: (selection) => _setStatus(selection.single),
           ),
-          tabs: [
-            Tab(text: '未完成 ${entries.length - doneCount}'),
-            Tab(text: '已完成 $doneCount'),
-          ],
         ),
         loadStatus(),
       ],
@@ -101,7 +111,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return AppPage(
       title: Row(
         children: [
-          const Text('日程'),
+          Text(l10n.agendaTitle),
           const SizedBox(width: 8),
           Flexible(
             child: _AgendaKindFilter(
@@ -113,9 +123,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
       actions: [
         AddButton(controller: controller),
-        SchoolImportButton(controller: controller),
+        SyncButton(controller: controller),
+        if (deletedDeadlineCount > 0)
+          IconButton(
+            tooltip: l10n.deletedDeadlinesTitle,
+            onPressed: controller.agenda.busy
+                ? null
+                : () => showDeletedDeadlines(context, controller.agenda),
+            icon: Badge.count(
+              count: deletedDeadlineCount,
+              backgroundColor: scheme.primary,
+              textColor: scheme.onPrimary,
+              child: const Icon(Icons.restore_from_trash_outlined),
+            ),
+          ),
         IconButton(
-          tooltip: timeline ? '切换到列表' : '切换到时间轴',
+          tooltip: timeline
+              ? l10n.agendaSwitchToList
+              : l10n.agendaSwitchToTimeline,
           icon: Icon(
             timeline ? Icons.view_list_outlined : Icons.view_timeline_outlined,
           ),
@@ -124,24 +149,31 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ),
       ],
-      // Keep both presentations alive so toggling views preserves the browsing
-      // position. The timeline is not inside SwipePager: horizontal gestures
-      // belong to time navigation rather than the completion-status pager.
+      // Keep browsing positions while changing presentation or completion
+      // filter. Horizontal gestures belong to rows or timeline navigation.
       child: IndexedStack(
         index: timeline ? 1 : 0,
         children: [
-          SwipePager(
-            index: _status,
-            itemCount: 2,
-            onChanged: _setStatus,
-            headerBuilder: (context, tabs) => statusHeader(tabs),
-            itemBuilder: (context, index) => _AgendaStatusList(
-              key: ValueKey((_kind, index)),
-              controller: controller,
-              entries: entries,
-              completed: index == 1,
-              now: now,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              statusHeader(),
+              Expanded(
+                child: IndexedStack(
+                  index: _status,
+                  children: [
+                    for (var index = 0; index < 2; index++)
+                      _AgendaStatusList(
+                        key: ValueKey((_kind, index)),
+                        controller: controller,
+                        entries: entries,
+                        completed: index == 1,
+                        now: now,
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -180,6 +212,7 @@ class _AgendaStatusList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final visible =
         entries.where((entry) => entry.isFinished(now) == completed).toList()
           ..sort((a, b) {
@@ -217,7 +250,7 @@ class _AgendaStatusList extends StatelessWidget {
     );
 
     return PullToRevealList(
-      hiddenLabel: '$overdueCount项逾期日程',
+      hiddenLabel: l10n.agendaOverdueHiddenLabel(overdueCount),
       hiddenChildren: dayRows(overdueDays),
       children: [
         if (days.isEmpty && controller.agenda.ready)
@@ -227,10 +260,10 @@ class _AgendaStatusList extends StatelessWidget {
             child: Center(
               child: Text(
                 completed
-                    ? '还没有已完成的日程'
+                    ? l10n.agendaNoCompleted
                     : overdueCount > 0
-                    ? '没有即将到来的日程'
-                    : '没有未完成的日程',
+                    ? l10n.agendaNoUpcoming
+                    : l10n.agendaNoPending,
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -251,6 +284,7 @@ class _AgendaKindFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
 
     return AppMenuAnchor(
@@ -268,13 +302,13 @@ class _AgendaKindFilter extends StatelessWidget {
               trailingIcon: value == kind
                   ? const Icon(Icons.check_rounded, size: 18)
                   : const SizedBox(width: 18),
-              child: Text(kind?.label ?? '全部'),
+              child: Text(kind?.localizedLabel(l10n) ?? l10n.all),
             ),
           ),
       ],
       builder: (context, menu, isOpen) => AppMenuTrigger(
-        label: value?.label ?? '全部',
-        semanticsLabel: '日程类型',
+        label: value?.localizedLabel(l10n) ?? l10n.all,
+        semanticsLabel: l10n.agendaType,
         isOpen: isOpen,
         foregroundColor: value == null
             ? scheme.onSurfaceVariant
@@ -293,15 +327,18 @@ class _AgendaDateHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final days = date.difference(calendarDate(now)).inDays;
     final label = switch (days) {
-      0 => '今天',
-      1 => '明天',
-      -1 => '昨天',
-      _ => weekdays[date.weekday - 1],
+      0 => l10n.today,
+      1 => l10n.tomorrow,
+      -1 => l10n.yesterday,
+      _ => localizedWeekday(l10n, date.weekday),
     };
-    final year = date.year == now.year ? '' : '${date.year}年';
+    final dateLabel = date.year == now.year
+        ? localizedMonthDay(l10n, date.month, date.day)
+        : localizedYearMonthDay(l10n, date.year, date.month, date.day);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 22, 16, 4),
@@ -316,7 +353,7 @@ class _AgendaDateHeading extends StatelessWidget {
               ),
             ),
             TextSpan(
-              text: '  $year${date.month}月${date.day}日',
+              text: '  $dateLabel',
               style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
             ),
           ],

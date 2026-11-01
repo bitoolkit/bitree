@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/formats.dart';
+import '../../l10n/l10n.dart';
 import '../../ui/design.dart';
 import '../atlas.dart';
 import '../place.dart';
@@ -19,6 +21,7 @@ class WencuiLocationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = context.l10n;
     final floor = place.floor ?? place.wing.firstFloor;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -64,17 +67,17 @@ class WencuiLocationCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '文萃楼 ${place.label}',
+                        l10n.wencuiLocation(place.label),
                         style: theme.textTheme.titleMedium,
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        '${place.wing.name} · $floor层',
+                        localizedWencuiWingFloor(l10n, place.wing, floor),
                         style: theme.textTheme.bodySmall,
                       ),
                       const SizedBox(height: 7),
                       Text(
-                        '查看教室位置',
+                        l10n.viewClassroomLocation,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.primary,
                         ),

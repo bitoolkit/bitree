@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import '../l10n/app_localizations.dart';
+import '../l10n/schedule.dart';
 import '../schedule/model.dart';
 import '../schedule/selection.dart';
 import 'model.dart';
@@ -14,7 +16,10 @@ bool isPhysicsLabDeadline(AgendaEntry entry) =>
     entry.source == null &&
     entry.id.startsWith(_physicsLabPrefix);
 
-List<AgendaEntry> physicsLabDeadlines(SemesterSchedule schedule) {
+List<AgendaEntry> physicsLabDeadlines(
+  SemesterSchedule schedule,
+  AppLocalizations l10n,
+) {
   final entries = <String, AgendaEntry>{};
   for (final course in schedule.courses) {
     if (!course.isScheduled ||
@@ -27,9 +32,9 @@ List<AgendaEntry> physicsLabDeadlines(SemesterSchedule schedule) {
       if (week < schedule.firstWeek || week > schedule.lastWeek) {
         continue;
       }
-      final date = schedule.mondayAt(week).add(
-        Duration(days: course.weekday! - 1),
-      );
+      final date = schedule
+          .mondayAt(week)
+          .add(Duration(days: course.weekday! - 1));
       final selection = TimetableSelection(
         date: date,
         startSection: course.startSection!,
@@ -45,8 +50,12 @@ List<AgendaEntry> physicsLabDeadlines(SemesterSchedule schedule) {
         59,
       );
       for (final deadline in [
-        (key: 'preview', title: '预习报告 $name', due: selection.startsAt),
-        (key: 'report', title: '实验报告 $name', due: reportDue),
+        (
+          key: 'preview',
+          title: l10n.physicsLabPreviewReport(name),
+          due: selection.startsAt,
+        ),
+        (key: 'report', title: l10n.physicsLabReport(name), due: reportDue),
       ]) {
         // No clock in the ID: editing a local course's section updates the same
         // occurrence. The semester and course ID isolate separate lab sessions.
@@ -63,8 +72,11 @@ List<AgendaEntry> physicsLabDeadlines(SemesterSchedule schedule) {
           kind: AgendaKind.deadline,
           startsAt: deadline.due,
           location: course.room,
-          notes: '由${schedule.termLabel}课表生成\n'
-              '上课：${dateText(date)} ${course.timeLabel}',
+          notes: l10n.physicsLabGeneratedNotes(
+            localizedTerm(l10n, schedule),
+            dateText(date),
+            course.timeLabel,
+          ),
           term: schedule.term,
           local: false,
           course: course.name,
@@ -72,9 +84,8 @@ List<AgendaEntry> physicsLabDeadlines(SemesterSchedule schedule) {
       }
     }
   }
-  return entries.values.toList()
-    ..sort((a, b) {
-      final time = a.startsAt.compareTo(b.startsAt);
-      return time != 0 ? time : a.id.compareTo(b.id);
-    });
+  return entries.values.toList()..sort((a, b) {
+    final time = a.startsAt.compareTo(b.startsAt);
+    return time != 0 ? time : a.id.compareTo(b.id);
+  });
 }

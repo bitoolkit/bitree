@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import '../../agenda/ui/calendar_block.dart';
 import '../../app/controller.dart';
 import '../../app/ui/add_menu.dart';
+import '../../l10n/l10n.dart';
 import '../../ui/design.dart';
 import '../../ui/theme.dart';
 import '../layout.dart';
@@ -461,10 +462,11 @@ class _PeriodLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final time = sectionTimes[section - 1];
     return Semantics(
-      label: '第 $section 节，${time.$1}–${time.$2}',
+      label: l10n.sectionSemantics(section, time.$1, time.$2),
       child: ExcludeSemantics(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

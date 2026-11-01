@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
 import '../core/async/cancelable_request.dart';
+import '../core/json.dart';
 import 'errors.dart';
 import 'network.dart';
 import 'storage.dart';
@@ -23,9 +25,7 @@ class SchoolResponse {
 
   String get text => utf8.decode(bytes);
 
-  Map<String, dynamic> get json {
-    return jsonDecode(text) as Map<String, dynamic>;
-  }
+  Map<String, dynamic> get json => jsonObject(jsonDecode(text), '学校接口响应');
 }
 
 class SchoolSession {
@@ -34,6 +34,7 @@ class SchoolSession {
   final SchoolNetwork network;
   final SchoolStorage storage;
   final _client = HttpClient()..connectionTimeout = const Duration(seconds: 20);
+  final _requestSlots = _RequestLimiter(4);
   bool _closed = false;
 
   static const userAgent =
@@ -90,6 +91,33 @@ class SchoolSession {
     bool stopAtLogin = false,
     bool checkStatus = true,
     bool anonymous = false,
+  }) {
+    checkActive();
+    return _requestSlots.run(
+      () => _request(
+        target,
+        form: form,
+        jsonBody: jsonBody,
+        body: body,
+        headers: headers,
+        followRedirects: followRedirects,
+        stopAtLogin: stopAtLogin,
+        checkStatus: checkStatus,
+        anonymous: anonymous,
+      ),
+    );
+  }
+
+  Future<SchoolResponse> _request(
+    Uri target, {
+    required Map<String, String>? form,
+    required Object? jsonBody,
+    required String? body,
+    required Map<String, String> headers,
+    required bool followRedirects,
+    required bool stopAtLogin,
+    required bool checkStatus,
+    required bool anonymous,
   }) async {
     var url = target;
     var payload = form != null
@@ -165,7 +193,11 @@ class SchoolSession {
 
         if (followRedirects &&
             [301, 302, 303, 307, 308].contains(result.status)) {
-          final next = network.route(result.location!);
+          final location = result.location;
+          if (location == null) {
+            throw SchoolRequestError('学校请求返回了重定向，但没有提供目标地址。');
+          }
+          final next = network.route(location);
           if ([301, 302, 303].contains(result.status)) {
             payload = null;
           }
@@ -186,7 +218,7 @@ class SchoolSession {
           throw failure;
         }
         return result;
-      } catch (failure) {
+      } on Exception catch (failure) {
         if (failure is SocketException ||
             failure is TimeoutException ||
             failure is HandshakeException ||
@@ -202,5 +234,34 @@ class SchoolSession {
   void close() {
     _closed = true;
     _client.close(force: true);
+  }
+}
+
+/// Caps shared transport pressure without throwing away queued read work.
+class _RequestLimiter {
+  _RequestLimiter(this.limit) : assert(limit > 0);
+
+  final int limit;
+  final _waiters = Queue<Completer<void>>();
+  var _active = 0;
+
+  Future<T> run<T>(Future<T> Function() operation) async {
+    if (_active < limit) {
+      _active++;
+    } else {
+      final ready = Completer<void>();
+      _waiters.add(ready);
+      await ready.future;
+    }
+
+    try {
+      return await operation();
+    } finally {
+      if (_waiters.isNotEmpty) {
+        _waiters.removeFirst().complete();
+      } else {
+        _active--;
+      }
+    }
   }
 }

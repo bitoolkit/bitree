@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../agenda/controller.dart';
 import '../../agenda/ui/calendar_screen.dart';
 import '../../core/diagnostics.dart';
+import '../../l10n/l10n.dart';
 import '../../schedule/ui/home_screen.dart';
 import '../../ui/app_notice.dart';
 import '../../ui/app_page.dart';
@@ -76,6 +77,7 @@ class _AppScreenState extends State<AppScreen> {
       CampusTimeBuilder(active: true, builder: _build);
 
   Widget _build(BuildContext context, DateTime now) {
+    final l10n = context.l10n;
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
@@ -102,8 +104,12 @@ class _AppScreenState extends State<AppScreen> {
             ],
           ),
           ListenableBuilder(
-            listenable: widget.controller.school,
-            builder: (context, _) => widget.controller.school.busy
+            listenable: Listenable.merge([
+              widget.controller.school,
+              widget.controller.sync,
+            ]),
+            builder: (context, _) =>
+                widget.controller.school.busy || widget.controller.sync.busy
                 ? Positioned(
                     top: MediaQuery.paddingOf(context).top,
                     left: 0,
@@ -137,10 +143,10 @@ class _AppScreenState extends State<AppScreen> {
                 selectedIndex: _tab,
                 onDestinationSelected: (value) => setState(() => _tab = value),
                 destinations: [
-                  const NavigationDestination(
+                  NavigationDestination(
                     icon: Icon(Icons.home_outlined),
                     selectedIcon: Icon(Icons.home_rounded),
-                    label: '首页',
+                    label: l10n.navHome,
                   ),
                   NavigationDestination(
                     icon: _AgendaNavigationIcon(
@@ -153,17 +159,17 @@ class _AppScreenState extends State<AppScreen> {
                       now: now,
                       icon: Icons.calendar_month_rounded,
                     ),
-                    label: '日程',
+                    label: l10n.navAgenda,
                   ),
-                  const NavigationDestination(
+                  NavigationDestination(
                     icon: Icon(Icons.grid_view_outlined),
                     selectedIcon: Icon(Icons.grid_view_rounded),
-                    label: '工具',
+                    label: l10n.navTools,
                   ),
-                  const NavigationDestination(
+                  NavigationDestination(
                     icon: Icon(Icons.settings_outlined),
                     selectedIcon: Icon(Icons.settings_rounded),
-                    label: '设置',
+                    label: l10n.navSettings,
                   ),
                 ],
               ),
@@ -189,10 +195,13 @@ class _AgendaNavigationIcon extends StatelessWidget {
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: agenda,
     builder: (context, _) {
+      final l10n = context.l10n;
       final count = agenda.ready ? agenda.pendingOn(now, now: now).length : 0;
       final scheme = Theme.of(context).colorScheme;
       return Semantics(
-        label: count > 0 ? '今天$count项待办' : null,
+        label: count > 0
+            ? '${l10n.today} ${l10n.agendaReminderCount(count)}'
+            : null,
         excludeSemantics: true,
         child: Badge.count(
           count: count,

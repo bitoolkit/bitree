@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../l10n/formats.dart';
+import '../../l10n/l10n.dart';
 import '../../ui/design.dart';
 import '../../ui/theme.dart';
 import '../model.dart';
@@ -26,16 +28,21 @@ class CourseTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final colors = courseColors(context, course);
 
     return Semantics(
       button: true,
-      label:
-          '${course.name}，${course.timeLabel}，${course.room}${progress != null
-              ? '，上课中'
-              : isToday
-              ? '，今天'
-              : ''}，查看详情',
+      label: l10n.courseDetailsSemantics(
+        course.name,
+        localizedCourseTime(l10n, course),
+        course.room,
+        progress != null
+            ? l10n.courseIsOngoing
+            : isToday
+            ? l10n.courseIsToday
+            : '',
+      ),
       child: ExcludeSemantics(
         child: Tooltip(
           triggerMode: TooltipTriggerMode.manual,

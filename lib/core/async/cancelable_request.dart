@@ -41,8 +41,8 @@ class LatestRequest {
   CancellationToken? _current;
   Future<void>? _finished;
 
-  /// Cancelled runs return null; other errors propagate to the caller.
-  Future<T?> run<T>(
+  /// A superseded run throws [RequestCancelled]; other errors propagate.
+  Future<T> run<T>(
     Future<T> Function(CancellationToken cancellation) operation,
   ) async {
     final previous = _finished;
@@ -58,8 +58,6 @@ class LatestRequest {
       final result = await operation(cancellation);
       cancellation.check();
       return result;
-    } on RequestCancelled {
-      return null;
     } finally {
       if (identical(_current, cancellation)) {
         _current = null;

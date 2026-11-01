@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../l10n/formats.dart';
+import '../../l10n/l10n.dart';
 import '../../ui/design.dart';
 import '../../ui/sheet_layout.dart';
 import '../../ui/theme.dart';
@@ -22,56 +24,45 @@ class ConflictingCourses extends StatelessWidget {
   final DateTime? date;
 
   Future<void> _selectCourse(BuildContext context) async {
-    final selected = await showModalBottomSheet<Course>(
+    final l10n = context.l10n;
+    final selected = await showAppSheet<Course>(
       context: context,
-      useSafeArea: true,
-      isScrollControlled: true,
-      builder: (context) => SafeArea(
-        top: false,
-        child: SheetLayout(
-          header: SheetHeader(
-            title: const Text('选择课程'),
-            actions: [
-              IconButton(
-                tooltip: '关闭',
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close_rounded, size: 20),
-              ),
-            ],
-          ),
-          content: Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final course in courses)
-                  ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 6,
-                    ),
-                    leading: Container(
-                      width: 4,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: courseColors(context, course).accent,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    title: Text(course.name),
-                    subtitle: Text(
-                      [
-                        '${course.sectionLabel}（${course.timeLabel}）',
-                        if (course.room.isNotEmpty) course.room,
-                        if (course.teacher.isNotEmpty) course.teacher,
-                      ].join('\n'),
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () => Navigator.pop(context, course),
+      builder: (context) => SheetLayout(
+        header: SheetHeader(
+          title: Text(l10n.chooseCourse),
+          actions: const [SheetCloseButton()],
+        ),
+        contentPadding: appSheetListPadding,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final course in courses)
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.sm,
+                ),
+                leading: Container(
+                  width: 4,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: courseColors(context, course).accent,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-              ],
-            ),
-          ),
+                ),
+                title: Text(course.name),
+                subtitle: Text(
+                  [
+                    '${localizedCourseSection(l10n, course)} '
+                        '(${localizedCourseTime(l10n, course)})',
+                    if (course.room.isNotEmpty) course.room,
+                    if (course.teacher.isNotEmpty) course.teacher,
+                  ].join('\n'),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+                onTap: () => Navigator.pop(context, course),
+              ),
+          ],
         ),
       ),
     );
@@ -82,17 +73,22 @@ class ConflictingCourses extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final fill = isToday
         ? Color.lerp(scheme.primaryContainer, scheme.primary, 0.12)!
         : scheme.primaryContainer;
     final summary = courses
-        .map((course) => '${course.name}，${course.sectionLabel}')
+        .map(
+          (course) =>
+              '${course.name}${l10n.listSeparator}'
+              '${localizedCourseSection(l10n, course)}',
+        )
         .join('\n');
 
     return Semantics(
       button: true,
-      label: '${courses.length}门课程时间重叠，$summary，选择课程',
+      label: l10n.coursesOverlap(courses.length, summary),
       child: ExcludeSemantics(
         child: Tooltip(
           triggerMode: TooltipTriggerMode.manual,
@@ -135,7 +131,7 @@ class ConflictingCourses extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          '${courses.length}门',
+                          l10n.courseOverlapCount(courses.length),
                           textAlign: TextAlign.center,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -168,7 +164,7 @@ class ConflictingCourses extends StatelessWidget {
                                 if (showSections) ...[
                                   const SizedBox(height: 3),
                                   Text(
-                                    courses[i].sectionLabel,
+                                    localizedCourseSection(l10n, courses[i]),
                                     textAlign: TextAlign.center,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,

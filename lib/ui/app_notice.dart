@@ -25,10 +25,10 @@ void showOverlayNotice(
   String message, {
   ({String label, VoidCallback onPressed})? action,
 }) {
-  _dismissNotice();
+  dismissAppNotice();
   late final OverlayEntry entry;
   void dismiss() {
-    if (identical(_notice, entry)) _dismissNotice();
+    if (identical(_notice, entry)) dismissAppNotice();
   }
 
   entry = OverlayEntry(
@@ -128,7 +128,7 @@ void showOverlayNotice(
   overlay.insert(entry);
 }
 
-void _dismissNotice() {
+void dismissAppNotice() {
   final entry = _notice;
   _notice = null;
   entry?.remove();

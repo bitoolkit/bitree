@@ -26,7 +26,7 @@ void main() {
           .map((destination) => destination.label),
       labels,
     );
-    const content = ['同步课表', '今天', '成绩与学业', '外观'];
+    const content = ['同步全部', '今天', '成绩与学业', '外观'];
     for (var index = 0; index < labels.length; index++) {
       await tester.tap(
         find.descendant(of: bar, matching: find.text(labels[index])),

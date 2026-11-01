@@ -3,12 +3,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../l10n/formats.dart';
+import '../../l10n/l10n.dart';
 import '../../schedule/model.dart';
 import '../../school/ui/school_screen.dart';
 import '../../school/ui/school_verification_dialog.dart';
 import '../../ui/app_dropdown_field.dart';
+import '../../ui/app_page.dart';
 import '../../ui/campus_time_builder.dart';
+import '../../ui/design.dart';
 import '../../ui/dialog_layout.dart';
+import '../../ui/sheet_layout.dart';
 import '../../wencui/place.dart';
 import '../../wencui/ui/wencui_map_screen.dart';
 import '../controller.dart';
@@ -32,13 +37,7 @@ class _ClassroomScreenState extends State<ClassroomScreen> {
     school: widget.controller.school,
     verify: (request) => verifySchoolLogin(context, request),
     signIn: () async =>
-        mounted &&
-        await openSchoolPage(
-              context,
-              widget.controller,
-              action: SchoolAction.signIn,
-            ) ==
-            true,
+        mounted && await openSchoolLogin(context, widget.controller) == true,
     date: campusNow(),
   );
 
@@ -75,35 +74,26 @@ class _ClassroomScreenState extends State<ClassroomScreen> {
 
   Widget _build(BuildContext context) => CampusTimeBuilder(
     active: true,
-    builder: (context, now) => Scaffold(
-      appBar: AppBar(
-        title: const Text('空教室查询'),
-        actions: [
-          IconButton(
-            tooltip: '刷新',
-            onPressed: () => _queryState.load(refresh: true),
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 960),
-            child: CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                    child: _buildQuery(now),
-                  ),
-                ),
-                ..._buildResults(now),
-              ],
+    builder: (context, now) => AppRoutePage(
+      title: context.l10n.emptyClassroomQuery,
+      maxWidth: 960,
+      actions: [
+        IconButton(
+          tooltip: context.l10n.refresh,
+          onPressed: () => _queryState.load(refresh: true),
+          icon: const Icon(Icons.refresh_rounded),
+        ),
+      ],
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: _buildQuery(now),
             ),
           ),
-        ),
+          ..._buildResults(now),
+        ],
       ),
     ),
   );
@@ -119,13 +109,13 @@ class _ClassroomScreenState extends State<ClassroomScreen> {
           : OutlinedButton.icon(
               onPressed: () => _queryState.load(refresh: true),
               icon: const Icon(Icons.refresh_rounded),
-              label: const Text('加载教学楼'),
+              label: Text(context.l10n.loadBuildings),
             );
     }
     if (directory.campuses.isEmpty) {
       return _QueryState(
-        message: '暂无可查询的校区',
-        action: '重新加载',
+        message: context.l10n.noQueryableCampuses,
+        action: context.l10n.reloadAction,
         onPressed: () => _queryState.load(refresh: true),
       );
     }
@@ -139,11 +129,12 @@ class _ClassroomScreenState extends State<ClassroomScreen> {
         : _DateChoice.other;
     final style = Theme.of(context).textTheme.bodyMedium
         ?.copyWith(fontSize: 13);
+    final l10n = context.l10n;
 
     return _QueryFields(
       children: [
         AppDropdownField<String>(
-          label: '校区',
+          label: l10n.campus,
           value: _queryState.campusCode!,
           textStyle: style,
           entries: [
@@ -153,24 +144,25 @@ class _ClassroomScreenState extends State<ClassroomScreen> {
           onChanged: _queryState.selectCampus,
         ),
         AppDropdownField<_DateChoice>(
-          label: '日期',
+          label: l10n.date,
           value: dateChoice,
           textStyle: style,
           entries: [
             DropdownMenuEntry(
               value: _DateChoice.today,
-              label: '今天 ${today.month}/${today.day}',
+              label: l10n.todayDate('${today.month}/${today.day}'),
             ),
             DropdownMenuEntry(
               value: _DateChoice.tomorrow,
-              label: '明天 ${tomorrow.month}/${tomorrow.day}',
+              label: l10n.tomorrowDate('${tomorrow.month}/${tomorrow.day}'),
             ),
             DropdownMenuEntry(
               value: _DateChoice.other,
               label: _queryState.date.year == now.year
-                  ? '${_queryState.date.month}/${_queryState.date.day} ${weekdays[_queryState.date.weekday - 1]}'
+                  ? '${_queryState.date.month}/${_queryState.date.day} '
+                        '${localizedShortWeekday(l10n, _queryState.date.weekday)}'
                   : dateText(_queryState.date),
-              labelWidget: const Text('其他日期'),
+              labelWidget: Text(l10n.otherDate),
             ),
           ],
           onChanged: (value) {
@@ -185,15 +177,15 @@ class _ClassroomScreenState extends State<ClassroomScreen> {
           },
         ),
         AppDropdownField<String?>(
-          label: '教学楼',
+          label: l10n.building,
           value: _queryState.buildingFilter,
           textStyle: style,
           entries: [
-            const DropdownMenuEntry(value: null, label: '全部教学楼'),
+            DropdownMenuEntry(value: null, label: l10n.allBuildings),
             if (_queryState.buildings.any((building) => building.isWenCui))
-              const DropdownMenuEntry(
+              DropdownMenuEntry(
                 value: wenCuiBuildingFilter,
-                label: '文萃楼（全部）',
+                label: l10n.wencuiBuildingAll,
               ),
             for (final building in _queryState.buildings)
               DropdownMenuEntry(
@@ -222,6 +214,7 @@ class _ClassroomScreenState extends State<ClassroomScreen> {
     final groups = _queryState.results;
     final count = groups.fold(0, (total, group) => total + group.rooms.length);
     final theme = Theme.of(context);
+    final l10n = context.l10n;
     final current = _queryState.date == calendarDate(now)
         ? currentClassroomSection(now)
         : null;
@@ -237,7 +230,9 @@ class _ClassroomScreenState extends State<ClassroomScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      period == null ? '教室空闲时间' : '符合时段的教室',
+                      period == null
+                          ? l10n.classroomFreeTime
+                          : l10n.roomsMatchingPeriod,
                       style: theme.textTheme.titleMedium,
                     ),
                   ),
@@ -246,10 +241,10 @@ class _ClassroomScreenState extends State<ClassroomScreen> {
                     liveRegion: true,
                     child: Text(
                       _queryState.busy
-                          ? '查询中…'
+                          ? l10n.querying
                           : !_queryState.hasResult
                           ? ''
-                          : '$count间',
+                          : l10n.roomCount(count),
                       style: theme.textTheme.bodySmall,
                     ),
                   ),
@@ -257,35 +252,37 @@ class _ClassroomScreenState extends State<ClassroomScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                period == null ? '显示各教室当天的空闲时段' : '${period.timeLabel}内全程空闲',
+                period == null
+                    ? l10n.showsFreePeriods
+                    : l10n.freeThroughoutPeriod(period.localizedTime(l10n)),
                 style: theme.textTheme.bodySmall,
               ),
               if (_queryState.busy) ...[
                 const SizedBox(height: 12),
-                const LinearProgressIndicator(minHeight: 2),
+                const LinearProgressIndicator(minHeight: appProgressHeight),
               ],
               if (!_queryState.busy && !_queryState.hasResult)
                 _QueryState(
                   message: widget.controller.school.username == null
-                      ? '登录后可查询空教室'
-                      : '查询未完成',
-                  action: '重新查询',
+                      ? l10n.loginToQuery
+                      : l10n.queryIncomplete,
+                  action: l10n.queryAgain,
                   onPressed: _queryState.query,
                 )
               else if (!_queryState.busy && groups.isEmpty)
                 _QueryState(
                   message: _queryState.buildings.isEmpty
-                      ? '这个校区还没有教学楼信息'
+                      ? l10n.noBuildingInfo
                       : period != null
-                      ? '这段时间没有空教室'
-                      : '当天没有空闲时段',
+                      ? l10n.noFreeClassrooms
+                      : l10n.noFreePeriods,
                   action: _queryState.buildings.isEmpty
-                      ? '重新加载教学楼'
+                      ? l10n.reloadBuildings
                       : period != null
-                      ? '不限时段查看'
+                      ? l10n.viewAnyPeriod
                       : _queryState.buildingFilter != null
-                      ? '查看全部教学楼'
-                      : '换个日期',
+                      ? l10n.viewAllBuildings
+                      : l10n.changeDate,
                   onPressed: () {
                     if (_queryState.buildings.isEmpty) {
                       unawaited(_queryState.load(refresh: true));
@@ -332,7 +329,7 @@ class _ClassroomScreenState extends State<ClassroomScreen> {
                       children: [
                         for (final free in room.freePeriods)
                           Text(
-                            free.timeLabel,
+                            free.localizedTime(l10n),
                             style: theme.textTheme.bodySmall?.copyWith(
                               color:
                                   (period != null
@@ -364,7 +361,10 @@ class _ClassroomScreenState extends State<ClassroomScreen> {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-            child: Text('空闲表示该时段没有排课', style: theme.textTheme.bodySmall),
+            child: Text(
+              context.l10n.freeMeansNoClass,
+              style: theme.textTheme.bodySmall,
+            ),
           ),
         ),
     ];
@@ -429,60 +429,62 @@ Future<void> _showRoom(
   SchoolBuilding building,
   ClassroomOccupancy room,
   DateTime date,
-) => showDialog<void>(
+) => showAppSheet<void>(
   context: context,
-  builder: (dialogContext) => AlertDialog(
-    title: Text('${building.name} ${room.name}'),
-    scrollable: true,
-    content: SizedBox(
-      width: double.maxFinite,
-      child: Column(
+  builder: (sheetContext) {
+    final l10n = sheetContext.l10n;
+    return SheetLayout(
+      header: SheetHeader(
+        title: Text('${building.name} ${room.name}'),
+        actions: const [SheetCloseButton()],
+      ),
+      content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            '${dateText(date)} ${weekdays[date.weekday - 1]}',
-            style: Theme.of(context).textTheme.bodySmall,
+            '${dateText(date)} '
+            '${localizedShortWeekday(l10n, date.weekday)}',
+            style: Theme.of(sheetContext).textTheme.bodySmall,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           for (final block in room.periods)
             ListTile(
               contentPadding: EdgeInsets.zero,
-              title: Text(block.period.timeLabel),
-              subtitle: Text(block.period.sectionLabel),
+              title: Text(block.period.localizedTime(l10n)),
+              subtitle: Text(block.period.localizedSection(l10n)),
               trailing: Text(
-                block.busy ? '有课' : '空闲',
+                block.busy ? l10n.busyStatus : l10n.freeStatus,
                 style: TextStyle(
                   color: block.busy
-                      ? Theme.of(context).colorScheme.onSurfaceVariant
-                      : Theme.of(context).colorScheme.primary,
+                      ? Theme.of(sheetContext).colorScheme.onSurfaceVariant
+                      : Theme.of(sheetContext).colorScheme.primary,
                 ),
               ),
             ),
         ],
       ),
-    ),
-    actions: [
-      if (WencuiPlace.parse('${building.name} ${room.name}') != null)
-        TextButton.icon(
-          onPressed: () {
-            Navigator.pop(dialogContext);
-            Navigator.of(context).push<void>(
-              MaterialPageRoute(
-                builder: (_) => WencuiMapScreen(
-                  controller: controller,
-                  initialRoom: '${building.name} ${room.name}',
+      actions: WencuiPlace.parse('${building.name} ${room.name}') == null
+          ? null
+          : SheetActionBar.actions(
+              children: [
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    Navigator.of(context).push<void>(
+                      MaterialPageRoute(
+                        builder: (_) => WencuiMapScreen(
+                          controller: controller,
+                          initialRoom: '${building.name} ${room.name}',
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.map_outlined, size: 18),
+                  label: Text(l10n.wencuiMap),
                 ),
-              ),
-            );
-          },
-          icon: const Icon(Icons.map_outlined, size: 18),
-          label: const Text('文萃地图'),
-        ),
-      TextButton(
-        onPressed: () => Navigator.pop(dialogContext),
-        child: const Text('关闭'),
-      ),
-    ],
-  ),
+              ],
+            ),
+    );
+  },
 );

@@ -3,11 +3,17 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../l10n/formats.dart';
+import '../../l10n/l10n.dart';
 import '../../schedule/location.dart';
 import '../../schedule/model.dart';
+import '../../ui/app_dialog.dart';
 import '../../ui/app_menu_anchor.dart';
+import '../../ui/app_page.dart';
 import '../../ui/design.dart';
 import '../../ui/external_link.dart';
+import '../../ui/selection_controls.dart';
+import '../../ui/sheet_layout.dart';
 import '../atlas.dart';
 import '../place.dart';
 import 'floor_map.dart';
@@ -29,39 +35,42 @@ class WencuiMapScreen extends StatefulWidget {
   State<WencuiMapScreen> createState() => _WencuiMapScreenState();
 }
 
-void _showMapInfo(BuildContext context) => showDialog<void>(
+void _showMapInfo(BuildContext context) => showAppDialog<void>(
   context: context,
-  builder: (dialogContext) => AlertDialog(
-    title: const Text('地图说明'),
-    scrollable: true,
-    content: const Text(
-      '点楼栋放大，再点房间查看位置。双指、鼠标滚轮或加减按钮可缩放地图。\n\n楼层图上东、左北，保持原图比例。1–10层图和位置索引保存在本地，无需登录。未收录的教室号只定位到楼栋。\n\n底图来自学校文萃导航的公开存档，通道开放情况以现场为准。',
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => openExternalLink(
-          dialogContext,
-          Uri.parse(
-            'https://github.com/Zebedee2021/BIT-Nav-2026/tree/main/wencui',
+  builder: (dialogContext) {
+    final l10n = dialogContext.l10n;
+    return AlertDialog(
+      scrollable: true,
+      title: Text(l10n.mapInfoTitle),
+      content: Text(l10n.mapInfoBody),
+      actions: [
+        TextButton(
+          onPressed: () => openExternalLink(
+            dialogContext,
+            Uri.parse(
+              'https://github.com/Zebedee2021/BIT-Nav-2026/tree/main/wencui',
+            ),
+            failureTitle: l10n.openMapSourceFailed,
           ),
-          failureTitle: '无法打开地图来源',
+          child: Text(l10n.mapSource),
         ),
-        child: const Text('地图来源'),
-      ),
-      TextButton(
-        onPressed: () => openExternalLink(
-          dialogContext,
-          Uri.parse('https://wencuigis.info.bit.edu.cn/3dbuilding/#/building2'),
-          failureTitle: '无法打开学校导航',
+        TextButton(
+          onPressed: () => openExternalLink(
+            dialogContext,
+            Uri.parse(
+              'https://wencuigis.info.bit.edu.cn/3dbuilding/#/building2',
+            ),
+            failureTitle: l10n.openSchoolNavigationFailed,
+          ),
+          child: Text(l10n.school3dNavigation),
         ),
-        child: const Text('学校3D导航'),
-      ),
-      TextButton(
-        onPressed: () => Navigator.pop(dialogContext),
-        child: const Text('关闭'),
-      ),
-    ],
-  ),
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: Text(l10n.close),
+        ),
+      ],
+    );
+  },
 );
 
 class _WencuiMapScreenState extends State<WencuiMapScreen> {
@@ -90,7 +99,9 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
         if (!widget.initialOverview) {
           _camera.show(
             _selected?.bounds ??
-                (_place == null ? null : atlas.wingBounds(_floor, _place!.wing)),
+                (_place == null
+                    ? null
+                    : atlas.wingBounds(_floor, _place!.wing)),
           );
         }
       },
@@ -189,44 +200,37 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
     }
   }
 
-  void _showCourses(WencuiAtlas atlas) => showModalBottomSheet<void>(
+  void _showCourses(WencuiAtlas atlas) => showAppSheet<void>(
     context: context,
-    useSafeArea: true,
-    isScrollControlled: true,
-    builder: (sheetContext) => SafeArea(
-      top: false,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(sheetContext).height * .7,
+    builder: (sheetContext) {
+      final l10n = sheetContext.l10n;
+      return SheetLayout(
+        header: SheetHeader(
+          title: Text(l10n.myWencuiCourses),
+          actions: const [SheetCloseButton()],
         ),
-        child: ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
+        contentPadding: appSheetListPadding,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              title: Text(
-                '我的文萃课程',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              trailing: IconButton(
-                tooltip: '关闭',
-                onPressed: () => Navigator.pop(sheetContext),
-                icon: const Icon(Icons.close_rounded),
-              ),
-            ),
             for (final (:course, :place) in _courses)
               ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: Theme.of(context)
+                  backgroundColor: Theme.of(sheetContext)
                       .colorScheme
                       .primaryContainer,
                   child: Text(place.wing.letter),
                 ),
                 title: Text(course.name),
                 subtitle: Text(
-                  '${place.label} · ${course.weekday == null ? '' : '${weekdays[course.weekday! - 1]} '}${course.sectionLabel}',
+                  [
+                    localizedWencuiPlace(l10n, place),
+                    if (course.weekday case final weekday?)
+                      localizedShortWeekday(l10n, weekday),
+                    localizedCourseSection(l10n, course),
+                  ].join(' · '),
                 ),
-                trailing: const Icon(Icons.chevron_right_rounded),
+                trailing: const Icon(Icons.chevron_right_rounded, size: 20),
                 onTap: () {
                   Navigator.pop(sheetContext);
                   _selectPlace(place, atlas, course: course);
@@ -234,20 +238,27 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
               ),
           ],
         ),
-      ),
-    ),
+      );
+    },
   );
 
   Iterable<Widget> _suggestions(WencuiAtlas atlas, SearchController search) {
+    final l10n = context.l10n;
     final query = normalizeCampusLocation(search.text);
     final place = WencuiPlace.parse(search.text);
     final results = <Widget>[
       if (place != null)
         ListTile(
           leading: const Icon(Icons.location_on_outlined),
-          title: Text(place.label),
+          title: Text(localizedWencuiPlace(l10n, place)),
           subtitle: Text(
-            '${place.wing.name} · ${place.floor == null ? place.wing.floorLabel : '${place.floor}层'}${place.room != null && atlas.room(place.label) == null ? ' · 查看楼栋范围' : ''}',
+            [
+              place.floor == null
+                  ? localizedWencuiWingFloorRange(l10n, place.wing)
+                  : localizedWencuiWingFloor(l10n, place.wing, place.floor!),
+              if (place.room != null && atlas.room(place.label) == null)
+                l10n.viewBuildingBounds,
+            ].join(' · '),
           ),
           onTap: () => _selectPlace(place, atlas),
         ),
@@ -258,7 +269,10 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
           ListTile(
             leading: const Icon(Icons.school_outlined),
             title: Text(course.name),
-            subtitle: Text('${place.label} · ${course.sectionLabel}'),
+            subtitle: Text(
+              '${localizedWencuiPlace(l10n, place)} · '
+              '${localizedCourseSection(l10n, course)}',
+            ),
             onTap: () => _selectPlace(place, atlas, course: course),
           ),
       if (query.isNotEmpty)
@@ -268,8 +282,8 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
                   .contains(query))
             ListTile(
               leading: Icon(wencuiFeatureIcon(feature.kind)),
-              title: Text(feature.title),
-              subtitle: Text('$_floor层'),
+              title: Text(localizedWencuiFeatureLabel(l10n, feature)),
+              subtitle: Text(l10n.currentFloor(_floor)),
               onTap: () {
                 _search.closeView('');
                 _facilities.add(feature.kind);
@@ -283,16 +297,16 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
                 normalizeCampusLocation('文萃楼${wing.letter}栋').contains(query)))
           ListTile(
             leading: const Icon(Icons.apartment_rounded),
-            title: Text(wing.name),
-            subtitle: Text(wing.floorLabel),
+            title: Text(localizedWencuiWing(l10n, wing)),
+            subtitle: Text(localizedWencuiWingFloorRange(l10n, wing)),
             onTap: () => _selectPlace(WencuiPlace(wing), atlas),
           ),
     ];
     return results.isEmpty
         ? [
-            const Padding(
-              padding: EdgeInsets.all(24),
-              child: Text('没有找到。试试 F704、J1006，或课表里的课程名。'),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(l10n.noMapResults),
             ),
           ]
         : results;
@@ -302,7 +316,7 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
     searchController: _search,
     isFullScreen: narrow,
     viewShape: narrow ? const RoundedRectangleBorder() : null,
-    viewHintText: '教室号、课程名、楼梯或电梯',
+    viewHintText: context.l10n.wencuiCourseSearchHint,
     viewOnSubmitted: (query) {
       final place = WencuiPlace.parse(query);
       if (place != null) _selectPlace(place, atlas);
@@ -310,13 +324,13 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
     suggestionsBuilder: (_, search) => _suggestions(atlas, search),
     builder: (_, controller) => SearchBar(
       readOnly: true,
-      hintText: '教室号或课程名，如 F704',
+      hintText: context.l10n.wencuiSearchHint,
       onTap: controller.openView,
       leading: const Icon(Icons.search_rounded),
       trailing: [
         if (_courses.isNotEmpty)
           IconButton(
-            tooltip: '我的文萃课程',
+            tooltip: context.l10n.myWencuiCourses,
             onPressed: () => _showCourses(atlas),
             icon: const Icon(Icons.school_outlined),
           ),
@@ -332,7 +346,7 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          tooltip: '上一层',
+          tooltip: context.l10n.upperFloor,
           onPressed: _floor == 10
               ? null
               : () => _changeFloor(_floor + 1, atlas),
@@ -378,11 +392,14 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 8),
             ),
-            child: Text('$_floor层', semanticsLabel: '选择楼层，当前$_floor层'),
+            child: Text(
+              context.l10n.currentFloor(_floor),
+              semanticsLabel: context.l10n.selectFloorSemantics(_floor),
+            ),
           ),
         ),
         IconButton(
-          tooltip: '下一层',
+          tooltip: context.l10n.lowerFloor,
           onPressed: _floor == 1 ? null : () => _changeFloor(_floor - 1, atlas),
           icon: const Icon(Icons.keyboard_arrow_down_rounded),
         ),
@@ -392,6 +409,7 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
 
   Widget _details(WencuiAtlas atlas) {
     final theme = Theme.of(context);
+    final l10n = context.l10n;
     final place = _place;
     final selected = _selected;
     return Column(
@@ -406,7 +424,11 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    place?.label ?? selected?.title ?? '点楼栋放大，或搜索教室号',
+                    place == null
+                        ? selected == null
+                              ? l10n.tapBuildingOrSearch
+                              : localizedWencuiFeatureLabel(l10n, selected)
+                        : localizedWencuiPlace(l10n, place),
                     style: theme.textTheme.titleLarge,
                   ),
                   if (_course != null) ...[
@@ -416,7 +438,7 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
                   if (place != null) ...[
                     const SizedBox(height: 3),
                     Text(
-                      '文萃楼 ${place.wing.name} · ${place.floor == null ? place.wing.floorLabel : '${place.floor}层'}${_floor != place.floor && place.floor != null ? '，正在查看$_floor层' : ''}',
+                      _placeDetails(l10n, place),
                       style: theme.textTheme.bodySmall,
                     ),
                   ],
@@ -425,7 +447,7 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
             ),
             if (place != null || selected != null)
               IconButton(
-                tooltip: '清除目的地',
+                tooltip: l10n.clearDestination,
                 onPressed: () {
                   setState(() {
                     _place = null;
@@ -442,7 +464,10 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
         if (place?.room != null && atlas.room(place!.label) == null) ...[
           const SizedBox(height: 6),
           Text(
-            '图中未找到${place.label}的标注，已显示${place.wing.name}范围。',
+            l10n.roomNotMarked(
+              place.label,
+              localizedWencuiWing(l10n, place.wing),
+            ),
             style: theme.textTheme.bodySmall,
           ),
         ],
@@ -454,7 +479,9 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  '已选：${selected.title}',
+                  l10n.selectedFeature(
+                    localizedWencuiFeatureTitle(l10n, selected),
+                  ),
                   style: theme.textTheme.bodyMedium,
                 ),
               ),
@@ -468,17 +495,21 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             for (final (kind, label) in [
-              (WencuiFeatureKind.stairs, '楼梯'),
-              (WencuiFeatureKind.lift, '电梯'),
-              (WencuiFeatureKind.restroom, '卫生间'),
+              (WencuiFeatureKind.stairs, l10n.stairs),
+              (WencuiFeatureKind.lift, l10n.lift),
+              (WencuiFeatureKind.restroom, l10n.restroom),
             ])
-              FilterChip(
-                shape: appControlShape,
-                avatar: Icon(wencuiFeatureIcon(kind), size: 18),
-                label: Text(label),
+              AppSelectionButton.compact(
                 selected: _facilities.contains(kind),
-                showCheckmark: false,
-                onSelected: (_) => _toggleFacility(kind, atlas),
+                onPressed: () => _toggleFacility(kind, atlas),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  spacing: AppSpacing.xs,
+                  children: [
+                    Icon(wencuiFeatureIcon(kind), size: 18),
+                    Text(label),
+                  ],
+                ),
               ),
             if (place?.wing.firstFloor == 1)
               TextButton.icon(
@@ -491,18 +522,28 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
                   _camera.show(atlas.wingBounds(1, place!.wing));
                 },
                 icon: const Icon(Icons.door_front_door_outlined, size: 18),
-                label: const Text('一层入口'),
+                label: Text(l10n.firstFloorEntrance),
               ),
             if (place != null)
               TextButton.icon(
                 onPressed: () => _returnToRoom(atlas),
                 icon: const Icon(Icons.my_location_rounded, size: 18),
-                label: Text(place.room == null ? '回到楼栋' : '回到教室'),
+                label: Text(
+                  place.room == null ? l10n.backToBuilding : l10n.backToRoom,
+                ),
               ),
           ],
         ),
       ],
     );
+  }
+
+  String _placeDetails(AppLocalizations l10n, WencuiPlace place) {
+    final details = place.floor == null
+        ? localizedWencuiWingFloorRange(l10n, place.wing)
+        : localizedWencuiWingFloor(l10n, place.wing, place.floor!);
+    if (place.floor == null || _floor == place.floor) return details;
+    return l10n.viewingFloor(details, _floor);
   }
 
   Widget _content(WencuiAtlas atlas) => LayoutBuilder(
@@ -567,29 +608,24 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
   );
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Text('文萃导航'),
-      actions: [
-        IconButton(
-          tooltip: '地图说明',
-          onPressed: () => _showMapInfo(context),
-          icon: const Icon(Icons.info_outline_rounded),
-        ),
-        const SizedBox(width: 8),
-      ],
-    ),
-    body: SafeArea(
-      child: ListenableBuilder(
-        listenable: widget.controller.timetable,
-        builder: (_, _) => FutureBuilder<WencuiAtlas>(
-          future: _loading,
-          builder: (context, snapshot) => snapshot.hasData
-              ? _content(snapshot.requireData)
-              : snapshot.hasError
-              ? const Center(child: Text('地图加载失败，请重新打开；详细信息可在设置中导出日志。'))
-              : const Center(child: CircularProgressIndicator()),
-        ),
+  Widget build(BuildContext context) => AppRoutePage(
+    title: context.l10n.wencuiMap,
+    actions: [
+      IconButton(
+        tooltip: context.l10n.mapInfoTitle,
+        onPressed: () => _showMapInfo(context),
+        icon: const Icon(Icons.info_outline_rounded),
+      ),
+    ],
+    child: ListenableBuilder(
+      listenable: widget.controller.timetable,
+      builder: (_, _) => FutureBuilder<WencuiAtlas>(
+        future: _loading,
+        builder: (context, snapshot) => snapshot.hasData
+            ? _content(snapshot.requireData)
+            : snapshot.hasError
+            ? Center(child: Text(context.l10n.mapLoadFailed))
+            : const Center(child: CircularProgressIndicator()),
       ),
     ),
   );

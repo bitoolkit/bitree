@@ -5,6 +5,8 @@ import 'package:bitree/agenda/controller.dart';
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/store.dart';
 import 'package:bitree/app/controller.dart';
+import 'package:bitree/mooc/credentials.dart';
+import 'package:bitree/mooc/storage.dart';
 import 'package:bitree/schedule/model.dart';
 import 'package:bitree/schedule/store.dart';
 import 'package:bitree/school/network.dart';
@@ -29,13 +31,15 @@ class MemoryScheduleStore extends ScheduleStore {
   String? selectedTerm;
 
   @override
-  Future<({String? selectedTerm, Map<String, SemesterSchedule> schedules})>
-  read() async => (selectedTerm: selectedTerm, schedules: Map.of(schedules));
+  Future<ScheduleLibrary> read() async =>
+      (selectedTerm: selectedTerm, schedules: Map.of(schedules));
 
   @override
-  Future<void> write(SemesterSchedule schedule) async {
-    schedules[schedule.term] = schedule;
-    selectedTerm = schedule.term;
+  Future<void> write(ScheduleLibrary library) async {
+    schedules
+      ..clear()
+      ..addAll(library.schedules);
+    selectedTerm = library.selectedTerm;
   }
 
   @override
@@ -66,7 +70,13 @@ class MemoryAcademicStore extends AcademicStore {
 }
 
 class MemoryPreferences extends Fake implements SharedPreferencesAsync {
-  final _values = <String, Object>{};
+  MemoryPreferences([Map<String, Object> values = const {}])
+    : _values = Map.of(values);
+
+  final Map<String, Object> _values;
+
+  String? value(String key) => _values[key] as String?;
+
   @override
   Future<String?> getString(String key) async => _values[key] as String?;
   @override
@@ -119,14 +129,17 @@ class TestAppController extends AppController {
     AgendaController? agenda,
     List<AgendaEntry> entries = const [],
     MemorySchoolStorage? schoolStorage,
-    MemoryPreferences? preferences,
+    MoocStorage? moocStorage,
+    SchoolService? school,
+    SharedPreferencesAsync? preferences,
     super.systemPaletteSource,
   }) : super(
          coursePaletteLoader: () async => testPalettes(),
          store: MemoryScheduleStore(schedules: schedules, selected: schedule),
-         school: SchoolService(),
+         school: school ?? SchoolService(),
          schoolStorage: schoolStorage ?? MemorySchoolStorage(),
          preferences: preferences ?? MemoryPreferences(),
+         moocStorage: moocStorage ?? MemoryMoocStorage(),
          agenda: agenda ?? AgendaController(MemoryAgendaStore(entries)),
          academics: AcademicController(MemoryAcademicStore()),
        ) {
@@ -139,4 +152,14 @@ class TestAppController extends AppController {
     await super.initialize();
     if (initialWeek case final week?) timetable.selectWeek(week);
   }
+}
+
+class MemoryMoocStorage extends MoocStorage {
+  MoocAccount? account;
+  @override
+  Future<MoocAccount?> read() async => account;
+  @override
+  Future<void> write(MoocAccount value) async => account = value;
+  @override
+  Future<void> clear() async => account = null;
 }

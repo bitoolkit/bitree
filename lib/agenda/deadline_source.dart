@@ -1,6 +1,7 @@
 enum DeadlineSource {
   lexue('乐学', 'lexue.bit.edu.cn', '/login/index.php'),
-  eclass('新延河课堂', 'zy-eclass.bit.edu.cn', '/user/courses');
+  eclass('新延河课堂', 'zy-eclass.bit.edu.cn', '/user/courses'),
+  mooc('中国大学MOOC', 'www.icourse163.org', '/member/login.htm');
 
   const DeadlineSource(this.label, this.host, this._loginPath);
 

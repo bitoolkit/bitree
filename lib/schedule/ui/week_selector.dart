@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../l10n/l10n.dart';
 import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_menu_trigger.dart';
 import '../../ui/design.dart';
@@ -15,6 +16,7 @@ class WeekSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final schedule = controller.timetable.schedule;
     final screen = MediaQuery.sizeOf(context);
@@ -69,7 +71,8 @@ class WeekSelector extends StatelessWidget {
                           child: Text(
                             '$week',
                             semanticsLabel:
-                                '第 $week 周${week == currentWeek ? '，本周' : ''}',
+                                '${l10n.weekNumber(week)}'
+                                '${week == currentWeek ? l10n.thisWeekSuffix : ''}',
                           ),
                         ),
                       ),
@@ -80,8 +83,10 @@ class WeekSelector extends StatelessWidget {
           ),
       ],
       builder: (context, menu, isOpen) => AppMenuTrigger(
-        label: schedule == null ? '课表' : '第${controller.timetable.week}周',
-        semanticsLabel: '选择周次',
+        label: schedule == null
+            ? l10n.schoolWeek
+            : l10n.weekNumberCompact(controller.timetable.week),
+        semanticsLabel: l10n.chooseWeek,
         isOpen: isOpen,
         foregroundColor: scheme.onSurface,
         textStyle: Theme.of(context).appBarTheme.titleTextStyle,

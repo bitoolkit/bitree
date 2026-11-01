@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:bitree/agenda/deadline_source.dart';
 import 'package:bitree/core/async/cancelable_request.dart';
@@ -69,6 +71,27 @@ void main() {
       ..write('school response');
     await request.response.close();
   }
+
+  test('Only the records service may use HTTP', () {
+    expect(SchoolNetwork.recordsService.scheme, 'http');
+    expect(isSchoolUrl(Uri.parse('https://bit.edu.cn')), isTrue);
+    expect(isSchoolUrl(Uri.parse('https://jwms.bit.edu.cn/')), isTrue);
+    expect(isSchoolUrl(Uri.parse('http://jwms.bit.edu.cn/')), isTrue);
+    expect(isSchoolUrl(Uri.parse('http://sso.bit.edu.cn/')), isFalse);
+    expect(isSchoolUrl(Uri.parse('https://bit.edu.cn.example.org')), isFalse);
+    expect(isSchoolUrl(Uri.parse('https://user@bit.edu.cn/')), isFalse);
+    expect(isSchoolUrl(Uri.parse('http://user@jwms.bit.edu.cn/')), isFalse);
+  });
+
+  test('A non-object school response is reported as malformed data', () {
+    final response = SchoolResponse(
+      url: Uri.https('jwms.bit.edu.cn'),
+      status: 200,
+      location: null,
+      bytes: Uint8List.fromList(utf8.encode('[]')),
+    );
+    expect(() => response.json, throwsFormatException);
+  });
 
   test(
     'The first successful probe wins and only it runs the operation',
@@ -395,7 +418,7 @@ void main() {
     }, network),
   );
 
-  for (final source in DeadlineSource.values) {
+  for (final source in [DeadlineSource.lexue, DeadlineSource.eclass]) {
     for (final stillExpired in [false, true]) {
       test(
         '${source.label} retries authentication once when a DDL read expires, stillExpired=$stillExpired',

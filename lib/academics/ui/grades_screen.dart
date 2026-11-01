@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
-import '../../school/ui/school_screen.dart';
+import '../../l10n/formats.dart';
+import '../../l10n/l10n.dart';
+import '../../sync/controller.dart';
+import '../../sync/ui/sync.dart';
 import '../../ui/app_dropdown_field.dart';
 import '../model.dart';
 import 'academic_common.dart';
@@ -39,46 +42,42 @@ class _GradesScreenState extends State<GradesScreen> {
               .toList()
             ..sort((a, b) => a.name.compareTo(b.name));
       final stats = AcademicStats(grades);
+      final l10n = context.l10n;
       return AcademicPage(
-        title: '成绩与学业',
+        title: l10n.gradesAndAcademics,
         loading: controller.school.busy,
         actions: [
           IconButton(
-            tooltip: '计分规则',
+            tooltip: l10n.gpaRules,
             onPressed: () => showGpaRules(context),
             icon: const Icon(Icons.help_outline_rounded),
           ),
           AcademicImportButton(
             controller: controller,
-            action: SchoolAction.importGrades,
+            action: SyncTarget.grades,
           ),
         ],
         children: [
           if (!controller.academics.ready)
             AcademicEmpty(
-              title: '学业数据暂时无法读取',
-              label: '重新读取',
+              title: l10n.academicReadFailed,
+              label: l10n.reload,
               onPressed: () =>
                   controller.academics.load(controller.school.username),
             )
           else if (record.gradesUpdatedAt == null)
             AcademicEmpty(
-              title: '还没有同步成绩',
-              label: SchoolAction.importGrades.label,
-              onPressed: controller.school.busy
-                  ? null
-                  : () => openSchoolPage(
-                      context,
-                      controller,
-                      action: SchoolAction.importGrades,
-                    ),
+              title: l10n.noSyncedGrades,
+              label: SyncTarget.grades.localizedAction(l10n),
+              onPressed: () =>
+                  startSync(context, controller, targets: {SyncTarget.grades}),
             )
           else ...[
             AppDropdownField<String?>(
-              label: '学期',
+              label: l10n.settingsTerm,
               value: term,
               entries: [
-                const DropdownMenuEntry(value: null, label: '全部学期'),
+                DropdownMenuEntry(value: null, label: l10n.allSemesters),
                 for (final value in terms)
                   DropdownMenuEntry(value: value, label: value),
               ],
@@ -89,18 +88,24 @@ class _GradesScreenState extends State<GradesScreen> {
             ),
             AcademicSummary(
               values: [
-                (label: '平均绩点', value: stats.gpa?.toStringAsFixed(2) ?? '—'),
                 (
-                  label: '加权平均分',
+                  label: l10n.averageGpa,
+                  value: stats.gpa?.toStringAsFixed(2) ?? '—',
+                ),
+                (
+                  label: l10n.weightedAverageScore,
                   value: stats.averageScore?.toStringAsFixed(1) ?? '—',
                 ),
-                (label: '获得学分', value: creditText(stats.earnedCredits)),
+                (
+                  label: l10n.earnedCredits,
+                  value: creditText(stats.earnedCredits),
+                ),
               ],
             ),
             SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(value: false, label: Text('课程成绩')),
-                ButtonSegment(value: true, label: Text('学期表现')),
+              segments: [
+                ButtonSegment(value: false, label: Text(l10n.courseGrades)),
+                ButtonSegment(value: true, label: Text(l10n.termPerformance)),
               ],
               selected: {_byTerm},
               showSelectedIcon: false,
@@ -128,12 +133,12 @@ class _GradesScreenState extends State<GradesScreen> {
                   ),
                   title: Text(
                     _onlyFailed
-                        ? '只显示未通过课程'
+                        ? l10n.onlyFailedCourses
                         : term == null
-                        ? '${stats.failed.length} 门课程尚未通过'
-                        : '这个学期有 ${stats.failed.length} 门课程未通过',
+                        ? l10n.coursesNotPassed(stats.failed.length)
+                        : l10n.termCoursesNotPassed(stats.failed.length),
                   ),
-                  trailing: Text(_onlyFailed ? '显示全部' : '查看'),
+                  trailing: Text(_onlyFailed ? l10n.showAll : l10n.view),
                   onTap: () => setState(() => _onlyFailed = !_onlyFailed),
                 ),
               for (final grade in _onlyFailed ? stats.failed : grades)
@@ -142,15 +147,15 @@ class _GradesScreenState extends State<GradesScreen> {
                   onTap: () => showGradeDetails(context, controller, grade),
                 ),
               if (grades.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text('这个学期暂无成绩'),
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(l10n.noGradesThisTerm),
                 ),
             ],
             const Divider(height: 32),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('毕业学分进度'),
+              title: Text(l10n.creditProgress),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.push(
                 context,
@@ -193,7 +198,9 @@ class _TermPerformance extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          '加权平均 ${stats.averageScore?.toStringAsFixed(1) ?? '—'} 分',
+          context.l10n.weightedAverageValue(
+            stats.averageScore?.toStringAsFixed(1) ?? '—',
+          ),
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],

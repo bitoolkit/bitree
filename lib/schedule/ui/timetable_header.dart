@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../agenda/ui/calendar_list.dart';
 import '../../app/controller.dart';
+import '../../l10n/formats.dart';
+import '../../l10n/l10n.dart';
 import '../../ui/design.dart';
 import '../model.dart';
 
@@ -23,6 +25,7 @@ class TimetableHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final today = calendarDate(now);
     final dayCounts = [
@@ -41,7 +44,7 @@ class TimetableHeader extends StatelessWidget {
           width: gutterWidth,
           child: Center(
             child: Text(
-              '${monday.month}月',
+              l10n.monthHeader(localizedMonth(l10n, monday.month)),
               style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
             ),
           ),
@@ -78,12 +81,16 @@ class _DateHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final current = date == today;
     return Semantics(
-      label:
-          '${date.month}月${date.day}日${weekdays[date.weekday - 1]}'
-          '${current ? '，今天' : ''}${agendaCount > 0 ? '，$agendaCount项日程' : ''}',
+      label: l10n.timetableDaySemantics(
+        localizedMonthDay(l10n, date.month, date.day),
+        localizedShortWeekday(l10n, date.weekday),
+        current ? l10n.timetableTodaySuffix : '',
+        agendaCount > 0 ? l10n.timetableAgendaSuffix(agendaCount) : '',
+      ),
       child: ExcludeSemantics(
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 2),
@@ -99,7 +106,7 @@ class _DateHeading extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                weekdays[date.weekday - 1].substring(1),
+                localizedNarrowWeekday(l10n, date.weekday),
                 style: TextStyle(
                   fontSize: 12,
                   height: 1.2,
@@ -133,7 +140,9 @@ class _DateHeading extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 20,
                           height: 1.15,
-                          fontWeight: current ? FontWeight.w600 : FontWeight.w500,
+                          fontWeight: current
+                              ? FontWeight.w600
+                              : FontWeight.w500,
                           color: current ? scheme.onPrimary : scheme.onSurface,
                         ),
                       ),

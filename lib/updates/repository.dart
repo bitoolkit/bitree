@@ -4,15 +4,18 @@ import 'dart:ffi';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/diagnostics.dart';
+import '../core/json.dart';
+import '../l10n/app_localizations.dart';
 import 'release.dart';
 
 /// Keeps update results across launches and prompts only for unseen stable releases.
 class UpdateRepository {
-  UpdateRepository(this._preferences);
+  UpdateRepository(this._preferences, {required this.l10n});
 
   static const _cacheKey = 'updates.cache';
   static const _maxAge = Duration(days: 1);
   final SharedPreferencesAsync _preferences;
+  final AppLocalizations l10n;
 
   Future<List<AppRelease>> check(
     String installed, {
@@ -49,29 +52,33 @@ class UpdateRepository {
     try {
       final text = await _preferences.getString(_cacheKey);
       if (text == null) return null;
-      final data = jsonDecode(text) as Map<String, dynamic>;
+      final data = jsonObject(jsonDecode(text), '更新缓存');
       if (data['installed'] != installed ||
-          data['builtAt'] != builtAt?.toIso8601String() ||
-          data['abi'] != Abi.current().toString()) {
+          jsonStringFieldOrNull(data, 'builtAt') !=
+              builtAt?.toIso8601String() ||
+          data['abi'] != Abi.current().toString() ||
+          data['locale'] != l10n.localeName) {
         return null;
       }
-      final checkedAt = DateTime.fromMillisecondsSinceEpoch(
-        data['checkedAt'] as int,
-      );
+      final checkedAt = _cacheTime(jsonIntField(data, 'checkedAt'));
       final age = DateTime.now().difference(checkedAt);
       if (age.isNegative || age >= _maxAge) return null;
-      return (data['releases'] as List)
-          .cast<Map<String, dynamic>>()
-          .map(AppRelease.fromJson)
-          .toList();
-    } catch (failure, stack) {
+      return [
+        for (final release in jsonListField(data, 'releases'))
+          AppRelease.fromJson(jsonObject(release, 'releases[]')),
+      ];
+    } on Exception catch (failure, stack) {
       AppDiagnostics.instance.error('读取更新缓存', failure, stack);
       return null;
     }
   }
 
   Future<List<AppRelease>> _refresh(String installed, DateTime? builtAt) async {
-    final available = await availableAppReleases(installed, builtAt: builtAt);
+    final available = await availableAppReleases(
+      installed,
+      builtAt: builtAt,
+      l10n: l10n,
+    );
     try {
       await _preferences.setString(
         _cacheKey,
@@ -79,13 +86,22 @@ class UpdateRepository {
           'installed': installed,
           'builtAt': builtAt?.toIso8601String(),
           'abi': Abi.current().toString(),
+          'locale': l10n.localeName,
           'checkedAt': DateTime.now().millisecondsSinceEpoch,
           'releases': available.map((release) => release.toJson()).toList(),
         }),
       );
-    } catch (failure, stack) {
+    } on Exception catch (failure, stack) {
       AppDiagnostics.instance.error('保存更新缓存', failure, stack);
     }
     return available;
+  }
+}
+
+DateTime _cacheTime(int milliseconds) {
+  try {
+    return DateTime.fromMillisecondsSinceEpoch(milliseconds);
+  } on ArgumentError {
+    throw const FormatException('checkedAt 超出有效范围');
   }
 }

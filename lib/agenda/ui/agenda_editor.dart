@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../l10n/formats.dart';
+import '../../l10n/l10n.dart';
 import '../../schedule/model.dart';
 import '../../schedule/selection.dart';
 import '../../ui/dialog_layout.dart';
 import '../../ui/editor_sheet.dart';
 import '../../ui/external_link.dart';
+import '../../ui/sheet_layout.dart';
 import '../model.dart';
 import 'agenda_operations.dart';
 
@@ -17,10 +20,8 @@ Future<void> editAgenda(
   TimetableSelection? selection,
   DateTime? date,
   String? term,
-}) => showModalBottomSheet<void>(
+}) => showAppSheet<void>(
   context: context,
-  useSafeArea: true,
-  isScrollControlled: true,
   builder: (_) => _AgendaEditor(
     controller: controller,
     entry: entry,
@@ -136,7 +137,7 @@ class _AgendaEditorState extends State<_AgendaEditor> {
         ? calendarDate(_end).add(const Duration(days: 1))
         : _end;
     if (_kind != AgendaKind.deadline && !end.isAfter(start)) {
-      setState(() => _error = '结束时间需要晚于开始时间');
+      setState(() => _error = context.l10n.agendaEndAfterStart);
       return;
     }
     setState(() {
@@ -211,18 +212,23 @@ class _AgendaEditorState extends State<_AgendaEditor> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final theme = Theme.of(context);
-    final kindLabel = _kind == AgendaKind.event ? '日程' : _kind.label;
+    final kindLabel = _kind == AgendaKind.event
+        ? l10n.agenda
+        : _kind.localizedLabel(l10n);
 
     return EditorSheet(
-      title: '${widget.entry == null ? '添加' : '编辑'}$kindLabel',
+      title: widget.entry == null
+          ? l10n.agendaAddTitle(kindLabel)
+          : l10n.agendaEditTitle(kindLabel),
       onDelete: widget.entry == null ? null : _delete,
       saveLabel: _saving
           ? const SizedBox.square(
               dimension: 18,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : const Text('保存'),
+          : Text(l10n.save),
       formKey: _form,
       saving: _saving,
       error: _error,
@@ -233,8 +239,11 @@ class _AgendaEditorState extends State<_AgendaEditor> {
         children: [
           if (widget.entry == null) ...[
             SegmentedButton<AgendaKind>(
-              segments: const [
-                ButtonSegment(value: AgendaKind.event, label: Text('日程')),
+              segments: [
+                ButtonSegment(
+                  value: AgendaKind.event,
+                  label: Text(l10n.agenda),
+                ),
                 ButtonSegment(value: AgendaKind.deadline, label: Text('DDL')),
               ],
               selected: {_kind},
@@ -248,7 +257,7 @@ class _AgendaEditorState extends State<_AgendaEditor> {
           if (widget.entry?.source != null) ...[
             Text(
               [
-                widget.entry!.source!.label,
+                widget.entry!.source!.localizedLabel(l10n),
                 if (widget.entry!.course.isNotEmpty) widget.entry!.course,
               ].join('  '),
               style: theme.textTheme.bodySmall,
@@ -262,10 +271,10 @@ class _AgendaEditorState extends State<_AgendaEditor> {
                       : () => openExternalLink(
                           context,
                           url,
-                          failureTitle: '无法打开作业',
+                          failureTitle: l10n.agendaOpenLink,
                         ),
                   icon: const Icon(Icons.open_in_new_rounded, size: 16),
-                  label: const Text('打开作业'),
+                  label: Text(l10n.agendaOpenLink),
                 ),
               ),
             const SizedBox(height: 12),
@@ -274,12 +283,13 @@ class _AgendaEditorState extends State<_AgendaEditor> {
             controller: _title,
             enabled: !_saving,
             textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(labelText: '名称'),
-            validator: (text) => text!.trim().isEmpty ? '请输入名称' : null,
+            decoration: InputDecoration(labelText: l10n.agendaName),
+            validator: (text) =>
+                text!.trim().isEmpty ? l10n.agendaNameRequired : null,
           ),
           Row(
             children: [
-              const Expanded(child: Text('全天')),
+              Expanded(child: Text(l10n.agendaAllDay)),
               Switch(
                 value: _allDay,
                 onChanged: _saving
@@ -288,14 +298,20 @@ class _AgendaEditorState extends State<_AgendaEditor> {
               ),
             ],
           ),
-          _when(_kind == AgendaKind.deadline ? '截止' : '开始', _start, true),
-          if (_kind != AgendaKind.deadline) _when('结束', _end, false),
+          _when(
+            _kind == AgendaKind.deadline ? l10n.due : l10n.start,
+            _start,
+            true,
+          ),
+          if (_kind != AgendaKind.deadline) _when(l10n.end, _end, false),
           const SizedBox(height: 16),
           if (_kind != AgendaKind.deadline) ...[
             TextFormField(
               controller: _location,
               enabled: !_saving,
-              decoration: const InputDecoration(labelText: '地点（选填）'),
+              decoration: InputDecoration(
+                labelText: l10n.agendaLocationOptional,
+              ),
             ),
             const SizedBox(height: 12),
           ],
@@ -304,7 +320,7 @@ class _AgendaEditorState extends State<_AgendaEditor> {
             enabled: !_saving,
             minLines: 2,
             maxLines: 4,
-            decoration: const InputDecoration(labelText: '备注（选填）'),
+            decoration: InputDecoration(labelText: l10n.agendaNotesOptional),
           ),
         ],
       ),

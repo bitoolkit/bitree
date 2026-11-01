@@ -60,9 +60,6 @@ class SchoolConnection {
           session = _open(next);
         }
       }
-    } catch (_) {
-      _cancellation.check();
-      rethrow;
     } finally {
       close();
     }
@@ -90,7 +87,7 @@ class SchoolConnection {
             .timeout(_probeTimeout);
         _cancellation.check();
         if (!ready.isCompleted) ready.complete(session);
-      } catch (failure, stack) {
+      } on Exception catch (failure, stack) {
         _close(session);
         pending--;
         if (!ready.isCompleted) {
