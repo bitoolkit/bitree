@@ -93,6 +93,7 @@ class _CreditTargetsDialogState extends State<_CreditTargetsDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final theme = Theme.of(context);
     return PopScope(
       canPop: !_saving,
       child: AlertDialog(

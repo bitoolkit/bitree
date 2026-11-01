@@ -110,7 +110,7 @@ class _LogsScreenState extends State<LogsScreen> {
                   const SizedBox(width: 8),
                   TextButton(
                     onPressed: _loading ? null : _load,
-                    child: Text(l10n.retry),
+                    child: Text(l10n.refresh),
                   ),
                 ],
               ),
