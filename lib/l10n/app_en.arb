@@ -2,7 +2,6 @@
   "@@locale": "en",
   "appName": "BITree",
   "appChineseName": "理枝",
-  "appTagline": "A handy toolkit for Beijing Institute of Technology.",
   "navHome": "Home",
   "navAgenda": "Agenda",
   "navTools": "Tools",
@@ -23,7 +22,6 @@
   "restore": "Restore",
   "refresh": "Refresh",
   "reload": "Reload",
-  "retry": "Retry",
   "confirm": "Confirm",
   "view": "View",
   "showAll": "Show all",
@@ -41,40 +39,8 @@
   "exam": "Exam",
   "deadline": "DDL",
   "activity": "Event",
-  "courseCount": "{count, plural, =1{1 course} other{{count} courses}}",
-  "@courseCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "sessionCount": "{count, plural, =1{1 item} other{{count} items}}",
-  "@sessionCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "itemCount": "{count, plural, =1{1 item} other{{count} items}}",
   "@itemCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "creditCount": "{count} credits",
-  "@creditCount": {
-    "placeholders": {
-      "count": {
-        "type": "String"
-      }
-    }
-  },
-  "minuteCount": "{count, plural, =1{1 minute} other{{count} minutes}}",
-  "@minuteCount": {
     "placeholders": {
       "count": {
         "type": "int"
@@ -100,17 +66,6 @@
   "thisWeekSuffix": ", this week",
   "schoolWeek": "School schedule",
   "chooseWeek": "Choose week",
-  "weekRange": "Weeks {first}–{last}",
-  "@weekRange": {
-    "placeholders": {
-      "first": {
-        "type": "int"
-      },
-      "last": {
-        "type": "int"
-      }
-    }
-  },
   "weekRangeShort": "{first} - {last} weeks",
   "@weekRangeShort": {
     "placeholders": {
@@ -271,14 +226,6 @@
       }
     }
   },
-  "startedAt": "Started {time}",
-  "@startedAt": {
-    "placeholders": {
-      "time": {
-        "type": "String"
-      }
-    }
-  },
   "completed": "Completed",
   "overdue": "Overdue",
   "ended": "Ended",
@@ -287,13 +234,13 @@
   "start": "Start",
   "end": "End",
   "settingsDeleteScheduleQuestion": "Delete the local schedule?",
-  "settingsDeleteScheduleBody": "This deletes schedules for every term, including manually added courses. This cannot be undone.",
+  "settingsDeleteScheduleBody": "Delete schedules for every term, including manually added courses. This cannot be undone.",
   "settingsDeleteSchedule": "Delete schedule",
   "settingsTerm": "Term",
   "settingsWeekManagement": "Week range",
   "settingsDeleteLocalSchedule": "Delete local schedule",
   "settingsDeleteDeadlines": "Delete DDLs",
-  "settingsDeleteDeadlinesBody": "Choose sources such as manual, physics lab, Lexue, or E-Learning.\n{count} total across all terms, including completed and deleted items",
+  "settingsDeleteDeadlinesBody": "{count} total across all terms, including completed and deleted items",
   "@settingsDeleteDeadlinesBody": {
     "placeholders": {
       "count": {
@@ -370,7 +317,7 @@
   "copyCourseNameSuccess": "Course name copied",
   "copyCourseNameFailure": "Copy failed. Try again.",
   "deleteCourseQuestion": "Delete this course?",
-  "deleteCourseBody": "Remove “{course}” from the local schedule?",
+  "deleteCourseBody": "Remove “{course}” from the local schedule.",
   "@deleteCourseBody": {
     "placeholders": {
       "course": {
@@ -403,8 +350,6 @@
   "courseEditorSave": "Save course",
   "courseEditorTerm": "Term",
   "courseEditorTermRequired": "Enter a term",
-  "courseEditorMonday": "Monday of week 1",
-  "courseEditorMondayHelp": "Choose Monday of week 1",
   "courseEditorMondayLabel": "Monday of week 1: {date}",
   "@courseEditorMondayLabel": {
     "placeholders": {
@@ -499,7 +444,7 @@
     }
   },
   "exportSchedule": "Export schedule",
-  "exportScheduleEmpty": "There are no courses to export. Add a course or set its class time first.",
+  "exportScheduleEmpty": "No courses to export",
   "exportScheduleSuccess": "Schedule exported",
   "exportScheduleSkipped": "Schedule exported; skipped {count} courses without a fixed time",
   "@exportScheduleSkipped": {
@@ -605,29 +550,11 @@
       }
     }
   },
-  "agendaDetails": "Agenda details",
-  "agendaOverdueAt": "Overdue at {time}",
-  "@agendaOverdueAt": {
-    "placeholders": {
-      "time": {
-        "type": "String"
-      }
-    }
-  },
-  "agendaStartsAt": "Starts at {time}",
-  "@agendaStartsAt": {
-    "placeholders": {
-      "time": {
-        "type": "String"
-      }
-    }
-  },
   "agendaMarkDone": "Mark complete",
   "agendaMarkUndone": "Mark incomplete",
   "agendaNotes": "Notes",
   "agendaOpenLink": "Open assignment",
   "agendaDueBeforeEndOfDay": "Before the end of that day",
-  "agendaDeleteAction": "Delete",
   "agendaSwipeDelete": "Delete",
   "agendaSwipeDeleteRelease": "Release to delete",
   "agendaSwipeRestore": "Mark incomplete",
@@ -717,10 +644,8 @@
       }
     }
   },
-  "agendaTimelineZoom": "Zoom: from one day per cell to one hour per cell",
-  "agendaTimelineEmpty": "No agenda items\nDrag the timeline or add a new item",
-  "agendaTimelineSemantics": "Agenda timeline",
-  "agendaTimelineAllDay": "All day",
+  "agendaTimelineZoom": "Timeline zoom",
+  "agendaTimelineEmpty": "No agenda items",
   "agendaTimelineStarts": "Starts: {time}",
   "@agendaTimelineStarts": {
     "placeholders": {
@@ -788,7 +713,6 @@
   "agendaTimelineStatusOverdue": "Status: overdue",
   "agendaTimelineStatusEnded": "Status: ended",
   "clearDeadlinesTitle": "Delete DDLs",
-  "clearDeadlinesIntro": "Select one or more sources. Counts include every term and completed or deleted DDLs.",
   "clearDeadlinesSourceCount": "{source} ({count})",
   "@clearDeadlinesSourceCount": {
     "placeholders": {
@@ -800,7 +724,7 @@
       }
     }
   },
-  "clearDeadlinesSelection": "{categories} selected, {count} DDLs total.",
+  "clearDeadlinesSelection": "{categories} selected · {count} total",
   "@clearDeadlinesSelection": {
     "placeholders": {
       "categories": {
@@ -811,8 +735,7 @@
       }
     }
   },
-  "clearDeadlinesWarning": "This cannot be undone and deleted DDLs cannot be restored. Unselected sources, exams, and other agenda items are unaffected.",
-  "clearDeadlinesRecovery": "Platform DDLs can be synchronized again; physics lab DDLs can be regenerated from the schedule; manually created DDLs cannot be restored.",
+  "clearDeadlinesWarning": "Deleted items will not appear in “Deleted DDLs.” Platform and physics lab DDLs can be regenerated.",
   "clearDeadlinesDeleteCount": "Delete {count} DDLs",
   "@clearDeadlinesDeleteCount": {
     "placeholders": {
@@ -822,8 +745,8 @@
     }
   },
   "clearDeadlinesDeleting": "Deleting…",
-  "clearDeadlinesUnavailable": "The agenda is not loaded or is being saved. Try again shortly.",
-  "clearDeadlinesDeleted": "Deleted {count} DDLs.",
+  "clearDeadlinesUnavailable": "The agenda is not loaded or is being saved. Try again.",
+  "clearDeadlinesDeleted": "Deleted {count} DDLs",
   "@clearDeadlinesDeleted": {
     "placeholders": {
       "count": {
@@ -855,19 +778,13 @@
   },
   "deadlineManual": "Manually created",
   "deadlineManualScope": "Manually created DDLs",
-  "deadlineManualScopeDescription": "Manually added DDLs, excluding physics lab and synchronized platform items",
   "deadlinePhysicsLab": "Physics lab DDLs",
-  "deadlinePhysicsLabScopeDescription": "Physics lab DDLs generated from the schedule, including locally edited items",
   "deadlineLexue": "Lexue DDLs",
-  "deadlineLexueScopeDescription": "DDLs synchronized from Lexue, including locally edited items",
   "deadlineEclass": "E-Learning DDLs",
-  "deadlineEclassScopeDescription": "DDLs synchronized from E-Learning, including locally edited items",
   "deadlineMooc": "MOOC DDLs",
-  "deadlineMoocScopeDescription": "DDLs synchronized from China University MOOC, including locally edited items",
   "deadlineSourceLexue": "Lexue",
   "deadlineSourceEclass": "E-Learning",
   "deadlineSourceMooc": "China University MOOC",
-  "deadlineSourcePlatform": "Platform DDL",
   "agendaKindEvent": "Event",
   "agendaKindDeadline": "DDL",
   "agendaKindExam": "Exam",
@@ -995,17 +912,6 @@
   "syncFailed": "Sync failed. Try again.",
   "schoolLoginRequired": "Sign in to your school account",
   "syncVerificationRequired": "Complete school sign-in verification",
-  "syncCourseFailure": "{course}: {message}",
-  "@syncCourseFailure": {
-    "placeholders": {
-      "course": {
-        "type": "String"
-      },
-      "message": {
-        "type": "String"
-      }
-    }
-  },
   "accountUnverified": "Not connected",
   "accountSignedIn": "Signed in",
   "accountSignedOut": "Signed out",
@@ -1014,7 +920,7 @@
   "accountImageRequired": "Image verification required",
   "moocName": "China University MOOC",
   "moocSignOutQuestion": "Sign out of China University MOOC?",
-  "moocSignOutBody": "The saved login session on this device will be deleted. Imported DDLs will remain.",
+  "moocSignOutBody": "Imported DDLs will remain after you sign out.",
   "exitAction": "Exit",
   "webLogin": "Web sign-in",
   "relogin": "Sign in again",
@@ -1025,7 +931,7 @@
   "moocConnectionCancelled": "Connection cancelled",
   "moocConnecting": "Connecting…",
   "connect": "Connect",
-  "moocCookieInstructions": "In a signed-in MOOC web page, copy the request Cookie from the Network panel in developer tools. Use this only when web sign-in does not work.",
+  "moocCookieInstructions": "Copy the Cookie from developer tools while signed in. Use this only if web sign-in does not work.",
   "moocPasteCookie": "Paste a Cookie",
   "openMoocFailed": "Could not open MOOC",
   "openOfficialLogin": "Open official sign-in page",
@@ -1044,7 +950,6 @@
   "moocNeedsLogin": "Sign in again",
   "moocSignedOut": "Not signed in",
   "moocLoginRequired": "Sign in to your China University MOOC account",
-  "moocUserFallback": "MOOC user",
   "moocReadingCourses": "Reading MOOC courses…",
   "moocReadingSpocCourses": "Reading SPOC courses…",
   "moocReadingCourse": "Reading {done}/{total}: {course}",
@@ -1075,7 +980,7 @@
   "schoolHidePassword": "Hide password",
   "schoolLoggingIn": "Signing in…",
   "schoolSignOutQuestion": "Sign out of the school account?",
-  "schoolSignOutBody": "The sign-in information on this device will be removed. Local schedules and agenda items will remain.",
+  "schoolSignOutBody": "The local schedule and agenda will remain after you sign out.",
   "schoolSignOutAction": "Sign out",
   "verifyAction": "Verify",
   "schoolVerified": "School account verified",
@@ -1177,7 +1082,6 @@
     }
   },
   "failedCourse": "Not passed",
-  "gradesReadFailed": "Academic data is temporarily unavailable",
   "noSyncedGrades": "No grades have been synchronized",
   "allSemesters": "All semesters",
   "averageGpa": "Average GPA",
@@ -1233,7 +1137,7 @@
   "reviewByCategory": "Review by course category",
   "setTargets": "Set targets",
   "syncGradesForCredit": "Sync grades to view category credits",
-  "creditCategoryNote": "Category credits are based on synchronized grades, counting each course once. Check category requirements against your study plan; in-progress credits are not estimated. Graduation is subject to school review.",
+  "creditCategoryNote": "Category credits use synchronized grades and count each course once. In-progress credits are not included; final graduation review is by the school.",
   "noCategoryGrades": "No course grades in this category",
   "credits": "{count} credits",
   "@credits": {
@@ -1279,7 +1183,7 @@
   "enterNonNegativeCredits": "Enter a non-negative number of credits",
   "examScheduleAndConflicts": "Exam schedule and conflict check",
   "checkLocalSchedule": "Also check the local schedule",
-  "syncScheduleConflictHint": "Sync a schedule to check exam and class time conflicts.",
+  "syncScheduleConflictHint": "Sync a schedule to check conflicts.",
   "timeConflictsFound": "{count} time conflicts found",
   "@timeConflictsFound": {
     "placeholders": {
@@ -1292,7 +1196,7 @@
   "noExams": "No exams scheduled",
   "hideFinishedExams": "Hide finished exams",
   "showFinishedExams": "Show finished exams",
-  "examAgendaSharedNote": "Exams and agenda items share records. Syncing, editing, and deleting affect both places.",
+  "examAgendaSharedNote": "Exams and agenda items share records. Edits and deletions affect both places.",
   "overlapsClass": "Overlaps {title} class time",
   "@overlapsClass": {
     "placeholders": {
@@ -1374,8 +1278,8 @@
   "editAction": "Edit",
   "removeSimulatedCourse": "Remove projected course",
   "retakeUsesHighest": "Use the highest retake grade",
-  "simulationDoesNotChange": "Projection does not change synchronized grades.",
-  "simulationIncludesBoth": "This projection counts both the original and retake grades instead of applying the school's highest-grade rule.",
+  "simulationDoesNotChange": "Projection does not change grades.",
+  "simulationIncludesBoth": "Projection counts both the original and retake grades, unlike the school's highest-grade rule.",
   "addProjectedCourse": "Add projected course",
   "editProjectedCourse": "Edit projected course",
   "selectCourseOptional": "Select course (optional)",
@@ -1461,7 +1365,7 @@
   "viewAllFreePeriods": "View all free periods for the day",
   "chooseOneOrMoreSections": "Choose one or more consecutive periods",
   "chooseFreePeriod": "Choose free periods",
-  "periodSelectionHint": "Choose the start period, then the end period. Choose one period to apply immediately.",
+  "periodSelectionHint": "Choose the start and end periods. A single period can be applied immediately.",
   "freeThroughoutSections": "Free throughout {period}",
   "@freeThroughoutSections": {
     "placeholders": {
@@ -1491,7 +1395,7 @@
   },
   "apply": "Apply",
   "mapInfoTitle": "Map help",
-  "mapInfoBody": "Tap a building to zoom in, then tap a room to see its location. Use two fingers, the mouse wheel, or the zoom buttons to change scale.\n\nOn floor plans, east is up and north is left; the original aspect ratio is preserved. Floor plans 1–10 and the location index are stored locally and require no sign-in. Unindexed room numbers locate the building only.\n\nThe base maps come from a public archive of the school's Wencui map. Door and passage availability may differ on site.",
+  "mapInfoBody": "Tap a building to zoom in, then tap a room to see its location. Use two fingers, the wheel, or the buttons to zoom.\n\nFloor plans face east-up and north-left. Room numbers not in the index show only their building.\n\nBase maps come from the school's Wencui map. Passage access may differ on site.",
   "mapSource": "Map source",
   "school3dNavigation": "School 3D map",
   "openMapSourceFailed": "Could not open the map source",
@@ -1520,17 +1424,6 @@
     }
   },
   "tapBuildingOrSearch": "Tap a building to zoom in, or search for a room",
-  "wencuiRoomDetails": "Wencui Building {wing} · {floor}",
-  "@wencuiRoomDetails": {
-    "placeholders": {
-      "wing": {
-        "type": "String"
-      },
-      "floor": {
-        "type": "String"
-      }
-    }
-  },
   "viewingFloor": "{details}, viewing floor {floor}",
   "@viewingFloor": {
     "placeholders": {
@@ -1568,7 +1461,7 @@
   "firstFloorEntrance": "Ground-floor entrance",
   "backToBuilding": "Back to building",
   "backToRoom": "Back to room",
-  "mapLoadFailed": "Could not load the map. Reopen it; details can be exported from Logs in Settings.",
+  "mapLoadFailed": "Could not load the map. Try again. Export logs from Settings for details.",
   "mapLegend": "East ↑ · North ←",
   "zoomOut": "Zoom out",
   "zoomIn": "Zoom in",
@@ -1666,8 +1559,8 @@
   "unableOpenReleasePage": "Could not open the release page",
   "downloadDevelopment": "Download beta",
   "downloadStable": "Download stable",
-  "releaseNotesUnchanged": "This build has no new code changes. See the release page for full notes.",
-  "releaseNotesUnavailable": "Release notes are temporarily unavailable. See the release page.",
+  "releaseNotesUnchanged": "This build has no code changes.",
+  "releaseNotesUnavailable": "Release notes are currently unavailable.",
   "releaseMoreChanges": "Plus {count} more changes. [View full changes]({url}).",
   "@releaseMoreChanges": {
     "placeholders": {

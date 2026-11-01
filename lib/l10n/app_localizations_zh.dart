@@ -16,9 +16,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appChineseName => '理枝';
 
   @override
-  String get appTagline => '面向北京理工大学的妙妙小工具';
-
-  @override
   String get navHome => '首页';
 
   @override
@@ -79,9 +76,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get reload => '重新读取';
 
   @override
-  String get retry => '重试';
-
-  @override
   String get confirm => '确定';
 
   @override
@@ -133,28 +127,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get activity => '活动';
 
   @override
-  String courseCount(int count) {
-    return '$count 门课程';
-  }
-
-  @override
-  String sessionCount(int count) {
-    return '$count 项日程';
-  }
-
-  @override
   String itemCount(int count) {
     return '$count 项';
-  }
-
-  @override
-  String creditCount(String count) {
-    return '$count 学分';
-  }
-
-  @override
-  String minuteCount(int count) {
-    return '$count 分钟';
   }
 
   @override
@@ -175,11 +149,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get chooseWeek => '选择周次';
-
-  @override
-  String weekRange(int first, int last) {
-    return '第 $first–$last 周';
-  }
 
   @override
   String weekRangeShort(int first, int last) {
@@ -334,11 +303,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String startedAt(String time) {
-    return '$time 开始';
-  }
-
-  @override
   String get completed => '已完成';
 
   @override
@@ -363,7 +327,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsDeleteScheduleQuestion => '删除本地课表？';
 
   @override
-  String get settingsDeleteScheduleBody => '将删除所有学期的课表，包括手动添加的课程。删除后无法恢复。';
+  String get settingsDeleteScheduleBody => '删除所有学期的课表，包括手动添加的课程。此操作无法撤销。';
 
   @override
   String get settingsDeleteSchedule => '删除课表';
@@ -382,7 +346,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String settingsDeleteDeadlinesBody(int count) {
-    return '可勾选手动创建、大物实验、乐学和新延河课堂来源\n共 $count 条（所有学期，含已完成、已删除）';
+    return '全部学期共 $count 条，含已完成和已删除';
   }
 
   @override
@@ -481,7 +445,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String deleteCourseBody(String course) {
-    return '将从本地课表中删除“$course”。';
+    return '从本地课表删除“$course”。';
   }
 
   @override
@@ -517,12 +481,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get courseEditorTermRequired => '请输入学期';
-
-  @override
-  String get courseEditorMonday => '第一周周一';
-
-  @override
-  String get courseEditorMondayHelp => '选择第一周周一';
 
   @override
   String courseEditorMondayLabel(String date) {
@@ -631,7 +589,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get exportSchedule => '导出课表';
 
   @override
-  String get exportScheduleEmpty => '没有可导出的课程，请先添加课程或设置上课时间。';
+  String get exportScheduleEmpty => '没有可导出的课程';
 
   @override
   String get exportScheduleSuccess => '已导出课表';
@@ -731,19 +689,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get agendaDetails => '日程详情';
-
-  @override
-  String agendaOverdueAt(String time) {
-    return '$time 已逾期';
-  }
-
-  @override
-  String agendaStartsAt(String time) {
-    return '$time 开始';
-  }
-
-  @override
   String get agendaMarkDone => '标记完成';
 
   @override
@@ -757,9 +702,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get agendaDueBeforeEndOfDay => '当天结束前';
-
-  @override
-  String get agendaDeleteAction => '删除';
 
   @override
   String get agendaSwipeDelete => '删除';
@@ -858,16 +800,10 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get agendaTimelineZoom => '缩放：从每天一格到每小时一格';
+  String get agendaTimelineZoom => '时间轴缩放';
 
   @override
-  String get agendaTimelineEmpty => '暂无日程\n可拖动时间轴，或添加新的日程';
-
-  @override
-  String get agendaTimelineSemantics => '日程时间轴';
-
-  @override
-  String get agendaTimelineAllDay => '全天';
+  String get agendaTimelineEmpty => '暂无日程';
 
   @override
   String agendaTimelineStarts(String time) {
@@ -919,25 +855,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get clearDeadlinesTitle => '删除 DDL';
 
   @override
-  String get clearDeadlinesIntro => '勾选要删除的来源，可多选。数量包含所有学期、已完成和已删除的 DDL。';
-
-  @override
   String clearDeadlinesSourceCount(String source, int count) {
     return '$source（$count 条）';
   }
 
   @override
   String clearDeadlinesSelection(int categories, int count) {
-    return '已选择 $categories 类，共 $count 条 DDL。';
+    return '已选 $categories 类，共 $count 条';
   }
 
   @override
-  String get clearDeadlinesWarning =>
-      '删除后无法撤销，也无法从“已删除的 DDL”中恢复。未勾选的来源、考试和其他日程不受影响。';
-
-  @override
-  String get clearDeadlinesRecovery =>
-      '平台来源的 DDL 之后可重新同步；大物实验 DDL 可根据课表手动重新生成；手动创建的 DDL 无法恢复。';
+  String get clearDeadlinesWarning => '删除后不会进入“已删除的 DDL”；平台和大物实验 DDL 可重新生成。';
 
   @override
   String clearDeadlinesDeleteCount(int count) {
@@ -948,11 +876,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get clearDeadlinesDeleting => '正在删除…';
 
   @override
-  String get clearDeadlinesUnavailable => '日程尚未加载或正在保存，请稍后重试。';
+  String get clearDeadlinesUnavailable => '日程未加载或正在保存，请稍后重试';
 
   @override
   String clearDeadlinesDeleted(int count) {
-    return '已删除 $count 条 DDL。';
+    return '已删除 $count 条 DDL';
   }
 
   @override
@@ -990,31 +918,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get deadlineManualScope => '手动创建的 DDL';
 
   @override
-  String get deadlineManualScopeDescription => '手动添加的 DDL，不包括大物实验和平台同步的条目';
-
-  @override
   String get deadlinePhysicsLab => '大物实验 DDL';
-
-  @override
-  String get deadlinePhysicsLabScopeDescription => '从课表生成的大物实验 DDL，包括本地编辑过的条目';
 
   @override
   String get deadlineLexue => '乐学 DDL';
 
   @override
-  String get deadlineLexueScopeDescription => '从乐学同步的 DDL，包括在本地编辑过的条目';
-
-  @override
   String get deadlineEclass => '新延河课堂 DDL';
 
   @override
-  String get deadlineEclassScopeDescription => '从新延河课堂同步的 DDL，包括在本地编辑过的条目';
-
-  @override
   String get deadlineMooc => '中国大学MOOC DDL';
-
-  @override
-  String get deadlineMoocScopeDescription => '从中国大学MOOC 同步的 DDL，包括在本地编辑过的条目';
 
   @override
   String get deadlineSourceLexue => '乐学';
@@ -1024,9 +937,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get deadlineSourceMooc => '中国大学MOOC';
-
-  @override
-  String get deadlineSourcePlatform => '平台 DDL';
 
   @override
   String get agendaKindEvent => '活动';
@@ -1222,11 +1132,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get syncVerificationRequired => '需要完成学校登录验证';
 
   @override
-  String syncCourseFailure(String course, String message) {
-    return '$course：$message';
-  }
-
-  @override
   String get accountUnverified => '未连接';
 
   @override
@@ -1251,7 +1156,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get moocSignOutQuestion => '退出中国大学MOOC？';
 
   @override
-  String get moocSignOutBody => '删除本机保存的登录会话，已导入的 DDL 会保留。';
+  String get moocSignOutBody => '退出后保留已导入的 DDL。';
 
   @override
   String get exitAction => '退出';
@@ -1284,8 +1189,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get connect => '连接';
 
   @override
-  String get moocCookieInstructions =>
-      '在已登录的 MOOC 网页中，从开发者工具的网络面板复制请求 Cookie。此方式仅作为网页登录的备用。';
+  String get moocCookieInstructions => '从已登录网页的开发者工具中复制 Cookie。仅在网页登录不可用时使用。';
 
   @override
   String get moocPasteCookie => '请粘贴 Cookie';
@@ -1342,9 +1246,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get moocLoginRequired => '需要登录中国大学MOOC账号';
 
   @override
-  String get moocUserFallback => 'MOOC 用户';
-
-  @override
   String get moocReadingCourses => '正在读取 MOOC 课程…';
 
   @override
@@ -1398,7 +1299,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get schoolSignOutQuestion => '退出学校账号？';
 
   @override
-  String get schoolSignOutBody => '将移除此设备上的登录信息，保留本地课表和日程。';
+  String get schoolSignOutBody => '退出后保留本地课表和日程。';
 
   @override
   String get schoolSignOutAction => '退出登录';
@@ -1564,9 +1465,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get failedCourse => '未通过';
 
   @override
-  String get gradesReadFailed => '学业数据暂时无法读取';
-
-  @override
   String get noSyncedGrades => '还没有同步成绩';
 
   @override
@@ -1656,8 +1554,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get syncGradesForCredit => '同步成绩，查看分类学分';
 
   @override
-  String get creditCategoryNote =>
-      '分类学分按已同步成绩汇总，同一课程只计一次。分类要求需按你的培养方案核对；不估算在修学分。毕业认定以学校审核为准。';
+  String get creditCategoryNote => '分类学分按已同步成绩计算，每门课只计一次。不统计在修学分，最终以学校审核为准。';
 
   @override
   String get noCategoryGrades => '这个类别还没有课程成绩';
@@ -1710,7 +1607,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get checkLocalSchedule => '同时检查本地课表';
 
   @override
-  String get syncScheduleConflictHint => '同步课表后，可检查考试与课程的时间冲突。';
+  String get syncScheduleConflictHint => '同步课表后可检查冲突。';
 
   @override
   String timeConflictsFound(int count) {
@@ -1730,7 +1627,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get showFinishedExams => '查看已结束考试';
 
   @override
-  String get examAgendaSharedNote => '考试与日程共用记录，同步、编辑和删除会在两处同时生效。';
+  String get examAgendaSharedNote => '考试与日程共用记录，修改或删除会同时生效。';
 
   @override
   String overlapsClass(String title) {
@@ -1844,10 +1741,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get retakeUsesHighest => '重修取最高成绩';
 
   @override
-  String get simulationDoesNotChange => '试算不会修改已同步成绩。';
+  String get simulationDoesNotChange => '试算不会修改成绩。';
 
   @override
-  String get simulationIncludesBoth => '本次试算同时计入原成绩和重修成绩，不采用学校的最高成绩规则。';
+  String get simulationIncludesBoth => '试算同时计入原成绩和重修成绩，与学校取最高分规则不同。';
 
   @override
   String get addProjectedCourse => '添加试算课程';
@@ -2010,7 +1907,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chooseFreePeriod => '选择空闲时段';
 
   @override
-  String get periodSelectionHint => '先选起始课次，再选结束课次。只用一节可直接应用。';
+  String get periodSelectionHint => '选择开始和结束节次；单节可直接应用。';
 
   @override
   String freeThroughoutSections(String period) {
@@ -2035,7 +1932,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get mapInfoBody =>
-      '点楼栋放大，再点房间查看位置。双指、鼠标滚轮或加减按钮可缩放地图。\n\n楼层图上东、左北，保持原图比例。1–10层图和位置索引保存在本地，无需登录。未收录的教室号只定位到楼栋。\n\n底图来自学校文萃导航的公开存档，通道开放情况以现场为准。';
+      '点楼栋放大，点教室查看位置。可双指、滚轮或按钮缩放。\n\n平面图上东、左北。教室号未收录时只显示楼栋。\n\n底图来自学校文萃导航，现场通道以实际情况为准。';
 
   @override
   String get mapSource => '地图来源';
@@ -2084,11 +1981,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tapBuildingOrSearch => '点楼栋放大，或搜索教室号';
 
   @override
-  String wencuiRoomDetails(String wing, String floor) {
-    return '文萃楼 $wing · $floor';
-  }
-
-  @override
   String viewingFloor(String details, int floor) {
     return '$details，正在查看$floor层';
   }
@@ -2125,7 +2017,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get backToRoom => '回到教室';
 
   @override
-  String get mapLoadFailed => '地图加载失败，请重新打开；详细信息可在设置中导出日志。';
+  String get mapLoadFailed => '地图加载失败，请重试。可在设置中导出日志。';
 
   @override
   String get mapLegend => '上东 · 左北';
@@ -2222,10 +2114,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get downloadStable => '下载正式版';
 
   @override
-  String get releaseNotesUnchanged => '此版本没有新增代码变更，完整说明见发布页。';
+  String get releaseNotesUnchanged => '此版本没有代码变更。';
 
   @override
-  String get releaseNotesUnavailable => '更新说明暂时无法读取，请查看发布页。';
+  String get releaseNotesUnavailable => '暂时无法读取更新说明。';
 
   @override
   String releaseMoreChanges(int count, String url) {

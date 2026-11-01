@@ -196,7 +196,6 @@ class _CourseEditorState extends State<_CourseEditor> {
                         lastDate: DateTime(2100),
                         selectableDayPredicate: (date) =>
                             date.weekday == DateTime.monday,
-                        helpText: l10n.courseEditorMondayHelp,
                       );
                       if (date != null) {
                         setState(() => _monday = calendarDate(date));

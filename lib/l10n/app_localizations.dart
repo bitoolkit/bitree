@@ -110,12 +110,6 @@ abstract class AppLocalizations {
   /// **'理枝'**
   String get appChineseName;
 
-  /// No description provided for @appTagline.
-  ///
-  /// In en, this message translates to:
-  /// **'A handy toolkit for Beijing Institute of Technology.'**
-  String get appTagline;
-
   /// No description provided for @navHome.
   ///
   /// In en, this message translates to:
@@ -236,12 +230,6 @@ abstract class AppLocalizations {
   /// **'Reload'**
   String get reload;
 
-  /// No description provided for @retry.
-  ///
-  /// In en, this message translates to:
-  /// **'Retry'**
-  String get retry;
-
   /// No description provided for @confirm.
   ///
   /// In en, this message translates to:
@@ -344,35 +332,11 @@ abstract class AppLocalizations {
   /// **'Event'**
   String get activity;
 
-  /// No description provided for @courseCount.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{1 course} other{{count} courses}}'**
-  String courseCount(int count);
-
-  /// No description provided for @sessionCount.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{1 item} other{{count} items}}'**
-  String sessionCount(int count);
-
   /// No description provided for @itemCount.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 item} other{{count} items}}'**
   String itemCount(int count);
-
-  /// No description provided for @creditCount.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} credits'**
-  String creditCount(String count);
-
-  /// No description provided for @minuteCount.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{1 minute} other{{count} minutes}}'**
-  String minuteCount(int count);
 
   /// No description provided for @weekNumber.
   ///
@@ -403,12 +367,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Choose week'**
   String get chooseWeek;
-
-  /// No description provided for @weekRange.
-  ///
-  /// In en, this message translates to:
-  /// **'Weeks {first}–{last}'**
-  String weekRange(int first, int last);
 
   /// No description provided for @weekRangeShort.
   ///
@@ -662,12 +620,6 @@ abstract class AppLocalizations {
   /// **'Ends {time}'**
   String endsAt(String time);
 
-  /// No description provided for @startedAt.
-  ///
-  /// In en, this message translates to:
-  /// **'Started {time}'**
-  String startedAt(String time);
-
   /// No description provided for @completed.
   ///
   /// In en, this message translates to:
@@ -719,7 +671,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsDeleteScheduleBody.
   ///
   /// In en, this message translates to:
-  /// **'This deletes schedules for every term, including manually added courses. This cannot be undone.'**
+  /// **'Delete schedules for every term, including manually added courses. This cannot be undone.'**
   String get settingsDeleteScheduleBody;
 
   /// No description provided for @settingsDeleteSchedule.
@@ -755,7 +707,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsDeleteDeadlinesBody.
   ///
   /// In en, this message translates to:
-  /// **'Choose sources such as manual, physics lab, Lexue, or E-Learning.\n{count} total across all terms, including completed and deleted items'**
+  /// **'{count} total across all terms, including completed and deleted items'**
   String settingsDeleteDeadlinesBody(int count);
 
   /// No description provided for @settingsLocalSchedule.
@@ -929,7 +881,7 @@ abstract class AppLocalizations {
   /// No description provided for @deleteCourseBody.
   ///
   /// In en, this message translates to:
-  /// **'Remove “{course}” from the local schedule?'**
+  /// **'Remove “{course}” from the local schedule.'**
   String deleteCourseBody(String course);
 
   /// No description provided for @deleteCourse.
@@ -990,18 +942,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter a term'**
   String get courseEditorTermRequired;
-
-  /// No description provided for @courseEditorMonday.
-  ///
-  /// In en, this message translates to:
-  /// **'Monday of week 1'**
-  String get courseEditorMonday;
-
-  /// No description provided for @courseEditorMondayHelp.
-  ///
-  /// In en, this message translates to:
-  /// **'Choose Monday of week 1'**
-  String get courseEditorMondayHelp;
 
   /// No description provided for @courseEditorMondayLabel.
   ///
@@ -1184,7 +1124,7 @@ abstract class AppLocalizations {
   /// No description provided for @exportScheduleEmpty.
   ///
   /// In en, this message translates to:
-  /// **'There are no courses to export. Add a course or set its class time first.'**
+  /// **'No courses to export'**
   String get exportScheduleEmpty;
 
   /// No description provided for @exportScheduleSuccess.
@@ -1337,24 +1277,6 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 item} other{{count} items}}'**
   String agendaItemCount(int count);
 
-  /// No description provided for @agendaDetails.
-  ///
-  /// In en, this message translates to:
-  /// **'Agenda details'**
-  String get agendaDetails;
-
-  /// No description provided for @agendaOverdueAt.
-  ///
-  /// In en, this message translates to:
-  /// **'Overdue at {time}'**
-  String agendaOverdueAt(String time);
-
-  /// No description provided for @agendaStartsAt.
-  ///
-  /// In en, this message translates to:
-  /// **'Starts at {time}'**
-  String agendaStartsAt(String time);
-
   /// No description provided for @agendaMarkDone.
   ///
   /// In en, this message translates to:
@@ -1384,12 +1306,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Before the end of that day'**
   String get agendaDueBeforeEndOfDay;
-
-  /// No description provided for @agendaDeleteAction.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete'**
-  String get agendaDeleteAction;
 
   /// No description provided for @agendaSwipeDelete.
   ///
@@ -1550,26 +1466,14 @@ abstract class AppLocalizations {
   /// No description provided for @agendaTimelineZoom.
   ///
   /// In en, this message translates to:
-  /// **'Zoom: from one day per cell to one hour per cell'**
+  /// **'Timeline zoom'**
   String get agendaTimelineZoom;
 
   /// No description provided for @agendaTimelineEmpty.
   ///
   /// In en, this message translates to:
-  /// **'No agenda items\nDrag the timeline or add a new item'**
+  /// **'No agenda items'**
   String get agendaTimelineEmpty;
-
-  /// No description provided for @agendaTimelineSemantics.
-  ///
-  /// In en, this message translates to:
-  /// **'Agenda timeline'**
-  String get agendaTimelineSemantics;
-
-  /// No description provided for @agendaTimelineAllDay.
-  ///
-  /// In en, this message translates to:
-  /// **'All day'**
-  String get agendaTimelineAllDay;
 
   /// No description provided for @agendaTimelineStarts.
   ///
@@ -1638,12 +1542,6 @@ abstract class AppLocalizations {
   /// **'Delete DDLs'**
   String get clearDeadlinesTitle;
 
-  /// No description provided for @clearDeadlinesIntro.
-  ///
-  /// In en, this message translates to:
-  /// **'Select one or more sources. Counts include every term and completed or deleted DDLs.'**
-  String get clearDeadlinesIntro;
-
   /// No description provided for @clearDeadlinesSourceCount.
   ///
   /// In en, this message translates to:
@@ -1653,20 +1551,14 @@ abstract class AppLocalizations {
   /// No description provided for @clearDeadlinesSelection.
   ///
   /// In en, this message translates to:
-  /// **'{categories} selected, {count} DDLs total.'**
+  /// **'{categories} selected · {count} total'**
   String clearDeadlinesSelection(int categories, int count);
 
   /// No description provided for @clearDeadlinesWarning.
   ///
   /// In en, this message translates to:
-  /// **'This cannot be undone and deleted DDLs cannot be restored. Unselected sources, exams, and other agenda items are unaffected.'**
+  /// **'Deleted items will not appear in “Deleted DDLs.” Platform and physics lab DDLs can be regenerated.'**
   String get clearDeadlinesWarning;
-
-  /// No description provided for @clearDeadlinesRecovery.
-  ///
-  /// In en, this message translates to:
-  /// **'Platform DDLs can be synchronized again; physics lab DDLs can be regenerated from the schedule; manually created DDLs cannot be restored.'**
-  String get clearDeadlinesRecovery;
 
   /// No description provided for @clearDeadlinesDeleteCount.
   ///
@@ -1683,13 +1575,13 @@ abstract class AppLocalizations {
   /// No description provided for @clearDeadlinesUnavailable.
   ///
   /// In en, this message translates to:
-  /// **'The agenda is not loaded or is being saved. Try again shortly.'**
+  /// **'The agenda is not loaded or is being saved. Try again.'**
   String get clearDeadlinesUnavailable;
 
   /// No description provided for @clearDeadlinesDeleted.
   ///
   /// In en, this message translates to:
-  /// **'Deleted {count} DDLs.'**
+  /// **'Deleted {count} DDLs'**
   String clearDeadlinesDeleted(int count);
 
   /// No description provided for @deletedDeadlinesTitle.
@@ -1752,23 +1644,11 @@ abstract class AppLocalizations {
   /// **'Manually created DDLs'**
   String get deadlineManualScope;
 
-  /// No description provided for @deadlineManualScopeDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Manually added DDLs, excluding physics lab and synchronized platform items'**
-  String get deadlineManualScopeDescription;
-
   /// No description provided for @deadlinePhysicsLab.
   ///
   /// In en, this message translates to:
   /// **'Physics lab DDLs'**
   String get deadlinePhysicsLab;
-
-  /// No description provided for @deadlinePhysicsLabScopeDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Physics lab DDLs generated from the schedule, including locally edited items'**
-  String get deadlinePhysicsLabScopeDescription;
 
   /// No description provided for @deadlineLexue.
   ///
@@ -1776,35 +1656,17 @@ abstract class AppLocalizations {
   /// **'Lexue DDLs'**
   String get deadlineLexue;
 
-  /// No description provided for @deadlineLexueScopeDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'DDLs synchronized from Lexue, including locally edited items'**
-  String get deadlineLexueScopeDescription;
-
   /// No description provided for @deadlineEclass.
   ///
   /// In en, this message translates to:
   /// **'E-Learning DDLs'**
   String get deadlineEclass;
 
-  /// No description provided for @deadlineEclassScopeDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'DDLs synchronized from E-Learning, including locally edited items'**
-  String get deadlineEclassScopeDescription;
-
   /// No description provided for @deadlineMooc.
   ///
   /// In en, this message translates to:
   /// **'MOOC DDLs'**
   String get deadlineMooc;
-
-  /// No description provided for @deadlineMoocScopeDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'DDLs synchronized from China University MOOC, including locally edited items'**
-  String get deadlineMoocScopeDescription;
 
   /// No description provided for @deadlineSourceLexue.
   ///
@@ -1823,12 +1685,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'China University MOOC'**
   String get deadlineSourceMooc;
-
-  /// No description provided for @deadlineSourcePlatform.
-  ///
-  /// In en, this message translates to:
-  /// **'Platform DDL'**
-  String get deadlineSourcePlatform;
 
   /// No description provided for @agendaKindEvent.
   ///
@@ -2184,12 +2040,6 @@ abstract class AppLocalizations {
   /// **'Complete school sign-in verification'**
   String get syncVerificationRequired;
 
-  /// No description provided for @syncCourseFailure.
-  ///
-  /// In en, this message translates to:
-  /// **'{course}: {message}'**
-  String syncCourseFailure(String course, String message);
-
   /// No description provided for @accountUnverified.
   ///
   /// In en, this message translates to:
@@ -2241,7 +2091,7 @@ abstract class AppLocalizations {
   /// No description provided for @moocSignOutBody.
   ///
   /// In en, this message translates to:
-  /// **'The saved login session on this device will be deleted. Imported DDLs will remain.'**
+  /// **'Imported DDLs will remain after you sign out.'**
   String get moocSignOutBody;
 
   /// No description provided for @exitAction.
@@ -2307,7 +2157,7 @@ abstract class AppLocalizations {
   /// No description provided for @moocCookieInstructions.
   ///
   /// In en, this message translates to:
-  /// **'In a signed-in MOOC web page, copy the request Cookie from the Network panel in developer tools. Use this only when web sign-in does not work.'**
+  /// **'Copy the Cookie from developer tools while signed in. Use this only if web sign-in does not work.'**
   String get moocCookieInstructions;
 
   /// No description provided for @moocPasteCookie.
@@ -2418,12 +2268,6 @@ abstract class AppLocalizations {
   /// **'Sign in to your China University MOOC account'**
   String get moocLoginRequired;
 
-  /// No description provided for @moocUserFallback.
-  ///
-  /// In en, this message translates to:
-  /// **'MOOC user'**
-  String get moocUserFallback;
-
   /// No description provided for @moocReadingCourses.
   ///
   /// In en, this message translates to:
@@ -2529,7 +2373,7 @@ abstract class AppLocalizations {
   /// No description provided for @schoolSignOutBody.
   ///
   /// In en, this message translates to:
-  /// **'The sign-in information on this device will be removed. Local schedules and agenda items will remain.'**
+  /// **'The local schedule and agenda will remain after you sign out.'**
   String get schoolSignOutBody;
 
   /// No description provided for @schoolSignOutAction.
@@ -2826,12 +2670,6 @@ abstract class AppLocalizations {
   /// **'Not passed'**
   String get failedCourse;
 
-  /// No description provided for @gradesReadFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Academic data is temporarily unavailable'**
-  String get gradesReadFailed;
-
   /// No description provided for @noSyncedGrades.
   ///
   /// In en, this message translates to:
@@ -2997,7 +2835,7 @@ abstract class AppLocalizations {
   /// No description provided for @creditCategoryNote.
   ///
   /// In en, this message translates to:
-  /// **'Category credits are based on synchronized grades, counting each course once. Check category requirements against your study plan; in-progress credits are not estimated. Graduation is subject to school review.'**
+  /// **'Category credits use synchronized grades and count each course once. In-progress credits are not included; final graduation review is by the school.'**
   String get creditCategoryNote;
 
   /// No description provided for @noCategoryGrades.
@@ -3087,7 +2925,7 @@ abstract class AppLocalizations {
   /// No description provided for @syncScheduleConflictHint.
   ///
   /// In en, this message translates to:
-  /// **'Sync a schedule to check exam and class time conflicts.'**
+  /// **'Sync a schedule to check conflicts.'**
   String get syncScheduleConflictHint;
 
   /// No description provided for @timeConflictsFound.
@@ -3123,7 +2961,7 @@ abstract class AppLocalizations {
   /// No description provided for @examAgendaSharedNote.
   ///
   /// In en, this message translates to:
-  /// **'Exams and agenda items share records. Syncing, editing, and deleting affect both places.'**
+  /// **'Exams and agenda items share records. Edits and deletions affect both places.'**
   String get examAgendaSharedNote;
 
   /// No description provided for @overlapsClass.
@@ -3327,13 +3165,13 @@ abstract class AppLocalizations {
   /// No description provided for @simulationDoesNotChange.
   ///
   /// In en, this message translates to:
-  /// **'Projection does not change synchronized grades.'**
+  /// **'Projection does not change grades.'**
   String get simulationDoesNotChange;
 
   /// No description provided for @simulationIncludesBoth.
   ///
   /// In en, this message translates to:
-  /// **'This projection counts both the original and retake grades instead of applying the school\'s highest-grade rule.'**
+  /// **'Projection counts both the original and retake grades, unlike the school\'s highest-grade rule.'**
   String get simulationIncludesBoth;
 
   /// No description provided for @addProjectedCourse.
@@ -3639,7 +3477,7 @@ abstract class AppLocalizations {
   /// No description provided for @periodSelectionHint.
   ///
   /// In en, this message translates to:
-  /// **'Choose the start period, then the end period. Choose one period to apply immediately.'**
+  /// **'Choose the start and end periods. A single period can be applied immediately.'**
   String get periodSelectionHint;
 
   /// No description provided for @freeThroughoutSections.
@@ -3675,7 +3513,7 @@ abstract class AppLocalizations {
   /// No description provided for @mapInfoBody.
   ///
   /// In en, this message translates to:
-  /// **'Tap a building to zoom in, then tap a room to see its location. Use two fingers, the mouse wheel, or the zoom buttons to change scale.\n\nOn floor plans, east is up and north is left; the original aspect ratio is preserved. Floor plans 1–10 and the location index are stored locally and require no sign-in. Unindexed room numbers locate the building only.\n\nThe base maps come from a public archive of the school\'s Wencui map. Door and passage availability may differ on site.'**
+  /// **'Tap a building to zoom in, then tap a room to see its location. Use two fingers, the wheel, or the buttons to zoom.\n\nFloor plans face east-up and north-left. Room numbers not in the index show only their building.\n\nBase maps come from the school\'s Wencui map. Passage access may differ on site.'**
   String get mapInfoBody;
 
   /// No description provided for @mapSource.
@@ -3762,12 +3600,6 @@ abstract class AppLocalizations {
   /// **'Tap a building to zoom in, or search for a room'**
   String get tapBuildingOrSearch;
 
-  /// No description provided for @wencuiRoomDetails.
-  ///
-  /// In en, this message translates to:
-  /// **'Wencui Building {wing} · {floor}'**
-  String wencuiRoomDetails(String wing, String floor);
-
   /// No description provided for @viewingFloor.
   ///
   /// In en, this message translates to:
@@ -3831,7 +3663,7 @@ abstract class AppLocalizations {
   /// No description provided for @mapLoadFailed.
   ///
   /// In en, this message translates to:
-  /// **'Could not load the map. Reopen it; details can be exported from Logs in Settings.'**
+  /// **'Could not load the map. Try again. Export logs from Settings for details.'**
   String get mapLoadFailed;
 
   /// No description provided for @mapLegend.
@@ -3993,13 +3825,13 @@ abstract class AppLocalizations {
   /// No description provided for @releaseNotesUnchanged.
   ///
   /// In en, this message translates to:
-  /// **'This build has no new code changes. See the release page for full notes.'**
+  /// **'This build has no code changes.'**
   String get releaseNotesUnchanged;
 
   /// No description provided for @releaseNotesUnavailable.
   ///
   /// In en, this message translates to:
-  /// **'Release notes are temporarily unavailable. See the release page.'**
+  /// **'Release notes are currently unavailable.'**
   String get releaseNotesUnavailable;
 
   /// No description provided for @releaseMoreChanges.

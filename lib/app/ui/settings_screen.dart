@@ -125,8 +125,6 @@ class SettingsScreen extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(l10n.appTagline),
-              const SizedBox(height: 12),
               Semantics(
                 link: true,
                 child: InkWell(

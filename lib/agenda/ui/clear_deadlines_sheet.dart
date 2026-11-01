@@ -82,8 +82,6 @@ class _ClearDeadlinesSheetState extends State<_ClearDeadlinesSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(l10n.clearDeadlinesIntro),
-              const SizedBox(height: AppSpacing.md),
               AppSelectionBar(
                 selectedCount: scopes.length,
                 totalCount: DeadlineClearScope.values.length,
@@ -101,7 +99,6 @@ class _ClearDeadlinesSheetState extends State<_ClearDeadlinesSheet> {
                       agenda.countDeadlines(scope),
                     ),
                   ),
-                  subtitle: Text(scope.localizedDescription(l10n)),
                   value: _selected.contains(scope),
                   onChanged: enabled
                       ? (checked) => setState(() {
@@ -118,8 +115,6 @@ class _ClearDeadlinesSheetState extends State<_ClearDeadlinesSheet> {
                 l10n.clearDeadlinesWarning,
                 style: TextStyle(color: scheme.error),
               ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(l10n.clearDeadlinesRecovery),
             ],
           ),
           actions: SheetActionBar.split(

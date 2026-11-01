@@ -287,7 +287,7 @@ void main() {
         'v0.3.0-dev.3333333',
         builtAt: DateTime.utc(2026, 10, 26),
       )).single;
-      expect(release.notes, contains('没有新增代码变更'));
+      expect(release.notes, contains('此版本没有代码变更。'));
       expect(requests.where((url) => url.path.contains('/compare/')), isEmpty);
     },
   );
@@ -295,7 +295,7 @@ void main() {
   test('An empty comparison does not fall back to cumulative notes', () async {
     changes['1111111...3333333'] = [];
     final release = (await read('v0.3.0-dev.1111111')).single;
-    expect(release.notes, contains('没有新增代码变更'));
+    expect(release.notes, contains('此版本没有代码变更。'));
     expect(release.notes, isNot(contains('旧变更')));
   });
 
@@ -309,7 +309,7 @@ void main() {
         expect(release.version, developmentVersion);
         expect(release.url.path, endsWith('/v0.3.0-dev'));
         expect(release.downloadUrl, release.url);
-        expect(release.notes, '更新说明暂时无法读取，请查看发布页。');
+        expect(release.notes, '暂时无法读取更新说明。');
         expect(release.notes, isNot(contains('旧变更')));
       },
     );

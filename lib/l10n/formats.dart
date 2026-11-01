@@ -139,14 +139,6 @@ extension LocalizedDeadlineScope on DeadlineClearScope {
     DeadlineClearScope.eclass => l10n.deadlineEclass,
     DeadlineClearScope.mooc => l10n.deadlineMooc,
   };
-
-  String localizedDescription(AppLocalizations l10n) => switch (this) {
-    DeadlineClearScope.manual => l10n.deadlineManualScopeDescription,
-    DeadlineClearScope.physicsLab => l10n.deadlinePhysicsLabScopeDescription,
-    DeadlineClearScope.lexue => l10n.deadlineLexueScopeDescription,
-    DeadlineClearScope.eclass => l10n.deadlineEclassScopeDescription,
-    DeadlineClearScope.mooc => l10n.deadlineMoocScopeDescription,
-  };
 }
 
 String localizedAgendaTime(AppLocalizations l10n, AgendaEntry entry) {
