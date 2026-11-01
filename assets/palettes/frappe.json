@@ -1,0 +1,13 @@
+{
+  "name": "Frappé",
+  "brightness": "dark",
+  "base": "#303446",
+  "text": "#C6D0F5",
+  "northTeaching": "#8CAAEE",
+  "wencui": "#A6D189",
+  "southScience": "#E5C890",
+  "eastFacilities": "#CA9EE6",
+  "southEngineering": "#EF9F76",
+  "neutral": "#B5BFE2",
+  "agenda": "#BABBF1"
+}

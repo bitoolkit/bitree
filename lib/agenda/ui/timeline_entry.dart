@@ -108,7 +108,9 @@ class AgendaTimelineEntry extends StatelessWidget {
                         border: entry.isDeadline
                             ? Border(
                                 right: BorderSide(
-                                  color: colors.accent,
+                                  color: entry.overdue(now)
+                                      ? Theme.of(context).colorScheme.error
+                                      : colors.accent,
                                   width: 3,
                                 ),
                               )

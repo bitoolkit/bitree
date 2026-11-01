@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../agenda/deadline_clear_scope.dart';
@@ -17,6 +19,7 @@ import '../../ui/external_link.dart';
 import '../../ui/section_label.dart';
 import '../../updates/version.dart';
 import '../controller.dart';
+import 'appearance_screen.dart';
 import 'logs_screen.dart';
 
 const _projectDescription = '面向北京理工大学的妙妙小工具';
@@ -66,6 +69,9 @@ class SettingsScreen extends StatelessWidget {
     final builtAt = appBuildTime?.toLocal();
     if (!context.mounted) return;
 
+    var iconTaps = 0;
+    Timer? resetTaps;
+
     await showAppDialog<void>(
       context: context,
       builder: (dialogContext) {
@@ -86,7 +92,38 @@ class SettingsScreen extends StatelessWidget {
           scrollable: true,
           title: Row(
             children: [
-              Image.asset('assets/brand/bitree.png', width: 40, height: 40),
+              Semantics(
+                button: true,
+                label: 'BITree 图标',
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    if (controller.developerMode) return;
+                    resetTaps?.cancel();
+                    resetTaps = Timer(const Duration(seconds: 2), () {
+                      iconTaps = 0;
+                    });
+                    iconTaps++;
+                    if (iconTaps < 5) return;
+                    controller.unlockDeveloperMode();
+                    Navigator.pop(dialogContext);
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(const SnackBar(content: Text('已开启开发者模式')));
+                  },
+                  child: SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: Center(
+                      child: Image.asset(
+                        'assets/brand/bitree.png',
+                        width: 40,
+                        height: 40,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -192,6 +229,7 @@ class SettingsScreen extends StatelessWidget {
         );
       },
     );
+    resetTaps?.cancel();
   }
 
   @override
@@ -228,33 +266,25 @@ class SettingsScreen extends StatelessWidget {
         children: [
           SchoolAccount(controller: controller),
           MoocAccountTile(controller: controller.mooc),
-          section(l10n.appearance, [
-            SegmentedButton<ThemeMode>(
-              expandedInsets: EdgeInsets.zero,
-              showSelectedIcon: false,
-              segments: [
-                ButtonSegment(
-                  value: ThemeMode.system,
-                  label: Text(
-                    l10n.followSystem,
-                    maxLines: 2,
-                    textAlign: TextAlign.center,
-                  ),
+          Padding(
+            padding: const EdgeInsets.only(top: 24),
+            child: ListTile(
+              contentPadding: tilePadding,
+              leading: const Icon(Icons.palette_outlined),
+              title: const Text('外观'),
+              subtitle: Text(switch (controller.themeMode) {
+                ThemeMode.system => '跟随系统',
+                ThemeMode.light => '浅色',
+                ThemeMode.dark => '深色',
+              }),
+              trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+              onTap: () => Navigator.of(context).push<void>(
+                MaterialPageRoute(
+                  builder: (_) => AppearanceScreen(controller: controller),
                 ),
-                ButtonSegment(
-                  value: ThemeMode.light,
-                  label: Text(l10n.themeLight),
-                ),
-                ButtonSegment(
-                  value: ThemeMode.dark,
-                  label: Text(l10n.themeDark),
-                ),
-              ],
-              selected: {controller.themeMode},
-              onSelectionChanged: (selection) =>
-                  controller.setTheme(selection.single),
+              ),
             ),
-          ]),
+          ),
           section(l10n.language, [
             SegmentedButton<AppLanguage>(
               expandedInsets: EdgeInsets.zero,

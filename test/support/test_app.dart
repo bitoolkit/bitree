@@ -16,6 +16,8 @@ import 'package:cookie_jar/cookie_jar.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'course_palettes.dart';
+
 class MemoryScheduleStore extends ScheduleStore {
   MemoryScheduleStore({
     List<SemesterSchedule> schedules = const [],
@@ -68,18 +70,22 @@ class MemoryAcademicStore extends AcademicStore {
 }
 
 class MemoryPreferences extends Fake implements SharedPreferencesAsync {
-  MemoryPreferences([Map<String, String> values = const {}])
+  MemoryPreferences([Map<String, Object> values = const {}])
     : _values = Map.of(values);
 
-  final Map<String, String> _values;
+  final Map<String, Object> _values;
 
-  String? value(String key) => _values[key];
+  String? value(String key) => _values[key] as String?;
 
   @override
-  Future<String?> getString(String key) async => _values[key];
+  Future<String?> getString(String key) async => _values[key] as String?;
   @override
   Future<void> setString(String key, String value) async =>
       _values[key] = value;
+  @override
+  Future<bool?> getBool(String key) async => _values[key] as bool?;
+  @override
+  Future<void> setBool(String key, bool value) async => _values[key] = value;
 }
 
 class MemorySchoolStorage extends SchoolStorage {
@@ -126,7 +132,9 @@ class TestAppController extends AppController {
     MoocStorage? moocStorage,
     SchoolService? school,
     SharedPreferencesAsync? preferences,
+    super.systemPaletteSource,
   }) : super(
+         coursePaletteLoader: () async => testPalettes(),
          store: MemoryScheduleStore(schedules: schedules, selected: schedule),
          school: school ?? SchoolService(),
          schoolStorage: schoolStorage ?? MemorySchoolStorage(),

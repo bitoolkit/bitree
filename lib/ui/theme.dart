@@ -2,13 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../schedule/building_palette.dart';
 import '../schedule/model.dart';
+import 'course_palette.dart';
 import 'design.dart';
+import 'system_palette.dart';
 
 const copper = Color(0xFFA85E3E);
 
-ThemeData bitreeTheme(Brightness brightness) {
+ThemeData bitreeTheme(
+  Brightness brightness, {
+  CoursePalette? coursePalette,
+  SystemPalette? systemPalette,
+}) {
   final dark = brightness == Brightness.dark;
   final scheme =
+      systemPalette?.colorScheme(brightness) ??
       ColorScheme.fromSeed(
         seedColor: copper,
         brightness: brightness,
@@ -52,6 +59,12 @@ ThemeData bitreeTheme(Brightness brightness) {
       );
   return ThemeData(
     useMaterial3: true,
+    extensions: [
+      CoursePaletteTheme(
+        coursePalette?.brightness == brightness ? coursePalette : null,
+      ),
+      if (systemPalette != null) SystemPaletteTheme(systemPalette),
+    ],
     colorScheme: scheme,
     scaffoldBackgroundColor: scheme.surface,
     fontFamilyFallback: const [
@@ -281,12 +294,25 @@ courseColors(BuildContext context, Course course) {
   final palette =
       matchCampusBuilding(course.room, campus: course.campus) ??
       unknownBuildingPalette;
-  final dark = Theme.of(context).brightness == Brightness.dark;
-  final colors = dark ? palette.dark : palette.light;
+  final theme = Theme.of(context);
+  final dark = theme.brightness == Brightness.dark;
+  final system = theme.extension<SystemPaletteTheme>()?.palette;
+  if (system != null) {
+    final colors = system.courseColors(palette.area, theme.brightness);
+    return (
+      fill: colors.fill,
+      text: colors.text,
+      secondaryText: Color.lerp(colors.fill, colors.text, 0.8)!,
+      accent: colors.accent,
+      elapsedFill: Color.lerp(colors.fill, colors.accent, dark ? 0.16 : 0.32)!,
+    );
+  }
+  final custom = theme.extension<CoursePaletteTheme>()?.palette;
+  final colors =
+      custom?.colorsFor(palette.area) ?? (dark ? palette.dark : palette.light);
   final accent = Color(colors.accent);
-  // Solid course blocks need more colour than the subtle timeline fades.
-  // Resolve the fill here so row bands and today's column cannot tint it.
-  final fill = dark
+  // Custom palettes already contain the final mixed block fill.
+  final fill = dark && custom == null
       ? Color.lerp(Color(colors.fill), accent, 0.24)!
       : Color(colors.fill);
   final text = Color(colors.text);

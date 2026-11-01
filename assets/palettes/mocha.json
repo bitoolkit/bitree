@@ -1,0 +1,13 @@
+{
+  "name": "Mocha",
+  "brightness": "dark",
+  "base": "#1E1E2E",
+  "text": "#CDD6F4",
+  "northTeaching": "#89B4FA",
+  "wencui": "#A6E3A1",
+  "southScience": "#F9E2AF",
+  "eastFacilities": "#CBA6F7",
+  "southEngineering": "#FAB387",
+  "neutral": "#BAC2DE",
+  "agenda": "#B4BEFE"
+}

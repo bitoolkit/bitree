@@ -1,0 +1,13 @@
+{
+  "name": "Macchiato",
+  "brightness": "dark",
+  "base": "#24273A",
+  "text": "#CAD3F5",
+  "northTeaching": "#8AADF4",
+  "wencui": "#A6DA95",
+  "southScience": "#EED49F",
+  "eastFacilities": "#C6A0F6",
+  "southEngineering": "#F5A97F",
+  "neutral": "#B8C0E0",
+  "agenda": "#B7BDF8"
+}

@@ -5,6 +5,7 @@ import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../schedule/ui/conflicting_courses.dart';
 import '../../schedule/ui/course_tile.dart';
+import '../../ui/course_palette.dart';
 import '../../ui/design.dart';
 import '../calendar.dart';
 import '../model.dart';
@@ -43,12 +44,26 @@ class CalendarBlockTile extends StatelessWidget {
               date: items.first.startsAt,
             );
     }
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final exam = items.any((item) => item.entry?.kind == AgendaKind.exam);
+    final palette = agendaPaletteColors(theme);
+    // The outline carries contrast for subtle fills in both palette modes.
     final background = exam
         ? scheme.errorContainer
-        : scheme.surfaceContainerLow;
-    final foreground = exam ? scheme.onErrorContainer : scheme.onSurface;
+        : palette == null
+        ? scheme.primaryContainer
+        : Color(palette.fill);
+    final foreground = exam
+        ? scheme.onErrorContainer
+        : palette == null
+        ? scheme.onPrimaryContainer
+        : Color(palette.text);
+    final outline = exam
+        ? scheme.error
+        : palette == null
+        ? scheme.primary
+        : Color(palette.accent);
     final summary = items
         .map(
           (item) =>
@@ -67,10 +82,7 @@ class CalendarBlockTile extends StatelessWidget {
           color: background,
           shape: RoundedRectangleBorder(
             borderRadius: AppCorners.compact,
-            side: BorderSide(
-              color: exam ? scheme.error : scheme.outlineVariant,
-              width: exam ? 1 : 0.7,
-            ),
+            side: BorderSide(color: outline, width: 1),
           ),
           clipBehavior: Clip.antiAlias,
           child: InkWell(

@@ -1,41 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:paddingStart="@dimen/widget_padding"
-    android:paddingEnd="@dimen/widget_padding"
-    android:paddingTop="8dp"
-    android:paddingBottom="8dp"
     android:background="@drawable/widget_background"
     android:clipToOutline="true">
-    <include layout="@layout/widget_header" />
-    <FrameLayout
+    <LinearLayout
+        android:id="@+id/widget_content"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginTop="6dp">
-        <ListView
-            android:id="@+id/widget_courses"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingStart="@dimen/widget_padding"
+        android:paddingEnd="@dimen/widget_padding"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
+        <include layout="@layout/widget_header" />
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:divider="@null"
-            android:dividerHeight="0dp"
-            android:scrollbars="vertical"
-            android:scrollbarStyle="insideOverlay"
-            android:scrollbarSize="2dp"
-            android:clipToPadding="false"
-            android:requiresFadingEdge="vertical"
-            android:fadingEdgeLength="12dp"
-            android:cacheColorHint="@color/widget_surface" />
-        <TextView
-            android:id="@+id/widget_empty"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center"
-            android:text="@string/widget_today_empty"
-            android:textColor="@color/widget_muted"
-            android:textSize="13sp" />
-    </FrameLayout>
-</LinearLayout>
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginTop="6dp">
+            <ListView
+                android:id="@+id/widget_courses"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:divider="@null"
+                android:dividerHeight="0dp"
+                android:scrollbars="vertical"
+                android:scrollbarStyle="insideOverlay"
+                android:scrollbarSize="2dp"
+                android:clipToPadding="false"
+                android:requiresFadingEdge="vertical"
+                android:fadingEdgeLength="12dp"
+                android:cacheColorHint="@android:color/transparent" />
+            <TextView
+                android:id="@+id/widget_empty"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="@string/widget_today_empty"
+                android:textColor="@color/widget_muted"
+                android:textSize="13sp" />
+        </FrameLayout>
+    </LinearLayout>
+</FrameLayout>

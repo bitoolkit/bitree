@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../schedule/building_palette.dart';
+import '../../ui/course_palette.dart';
 import '../deadline_source.dart';
 import '../model.dart';
 import '../physics_lab_deadlines.dart';
@@ -13,16 +14,6 @@ import '../physics_lab_deadlines.dart';
 ) {
   final theme = Theme.of(context);
   final scheme = theme.colorScheme;
-  // Pending, overdue DDLs take priority over source colors. Completed DDLs
-  // cannot be overdue, so they retain the faded source palette below.
-  if (entry.overdue(now)) {
-    return (
-      fill: scheme.errorContainer,
-      text: scheme.onErrorContainer,
-      accent: scheme.error,
-    );
-  }
-
   final paletteName = switch (entry.kind) {
     AgendaKind.exam => '物理实验中心',
     AgendaKind.deadline =>
@@ -32,7 +23,7 @@ import '../physics_lab_deadlines.dart';
               DeadlineSource.lexue => '工程训练中心',
               DeadlineSource.eclass => '文化体育中心',
               DeadlineSource.mooc => '文萃楼A',
-              null => '文萃楼',
+              null => null,
             },
     AgendaKind.event => null,
   };
@@ -45,6 +36,7 @@ import '../physics_lab_deadlines.dart';
   final fillAlpha = fadeAll ? 0.5 : (finished ? 0.55 : 1.0);
   final foregroundAlpha = fadeAll ? 0.5 : 1.0;
   if (palette != null) {
+    // Keep source colours recognizable even when the app uses system colours.
     final values = theme.brightness == Brightness.dark
         ? palette.dark
         : palette.light;
@@ -52,6 +44,15 @@ import '../physics_lab_deadlines.dart';
       fill: Color(values.fill).withValues(alpha: fillAlpha),
       text: Color(values.text).withValues(alpha: foregroundAlpha),
       accent: Color(values.accent).withValues(alpha: foregroundAlpha),
+    );
+  }
+
+  final blockPalette = agendaPaletteColors(theme);
+  if (blockPalette != null) {
+    return (
+      fill: Color(blockPalette.fill).withValues(alpha: fillAlpha),
+      text: Color(blockPalette.text).withValues(alpha: foregroundAlpha),
+      accent: Color(blockPalette.accent).withValues(alpha: foregroundAlpha),
     );
   }
 

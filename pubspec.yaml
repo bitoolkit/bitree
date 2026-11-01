@@ -39,3 +39,4 @@ flutter:
   assets:
     - assets/brand/bitree.png
     - assets/wencui/
+    - assets/palettes/

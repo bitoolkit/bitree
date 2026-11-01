@@ -75,6 +75,12 @@ open class TimetableWidget : AppWidgetProvider() {
             )
             widgets.forEach { (id, columns) ->
                 val views = RemoteViews(context.packageName, R.layout.timetable_widget)
+                views.setInt(
+                    R.id.widget_content, "setBackgroundColor", WidgetColors.background(context),
+                )
+                views.setTextColor(R.id.widget_date, WidgetColors.text(context))
+                views.setTextColor(R.id.widget_empty, WidgetColors.muted(context))
+                views.setTextColor(R.id.widget_message, WidgetColors.accent(context))
                 views.setTextViewText(R.id.widget_date, content.heading)
                 views.setTextViewText(R.id.widget_empty, content.emptyMessage)
                 views.setEmptyView(R.id.widget_courses, R.id.widget_empty)
