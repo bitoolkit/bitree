@@ -99,14 +99,14 @@ Future<TestAppController> _open(
 }
 
 void main() {
-  testWidgets('The day drawer shares full left completion and right deletion', (
+  testWidgets('The day drawer shares full right completion and left deletion', (
     tester,
   ) async {
     final controller = await _open(tester, [_deadline(), _deadline(id: 2)]);
     await swipeRow(
       tester,
       find.byKey(const ValueKey('deadline1')),
-      const Offset(-240, 0),
+      const Offset(240, 0),
     );
     await tester.pumpAndSettle();
     expect(
@@ -119,7 +119,7 @@ void main() {
     await swipeRow(
       tester,
       find.byKey(const ValueKey('deadline2')),
-      const Offset(240, 0),
+      const Offset(-240, 0),
     );
     await tester.pumpAndSettle();
     expect(controller.agenda.entries.single.id, 'deadline1');

@@ -55,14 +55,14 @@ void main() {
     return app;
   }
 
-  testWidgets('A full right swipe deletes and undo restores the entry', (
+  testWidgets('A full left swipe deletes and undo restores the entry', (
     tester,
   ) async {
     final app = await showAgenda(tester);
     await swipeRow(
       tester,
       find.byKey(const ValueKey('task')),
-      const Offset(250, 0),
+      const Offset(-250, 0),
     );
     await tester.pumpAndSettle();
     expect(app.agenda.entries, isEmpty);
@@ -80,13 +80,13 @@ void main() {
   });
 
   testWidgets(
-    'Full left swipes complete and restore through the status filter',
+    'Full right swipes complete and restore through the status filter',
     (tester) async {
       final app = await showAgenda(tester);
       await swipeRow(
         tester,
         find.byKey(const ValueKey('task')),
-        const Offset(-250, 0),
+        const Offset(250, 0),
       );
       await tester.pumpAndSettle();
       expect(app.agenda.entries.single.done, isTrue);
@@ -96,7 +96,7 @@ void main() {
       await swipeRow(
         tester,
         find.byKey(const ValueKey('task')).hitTestable(),
-        const Offset(-250, 0),
+        const Offset(250, 0),
       );
       await tester.pumpAndSettle();
       expect(app.agenda.entries.single.done, isFalse);
@@ -183,13 +183,13 @@ void main() {
           kind: kind,
         );
         await gesture.moveBy(
-          const Offset(24, 0),
+          const Offset(-24, 0),
           timeStamp: const Duration(milliseconds: 30),
         );
         await tester.pump();
-        expect(tester.getTopLeft(title).dx, closeTo(before.dx + 24, 1));
+        expect(tester.getTopLeft(title).dx, closeTo(before.dx - 24, 1));
         await gesture.moveBy(
-          const Offset(56, 0),
+          const Offset(-56, 0),
           timeStamp: const Duration(milliseconds: 100),
         );
         await gesture.up(timeStamp: const Duration(milliseconds: 180));
@@ -211,14 +211,14 @@ void main() {
     );
   }
 
-  testWidgets('A short left swipe exposes a working completion button', (
+  testWidgets('A short right swipe exposes a working completion button', (
     tester,
   ) async {
     final app = await showAgenda(tester);
     await swipeRow(
       tester,
       find.byKey(const ValueKey('task')),
-      const Offset(-90, 0),
+      const Offset(90, 0),
     );
     await tester.pumpAndSettle();
     expect(app.agenda.entries.single.done, isFalse);
@@ -248,7 +248,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.getTopLeft(row).dy, lessThan(before.dy - 80));
       expect(app.agenda.entries.every((entry) => !entry.done), isTrue);
-      await swipeRow(tester, row, const Offset(80, 0));
+      await swipeRow(tester, row, const Offset(-80, 0));
       await tester.pumpAndSettle();
       expect(find.text('删除'), findsOneWidget);
       await tester.sendEventToBinding(
@@ -271,13 +271,13 @@ void main() {
     await swipeRow(
       tester,
       find.byKey(const ValueKey('task')),
-      const Offset(80, 0),
+      const Offset(-80, 0),
     );
     await tester.pumpAndSettle();
     final next = await startRowSwipe(
       tester,
       find.byKey(const ValueKey('task1')),
-      const Offset(-80, 0),
+      const Offset(80, 0),
     );
     await next.up(timeStamp: const Duration(milliseconds: 240));
     await tester.pumpAndSettle();
@@ -311,17 +311,17 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('A schedule has only a right swipe delete action', (
+  testWidgets('A schedule has only a left swipe delete action', (
     tester,
   ) async {
     final app = await showAgenda(tester, kind: AgendaKind.event);
     final row = find.byKey(const ValueKey('task'));
-    await swipeRow(tester, row, const Offset(-250, 0));
+    await swipeRow(tester, row, const Offset(250, 0));
     await tester.pumpAndSettle();
     expect(app.agenda.entries.single.kind, AgendaKind.event);
     expect(app.agenda.entries.single.done, isFalse);
     expect(find.text('完成'), findsNothing);
-    await swipeRow(tester, row, const Offset(90, 0));
+    await swipeRow(tester, row, const Offset(-90, 0));
     await tester.pumpAndSettle();
     await tester.tap(find.text('删除'));
     await tester.pumpAndSettle();
@@ -336,7 +336,7 @@ void main() {
     await swipeRow(
       tester,
       find.byKey(const ValueKey('task')),
-      const Offset(250, 0),
+      const Offset(-250, 0),
     );
     await tester.pumpAndSettle();
     await tester.fling(find.text('已删除“第三章作业”'), const Offset(240, 0), 1000);
