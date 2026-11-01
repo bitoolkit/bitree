@@ -4,6 +4,7 @@ import '../../app/controller.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../schedule/model.dart';
+import '../../ui/app_notice.dart';
 import '../../ui/external_link.dart';
 import '../../ui/sheet_layout.dart';
 import '../model.dart';
@@ -204,7 +205,18 @@ Future<void> showAgendaEntry(
                       : null,
                   onPressed: controller.agenda.busy
                       ? null
-                      : () => toggleAgendaDone(controller.agenda, current),
+                      : () async {
+                          final saved = await toggleAgendaDone(
+                            controller.agenda,
+                            current,
+                          );
+                          if (!saved && context.mounted) {
+                            showAppNotice(
+                              context,
+                              context.l10n.operationSaveFailed,
+                            );
+                          }
+                        },
                   icon: Icon(
                     current.done ? Icons.undo_rounded : Icons.check_rounded,
                     size: 20,

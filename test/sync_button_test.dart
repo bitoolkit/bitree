@@ -1,3 +1,5 @@
+import 'package:bitree/academics/ui/credit_progress_screen.dart';
+import 'package:bitree/academics/ui/grades_screen.dart';
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/app/ui/settings_screen.dart';
 import 'package:bitree/sync/controller.dart';
@@ -54,6 +56,32 @@ void main() {
     expect(find.text('学分进度'), findsNothing);
     expect(find.text('课表'), findsOneWidget);
     expect(find.text('大物实验 DDL'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Academic records keep their page-specific sync actions', (
+    tester,
+  ) async {
+    final app = TestAppController();
+    await app.initialize();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: bitreeTheme(Brightness.light),
+        home: GradesScreen(controller: app),
+      ),
+    );
+    expect(find.byTooltip('同步成绩'), findsOneWidget);
+    expect(find.byTooltip('同步学分进度'), findsNothing);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: bitreeTheme(Brightness.light),
+        home: CreditProgressScreen(controller: app),
+      ),
+    );
+    expect(find.byTooltip('同步学分进度'), findsOneWidget);
+    expect(find.byTooltip('同步成绩'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

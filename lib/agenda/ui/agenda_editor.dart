@@ -144,6 +144,7 @@ class _AgendaEditorState extends State<_AgendaEditor> {
       _saving = true;
       _error = null;
     });
+    final l10n = context.l10n;
     final success = await widget.controller.agenda.save(
       AgendaEntry(
         id:
@@ -169,12 +170,14 @@ class _AgendaEditorState extends State<_AgendaEditor> {
     } else {
       setState(() {
         _saving = false;
+        _error = l10n.operationSaveFailed;
       });
     }
   }
 
   Future<void> _delete() async {
     setState(() => _saving = true);
+    final error = context.l10n.operationDeleteFailed;
     final success = await deleteAgendaEntry(
       context,
       widget.controller,
@@ -184,7 +187,10 @@ class _AgendaEditorState extends State<_AgendaEditor> {
     if (success) {
       Navigator.pop(context);
     } else {
-      setState(() => _saving = false);
+      setState(() {
+        _saving = false;
+        _error = error;
+      });
     }
   }
 

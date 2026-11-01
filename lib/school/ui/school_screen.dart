@@ -13,7 +13,7 @@ Future<bool?> openSchoolLogin(
   AppController controller, {
   DeadlineSource? source,
 }) async {
-  if (controller.timetable.busy || controller.school.busy) return null;
+  if (controller.school.busy) return null;
   return Navigator.of(context).push<bool>(
     MaterialPageRoute(
       builder: (_) => _SchoolScreen(controller: controller, source: source),

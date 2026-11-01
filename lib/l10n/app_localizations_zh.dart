@@ -79,6 +79,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get confirm => '确定';
 
   @override
+  String get operationSaveFailed => '未能保存更改，请重试。';
+
+  @override
+  String get operationDeleteFailed => '未能删除，请重试。';
+
+  @override
+  String get operationRestoreFailed => '未能恢复，请重试。';
+
+  @override
   String get view => '查看';
 
   @override
@@ -593,6 +602,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get exportScheduleSuccess => '已导出课表';
+
+  @override
+  String get exportScheduleFailed => '导出课表失败，请重试。';
 
   @override
   String exportScheduleSkipped(int count) {
@@ -1345,6 +1357,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get toolsTitle => '工具';
 
   @override
+  String get academicTools => '学业与规划';
+
+  @override
+  String get campusTools => '校园查询';
+
+  @override
   String get gradesAndAcademics => '成绩与学业';
 
   @override
@@ -1376,6 +1394,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get reloadLogs => '重新读取日志';
+
+  @override
+  String get logsReadFailed => '日志读取失败，请重试。';
+
+  @override
+  String get logsExportFailed => '日志导出失败，请重试。';
 
   @override
   String get noLogs => '暂无日志';

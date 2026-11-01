@@ -5,8 +5,10 @@ import 'package:bitree/schedule/ui/week_range_dialog.dart';
 import 'package:bitree/school/ui/school_verification_dialog.dart';
 import 'package:bitree/school/verification.dart';
 import 'package:bitree/ui/dialog_layout.dart';
+import 'package:bitree/ui/external_link.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 final _surface = find.byWidgetPredicate(
@@ -243,6 +245,36 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(checkedCode, '1234');
     expect(result, '1234');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('External link failures use a recoverable dialog', (tester) async {
+    const channel = MethodChannel('plugins.flutter.io/url_launcher');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (_) async => false);
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null),
+    );
+    await _host(
+      tester,
+      const Size(390, 844),
+      (context) => TextButton(
+        onPressed: () => openExternalLink(
+          context,
+          Uri.parse('https://example.com'),
+          failureTitle: '无法打开链接',
+        ),
+        child: const Text('打开链接'),
+      ),
+    );
+
+    await tester.tap(find.text('打开链接'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.text('无法打开链接'), findsOneWidget);
+    expect(find.textContaining('https://example.com'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

@@ -12,6 +12,7 @@ import '../../sync/ui/sync.dart';
 import '../../ui/app_dialog.dart';
 import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_menu_trigger.dart';
+import '../../ui/app_notice.dart';
 import '../../ui/app_page.dart';
 import '../../ui/external_link.dart';
 import '../../ui/section_label.dart';
@@ -57,7 +58,11 @@ class SettingsScreen extends StatelessWidget {
       confirmLabel: l10n.settingsDeleteSchedule,
       destructive: true,
     );
-    if (confirmed) await controller.timetable.clear();
+    if (!confirmed) return;
+    final cleared = await controller.timetable.clear();
+    if (!cleared && context.mounted) {
+      showAppNotice(context, context.l10n.operationDeleteFailed);
+    }
   }
 
   Future<void> _showAbout(BuildContext context) async {
