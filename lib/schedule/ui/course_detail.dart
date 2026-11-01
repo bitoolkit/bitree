@@ -405,5 +405,7 @@ Future<void> _deleteCourse(
 
   if (success) {
     Navigator.pop(context);
+  } else {
+    showAppNotice(context, l10n.operationDeleteFailed);
   }
 }

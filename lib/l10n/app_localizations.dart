@@ -248,6 +248,24 @@ abstract class AppLocalizations {
   /// **'Confirm'**
   String get confirm;
 
+  /// No description provided for @operationSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t save your changes. Please try again.'**
+  String get operationSaveFailed;
+
+  /// No description provided for @operationDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t delete this item. Please try again.'**
+  String get operationDeleteFailed;
+
+  /// No description provided for @operationRestoreFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t restore this item. Please try again.'**
+  String get operationRestoreFailed;
+
   /// No description provided for @view.
   ///
   /// In en, this message translates to:
@@ -1192,6 +1210,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Schedule exported'**
   String get exportScheduleSuccess;
+
+  /// No description provided for @exportScheduleFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t export the schedule. Please try again.'**
+  String get exportScheduleFailed;
 
   /// No description provided for @exportScheduleSkipped.
   ///
@@ -2610,6 +2634,18 @@ abstract class AppLocalizations {
   /// **'Tools'**
   String get toolsTitle;
 
+  /// No description provided for @academicTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Academics & planning'**
+  String get academicTools;
+
+  /// No description provided for @campusTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Campus lookup'**
+  String get campusTools;
+
   /// No description provided for @gradesAndAcademics.
   ///
   /// In en, this message translates to:
@@ -2675,6 +2711,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reload logs'**
   String get reloadLogs;
+
+  /// No description provided for @logsReadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t read logs. Please try again.'**
+  String get logsReadFailed;
+
+  /// No description provided for @logsExportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t export logs. Please try again.'**
+  String get logsExportFailed;
 
   /// No description provided for @noLogs.
   ///

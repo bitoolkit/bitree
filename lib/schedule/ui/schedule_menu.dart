@@ -59,6 +59,9 @@ class _ScheduleMenuState extends State<ScheduleMenu> {
       );
     } on Exception catch (failure, stack) {
       AppDiagnostics.instance.report('导出课表', failure, stack);
+      if (mounted) {
+        showAppNotice(context, context.l10n.exportScheduleFailed);
+      }
     } finally {
       if (mounted) setState(() => _exporting = false);
     }

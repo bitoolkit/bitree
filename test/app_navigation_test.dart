@@ -36,8 +36,19 @@ void main() {
       expect(tester.widget<NavigationBar>(bar).selectedIndex, index);
       expect(find.text(content[index]).hitTestable(), findsOneWidget);
       expect(find.text('学习服务'), findsNothing);
+      if (index == 2) {
+        expect(find.text('学业与规划'), findsOneWidget);
+        expect(find.text('校园查询'), findsOneWidget);
+      }
       expect(tester.takeException(), isNull);
     }
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(tester.widget<NavigationBar>(bar).selectedIndex, 0);
+    expect(find.text('同步全部').hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
   });

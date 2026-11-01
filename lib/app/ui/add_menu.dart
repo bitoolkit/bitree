@@ -8,6 +8,11 @@ import '../../schedule/ui/course_editor.dart';
 import '../../ui/app_menu_anchor.dart';
 import '../controller.dart';
 
+bool _canAddCourse(AppController controller) => !controller.timetable.busy;
+
+bool _canAddAgenda(AppController controller) =>
+    controller.agenda.ready && !controller.agenda.busy;
+
 class AddMenu extends StatelessWidget {
   const AddMenu({
     super.key,
@@ -31,15 +36,16 @@ class AddMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final agendaEnabled = controller.agenda.ready && !controller.agenda.busy;
+    final canAddCourse = _canAddCourse(controller);
+    final canAddAgenda = _canAddAgenda(controller);
     return AppMenuAnchor(
       controller: menuController,
       onClose: onClose,
       menuChildren: [
         AppMenuItemButton(
-          onPressed: controller.timetable.busy
-              ? null
-              : () => editCourse(context, controller, selection: selection),
+          onPressed: canAddCourse
+              ? () => editCourse(context, controller, selection: selection)
+              : null,
           leadingIcon: const Icon(Icons.school_outlined),
           child: Text(l10n.addCourse),
         ),
@@ -48,7 +54,7 @@ class AddMenu extends StatelessWidget {
           (AgendaKind.deadline, l10n.addDeadline, Icons.flag_outlined),
         ])
           AppMenuItemButton(
-            onPressed: agendaEnabled
+            onPressed: canAddAgenda
                 ? () => editAgenda(
                     context,
                     controller,
@@ -80,7 +86,7 @@ class AddButton extends StatelessWidget {
     date: date,
     builder: (context, menu, isOpen) => IconButton(
       tooltip: context.l10n.add,
-      onPressed: controller.timetable.busy || controller.agenda.busy
+      onPressed: !_canAddCourse(controller) && !_canAddAgenda(controller)
           ? null
           : () => isOpen ? menu.close() : menu.open(),
       icon: const Icon(Icons.add_rounded),

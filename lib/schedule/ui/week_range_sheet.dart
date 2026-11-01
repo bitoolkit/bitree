@@ -51,6 +51,7 @@ class _WeekRangeSheetState extends State<_WeekRangeSheet> {
   late final _first = TextEditingController(text: '${widget.first}');
   late final _last = TextEditingController(text: '${widget.last}');
   bool _saving = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -87,7 +88,9 @@ class _WeekRangeSheetState extends State<_WeekRangeSheet> {
     if (controller != null) {
       setState(() {
         _saving = true;
+        _error = null;
       });
+      final error = context.l10n.operationSaveFailed;
       final saved = await controller.timetable.setWeekRange(
         first: range.first,
         last: range.last,
@@ -96,6 +99,7 @@ class _WeekRangeSheetState extends State<_WeekRangeSheet> {
       if (!saved) {
         setState(() {
           _saving = false;
+          _error = error;
         });
         return;
       }
@@ -173,6 +177,7 @@ class _WeekRangeSheetState extends State<_WeekRangeSheet> {
       title: l10n.weekRangeDialogTitle,
       formKey: _form,
       saving: _saving,
+      error: _error,
       onSave: _save,
       saveLabel: Text(_saving ? l10n.saving : l10n.confirm),
       child: LayoutBuilder(

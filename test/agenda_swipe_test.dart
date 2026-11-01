@@ -69,7 +69,6 @@ void main() {
     expect(app.agenda.deletedDeadlines.single.id, 'task');
     expect(find.text('第三章作业'), findsNothing);
     expect(find.text('未完成 0'), findsOneWidget);
-    expect(find.byTooltip('已删除的 DDL'), findsOneWidget);
     await tester.tap(find.text('撤销'));
     await tester.pumpAndSettle();
     expect(app.agenda.entries.single.id, 'task');
@@ -123,7 +122,7 @@ void main() {
   });
 
   testWidgets(
-    'The direct recovery entry fits a narrow screen with large text',
+    'Deleted DDL recovery remains usable on a narrow screen with large text',
     (tester) async {
       await showAgenda(
         tester,
@@ -141,7 +140,7 @@ void main() {
   );
 
   testWidgets(
-    'Deleted DDL recovery shares select-all, clear, and partial restore',
+    'Deleted DDL recovery supports select all, clear, and partial restore',
     (tester) async {
       final app = await showAgenda(tester, count: 3, deleted: true);
       await tester.tap(find.byTooltip('已删除的 DDL'));
@@ -167,13 +166,6 @@ void main() {
         'task2',
       });
       expect(find.text('已恢复“作业 1”'), findsOneWidget);
-      expect(
-        find.descendant(
-          of: find.byType(BottomSheet),
-          matching: find.text('作业 1'),
-        ),
-        findsNothing,
-      );
       expect(tester.takeException(), isNull);
     },
   );

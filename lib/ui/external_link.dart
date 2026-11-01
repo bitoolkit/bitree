@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../core/diagnostics.dart';
 import '../l10n/l10n.dart';
+import 'sheet_layout.dart';
 
 Future<bool> openExternalLink(
   BuildContext context,
@@ -20,17 +21,20 @@ Future<bool> openExternalLink(
 
   if (opened || !context.mounted) return opened;
 
-  await showDialog<void>(
+  await showAppSheet<void>(
     context: context,
-    builder: (context) => AlertDialog(
-      title: Text(failureTitle),
+    builder: (context) => SheetLayout(
+      header: SheetHeader(
+        title: Text(failureTitle),
+        actions: const [SheetCloseButton()],
+      ),
       content: SelectableText(context.l10n.openInBrowser('$url')),
-      actions: [
-        TextButton(
+      actions: SheetActionBar.primary(
+        primary: FilledButton(
           onPressed: () => Navigator.pop(context),
           child: Text(context.l10n.close),
         ),
-      ],
+      ),
     ),
   );
 

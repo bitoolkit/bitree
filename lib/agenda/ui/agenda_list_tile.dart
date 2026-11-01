@@ -4,6 +4,7 @@ import '../../app/controller.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../schedule/model.dart';
+import '../../ui/app_notice.dart';
 import '../../ui/swipe_action_tile.dart';
 import '../model.dart';
 import 'agenda_detail.dart';
@@ -25,8 +26,17 @@ class AgendaListTile extends StatelessWidget {
   final DateTime now;
   final VoidCallback? onTap;
 
-  Future<bool> _complete({bool haptic = false}) =>
-      toggleAgendaDone(controller.agenda, entry, haptic: haptic);
+  Future<bool> _complete(BuildContext context, {bool haptic = false}) async {
+    final saved = await toggleAgendaDone(
+      controller.agenda,
+      entry,
+      haptic: haptic,
+    );
+    if (!saved && context.mounted) {
+      showAppNotice(context, context.l10n.operationSaveFailed);
+    }
+    return saved;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +79,7 @@ class AgendaListTile extends StatelessWidget {
                 icon: entry.done ? Icons.undo_rounded : Icons.check_rounded,
                 background: scheme.primaryContainer,
                 foreground: scheme.onPrimaryContainer,
-                onInvoke: _complete,
+                onInvoke: () => _complete(context),
               )
             : null,
         rightAction: TileSwipeAction(
@@ -105,7 +115,7 @@ class AgendaListTile extends StatelessWidget {
                               shape: const CircleBorder(),
                               onChanged: controller.agenda.busy
                                   ? null
-                                  : (_) => _complete(haptic: true),
+                                  : (_) => _complete(context, haptic: true),
                             ),
                           )
                         : Icon(

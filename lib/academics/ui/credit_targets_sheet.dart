@@ -41,6 +41,7 @@ class _CreditTargetsSheetState extends State<_CreditTargetsSheet> {
   };
   final _newCategory = TextEditingController();
   bool _saving = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -62,7 +63,11 @@ class _CreditTargetsSheetState extends State<_CreditTargetsSheet> {
 
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    final error = context.l10n.operationSaveFailed;
     final record = widget.controller.record;
     final saved = await widget.controller.save(
       record.withCreditTargets(
@@ -78,7 +83,10 @@ class _CreditTargetsSheetState extends State<_CreditTargetsSheet> {
     if (saved) {
       Navigator.pop(context);
     } else {
-      setState(() => _saving = false);
+      setState(() {
+        _saving = false;
+        _error = error;
+      });
     }
   }
 
@@ -89,6 +97,7 @@ class _CreditTargetsSheetState extends State<_CreditTargetsSheet> {
       title: l10n.reviewCreditTargets,
       formKey: _form,
       saving: _saving,
+      error: _error,
       onSave: _save,
       saveLabel: Text(_saving ? l10n.saving : l10n.save),
       child: Column(

@@ -21,7 +21,7 @@ class _SchoolAccountState extends State<SchoolAccount> {
   bool _handlingAction = false;
 
   Future<void> _perform(Future<void> Function() action) async {
-    if (_handlingAction || widget.controller.timetable.busy) return;
+    if (_handlingAction) return;
     setState(() => _handlingAction = true);
     try {
       await action();
@@ -64,14 +64,14 @@ class _SchoolAccountState extends State<SchoolAccount> {
     final hasAccount = controller.school.username != null;
     final needsVerification = controller.school.verificationRequired;
     final needsLogin = !hasAccount || controller.school.loginExpired;
-    final enabled = !_handlingAction && !controller.timetable.busy;
+    final enabled = !_handlingAction;
     final canLogin = enabled && !controller.school.busy;
     final onTap = needsLogin
         ? _login
         : needsVerification
         ? _verify
         : _signOut;
-    final canTap = needsLogin || needsVerification ? canLogin : enabled;
+    final canTap = needsLogin || needsVerification ? canLogin : false;
     final scheme = Theme.of(context).colorScheme;
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(vertical: 4),

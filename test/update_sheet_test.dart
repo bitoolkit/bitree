@@ -202,7 +202,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('A failed download shows the URL fallback dialog', (
+  testWidgets('A failed download shows the URL fallback sheet', (
     tester,
   ) async {
     launchSucceeds = false;
@@ -211,7 +211,8 @@ void main() {
     await tester.tap(find.text('下载测试版'));
     await tester.pumpAndSettle();
     expect(find.text('无法打开下载链接'), findsOneWidget);
-    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.byType(BottomSheet), findsWidgets);
     expect(find.textContaining(release.downloadUrl.toString()), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

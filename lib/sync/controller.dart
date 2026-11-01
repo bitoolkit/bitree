@@ -23,17 +23,18 @@ enum SyncTarget {
 
   const SyncTarget([this.source]);
   final DeadlineSource? source;
+
   bool get usesSchoolSession => switch (this) {
     schedule || exams || grades || studyPlan || lexue || eclass => true,
     mooc || physicsLab => false,
   };
 
-  bool get isAcademicRecord => this == grades || this == studyPlan;
-
   SyncCategory get category => switch (this) {
     schedule || exams || grades || studyPlan => SyncCategory.schoolData,
     lexue || eclass || mooc || physicsLab => SyncCategory.deadlineData,
   };
+
+  bool get isAcademicRecord => this == grades || this == studyPlan;
 }
 
 enum SyncCategory { schoolData, deadlineData }
