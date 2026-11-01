@@ -16,10 +16,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appChineseName => '理枝';
 
   @override
-  String get appTagline =>
-      'A handy toolkit for Beijing Institute of Technology.';
-
-  @override
   String get navHome => 'Home';
 
   @override
@@ -80,9 +76,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reload => 'Reload';
 
   @override
-  String get retry => 'Retry';
-
-  @override
   String get confirm => 'Confirm';
 
   @override
@@ -134,50 +127,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get activity => 'Event';
 
   @override
-  String courseCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count courses',
-      one: '1 course',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String sessionCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count items',
-      one: '1 item',
-    );
-    return '$_temp0';
-  }
-
-  @override
   String itemCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
       other: '$count items',
       one: '1 item',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String creditCount(String count) {
-    return '$count credits';
-  }
-
-  @override
-  String minuteCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count minutes',
-      one: '1 minute',
     );
     return '$_temp0';
   }
@@ -200,11 +155,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chooseWeek => 'Choose week';
-
-  @override
-  String weekRange(int first, int last) {
-    return 'Weeks $first–$last';
-  }
 
   @override
   String weekRangeShort(int first, int last) {
@@ -359,11 +309,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String startedAt(String time) {
-    return 'Started $time';
-  }
-
-  @override
   String get completed => 'Completed';
 
   @override
@@ -389,7 +334,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsDeleteScheduleBody =>
-      'This deletes schedules for every term, including manually added courses. This cannot be undone.';
+      'Delete schedules for every term, including manually added courses. This cannot be undone.';
 
   @override
   String get settingsDeleteSchedule => 'Delete schedule';
@@ -408,7 +353,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsDeleteDeadlinesBody(int count) {
-    return 'Choose sources such as manual, physics lab, Lexue, or E-Learning.\n$count total across all terms, including completed and deleted items';
+    return '$count total across all terms, including completed and deleted items';
   }
 
   @override
@@ -525,7 +470,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String deleteCourseBody(String course) {
-    return 'Remove “$course” from the local schedule?';
+    return 'Remove “$course” from the local schedule.';
   }
 
   @override
@@ -561,12 +506,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get courseEditorTermRequired => 'Enter a term';
-
-  @override
-  String get courseEditorMonday => 'Monday of week 1';
-
-  @override
-  String get courseEditorMondayHelp => 'Choose Monday of week 1';
 
   @override
   String courseEditorMondayLabel(String date) {
@@ -675,8 +614,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get exportSchedule => 'Export schedule';
 
   @override
-  String get exportScheduleEmpty =>
-      'There are no courses to export. Add a course or set its class time first.';
+  String get exportScheduleEmpty => 'No courses to export';
 
   @override
   String get exportScheduleSuccess => 'Schedule exported';
@@ -794,19 +732,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get agendaDetails => 'Agenda details';
-
-  @override
-  String agendaOverdueAt(String time) {
-    return 'Overdue at $time';
-  }
-
-  @override
-  String agendaStartsAt(String time) {
-    return 'Starts at $time';
-  }
-
-  @override
   String get agendaMarkDone => 'Mark complete';
 
   @override
@@ -820,9 +745,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get agendaDueBeforeEndOfDay => 'Before the end of that day';
-
-  @override
-  String get agendaDeleteAction => 'Delete';
 
   @override
   String get agendaSwipeDelete => 'Delete';
@@ -921,18 +843,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get agendaTimelineZoom =>
-      'Zoom: from one day per cell to one hour per cell';
+  String get agendaTimelineZoom => 'Timeline zoom';
 
   @override
-  String get agendaTimelineEmpty =>
-      'No agenda items\nDrag the timeline or add a new item';
-
-  @override
-  String get agendaTimelineSemantics => 'Agenda timeline';
-
-  @override
-  String get agendaTimelineAllDay => 'All day';
+  String get agendaTimelineEmpty => 'No agenda items';
 
   @override
   String agendaTimelineStarts(String time) {
@@ -984,26 +898,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clearDeadlinesTitle => 'Delete DDLs';
 
   @override
-  String get clearDeadlinesIntro =>
-      'Select one or more sources. Counts include every term and completed or deleted DDLs.';
-
-  @override
   String clearDeadlinesSourceCount(String source, int count) {
     return '$source ($count)';
   }
 
   @override
   String clearDeadlinesSelection(int categories, int count) {
-    return '$categories selected, $count DDLs total.';
+    return '$categories selected · $count total';
   }
 
   @override
   String get clearDeadlinesWarning =>
-      'This cannot be undone and deleted DDLs cannot be restored. Unselected sources, exams, and other agenda items are unaffected.';
-
-  @override
-  String get clearDeadlinesRecovery =>
-      'Platform DDLs can be synchronized again; physics lab DDLs can be regenerated from the schedule; manually created DDLs cannot be restored.';
+      'Deleted items will not appear in “Deleted DDLs.” Platform and physics lab DDLs can be regenerated.';
 
   @override
   String clearDeadlinesDeleteCount(int count) {
@@ -1015,11 +921,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get clearDeadlinesUnavailable =>
-      'The agenda is not loaded or is being saved. Try again shortly.';
+      'The agenda is not loaded or is being saved. Try again.';
 
   @override
   String clearDeadlinesDeleted(int count) {
-    return 'Deleted $count DDLs.';
+    return 'Deleted $count DDLs';
   }
 
   @override
@@ -1057,36 +963,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deadlineManualScope => 'Manually created DDLs';
 
   @override
-  String get deadlineManualScopeDescription =>
-      'Manually added DDLs, excluding physics lab and synchronized platform items';
-
-  @override
   String get deadlinePhysicsLab => 'Physics lab DDLs';
-
-  @override
-  String get deadlinePhysicsLabScopeDescription =>
-      'Physics lab DDLs generated from the schedule, including locally edited items';
 
   @override
   String get deadlineLexue => 'Lexue DDLs';
 
   @override
-  String get deadlineLexueScopeDescription =>
-      'DDLs synchronized from Lexue, including locally edited items';
-
-  @override
   String get deadlineEclass => 'E-Learning DDLs';
 
   @override
-  String get deadlineEclassScopeDescription =>
-      'DDLs synchronized from E-Learning, including locally edited items';
-
-  @override
   String get deadlineMooc => 'MOOC DDLs';
-
-  @override
-  String get deadlineMoocScopeDescription =>
-      'DDLs synchronized from China University MOOC, including locally edited items';
 
   @override
   String get deadlineSourceLexue => 'Lexue';
@@ -1096,9 +982,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get deadlineSourceMooc => 'China University MOOC';
-
-  @override
-  String get deadlineSourcePlatform => 'Platform DDL';
 
   @override
   String get agendaKindEvent => 'Event';
@@ -1294,11 +1177,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncVerificationRequired => 'Complete school sign-in verification';
 
   @override
-  String syncCourseFailure(String course, String message) {
-    return '$course: $message';
-  }
-
-  @override
   String get accountUnverified => 'Not connected';
 
   @override
@@ -1323,8 +1201,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get moocSignOutQuestion => 'Sign out of China University MOOC?';
 
   @override
-  String get moocSignOutBody =>
-      'The saved login session on this device will be deleted. Imported DDLs will remain.';
+  String get moocSignOutBody => 'Imported DDLs will remain after you sign out.';
 
   @override
   String get exitAction => 'Exit';
@@ -1358,7 +1235,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get moocCookieInstructions =>
-      'In a signed-in MOOC web page, copy the request Cookie from the Network panel in developer tools. Use this only when web sign-in does not work.';
+      'Copy the Cookie from developer tools while signed in. Use this only if web sign-in does not work.';
 
   @override
   String get moocPasteCookie => 'Paste a Cookie';
@@ -1422,9 +1299,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Sign in to your China University MOOC account';
 
   @override
-  String get moocUserFallback => 'MOOC user';
-
-  @override
   String get moocReadingCourses => 'Reading MOOC courses…';
 
   @override
@@ -1484,7 +1358,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get schoolSignOutBody =>
-      'The sign-in information on this device will be removed. Local schedules and agenda items will remain.';
+      'The local schedule and agenda will remain after you sign out.';
 
   @override
   String get schoolSignOutAction => 'Sign out';
@@ -1656,9 +1530,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get failedCourse => 'Not passed';
 
   @override
-  String get gradesReadFailed => 'Academic data is temporarily unavailable';
-
-  @override
   String get noSyncedGrades => 'No grades have been synchronized';
 
   @override
@@ -1749,7 +1620,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get creditCategoryNote =>
-      'Category credits are based on synchronized grades, counting each course once. Check category requirements against your study plan; in-progress credits are not estimated. Graduation is subject to school review.';
+      'Category credits use synchronized grades and count each course once. In-progress credits are not included; final graduation review is by the school.';
 
   @override
   String get noCategoryGrades => 'No course grades in this category';
@@ -1805,8 +1676,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkLocalSchedule => 'Also check the local schedule';
 
   @override
-  String get syncScheduleConflictHint =>
-      'Sync a schedule to check exam and class time conflicts.';
+  String get syncScheduleConflictHint => 'Sync a schedule to check conflicts.';
 
   @override
   String timeConflictsFound(int count) {
@@ -1827,7 +1697,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get examAgendaSharedNote =>
-      'Exams and agenda items share records. Syncing, editing, and deleting affect both places.';
+      'Exams and agenda items share records. Edits and deletions affect both places.';
 
   @override
   String overlapsClass(String title) {
@@ -1942,12 +1812,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get retakeUsesHighest => 'Use the highest retake grade';
 
   @override
-  String get simulationDoesNotChange =>
-      'Projection does not change synchronized grades.';
+  String get simulationDoesNotChange => 'Projection does not change grades.';
 
   @override
   String get simulationIncludesBoth =>
-      'This projection counts both the original and retake grades instead of applying the school\'s highest-grade rule.';
+      'Projection counts both the original and retake grades, unlike the school\'s highest-grade rule.';
 
   @override
   String get addProjectedCourse => 'Add projected course';
@@ -2113,7 +1982,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get periodSelectionHint =>
-      'Choose the start period, then the end period. Choose one period to apply immediately.';
+      'Choose the start and end periods. A single period can be applied immediately.';
 
   @override
   String freeThroughoutSections(String period) {
@@ -2138,7 +2007,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mapInfoBody =>
-      'Tap a building to zoom in, then tap a room to see its location. Use two fingers, the mouse wheel, or the zoom buttons to change scale.\n\nOn floor plans, east is up and north is left; the original aspect ratio is preserved. Floor plans 1–10 and the location index are stored locally and require no sign-in. Unindexed room numbers locate the building only.\n\nThe base maps come from a public archive of the school\'s Wencui map. Door and passage availability may differ on site.';
+      'Tap a building to zoom in, then tap a room to see its location. Use two fingers, the wheel, or the buttons to zoom.\n\nFloor plans face east-up and north-left. Room numbers not in the index show only their building.\n\nBase maps come from the school\'s Wencui map. Passage access may differ on site.';
 
   @override
   String get mapSource => 'Map source';
@@ -2190,11 +2059,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Tap a building to zoom in, or search for a room';
 
   @override
-  String wencuiRoomDetails(String wing, String floor) {
-    return 'Wencui Building $wing · $floor';
-  }
-
-  @override
   String viewingFloor(String details, int floor) {
     return '$details, viewing floor $floor';
   }
@@ -2232,7 +2096,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mapLoadFailed =>
-      'Could not load the map. Reopen it; details can be exported from Logs in Settings.';
+      'Could not load the map. Try again. Export logs from Settings for details.';
 
   @override
   String get mapLegend => 'East ↑ · North ←';
@@ -2330,12 +2194,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get downloadStable => 'Download stable';
 
   @override
-  String get releaseNotesUnchanged =>
-      'This build has no new code changes. See the release page for full notes.';
+  String get releaseNotesUnchanged => 'This build has no code changes.';
 
   @override
   String get releaseNotesUnavailable =>
-      'Release notes are temporarily unavailable. See the release page.';
+      'Release notes are currently unavailable.';
 
   @override
   String releaseMoreChanges(int count, String url) {

@@ -10,7 +10,6 @@ import '../../sync/ui/sync.dart';
 import '../../ui/app_page.dart';
 import '../../ui/design.dart';
 import '../../ui/external_link.dart';
-import '../../ui/sheet_layout.dart';
 import '../model.dart';
 
 class AcademicPage extends StatelessWidget {
@@ -184,15 +183,13 @@ class AcademicUpdatedAt extends StatelessWidget {
   }
 }
 
-Future<void> showGpaRules(BuildContext context) => showAppSheet<void>(
+Future<void> showGpaRules(BuildContext context) => showDialog<void>(
   context: context,
-  builder: (sheetContext) {
-    final l10n = context.l10n;
-    return SheetLayout(
-      header: SheetHeader(
-        title: Text(l10n.gpaRulesTitle),
-        actions: const [SheetCloseButton()],
-      ),
+  builder: (dialogContext) {
+    final l10n = dialogContext.l10n;
+    return AlertDialog(
+      scrollable: true,
+      title: Text(l10n.gpaRulesTitle),
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -206,18 +203,20 @@ Future<void> showGpaRules(BuildContext context) => showAppSheet<void>(
           Text(l10n.gpaRuleWeighting),
         ],
       ),
-      actions: SheetActionBar.actions(
-        children: [
-          TextButton(
-            onPressed: () => openExternalLink(
-              sheetContext,
-              Uri.parse(gpaRulesUrl),
-              failureTitle: l10n.openGpaRulesFailed,
-            ),
-            child: Text(l10n.schoolSource),
+      actions: [
+        TextButton(
+          onPressed: () => openExternalLink(
+            dialogContext,
+            Uri.parse(gpaRulesUrl),
+            failureTitle: l10n.openGpaRulesFailed,
           ),
-        ],
-      ),
+          child: Text(l10n.schoolSource),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: Text(l10n.close),
+        ),
+      ],
     );
   },
 );

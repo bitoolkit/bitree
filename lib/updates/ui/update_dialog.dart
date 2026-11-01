@@ -4,21 +4,20 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/design.dart';
 import '../../ui/external_link.dart';
-import '../../ui/sheet_layout.dart';
 import '../release.dart';
 
-Future<void> showUpdateSheet(
+Future<void> showUpdateDialog(
   BuildContext context, {
   required List<AppRelease> releases,
   required bool preferDevelopment,
-}) => showAppSheet<void>(
+}) => showDialog<void>(
   context: context,
   builder: (_) =>
-      UpdateSheet(releases: releases, preferDevelopment: preferDevelopment),
+      UpdateDialog(releases: releases, preferDevelopment: preferDevelopment),
 );
 
-class UpdateSheet extends StatefulWidget {
-  const UpdateSheet({
+class UpdateDialog extends StatefulWidget {
+  const UpdateDialog({
     super.key,
     required this.releases,
     required this.preferDevelopment,
@@ -28,10 +27,10 @@ class UpdateSheet extends StatefulWidget {
   final bool preferDevelopment;
 
   @override
-  State<UpdateSheet> createState() => _UpdateSheetState();
+  State<UpdateDialog> createState() => _UpdateDialogState();
 }
 
-class _UpdateSheetState extends State<UpdateSheet> {
+class _UpdateDialogState extends State<UpdateDialog> {
   int _selected = 0;
 
   AppRelease get _release => widget.releases[_selected];
@@ -63,7 +62,7 @@ class _UpdateSheetState extends State<UpdateSheet> {
         ? l10n.developmentBuild
         : l10n.stableBuild;
     final actionStyle = ButtonStyle(
-      minimumSize: const WidgetStatePropertyAll(Size(0, appControlHeight)),
+      minimumSize: const WidgetStatePropertyAll(Size(0, 40)),
       padding: const WidgetStatePropertyAll(
         EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
@@ -75,11 +74,9 @@ class _UpdateSheetState extends State<UpdateSheet> {
       ),
     );
 
-    return SheetLayout(
-      header: SheetHeader(
-        title: Text(l10n.updateAvailable),
-        actions: const [SheetCloseButton()],
-      ),
+    return AlertDialog(
+      title: Text(l10n.updateAvailable),
+      scrollable: true,
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -102,14 +99,14 @@ class _UpdateSheetState extends State<UpdateSheet> {
               onSelectionChanged: (selection) =>
                   setState(() => _selected = selection.single),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
           ],
           Text(
             l10n.releaseVersion(channel, _release.version),
             style: theme.textTheme.titleMedium,
           ),
           if (_release.notes.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             MarkdownBody(
               data: _release.notes,
               selectable: true,
@@ -127,33 +124,32 @@ class _UpdateSheetState extends State<UpdateSheet> {
           ],
         ],
       ),
-      actions: SheetActionBar.actions(
-        children: [
-          TextButton(
-            style: actionStyle,
-            onPressed: () => Navigator.pop(context),
-            child: Text(l10n.later),
+      actionsOverflowButtonSpacing: AppSpacing.sm,
+      actions: [
+        TextButton(
+          style: actionStyle,
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.later),
+        ),
+        TextButton(
+          style: actionStyle,
+          onPressed: () => openExternalLink(
+            context,
+            _release.url,
+            failureTitle: l10n.unableOpenReleasePage,
           ),
-          TextButton(
-            style: actionStyle,
-            onPressed: () => openExternalLink(
-              context,
-              _release.url,
-              failureTitle: l10n.unableOpenReleasePage,
-            ),
-            child: Text(l10n.releasePage),
+          child: Text(l10n.releasePage),
+        ),
+        FilledButton(
+          style: actionStyle,
+          onPressed: _download,
+          child: Text(
+            _release.isDevelopment
+                ? l10n.downloadDevelopment
+                : l10n.downloadStable,
           ),
-          FilledButton(
-            style: actionStyle,
-            onPressed: _download,
-            child: Text(
-              _release.isDevelopment
-                  ? l10n.downloadDevelopment
-                  : l10n.downloadStable,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

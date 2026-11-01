@@ -68,7 +68,7 @@ void main() {
           .every((checkbox) => checkbox.value == true),
       isTrue,
     );
-    expect(find.text('已选择 5 类，共 2 条 DDL。'), findsOneWidget);
+    expect(find.text('已选 5 类，共 2 条'), findsOneWidget);
     expect(
       tester
           .widget<FilledButton>(find.widgetWithText(FilledButton, '删除 2 条 DDL'))

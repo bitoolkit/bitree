@@ -8,7 +8,7 @@ import '../../ui/section_label.dart';
 import '../../ui/selection_controls.dart';
 import '../model.dart';
 import 'academic_common.dart';
-import 'projected_course_sheet.dart';
+import 'projected_course_dialog.dart';
 
 class GradeSimulationScreen extends StatefulWidget {
   const GradeSimulationScreen({
@@ -52,7 +52,7 @@ class _GradeSimulationScreenState extends State<GradeSimulationScreen> {
   }
 
   Future<void> _edit([ProjectedCourse? course]) async {
-    final next = await showProjectedCourseSheet(
+    final next = await showProjectedCourseDialog(
       context,
       grades: widget.controller.academics.record.grades,
       courses: widget.controller.timetable.schedule?.courses ?? const [],

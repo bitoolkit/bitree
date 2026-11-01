@@ -4,7 +4,7 @@ import 'dart:typed_data';
 
 import 'package:bitree/school/errors.dart';
 import 'package:bitree/school/session.dart';
-import 'package:bitree/school/ui/school_verification_sheet.dart';
+import 'package:bitree/school/ui/school_verification_dialog.dart';
 import 'package:bitree/school/verification.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';

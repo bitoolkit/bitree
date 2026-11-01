@@ -9,7 +9,7 @@ import '../../sync/controller.dart';
 import '../../sync/ui/sync.dart';
 import '../model.dart';
 import 'academic_common.dart';
-import 'credit_targets_sheet.dart';
+import 'credit_targets_dialog.dart';
 import 'grade_detail.dart';
 
 class CreditProgressScreen extends StatelessWidget {
