@@ -68,7 +68,7 @@ class CalendarBlockTile extends StatelessWidget {
         .map(
           (item) =>
               '${item.entry?.kind.localizedLabel(l10n) ?? l10n.course} '
-              '${item.title}\n'
+              '${localizedCalendarItemTitle(l10n, item)}\n'
               '${item.entry == null ? localizedCourseTime(l10n, item.course!) : localizedAgendaTime(l10n, item.entry!)}',
         )
         .join('\n');
@@ -124,7 +124,12 @@ class CalendarBlockTile extends StatelessWidget {
                       ],
                       Flexible(
                         child: Text(
-                          items.map((item) => item.title).join(' / '),
+                          items
+                              .map(
+                                (item) =>
+                                    localizedCalendarItemTitle(l10n, item),
+                              )
+                              .join(' / '),
                           textAlign: TextAlign.start,
                           maxLines: detailed ? 4 : 2,
                           overflow: TextOverflow.ellipsis,

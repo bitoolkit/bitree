@@ -2,13 +2,19 @@
 
 各功能放在同名目录：`schedule`、`agenda`、`academics`、`classrooms`、`school`、`mooc`、`sync`、`wencui` 和 `updates`。功能的页面与表单位于各自的 `ui/`；跨功能控件、主题和动效位于 `lib/ui/`。通用异步、文件和平台访问位于 `lib/core/`。
 
-`main.dart` 创建依赖。`AppController` 负责组合模块、启动和外观设置。各功能控制器拥有自己的状态，页面通过 Flutter 的 `ListenableBuilder` 监听所需模块；功能更新不会经过根控制器转发给整个应用。
+`main.dart` 创建依赖。`AppController` 只负责组合功能模块和启动流程；`AppSettingsController` 独立管理明暗模式、语言、调色板、系统调色板和日程视图偏好。各功能控制器拥有自己的状态，页面通过 Flutter 的 `ListenableBuilder` 监听所需模块；功能更新不会经过根控制器转发给整个应用。
+
+`core/time.dart` 是校园墙上时间、日历日期和星期起点的唯一入口。课表日期、日程、截止时间、空教室和界面格式都使用这一套 UTC 日历表示，避免夏令时和本地时区改变周次计算。`schedule/section_times.dart` 只保存节次开始与结束时间，课表模型、ICS、空教室和时间轴从这里读取，不再各自维护节次表。
+
+需要保持提交顺序的异步操作使用 `core/async/serial_queue.dart`。队列只串行化写入本身，单个操作失败不会阻断后续操作；日程合并、课表修改、MOOC 生命周期、诊断日志和应用设置写入共享这一机制。调色板写入另用请求序号丢弃过期的系统调色板读取结果，避免快速切换开关时旧值覆盖新值。
 
 ## 国际化
 
 界面文案由 Flutter gen-l10n 管理。`l10n.yaml` 以 `lib/l10n/app_en.arb` 为模板，与 `app_zh.arb` 一并生成 `app_localizations*.dart`；新增或修改文案后运行 `flutter gen-l10n`。页面通过 `context.l10n` 读取文案，不在控件中直接写用户可见字符串。仅用于解析学校数据、匹配楼栋名称或写入既有 JSON 的来源值保留原格式，显示时再交给本地化 helper。
 
 `lib/l10n/formats.dart` 集中处理日期、星期、周次、节次、学分及来源枚举的显示，保证课表、日程、空教室、学业和文萃地图使用同一套单位与语序。只用于组件测试、且没有 `Localizations` delegate 的页面回退到中文，完整应用始终使用 `AppLocalizations.localizationsDelegates`。
+
+本地化展示不修改持久化标题。`agenda/details.dart` 中的 `AgendaEntryDetails` 是物理实验、MOOC 和考试详情的封闭类型，旧 JSON 缺少 `details` 时仍按原有标题与备注读取；新条目在展示时由详情生成标题和备注。用户编辑结构化条目后，编辑器把当前本地化文本保存为用户可见快照并清空 `details`，避免自动详情覆盖用户改写。`CalendarItem.stableTitle` 只用于稳定排序，不能作为展示标题。
 
 `AppLanguage` 支持跟随系统、简体中文和 English。设置在 `SharedPreferencesAsync` 的 `language` 键中保存 `system`、`chinese` 或 `english`，启动时恢复，切换后立即重建 `MaterialApp` 文案；未保存偏好时使用系统语言，系统语言不是中文时使用英语。
 
@@ -41,6 +47,8 @@ Android 小组件由 `TimetableWidget` 更新、由 `WidgetAgenda` 读取本地�
 设置中的账号项显示该状态，点击「验证」后重新访问统一认证入口，即使教学中心原有 Cookie 仍有效也可触发验证。取消或连接失败时保留待验证状态，成功后恢复「已登录」；凭据失效时转为「需要重新登录」。这次检查只更新登录会话，不写入课表、日程或学业数据，不自动重放先前取消的同步操作。
 
 `SchoolAccess` 负责认证流程。每次操作由 `SchoolConnection` 并行探测服务的校内直连和 WebVPN 入口，使用先连通的一条，并关闭另一条探测连接。探测不带 Cookie、不跟随重定向，也不执行登录或业务操作；单条探测最多等待 8 秒。选定通道出现连接故障时，至多通过另一条通道重新执行一次，不重试账号密码错误或数据解析错误。登录端点连接失败时，也会尝试另一通道，因为它可能已有有效会话。
+
+错误处理在产生错误的模块内保留稳定类型；界面只负责本地化。例如 MOOC 的登录过期、无会话、账号读取失败、请求繁忙和保存失败由 `mooc/errors.dart` 中的 `MoocIssue` 表示，`MoocFailure` 可携带平台原始消息，`SyncResult.detail` 因此可以保留对象而不把中文错误字符串当作控制流。
 
 每次操作重新选路，不沿用上一次的通道；取消操作会关闭探测和业务连接。日志记录并行探测、胜出通道、连接失败后的切换及目标端点，区分探测选中与失败后重试。`SchoolSession` 负责 HTTP、Cookie 与响应读取。乐学和新延河课堂仅使用可校外访问的直连入口。
 
@@ -92,6 +100,8 @@ DDL 绘制与布局分离：右端为 `dueAt`，左侧渐隐，屏幕宽度为�
 账号抽屉只处理登录、Cookie 回退与退出。课表、日程和学业页面使用 `sync/ui/sync.dart` 发起同步，MOOC 与学校来源共用本轮进度抽屉；会话过期时通过重试重新登录，取消登录则保留本轮结果。独立的 MOOC 同步弹窗和页面销毁时取消请求的路径已移除。
 
 `MoocCookie` 在浏览器导出、持久化恢复和 HTTP 响应轮换处使用同一转换方式，原样保留浏览器接受的逗号、引号等值，不重新编码会话。名称与属性仍由 Dart 解析，域、路径和过期策略仍由原有 Cookie 管理器执行；值中拒绝控制字符和分号，防止改变请求头或 Cookie 边界。安全存储的字段和格式不变。
+
+更新检查把发布说明解析为 `updates/release.dart` 中的 `AppReleaseNotes`：Markdown、提交列表、无变化和不可用是不同状态，界面不再猜测字符串格式。提交比较只读取首尾分页并保留总数，详情链接仍是 HTTPS GitHub 地址。
 
 接口字段依据官方个人中心的 `home/desktop/modules/course/index.html`、`spocCourse/index.html` 及其脚本，以及公开课程 `courseBean.getMocTermDto.rpc` 的实际响应。登录验证码与风控都由平台官方页面完成。
 

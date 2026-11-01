@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import '../core/async/cancelable_request.dart';
 import '../core/async/read_cache.dart';
-import '../schedule/model.dart';
+import '../core/time.dart';
 import '../school/classrooms.dart';
 import '../school/controller.dart';
 import '../school/verification.dart';

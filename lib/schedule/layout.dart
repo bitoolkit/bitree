@@ -1,5 +1,5 @@
 import '../agenda/calendar.dart';
-import 'model.dart';
+import 'section_times.dart';
 
 typedef CalendarBlock = ({List<CalendarItem> items, double start, double end});
 
@@ -20,7 +20,7 @@ List<CalendarBlock> groupCalendarItems(
   final sorted = [...items]
     ..sort((first, second) {
       final time = first.startsAt.compareTo(second.startsAt);
-      return time != 0 ? time : first.title.compareTo(second.title);
+      return time != 0 ? time : first.stableTitle.compareTo(second.stableTitle);
     });
   final result = <CalendarBlock>[];
   var group = <CalendarItem>[];

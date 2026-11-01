@@ -1,6 +1,9 @@
 import 'package:bitree/agenda/calendar.dart';
 import 'package:bitree/agenda/ui/calendar_block.dart';
+import 'package:bitree/core/time.dart';
 import 'package:bitree/schedule/model.dart';
+import 'package:bitree/schedule/section_times.dart';
+import 'package:bitree/schedule/ui/course_colors.dart';
 import 'package:bitree/schedule/ui/course_tile.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';

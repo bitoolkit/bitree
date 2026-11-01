@@ -3,6 +3,8 @@ import 'package:bitree/agenda/deadline_source.dart';
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/ui/agenda_detail.dart';
 import 'package:bitree/agenda/ui/completion_text.dart';
+import 'package:bitree/l10n/app_localizations_zh.dart';
+import 'package:bitree/l10n/formats.dart';
 import 'package:bitree/ui/sheet_layout.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
@@ -266,6 +268,44 @@ void main() {
   });
 
   testWidgets(
+    'Editing structured exam metadata turns the localized view into saved text',
+    (tester) async {
+      final entry = AgendaEntry(
+        id: 'exam-2026-2027-1-math',
+        title: '高等数学',
+        kind: AgendaKind.exam,
+        startsAt: DateTime.utc(2026, 12, 28, 9),
+        endsAt: DateTime.utc(2026, 12, 28, 11),
+        location: '文萃楼F704',
+        term: '2026-2027-1',
+        local: false,
+        details: const ExamAgendaDetails(
+          seat: '12',
+          mode: '闭卷',
+          teacher: '张老师',
+        ),
+      );
+      final controller = await open(tester, entry);
+      await tester.tap(find.widgetWithText(FilledButton, '编辑'));
+      await tester.pumpAndSettle();
+      final notes = find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField && widget.decoration?.labelText == '备注（选填）',
+      );
+      expect(
+        tester.widget<TextField>(notes).controller!.text,
+        '座位号：12\n闭卷\n教师：张老师',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, '保存'));
+      await tester.pumpAndSettle();
+      final saved = controller.agenda.entries.single;
+      expect(saved.details, isNull);
+      expect(saved.notes, '座位号：12\n闭卷\n教师：张老师');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'All-day deadlines and multi-day activities show meaningful time ranges',
     (tester) async {
       await open(tester, deadline(allDay: true));
@@ -287,7 +327,8 @@ void main() {
       );
       expect(
         find.text(
-          '${agendaDateLabel(start)} – ${agendaDateLabel(end.subtract(const Duration(days: 1)))}',
+          '${localizedAgendaDate(AppLocalizationsZh(), start)} – '
+          '${localizedAgendaDate(AppLocalizationsZh(), end.subtract(const Duration(days: 1)))}',
         ),
         findsOneWidget,
       );

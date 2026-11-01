@@ -299,7 +299,7 @@ void main() {
 
   for (final source in [DeadlineSource.lexue, DeadlineSource.eclass]) {
     test(
-      '${source.label} reuses its authenticated session without asking for credentials',
+      '${source.name} reuses its authenticated session without asking for credentials',
       () => HttpOverrides.runWithHttpOverrides(() async {
         storage.credentials = null;
         await storage.saveCookies(SchoolNetwork.campus, source.origin, [

@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../core/async/cancelable_request.dart';
-import '../schedule/model.dart';
+import '../core/time.dart';
 import '../school/controller.dart';
 import '../school/verification.dart';
 import 'model.dart';

@@ -1,3 +1,4 @@
+import '../core/time.dart';
 import '../schedule/model.dart';
 
 SemesterSchedule parseSchoolSchedule({

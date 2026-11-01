@@ -1,4 +1,6 @@
 import 'package:bitree/agenda/calendar.dart';
+import 'package:bitree/l10n/app_localizations_zh.dart';
+import 'package:bitree/l10n/formats.dart';
 import 'package:bitree/schedule/layout.dart';
 import 'package:bitree/schedule/model.dart';
 import 'package:bitree/schedule/ui/conflicting_courses.dart';
@@ -50,7 +52,7 @@ void main() {
       expect(grouped, hasLength(1));
       expect(grouped.single.start, 2);
       expect(grouped.single.end, 10);
-      expect(grouped.single.items.map((item) => item.title), [
+      expect(grouped.single.items.map((item) => item.stableTitle), [
         '课程 A',
         '课程 B',
         '课程 C',
@@ -97,10 +99,11 @@ void main() {
         ),
       );
 
+      final l10n = AppLocalizationsZh();
       expect(find.text('4门'), findsOneWidget);
       for (final item in courses) {
         expect(find.text(item.name), findsOneWidget);
-        expect(find.text(item.sectionLabel), findsOneWidget);
+        expect(find.text(localizedCourseSection(l10n, item)), findsOneWidget);
       }
       expect(find.text('教室待定'), findsNothing);
       expect(tester.takeException(), isNull);

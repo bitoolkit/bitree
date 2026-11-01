@@ -2,7 +2,8 @@ import 'dart:convert';
 
 import '../classrooms/model.dart';
 import '../core/json.dart';
-import '../schedule/model.dart';
+import '../core/time.dart';
+import '../schedule/section_times.dart';
 import 'session.dart';
 
 Future<ClassroomDirectory> fetchClassroomDirectory(

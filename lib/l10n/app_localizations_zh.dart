@@ -40,6 +40,47 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appearance => '外观';
 
   @override
+  String get projectDescription => '面向北京理工大学的妙妙小工具';
+
+  @override
+  String get aboutIconSemantics => 'BITree 图标';
+
+  @override
+  String get aboutLicenseSummary => '由 BIToolkit 制作 ♥️，以 Unlicense 发布。';
+
+  @override
+  String get developerModeEnabled => '已开启开发者模式';
+
+  @override
+  String get widgetUsesSystemPalette => '小组件使用系统调色板';
+
+  @override
+  String get globalSystemPaletteExperimental => '全局系统调色板（实验性）';
+
+  @override
+  String get importPalette => '导入调色板';
+
+  @override
+  String get paletteImported => '已导入并应用配色。';
+
+  @override
+  String get defaultPalette => '默认';
+
+  @override
+  String get lightModePalette => '浅色模式调色板';
+
+  @override
+  String get darkModePalette => '深色模式调色板';
+
+  @override
+  String deletePalette(String name) {
+    return '删除 $name';
+  }
+
+  @override
+  String get github => 'GitHub';
+
+  @override
   String get language => '语言';
 
   @override
@@ -386,9 +427,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsLicenses => '查看许可';
-
-  @override
-  String get aboutOpenBitoolkitFailed => '无法打开 BIToolkit';
 
   @override
   String get aboutOpenGitHubFailed => '无法打开 GitHub';
@@ -979,6 +1017,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get agendaKindExam => '考试';
 
   @override
+  String examSeat(String seat) {
+    return '座位号：$seat';
+  }
+
+  @override
+  String examTeacher(String teacher) {
+    return '教师：$teacher';
+  }
+
+  @override
   String timeRange(String start, String end) {
     return '$start–$end';
   }
@@ -1301,6 +1349,44 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get moocSaveResultFailed => '未能保存同步结果，请稍后重试。';
+
+  @override
+  String get moocCourseTypeMooc => 'MOOC';
+
+  @override
+  String get moocCourseTypeSpoc => 'SPOC';
+
+  @override
+  String get moocTaskHomework => '作业';
+
+  @override
+  String get moocTaskQuiz => '测验';
+
+  @override
+  String get moocTaskExam => '考试';
+
+  @override
+  String get moocTaskPeerReview => '互评';
+
+  @override
+  String moocPeerReviewTitle(String title) {
+    return '互评：$title';
+  }
+
+  @override
+  String moocOpenedAt(String time) {
+    return '开放：$time';
+  }
+
+  @override
+  String moocStartedAt(String time) {
+    return '开始：$time';
+  }
+
+  @override
+  String moocSubmissionDueAt(String time) {
+    return '提交截止：$time';
+  }
 
   @override
   String get schoolLogin => '登录学校账号';

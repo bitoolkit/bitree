@@ -14,7 +14,7 @@ Future<void> checkForUpdates(
 }) async {
   final l10n = context.l10n;
   try {
-    final updates = UpdateRepository(SharedPreferencesAsync(), l10n: l10n);
+    final updates = UpdateRepository(SharedPreferencesAsync());
     final installed = await appVersion();
     final releases = await updates.check(
       installed,

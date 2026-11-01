@@ -103,62 +103,63 @@ void main() {
       final preferences = MemoryPreferences();
       final first = TestAppController(preferences: preferences);
       await first.initialize();
-      await first.setCoursePalette(Brightness.dark, 'mocha');
-      await first.importCoursePalette(jsonEncode(lightTestPalette().toJson()));
-      final lightId = first.paletteIdFor(Brightness.light)!;
-      expect(first.paletteIdFor(Brightness.dark), 'mocha');
-      expect(first.themeMode, ThemeMode.system);
-      expect(first.palettesFor(Brightness.light).keys, [lightId]);
-      expect(first.palettesFor(Brightness.dark).keys, builtins.keys);
-
-      await first.importCoursePalette(
-        jsonEncode({...mocha.toJson(), 'name': '自定义深色'}),
-      );
-      final darkId = first.paletteIdFor(Brightness.dark)!;
-      final second = TestAppController(preferences: preferences);
-      await second.initialize();
-      expect(second.paletteIdFor(Brightness.light), lightId);
-      expect(second.paletteIdFor(Brightness.dark), darkId);
-      expect(
-        second.paletteFor(Brightness.light)!.toJson(),
-        lightTestPalette().toJson(),
-      );
-      expect(second.paletteFor(Brightness.dark)!.name, '自定义深色');
-      expect(second.customPalettes, hasLength(2));
-      expect(second.globalUseSystemPalette, isFalse);
-      expect(second.widgetUseSystemPalette, isFalse);
-    },
-  );
-
-  test(
-    'Invalid imports and failed saves preserve the current selection and catalog',
-    () async {
-      var fail = false;
-      final preferences = _FailingPalettePreferences(() => fail);
-      final controller = TestAppController(preferences: preferences);
-      await controller.setCoursePalette(Brightness.dark, 'mocha');
-      final saved = await preferences.getString('coursePalettes');
-      await expectLater(
-        controller.importCoursePalette('{"name":"broken"}'),
-        throwsFormatException,
-      );
-      fail = true;
-      await expectLater(
-        controller.importCoursePalette(jsonEncode(lightTestPalette().toJson())),
-        throwsStateError,
-      );
-      expect(controller.paletteIdFor(Brightness.dark), 'mocha');
-      expect(controller.paletteFor(Brightness.light), isNull);
-      expect(controller.customPalettes, isEmpty);
-      expect(await preferences.getString('coursePalettes'), saved);
-      fail = false;
-      // A failed import must not poison subsequent writes.
-      await controller.importCoursePalette(
+      await first.settings.setCoursePalette(Brightness.dark, 'mocha');
+      await first.settings.importCoursePalette(
         jsonEncode(lightTestPalette().toJson()),
       );
-      expect(controller.customPalettes, hasLength(1));
+      final lightId = first.settings.paletteIdFor(Brightness.light)!;
+      expect(first.settings.paletteIdFor(Brightness.dark), 'mocha');
+      expect(first.settings.themeMode, ThemeMode.system);
+      expect(first.settings.palettesFor(Brightness.light).keys, [lightId]);
+      expect(first.settings.palettesFor(Brightness.dark).keys, builtins.keys);
+
+      await first.settings.importCoursePalette(
+        jsonEncode({...mocha.toJson(), 'name': '自定义深色'}),
+      );
+      final darkId = first.settings.paletteIdFor(Brightness.dark)!;
+      final second = TestAppController(preferences: preferences);
+      await second.initialize();
+      expect(second.settings.paletteIdFor(Brightness.light), lightId);
+      expect(second.settings.paletteIdFor(Brightness.dark), darkId);
+      expect(
+        second.settings.paletteFor(Brightness.light)!.toJson(),
+        lightTestPalette().toJson(),
+      );
+      expect(second.settings.paletteFor(Brightness.dark)!.name, '自定义深色');
+      expect(second.settings.customPalettes, hasLength(2));
+      expect(second.settings.globalUseSystemPalette, isFalse);
+      expect(second.settings.widgetUseSystemPalette, isFalse);
     },
   );
+
+  test('Invalid imports and failed saves preserve the current selection and catalog', () async {
+    var fail = false;
+    final preferences = _FailingPalettePreferences(() => fail);
+    final controller = TestAppController(preferences: preferences);
+    await controller.settings.setCoursePalette(Brightness.dark, 'mocha');
+    final saved = await preferences.getString('coursePalettes');
+    await expectLater(
+      controller.settings.importCoursePalette('{"name":"broken"}'),
+      throwsFormatException,
+    );
+    fail = true;
+    await expectLater(
+      controller.settings.importCoursePalette(
+        jsonEncode(lightTestPalette().toJson()),
+      ),
+      throwsStateError,
+    );
+    expect(controller.settings.paletteIdFor(Brightness.dark), 'mocha');
+    expect(controller.settings.paletteFor(Brightness.light), isNull);
+    expect(controller.settings.customPalettes, isEmpty);
+    expect(await preferences.getString('coursePalettes'), saved);
+    fail = false;
+    // A failed import must not poison subsequent writes.
+    await controller.settings.importCoursePalette(
+      jsonEncode(lightTestPalette().toJson()),
+    );
+    expect(controller.settings.customPalettes, hasLength(1));
+  });
 
   test(
     'Deletion restores only the selected mode and persists removal',
@@ -166,25 +167,27 @@ void main() {
       final preferences = MemoryPreferences();
       final first = TestAppController(preferences: preferences);
       await Future.wait([
-        first.importCoursePalette(jsonEncode(lightTestPalette().toJson())),
-        first.importCoursePalette(jsonEncode(mocha.toJson())),
+        first.settings.importCoursePalette(
+          jsonEncode(lightTestPalette().toJson()),
+        ),
+        first.settings.importCoursePalette(jsonEncode(mocha.toJson())),
       ]);
-      final lightId = first.paletteIdFor(Brightness.light)!;
-      final darkId = first.paletteIdFor(Brightness.dark)!;
-      await first.deleteCoursePalette(lightId);
-      expect(first.paletteFor(Brightness.light), isNull);
-      expect(first.paletteIdFor(Brightness.dark), darkId);
-      await first.setCoursePalette(Brightness.dark, 'frappe');
-      await first.deleteCoursePalette(darkId);
-      expect(first.paletteIdFor(Brightness.dark), 'frappe');
-      await first.deleteCoursePalette('frappe');
-      expect(first.palettesFor(Brightness.dark).keys, builtins.keys);
+      final lightId = first.settings.paletteIdFor(Brightness.light)!;
+      final darkId = first.settings.paletteIdFor(Brightness.dark)!;
+      await first.settings.deleteCoursePalette(lightId);
+      expect(first.settings.paletteFor(Brightness.light), isNull);
+      expect(first.settings.paletteIdFor(Brightness.dark), darkId);
+      await first.settings.setCoursePalette(Brightness.dark, 'frappe');
+      await first.settings.deleteCoursePalette(darkId);
+      expect(first.settings.paletteIdFor(Brightness.dark), 'frappe');
+      await first.settings.deleteCoursePalette('frappe');
+      expect(first.settings.palettesFor(Brightness.dark).keys, builtins.keys);
 
       final second = TestAppController(preferences: preferences);
       await second.initialize();
-      expect(second.customPalettes, isEmpty);
-      expect(second.paletteFor(Brightness.light), isNull);
-      expect(second.paletteIdFor(Brightness.dark), 'frappe');
+      expect(second.settings.customPalettes, isEmpty);
+      expect(second.settings.paletteFor(Brightness.light), isNull);
+      expect(second.settings.paletteIdFor(Brightness.dark), 'frappe');
     },
   );
 
@@ -196,17 +199,17 @@ void main() {
         await preferences.setString('darkCoursePalette', id);
         final controller = TestAppController(preferences: preferences);
         await controller.initialize();
-        expect(controller.paletteIdFor(Brightness.dark), id);
-        expect(controller.paletteFor(Brightness.light), isNull);
+        expect(controller.settings.paletteIdFor(Brightness.dark), id);
+        expect(controller.settings.paletteFor(Brightness.light), isNull);
         await expectLater(
-          controller.setCoursePalette(Brightness.light, id),
+          controller.settings.setCoursePalette(Brightness.light, id),
           throwsFormatException,
         );
-        expect(controller.paletteIdFor(Brightness.dark), id);
-        await controller.setCoursePalette(Brightness.dark, null);
+        expect(controller.settings.paletteIdFor(Brightness.dark), id);
+        await controller.settings.setCoursePalette(Brightness.dark, null);
         final restarted = TestAppController(preferences: preferences);
         await restarted.initialize();
-        expect(restarted.paletteFor(Brightness.dark), isNull);
+        expect(restarted.settings.paletteFor(Brightness.dark), isNull);
       }
     },
   );
@@ -215,7 +218,7 @@ void main() {
     'Only imported palettes have delete buttons and deletion updates the menu',
     (tester) async {
       final controller = TestAppController();
-      await controller.importCoursePalette(
+      await controller.settings.importCoursePalette(
         jsonEncode(lightTestPalette().toJson()),
       );
       await tester.pumpWidget(
@@ -223,9 +226,10 @@ void main() {
           theme: bitreeTheme(Brightness.light),
           home: Scaffold(
             body: ListenableBuilder(
-              listenable: controller,
-              builder: (context, _) =>
-                  ListView(children: [PaletteSettings(controller: controller)]),
+              listenable: controller.settings,
+              builder: (context, _) => ListView(
+                children: [PaletteSettings(settings: controller.settings)],
+              ),
             ),
           ),
         ),
@@ -235,7 +239,7 @@ void main() {
       await tester.tap(find.byTooltip('删除 自定义浅色'));
       await tester.pumpAndSettle();
       expect(find.byIcon(Icons.delete_outline_rounded), findsNothing);
-      expect(controller.paletteFor(Brightness.light), isNull);
+      expect(controller.settings.paletteFor(Brightness.light), isNull);
       expect(find.text('默认'), findsNWidgets(2));
       expect(tester.takeException(), isNull);
     },

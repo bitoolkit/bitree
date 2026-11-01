@@ -8,19 +8,9 @@ import '../agenda/model.dart';
 import '../core/async/cancelable_request.dart';
 import 'cookie.dart';
 import 'credentials.dart';
+import 'errors.dart';
 import 'progress.dart';
 import 'tasks.dart';
-
-class MoocFailure implements Exception {
-  const MoocFailure(this.message);
-  final String message;
-  @override
-  String toString() => message;
-}
-
-class MoocLoginRequired extends MoocFailure {
-  const MoocLoginRequired() : super('中国大学MOOC 登录已失效，请重新登录。');
-}
 
 class MoocImportResult {
   const MoocImportResult({required this.entries, required this.failures});
@@ -157,7 +147,7 @@ class MoocApi {
       } on MoocLoginRequired {
         rethrow;
       } on MoocFailure catch (error) {
-        failures.add((course: course.name, message: error.message));
+        failures.add((course: course.name, message: error.toString()));
       } on FormatException catch (error) {
         failures.add((course: course.name, message: error.message));
       }

@@ -1,4 +1,5 @@
-import 'model.dart';
+import '../core/time.dart';
+import 'section_times.dart';
 
 int _minutes(String time) {
   final parts = time.split(':');

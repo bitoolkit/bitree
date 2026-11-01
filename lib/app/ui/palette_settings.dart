@@ -4,15 +4,16 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/diagnostics.dart';
+import '../../l10n/l10n.dart';
 import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_menu_trigger.dart';
 import '../../ui/app_notice.dart';
-import '../controller.dart';
+import '../settings_controller.dart';
 
 class PaletteSettings extends StatefulWidget {
-  const PaletteSettings({super.key, required this.controller});
+  const PaletteSettings({super.key, required this.settings});
 
-  final AppController controller;
+  final AppSettingsController settings;
 
   @override
   State<PaletteSettings> createState() => _PaletteSettingsState();
@@ -22,18 +23,19 @@ class _PaletteSettingsState extends State<PaletteSettings> {
   bool _importing = false;
 
   Future<void> _import() async {
+    final l10n = context.l10n;
     setState(() => _importing = true);
     try {
       final file = await FilePicker.pickFile(
-        dialogTitle: '导入调色板',
+        dialogTitle: l10n.importPalette,
         type: FileType.custom,
         allowedExtensions: ['json'],
       );
       if (file == null || !mounted) return;
       final source = utf8.decode(await file.readAsBytes());
       if (!mounted) return;
-      await widget.controller.importCoursePalette(source);
-      if (mounted) showAppNotice(context, '已导入并应用配色。');
+      await widget.settings.importCoursePalette(source);
+      if (mounted) showAppNotice(context, l10n.paletteImported);
     } catch (failure, stack) {
       AppDiagnostics.instance.report('导入调色板', failure, stack);
     } finally {
@@ -42,11 +44,12 @@ class _PaletteSettingsState extends State<PaletteSettings> {
   }
 
   Widget _selection(Brightness brightness) {
-    final controller = widget.controller;
-    final selected = controller.paletteIdFor(brightness);
+    final l10n = context.l10n;
+    final settings = widget.settings;
+    final selected = settings.paletteIdFor(brightness);
     final choices = <String?, String>{
-      null: '默认',
-      for (final entry in controller.palettesFor(brightness).entries)
+      null: l10n.defaultPalette,
+      for (final entry in settings.palettesFor(brightness).entries)
         entry.key: entry.value.name,
     };
     return LayoutBuilder(
@@ -58,7 +61,7 @@ class _PaletteSettingsState extends State<PaletteSettings> {
               selected: selected == entry.key,
               child: AppMenuItemButton(
                 onPressed: () =>
-                    controller.setCoursePalette(brightness, entry.key),
+                    settings.setCoursePalette(brightness, entry.key),
                 trailingIcon: selected == entry.key
                     ? const Icon(Icons.check_rounded, size: 18)
                     : const SizedBox(width: 18),
@@ -69,8 +72,14 @@ class _PaletteSettingsState extends State<PaletteSettings> {
         builder: (context, menu, isOpen) => ListTile(
           contentPadding: const EdgeInsets.symmetric(vertical: 2),
           leading: const Icon(Icons.palette_outlined),
-          title: Text(brightness == Brightness.dark ? '深色模式调色板' : '浅色模式调色板'),
-          subtitle: Text(controller.paletteFor(brightness)?.name ?? '默认'),
+          title: Text(
+            brightness == Brightness.dark
+                ? l10n.darkModePalette
+                : l10n.lightModePalette,
+          ),
+          subtitle: Text(
+            settings.paletteFor(brightness)?.name ?? l10n.defaultPalette,
+          ),
           trailing: AppMenuArrow(isOpen: isOpen),
           onTap: () => isOpen ? menu.close() : menu.open(),
         ),
@@ -86,25 +95,27 @@ class _PaletteSettingsState extends State<PaletteSettings> {
       ListTile(
         contentPadding: const EdgeInsets.symmetric(vertical: 2),
         leading: const Icon(Icons.file_open_outlined),
-        title: const Text('导入调色板'),
+        title: Text(context.l10n.importPalette),
         enabled: !_importing,
         onTap: _importing ? null : _import,
       ),
-      for (final entry in widget.controller.customPalettes.entries)
+      for (final entry in widget.settings.customPalettes.entries)
         ListTile(
           contentPadding: const EdgeInsets.symmetric(vertical: 2),
           title: Text(entry.value.name),
           subtitle: Text(
-            entry.value.brightness == Brightness.dark ? '深色' : '浅色',
+            entry.value.brightness == Brightness.dark
+                ? context.l10n.themeDark
+                : context.l10n.themeLight,
           ),
-          onTap: () => widget.controller.setCoursePalette(
+          onTap: () => widget.settings.setCoursePalette(
             entry.value.brightness,
             entry.key,
           ),
           trailing: IconButton(
-            tooltip: '删除 ${entry.value.name}',
+            tooltip: context.l10n.deletePalette(entry.value.name),
             icon: const Icon(Icons.delete_outline_rounded),
-            onPressed: () => widget.controller.deleteCoursePalette(entry.key),
+            onPressed: () => widget.settings.deleteCoursePalette(entry.key),
           ),
         ),
     ],

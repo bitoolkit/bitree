@@ -7,10 +7,10 @@ import '../agenda/controller.dart';
 import '../agenda/deadline_source.dart';
 import '../core/async/cancelable_request.dart';
 import '../core/diagnostics.dart';
-import '../core/error_message.dart';
 import '../schedule/controller.dart';
 import 'academics.dart';
 import 'access.dart';
+import 'error_message.dart';
 import 'errors.dart';
 import 'learning/eclass_deadlines.dart';
 import 'learning/lexue_deadlines.dart';
@@ -145,7 +145,7 @@ class SchoolController extends ChangeNotifier {
       if (failure is SessionExpired || failure is SchoolCredentialsRequired) {
         requireLogin();
       }
-      _error = errorMessage(failure);
+      _error = schoolErrorMessage(failure);
       AppDiagnostics.instance.error(label, failure, stack);
       if (notifyErrors) AppDiagnostics.instance.notice(_error!);
       return false;
@@ -271,7 +271,7 @@ class SchoolController extends ChangeNotifier {
     required DeadlineSource source,
     VerifySchoolLogin? verify,
   }) => _run(
-    '同步${source.label} DDL',
+    '同步${_deadlineSourceName(source)} DDL',
     () => _access.readLearningPlatform(source, _verification(verify), (
       session,
       page,
@@ -317,3 +317,9 @@ class SchoolController extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 }
+
+String _deadlineSourceName(DeadlineSource source) => switch (source) {
+  DeadlineSource.lexue => '乐学',
+  DeadlineSource.eclass => '新延河课堂',
+  DeadlineSource.mooc => '中国大学 MOOC',
+};

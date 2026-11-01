@@ -2,9 +2,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
-import '../../schedule/model.dart';
 import '../model.dart';
 import 'timeline_colors.dart';
 
@@ -35,10 +35,11 @@ class AgendaTimelineEntry extends StatelessWidget {
     );
     final date = entry.startsAt;
     final caption = _caption(l10n, entry);
+    final titleText = localizedAgendaTitle(l10n, entry);
     final radius = entry.isDeadline ? null : BorderRadius.circular(8);
     final description = l10n.agendaTimelineSemanticsEntry(
       entry.kind.localizedLabel(l10n),
-      entry.title,
+      titleText,
       '${localizedYearMonthDay(l10n, date.year, date.month, date.day)} '
           '${caption.replaceAll('\n', ' ')}',
       '',
@@ -54,7 +55,7 @@ class AgendaTimelineEntry extends StatelessWidget {
         ? entry.course
         : entry.source?.localizedLabel(l10n) ?? entry.kind.localizedLabel(l10n);
     final title = Text(
-      entry.title,
+      titleText,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       textAlign: entry.isDeadline ? TextAlign.right : TextAlign.left,
@@ -232,7 +233,7 @@ String _fullTime(AppLocalizations l10n, DateTime date) =>
     '${_fullDate(l10n, date)} ${clockText(date)}';
 
 String _preview(AppLocalizations l10n, AgendaEntry entry, DateTime now) => [
-  '${entry.kind.localizedLabel(l10n)} · ${entry.title}',
+  '${entry.kind.localizedLabel(l10n)} · ${localizedAgendaTitle(l10n, entry)}',
   if (entry.isDeadline)
     entry.allDay
         ? l10n.agendaTimelineDue(

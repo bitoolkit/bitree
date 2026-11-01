@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
 import '../../app/ui/add_menu.dart';
+import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
-import '../../schedule/model.dart';
 import '../../sync/ui/sync_button.dart';
 import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_menu_trigger.dart';
@@ -46,7 +46,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       widget.controller.agenda,
       widget.controller.school,
       widget.controller.timetable,
-      widget.controller.agendaViewMode,
+      widget.controller.settings.agendaViewMode,
     ]),
     builder: (context, _) => _build(context),
   );
@@ -61,7 +61,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         .toList();
     final doneCount = entries.where((entry) => entry.isFinished(now)).length;
     final deletedDeadlineCount = controller.agenda.deletedDeadlines.length;
-    final timeline = controller.agendaViewMode.value == AgendaViewMode.timeline;
+    final timeline =
+        controller.settings.agendaViewMode.value == AgendaViewMode.timeline;
 
     Widget loadStatus() => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -144,7 +145,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           icon: Icon(
             timeline ? Icons.view_list_outlined : Icons.view_timeline_outlined,
           ),
-          onPressed: () => controller.setAgendaViewMode(
+          onPressed: () => controller.settings.setAgendaViewMode(
             timeline ? AgendaViewMode.list : AgendaViewMode.timeline,
           ),
         ),

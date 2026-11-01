@@ -3,8 +3,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../core/async/cancelable_request.dart';
+import '../core/async/serial_queue.dart';
 import '../core/diagnostics.dart';
-import '../l10n/app_localizations.dart';
+import '../core/time.dart';
 import '../schedule/model.dart';
 import 'deadline_clear_scope.dart';
 import 'model.dart';
@@ -16,7 +17,7 @@ class AgendaController extends ChangeNotifier {
 
   final AgendaStore _store;
   List<AgendaEntry> _entries = const [];
-  Future<void> _operations = Future<void>.value();
+  final _operations = SerialQueue();
   bool _ready = false;
   bool _busy = false;
   bool _disposed = false;
@@ -36,7 +37,7 @@ class AgendaController extends ChangeNotifier {
           .toList()
         ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
 
-  Future<void> load() => _serialize(() async {
+  Future<void> load() => _operations.run(() async {
     if (_disposed) return;
     _busy = true;
     _ready = false;
@@ -185,17 +186,16 @@ class AgendaController extends ChangeNotifier {
   /// Returns the matched generated count, or null when persistence fails.
   Future<int?> updatePhysicsLabDeadlines(
     SemesterSchedule schedule, {
-    required AppLocalizations l10n,
     DateTime? now,
     void Function()? checkActive,
-  }) => _serialize(() async {
+  }) => _operations.run(() async {
     if (!_ready) {
       _reportNotReady();
       return null;
     }
     checkActive?.call();
     final importedAt = now ?? campusNow();
-    final incoming = physicsLabDeadlines(schedule, l10n);
+    final incoming = physicsLabDeadlines(schedule);
     final savedById = {for (final entry in _entries) entry.id: entry};
     final next = <String, AgendaEntry>{
       for (final entry in _entries)
@@ -222,7 +222,7 @@ class AgendaController extends ChangeNotifier {
   Future<bool> _write(
     List<AgendaEntry>? Function(List<AgendaEntry> entries) transform, {
     void Function()? checkActive,
-  }) => _serialize(() async {
+  }) => _operations.run(() async {
     if (!_ready) {
       _reportNotReady();
       return false;
@@ -253,15 +253,6 @@ class AgendaController extends ChangeNotifier {
       _busy = false;
       _notify();
     }
-  }
-
-  Future<T> _serialize<T>(Future<T> Function() operation) {
-    final result = _operations.then((_) => operation());
-    _operations = result.then<void>(
-      (_) {},
-      onError: (Object _, StackTrace _) {},
-    );
-    return result;
   }
 
   void _reportNotReady() {

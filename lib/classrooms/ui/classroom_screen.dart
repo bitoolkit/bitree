@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
-import '../../schedule/model.dart';
 import '../../school/ui/school_screen.dart';
 import '../../school/ui/school_verification_dialog.dart';
 import '../../ui/app_dropdown_field.dart';

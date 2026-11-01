@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import '../agenda/controller.dart';
 import '../agenda/deadline_source.dart';
 import '../core/async/cancelable_request.dart';
-import '../l10n/app_localizations.dart';
 import '../mooc/controller.dart';
 import '../mooc/progress.dart';
 import '../schedule/controller.dart';
@@ -54,7 +53,7 @@ class SyncResult {
 
   final SyncOutcome outcome;
   final int? count;
-  final String? detail;
+  final Object? detail;
 }
 
 /// Owns one synchronization round. School reads share a session and run in
@@ -103,11 +102,7 @@ class SyncController extends ChangeNotifier {
   };
   bool isRunning(SyncTarget target) => _running.contains(target);
 
-  Future<bool> synchronize(
-    Set<SyncTarget> selected, {
-    String? term,
-    required AppLocalizations l10n,
-  }) {
+  Future<bool> synchronize(Set<SyncTarget> selected, {String? term}) {
     if (_operation case final current?) return current;
     assert(!_disposed && selected.isNotEmpty);
     final finished = Completer<bool>();
@@ -118,16 +113,14 @@ class SyncController extends ChangeNotifier {
     _targets = List.unmodifiable(SyncTarget.values.where(selected.contains));
     _results.clear();
     _notify();
-    unawaited(
-      _run(l10n).then(finished.complete, onError: finished.completeError),
-    );
+    unawaited(_run().then(finished.complete, onError: finished.completeError));
     return finished.future;
   }
 
-  Future<bool> _run(AppLocalizations l10n) async {
+  Future<bool> _run() async {
     try {
       await Future.wait([
-        _syncSchoolAndLab(_term, l10n),
+        _syncSchoolAndLab(_term),
         if (_targets.contains(SyncTarget.mooc)) _syncMooc(),
       ]);
       return !_cancelled && incompleteTargets.isEmpty;
@@ -146,7 +139,7 @@ class SyncController extends ChangeNotifier {
     }
   }
 
-  Future<void> _syncSchoolAndLab(String? term, AppLocalizations l10n) async {
+  Future<void> _syncSchoolAndLab(String? term) async {
     for (final target in _targets.where((target) => target.usesSchoolSession)) {
       while (_school.busy && !_cancelled) {
         await Future.any([_school.idle, _cancelledSignal!.future]);
@@ -206,7 +199,6 @@ class SyncController extends ChangeNotifier {
             ? null
             : await _agenda.updatePhysicsLabDeadlines(
                 schedule,
-                l10n: l10n,
                 checkActive: _checkActive,
               );
         _results[SyncTarget.physicsLab] = SyncResult(

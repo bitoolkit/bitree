@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
 
+import 'package:bitree/l10n/app_localizations.dart';
 import 'package:bitree/l10n/app_localizations_en.dart';
 import 'package:bitree/l10n/app_localizations_zh.dart';
+import 'package:bitree/l10n/formats.dart';
 import 'package:bitree/updates/release.dart';
 import 'package:bitree/updates/repository.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -116,12 +118,13 @@ void main() {
 
   Future<List<AppRelease>> read(String installed, {DateTime? builtAt}) =>
       HttpOverrides.runWithHttpOverrides(
-        () => availableAppReleases(
-          installed,
-          builtAt: builtAt,
-          l10n: AppLocalizationsZh(),
-        ),
+        () => availableAppReleases(installed, builtAt: builtAt),
         network,
+      );
+  String rendered(AppRelease release, [AppLocalizations? localization]) =>
+      localizedReleaseNotes(
+        localization ?? AppLocalizationsZh(),
+        release.notes,
       );
 
   if (Platform.isLinux) {
@@ -150,15 +153,15 @@ void main() {
       changes['1111111...3333333'] = _commits(2);
       final release = (await read('v0.3.0-dev.1111111')).single;
       expect(release.version, developmentVersion);
-      expect(release.notes, contains('变更 2'));
+      expect(rendered(release), contains('变更 2'));
       expect(
-        release.notes.indexOf('变更 2'),
-        lessThan(release.notes.indexOf('变更 1')),
+        rendered(release).indexOf('变更 2'),
+        lessThan(rendered(release).indexOf('变更 1')),
       );
-      expect(release.notes, isNot(contains('旧变更')));
-      expect(release.notes, isNot(contains('历史变更')));
-      expect(release.notes, isNot(contains('提交正文')));
-      expect(release.notes, isNot(contains('另有')));
+      expect(rendered(release), isNot(contains('旧变更')));
+      expect(rendered(release), isNot(contains('历史变更')));
+      expect(rendered(release), isNot(contains('提交正文')));
+      expect(rendered(release), isNot(contains('另有')));
       expect(
         requests.where((url) => url.path.contains('/compare/')).single.path,
         endsWith('/1111111...3333333'),
@@ -174,9 +177,9 @@ void main() {
       changes['v0.1.0...v0.3.0'] = _commits(3);
       final release = (await read('0.1.0')).single;
       expect(release.isDevelopment, isFalse);
-      expect(release.notes, contains('变更 3'));
-      expect(release.notes, contains('变更 1'));
-      expect(release.notes, isNot(contains('历史变更')));
+      expect(rendered(release), contains('变更 3'));
+      expect(rendered(release), contains('变更 1'));
+      expect(rendered(release), isNot(contains('历史变更')));
     },
   );
 
@@ -188,8 +191,8 @@ void main() {
       changes['1111111...v0.3.0'] = _commits(1);
       final release = (await read('v0.3.0-dev.1111111')).single;
       expect(release.version, 'v0.3.0');
-      expect(release.notes, contains('变更 1'));
-      expect(release.notes, isNot(contains('已安装')));
+      expect(rendered(release), contains('变更 1'));
+      expect(rendered(release), isNot(contains('已安装')));
     },
   );
 
@@ -206,7 +209,7 @@ void main() {
       )).single;
 
       expect(release.version, 'v0.3.0');
-      expect(release.notes, contains('变更 1'));
+      expect(rendered(release), contains('变更 1'));
     },
   );
 
@@ -216,8 +219,8 @@ void main() {
     changes['v0.2.0...3333333'] = _commits(2);
     final releases = await read('v0.2.0');
     expect(releases, hasLength(2));
-    expect(releases.first.notes, isNot(contains('变更 2')));
-    expect(releases.last.notes, contains('变更 2'));
+    expect(rendered(releases.first), isNot(contains('变更 2')));
+    expect(rendered(releases.last), contains('变更 2'));
     expect(releases.first.url.path, endsWith('/v0.3.0'));
     expect(releases.last.url.path, endsWith('/v0.3.0-dev'));
   });
@@ -234,16 +237,16 @@ void main() {
         changes['1111111...3333333'] = _commits(count);
         final release = (await read('v0.3.0-dev.1111111')).single;
         final bullets = const LineSplitter()
-            .convert(release.notes)
+            .convert(rendered(release))
             .where((line) => line.startsWith('- '))
             .toList();
         expect(bullets, hasLength(6));
         expect(bullets.first, contains('变更 $count '));
         expect(bullets.last, contains('变更 ${count - 5} '));
         if (count > 6) {
-          expect(release.notes, contains('另有 ${count - 6} 项变更'));
+          expect(rendered(release), contains('另有 ${count - 6} 项变更'));
           expect(
-            release.notes,
+            rendered(release),
             contains(
               'https://github.com/bitoolkit/bitree/compare/1111111...3333333',
             ),
@@ -269,15 +272,18 @@ void main() {
   test('Generated update summaries follow the selected language', () async {
     changes['1111111...3333333'] = _commits(8);
     final release = (await HttpOverrides.runWithHttpOverrides(
-      () => availableAppReleases(
-        'v0.3.0-dev.1111111',
-        l10n: AppLocalizationsEn(),
-      ),
+      () => availableAppReleases('v0.3.0-dev.1111111'),
       network,
     )).single;
 
-    expect(release.notes, contains('Plus 2 more changes.'));
-    expect(release.notes, contains('[View full changes]'));
+    expect(
+      rendered(release, AppLocalizationsEn()),
+      contains('Plus 2 more changes.'),
+    );
+    expect(
+      rendered(release, AppLocalizationsEn()),
+      contains('[View full changes]'),
+    );
   });
 
   test(
@@ -287,7 +293,7 @@ void main() {
         'v0.3.0-dev.3333333',
         builtAt: DateTime.utc(2026, 10, 26),
       )).single;
-      expect(release.notes, contains('此版本没有代码变更。'));
+      expect(rendered(release), contains('此版本没有代码变更。'));
       expect(requests.where((url) => url.path.contains('/compare/')), isEmpty);
     },
   );
@@ -295,8 +301,8 @@ void main() {
   test('An empty comparison does not fall back to cumulative notes', () async {
     changes['1111111...3333333'] = [];
     final release = (await read('v0.3.0-dev.1111111')).single;
-    expect(release.notes, contains('此版本没有代码变更。'));
-    expect(release.notes, isNot(contains('旧变更')));
+    expect(rendered(release), contains('此版本没有代码变更。'));
+    expect(rendered(release), isNot(contains('旧变更')));
   });
 
   for (final status in [HttpStatus.notFound, HttpStatus.serviceUnavailable]) {
@@ -309,8 +315,8 @@ void main() {
         expect(release.version, developmentVersion);
         expect(release.url.path, endsWith('/v0.3.0-dev'));
         expect(release.downloadUrl, release.url);
-        expect(release.notes, '暂时无法读取更新说明。');
-        expect(release.notes, isNot(contains('旧变更')));
+        expect(rendered(release), '暂时无法读取更新说明。');
+        expect(rendered(release), isNot(contains('旧变更')));
       },
     );
   }
@@ -330,10 +336,9 @@ void main() {
       DateTime? builtAt,
       bool automatic = true,
     }) => HttpOverrides.runWithHttpOverrides(
-      () => UpdateRepository(
-        preferences,
-        l10n: AppLocalizationsZh(),
-      ).check(installed, builtAt: builtAt, automatic: automatic),
+      () =>
+          UpdateRepository(preferences)
+              .check(installed, builtAt: builtAt, automatic: automatic),
       network,
     );
 
@@ -348,7 +353,7 @@ void main() {
         requests.clear();
         final cached = (await check()).single;
         expect(cached.version, original.version);
-        expect(cached.notes, original.notes);
+        expect(cached.notes.toJson(), original.notes.toJson());
         expect(cached.url, original.url);
         expect(cached.downloadUrl, original.downloadUrl);
         expect(requests, isEmpty);
@@ -386,10 +391,7 @@ void main() {
 
     test('Notified stable versions stay quiet, while manual checks refresh both channels', () async {
       final shown = await check();
-      await UpdateRepository(
-        preferences,
-        l10n: AppLocalizationsZh(),
-      ).markNotified(shown);
+      await UpdateRepository(preferences).markNotified(shown);
       requests.clear();
       expect(await check(), isEmpty);
       expect(requests, isEmpty);
@@ -435,7 +437,7 @@ void main() {
         changes['v0.1.0...v0.3.0'] = _commits(3);
         changes['v0.1.0...3333333'] = _commits(4);
         final result = await check(installed: 'v0.1.0');
-        expect(result.single.notes, contains('变更 3'));
+        expect(rendered(result.single), contains('变更 3'));
         expect(requests, isNotEmpty);
       },
     );

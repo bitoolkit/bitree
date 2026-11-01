@@ -1,3 +1,4 @@
+import 'package:bitree/app/settings_controller.dart';
 import 'package:bitree/app/ui/settings_screen.dart';
 import 'package:bitree/main.dart';
 import 'package:flutter/material.dart';
@@ -13,73 +14,68 @@ void main() {
       final preferences = MemoryPreferences();
       final first = TestAppController(preferences: preferences);
       await first.initialize();
-      expect(first.developerMode, isFalse);
-      expect(first.paletteIdFor(Brightness.dark), isNull);
-      first.unlockDeveloperMode();
-      expect(first.developerMode, isTrue);
+      expect(first.settings.developerMode, isFalse);
+      expect(first.settings.paletteIdFor(Brightness.dark), isNull);
+      first.settings.unlockDeveloperMode();
+      expect(first.settings.developerMode, isTrue);
       final writes = [
-        first.setCoursePalette(Brightness.dark, 'mocha'),
-        first.setCoursePalette(Brightness.dark, 'macchiato'),
-        first.setCoursePalette(Brightness.dark, 'frappe'),
+        first.settings.setCoursePalette(Brightness.dark, 'mocha'),
+        first.settings.setCoursePalette(Brightness.dark, 'macchiato'),
+        first.settings.setCoursePalette(Brightness.dark, 'frappe'),
       ];
       await Future.wait(writes);
 
       final second = TestAppController(preferences: preferences);
       await second.initialize();
-      expect(second.developerMode, isFalse);
-      expect(second.paletteIdFor(Brightness.dark), 'frappe');
-      await second.setCoursePalette(Brightness.dark, null);
+      expect(second.settings.developerMode, isFalse);
+      expect(second.settings.paletteIdFor(Brightness.dark), 'frappe');
+      await second.settings.setCoursePalette(Brightness.dark, null);
 
       final third = TestAppController(preferences: preferences);
       await third.initialize();
-      expect(third.paletteFor(Brightness.dark), isNull);
+      expect(third.settings.paletteFor(Brightness.dark), isNull);
     },
   );
 
-  test(
-    'Widget system course palette defaults off and persists independently of developer mode',
-    () async {
-      final preferences = MemoryPreferences();
-      final first = TestAppController(preferences: preferences);
-      await first.initialize();
-      expect(first.widgetUseSystemPalette, isFalse);
-      await Future.wait([
-        first.setWidgetUseSystemPalette(true),
-        first.setWidgetUseSystemPalette(false),
-        first.setWidgetUseSystemPalette(true),
-        first.setCoursePalette(Brightness.dark, 'mocha'),
-      ]);
+  test('Widget system course palette defaults off and persists independently of developer mode', () async {
+    final preferences = MemoryPreferences();
+    final first = TestAppController(preferences: preferences);
+    await first.initialize();
+    expect(first.settings.widgetUseSystemPalette, isFalse);
+    await Future.wait([
+      first.settings.setWidgetUseSystemPalette(true),
+      first.settings.setWidgetUseSystemPalette(false),
+      first.settings.setWidgetUseSystemPalette(true),
+      first.settings.setCoursePalette(Brightness.dark, 'mocha'),
+    ]);
 
-      final second = TestAppController(preferences: preferences);
-      await second.initialize();
-      expect(second.widgetUseSystemPalette, isTrue);
-      expect(second.paletteIdFor(Brightness.dark), 'mocha');
-      expect(second.developerMode, isFalse);
-      await second.setCoursePalette(Brightness.dark, null);
-      expect(second.widgetUseSystemPalette, isTrue);
-      await second.setWidgetUseSystemPalette(false);
+    final second = TestAppController(preferences: preferences);
+    await second.initialize();
+    expect(second.settings.widgetUseSystemPalette, isTrue);
+    expect(second.settings.paletteIdFor(Brightness.dark), 'mocha');
+    expect(second.settings.developerMode, isFalse);
+    await second.settings.setCoursePalette(Brightness.dark, null);
+    expect(second.settings.widgetUseSystemPalette, isTrue);
+    await second.settings.setWidgetUseSystemPalette(false);
 
-      final third = TestAppController(preferences: preferences);
-      await third.initialize();
-      expect(third.widgetUseSystemPalette, isFalse);
-      expect(third.paletteFor(Brightness.dark), isNull);
-    },
-  );
+    final third = TestAppController(preferences: preferences);
+    await third.initialize();
+    expect(third.settings.widgetUseSystemPalette, isFalse);
+    expect(third.settings.paletteFor(Brightness.dark), isNull);
+  });
 
   test('Unknown saved palette falls back to the current app colours', () async {
     final preferences = MemoryPreferences();
     await preferences.setString('darkCoursePalette', 'retired-palette');
     final controller = TestAppController(preferences: preferences);
     await controller.initialize();
-    expect(controller.paletteFor(Brightness.dark), isNull);
-    expect(controller.developerMode, isFalse);
+    expect(controller.settings.paletteFor(Brightness.dark), isNull);
+    expect(controller.settings.developerMode, isFalse);
   });
 
   testWidgets(
     'Five consecutive About icon taps keep developer mode without revealing options',
     (tester) async {
-      final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
       PackageInfo.setMockInitialValues(
         appName: 'BITree',
         packageName: 'app.bitree',
@@ -92,9 +88,15 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       final controller = TestAppController();
-      await controller.loadCoursePalettes();
-      await controller.setTheme(ThemeMode.dark);
-      await tester.pumpWidget(BitreeApp(controller: controller));
+      await controller.initialize();
+      await controller.settings.setLanguage(AppLanguage.chinese);
+      await controller.settings.setTheme(ThemeMode.dark);
+      await tester.pumpWidget(
+        BitreeApp(
+          controller: controller,
+          updateChecker: (context, {silent = false}) async {},
+        ),
+      );
       await tester.tap(
         find.descendant(
           of: find.byType(NavigationBar),
@@ -116,24 +118,27 @@ void main() {
         200,
         scrollable: scrollable,
       );
+      await tester.ensureVisible(find.text('关于 BITree'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('关于 BITree'));
       await tester.pumpAndSettle();
-      final icon = find.bySemanticsLabel('BITree 图标');
+      expect(find.byType(AlertDialog), findsOneWidget);
+      final icon = find.byKey(const ValueKey('about-icon'));
       for (var i = 0; i < 4; i++) {
         await tester.tap(icon);
         await tester.pump(const Duration(milliseconds: 100));
       }
-      expect(controller.developerMode, isFalse);
+      expect(controller.settings.developerMode, isFalse);
       // A pause starts a fresh sequence.
       await tester.pump(const Duration(seconds: 3));
       for (var i = 0; i < 4; i++) {
         await tester.tap(icon);
         await tester.pump(const Duration(milliseconds: 100));
       }
-      expect(controller.developerMode, isFalse);
+      expect(controller.settings.developerMode, isFalse);
       await tester.tap(icon);
       await tester.pumpAndSettle();
-      expect(controller.developerMode, isTrue);
+      expect(controller.settings.developerMode, isTrue);
       expect(find.byType(AlertDialog), findsNothing);
       expect(find.text('更多设置'), findsNothing);
       expect(find.text('深色模式调色板'), findsNothing);

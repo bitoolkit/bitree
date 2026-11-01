@@ -4,9 +4,9 @@ import '../../agenda/model.dart';
 import '../../agenda/ui/agenda_detail.dart';
 import '../../agenda/ui/calendar_list.dart';
 import '../../app/controller.dart';
+import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
-import '../../schedule/model.dart';
 import '../../sync/controller.dart';
 import '../../sync/ui/sync.dart';
 import '../../ui/app_dropdown_field.dart';
@@ -199,11 +199,13 @@ class _ExamTile extends StatelessWidget {
           for (final conflict in conflicts)
             Text(
               conflict.other.course != null
-                  ? l10n.overlapsClass(conflict.other.title)
+                  ? l10n.overlapsClass(
+                      localizedCalendarItemTitle(l10n, conflict.other),
+                    )
                   : l10n.overlapsExam(
                       conflict.exam.entry?.id == exam.id
-                          ? conflict.other.title
-                          : conflict.exam.title,
+                          ? localizedCalendarItemTitle(l10n, conflict.other)
+                          : localizedCalendarItemTitle(l10n, conflict.exam),
                     ),
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
@@ -268,7 +270,7 @@ class _ExamConflictsScreen extends StatelessWidget {
             for (final item in [conflict.exam, conflict.other])
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text(item.title),
+                title: Text(localizedCalendarItemTitle(context.l10n, item)),
                 subtitle: Text(
                   [
                     localizedCalendarItemTime(context.l10n, item),

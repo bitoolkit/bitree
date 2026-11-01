@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
-import '../../schedule/model.dart';
 import '../../ui/app_notice.dart';
 import '../../ui/external_link.dart';
 import '../../ui/sheet_layout.dart';
@@ -39,6 +39,7 @@ Future<void> showAgendaEntry(
           : current.isFinished(now)
           ? l10n.ended
           : null;
+      final notes = localizedAgendaNotes(l10n, current);
       final statusColor = overdue ? scheme.error : scheme.onSurfaceVariant;
       void edit() {
         Navigator.pop(sheetContext);
@@ -118,7 +119,7 @@ Future<void> showAgendaEntry(
             mainAxisSize: MainAxisSize.min,
             children: [
               CompletionText(
-                current.title,
+                localizedAgendaTitle(l10n, current),
                 completed: current.done,
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontSize: 26,
@@ -139,7 +140,7 @@ Future<void> showAgendaEntry(
               _EntryTime(entry: current, now: now),
               if (current.location.isNotEmpty ||
                   current.source != null ||
-                  current.notes.isNotEmpty) ...[
+                  notes.isNotEmpty) ...[
                 const SizedBox(height: 20),
                 const Divider(height: 1),
                 const SizedBox(height: 12),
@@ -174,7 +175,7 @@ Future<void> showAgendaEntry(
                     ],
                   ),
                 ),
-              if (current.notes.isNotEmpty) ...[
+              if (notes.isNotEmpty) ...[
                 if (current.location.isNotEmpty || current.source != null)
                   const SizedBox(height: 16),
                 Text(
@@ -184,7 +185,7 @@ Future<void> showAgendaEntry(
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(current.notes, style: theme.textTheme.bodyLarge),
+                Text(notes, style: theme.textTheme.bodyLarge),
               ],
             ],
           ),

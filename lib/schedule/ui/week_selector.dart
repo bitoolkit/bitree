@@ -3,11 +3,11 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../core/time.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_menu_trigger.dart';
 import '../../ui/design.dart';
-import '../model.dart';
 
 class WeekSelector extends StatelessWidget {
   const WeekSelector({super.key, required this.controller});

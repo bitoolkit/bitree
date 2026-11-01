@@ -8,10 +8,12 @@ import 'package:bitree/agenda/deadline_source.dart';
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/core/async/cancelable_request.dart';
 import 'package:bitree/core/diagnostics.dart';
-import 'package:bitree/mooc/api.dart';
+import 'package:bitree/l10n/app_localizations_zh.dart';
+import 'package:bitree/l10n/formats.dart';
 import 'package:bitree/mooc/controller.dart';
 import 'package:bitree/mooc/cookie.dart';
 import 'package:bitree/mooc/credentials.dart';
+import 'package:bitree/mooc/errors.dart';
 import 'package:bitree/mooc/tasks.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -133,15 +135,33 @@ void main() {
       ];
       final tasks = readMoocTasks(data, course, '8');
       final entries = tasks.map((task) => task.entry).toList();
+      bool isReview(AgendaEntry entry) => switch (entry.details) {
+        MoocDeadlineDetails(kind: MoocDeadlineKind.peerReview) => true,
+        _ => false,
+      };
       expect(entries, hasLength(6));
-      expect(entries.where((e) => e.title.startsWith('互评：')), hasLength(2));
-      expect(entries.where((e) => e.title == '互评：第 32 周作业'), isEmpty);
-      expect(entries.where((e) => e.title == '第 31 周作业').single.done, isFalse);
-      expect(entries.where((e) => e.title == '第 32 周作业').single.done, isTrue);
+      expect(entries.where(isReview), hasLength(2));
+      expect(
+        entries.where((e) => isReview(e) && e.title == '第 32 周作业'),
+        isEmpty,
+      );
+      expect(
+        entries.where((e) => !isReview(e) && e.title == '第 31 周作业').single.done,
+        isFalse,
+      );
+      expect(
+        entries.where((e) => !isReview(e) && e.title == '第 32 周作业').single.done,
+        isTrue,
+      );
       expect(entries.first.startsAt, due);
-      final review = entries.firstWhere((e) => e.title == '互评：期末考试');
+      final review = entries.firstWhere(
+        (e) => isReview(e) && e.title == '期末考试',
+      );
       expect(review.startsAt, due.add(const Duration(days: 3)));
-      expect(review.notes, contains('开始：'));
+      expect(
+        localizedAgendaNotes(AppLocalizationsZh(), review),
+        contains('开始：'),
+      );
       expect(review.source, DeadlineSource.mooc);
       expect(
         DeadlineClearScope.values.where(

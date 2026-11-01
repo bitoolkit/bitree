@@ -1,5 +1,6 @@
 import '../../l10n/app_localizations.dart';
 import '../../l10n/formats.dart';
+import '../../mooc/errors.dart';
 import '../../mooc/progress.dart';
 import '../controller.dart';
 
@@ -35,7 +36,12 @@ String _syncResultText(
   SyncResult result,
   SyncTarget target,
 ) {
-  final detail = result.detail?.trim();
+  final detail = switch (result.detail) {
+    MoocFailure failure => localizedMoocFailure(l10n, failure).trim(),
+    final String text => text.trim(),
+    final Object value => value.toString().trim(),
+    null => null,
+  };
   return switch (result.outcome) {
     SyncOutcome.synced => switch (result.count) {
       null => l10n.synced,
@@ -49,10 +55,7 @@ String _syncResultText(
         target == SyncTarget.physicsLab
             ? l10n.updatedDdlCount(count)
             : l10n.syncedDdlCount(count),
-      if (detail != null && detail.isNotEmpty)
-        localizedKnownError(l10n, detail) ?? detail
-      else
-        l10n.syncNotFinished,
+      if (detail != null && detail.isNotEmpty) detail else l10n.syncNotFinished,
     ].join('\n'),
     SyncOutcome.needsLogin =>
       target == SyncTarget.mooc

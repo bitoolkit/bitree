@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
-import '../../schedule/model.dart';
 import '../../ui/design.dart';
 import '../model.dart';
 import 'calendar_list.dart';
@@ -209,7 +209,7 @@ class _AgendaReminderState extends State<AgendaReminder>
                                     ),
                                     const SizedBox(height: 3),
                                     Text(
-                                      entry.title,
+                                      localizedAgendaTitle(l10n, entry),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(

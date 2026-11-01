@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
-import '../../schedule/model.dart';
 import '../../ui/app_notice.dart';
 import '../../ui/swipe_action_tile.dart';
 import '../model.dart';
@@ -42,6 +42,7 @@ class AgendaListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
+    final title = localizedAgendaTitle(l10n, entry);
     final subtitle = [
       if (entry.course.isNotEmpty)
         entry.course
@@ -49,7 +50,7 @@ class AgendaListTile extends StatelessWidget {
         entry.source!.localizedLabel(l10n),
       if (entry.location.isNotEmpty) entry.location,
     ].join('  ');
-    final description = entry.notes.trim();
+    final description = localizedAgendaNotes(l10n, entry).trim();
     final hasDetails = description.isNotEmpty || subtitle.isNotEmpty;
     final dueToday =
         entry.isDeadline &&
@@ -130,7 +131,7 @@ class AgendaListTile extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         CompletionText(
-                          entry.title,
+                          title,
                           completed: entry.done,
                           style: const TextStyle(
                             fontSize: 15,

@@ -152,7 +152,7 @@ class _DeletedDeadlinesSheetState extends State<_DeletedDeadlinesSheet> {
                   value: _selected.contains(entry.id),
                   enabled: enabled,
                   title: Text(
-                    entry.title,
+                    localizedAgendaTitle(l10n, entry),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),

@@ -421,7 +421,7 @@ void main() {
   for (final source in [DeadlineSource.lexue, DeadlineSource.eclass]) {
     for (final stillExpired in [false, true]) {
       test(
-        '${source.label} retries authentication once when a DDL read expires, stillExpired=$stillExpired',
+        '${source.name} retries authentication once when a DDL read expires, stillExpired=$stillExpired',
         () => HttpOverrides.runWithHttpOverrides(() async {
           final access = SchoolAccess(MemorySchoolStorage());
           var reads = 0;
@@ -451,7 +451,7 @@ void main() {
     }
 
     test(
-      '${source.label} uses one direct request without probing WebVPN',
+      '${source.name} uses one direct request without probing WebVPN',
       () => HttpOverrides.runWithHttpOverrides(() async {
         final connection = SchoolConnection(MemorySchoolStorage());
         final result = connection.run(source.loginPage, (session) {

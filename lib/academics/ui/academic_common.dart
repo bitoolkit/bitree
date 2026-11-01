@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../agenda/model.dart';
 import '../../app/controller.dart';
+import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
-import '../../schedule/model.dart';
 import '../../sync/controller.dart';
 import '../../sync/ui/sync.dart';
 import '../../ui/app_dialog.dart';

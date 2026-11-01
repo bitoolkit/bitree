@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
+import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_dialog.dart';
 import '../../ui/design.dart';
@@ -106,10 +107,11 @@ class _UpdateDialogState extends State<UpdateDialog> {
             l10n.releaseVersion(channel, _release.version),
             style: theme.textTheme.titleMedium,
           ),
-          if (_release.notes.isNotEmpty) ...[
+          if (localizedReleaseNotes(l10n, _release.notes) case final notes
+              when notes.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.sm),
             MarkdownBody(
-              data: _release.notes,
+              data: notes,
               selectable: true,
               styleSheet: MarkdownStyleSheet.fromTheme(theme)
                   .copyWith(h2: theme.textTheme.titleSmall),

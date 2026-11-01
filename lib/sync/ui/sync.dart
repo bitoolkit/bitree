@@ -50,7 +50,7 @@ Future<bool> startSync(
   if (!context.mounted) return false;
   final overlay = Overlay.of(context, rootOverlay: true);
   final l10n = context.l10n;
-  final success = await app.sync.synchronize(selected, term: term, l10n: l10n);
+  final success = await app.sync.synchronize(selected, term: term);
   if (!overlay.mounted ||
       app.sync.cancelled ||
       _progressSheets.containsKey(app.sync)) {

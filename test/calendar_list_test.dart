@@ -4,6 +4,9 @@ import 'package:bitree/agenda/deadline_source.dart';
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/ui/calendar_list.dart';
 import 'package:bitree/agenda/ui/completion_text.dart';
+import 'package:bitree/core/time.dart';
+import 'package:bitree/l10n/app_localizations_zh.dart';
+import 'package:bitree/l10n/formats.dart';
 import 'package:bitree/schedule/model.dart';
 import 'package:bitree/schedule/ui/timetable_header.dart';
 import 'package:bitree/ui/sheet_layout.dart';
@@ -15,6 +18,7 @@ import 'support/row_swipe.dart';
 import 'support/test_app.dart';
 
 final _date = calendarDate(campusNow()).add(const Duration(days: 5));
+final _l10n = AppLocalizationsZh();
 
 AgendaEntry _deadline({
   int id = 1,
@@ -87,7 +91,10 @@ Future<TestAppController> _open(
   if (picker == null) {
     await tester.tap(
       find.bySemanticsLabel(
-        RegExp('${_date.month}月${_date.day}日${weekdays[_date.weekday - 1]}'),
+        RegExp(
+          '${_date.month}月${_date.day}日'
+          '${localizedShortWeekday(_l10n, _date.weekday)}',
+        ),
       ),
     );
   } else {
@@ -185,7 +192,7 @@ void main() {
         _deadline(id: 2, done: true),
         _deadline(id: 3, date: _date.add(const Duration(days: 1))),
       ]);
-      expect(find.text(agendaDateLabel(_date)), findsOneWidget);
+      expect(find.text(localizedAgendaDate(_l10n, _date)), findsOneWidget);
       expect(find.text('1项日程'), findsOneWidget);
       expect(find.text(entry.title), findsWidgets);
       expect(find.text('第五章作业2'), findsNothing);

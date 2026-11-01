@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/diagnostics.dart';
-import '../../core/error_message.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_dialog.dart';
 import '../../ui/design.dart';
+import '../error_message.dart';
 import '../verification.dart';
 
 Future<String?> verifySchoolLogin(
@@ -76,7 +76,7 @@ class _VerificationDialogState extends State<_VerificationDialog> {
       }
     } on Exception catch (failure, stack) {
       AppDiagnostics.instance.error('获取登录验证码', failure, stack);
-      if (mounted) setState(() => _error = errorMessage(failure));
+      if (mounted) setState(() => _error = schoolErrorMessage(failure));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -96,7 +96,7 @@ class _VerificationDialogState extends State<_VerificationDialog> {
       if (mounted) Navigator.pop(context, code);
     } on Exception catch (failure, stack) {
       AppDiagnostics.instance.error('校验登录验证码', failure, stack);
-      if (mounted) setState(() => _error = errorMessage(failure));
+      if (mounted) setState(() => _error = schoolErrorMessage(failure));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }

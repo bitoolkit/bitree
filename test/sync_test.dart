@@ -202,13 +202,9 @@ void main() {
       SyncTarget.exams,
       SyncTarget.physicsLab,
     };
-    final syncing = model.sync.synchronize(
-      selected,
-      term: '2025-2026-1',
-      l10n: l10n,
-    );
+    final syncing = model.sync.synchronize(selected, term: '2025-2026-1');
     expect(
-      model.sync.synchronize(selected, term: '2025-2026-1', l10n: l10n),
+      model.sync.synchronize(selected, term: '2025-2026-1'),
       same(syncing),
     );
     await service.began.future;
@@ -229,7 +225,7 @@ void main() {
     final syncing = model.sync.synchronize({
       SyncTarget.schedule,
       SyncTarget.exams,
-    }, l10n: l10n);
+    });
     await service.began.future;
     model.sync.cancel();
     service.release.complete();
@@ -253,7 +249,7 @@ void main() {
       return answer.future;
     }, verify: (_) async => null);
     await entered.future;
-    final syncing = model.sync.synchronize({SyncTarget.schedule}, l10n: l10n);
+    final syncing = model.sync.synchronize({SyncTarget.schedule});
     model.sync.cancel();
     expect(await syncing, isFalse);
     expect(model.school.busy, isTrue);
@@ -268,10 +264,7 @@ void main() {
     final model = app(service);
     await model.initialize();
     expect(
-      await model.sync.synchronize({
-        SyncTarget.schedule,
-        SyncTarget.exams,
-      }, l10n: l10n),
+      await model.sync.synchronize({SyncTarget.schedule, SyncTarget.exams}),
       isFalse,
     );
     expect(
@@ -285,10 +278,7 @@ void main() {
       (_) async => true,
       verify: (_) async => null,
     );
-    expect(
-      await model.sync.synchronize(model.sync.incompleteTargets, l10n: l10n),
-      isTrue,
-    );
+    expect(await model.sync.synchronize(model.sync.incompleteTargets), isTrue);
     expect(service.reads, [
       SyncTarget.schedule,
       SyncTarget.schedule,
@@ -300,10 +290,7 @@ void main() {
     final model = app(_SchoolService());
     await model.initialize();
 
-    expect(
-      await model.sync.synchronize({SyncTarget.mooc}, l10n: l10n),
-      isFalse,
-    );
+    expect(await model.sync.synchronize({SyncTarget.mooc}), isFalse);
     expect(
       model.sync.results[SyncTarget.mooc]?.outcome,
       SyncOutcome.needsLogin,

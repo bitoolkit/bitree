@@ -1,4 +1,5 @@
 import 'package:bitree/agenda/model.dart';
+import 'package:bitree/core/time.dart';
 import 'package:bitree/schedule/model.dart';
 import 'package:bitree/schedule/ui/course_detail.dart';
 import 'package:bitree/ui/sheet_layout.dart';

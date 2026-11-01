@@ -40,6 +40,49 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appearance => 'Appearance';
 
   @override
+  String get projectDescription => 'A handy little companion for BIT students.';
+
+  @override
+  String get aboutIconSemantics => 'BITree icon';
+
+  @override
+  String get aboutLicenseSummary =>
+      'Made by BIToolkit with ♥️. Released under the Unlicense.';
+
+  @override
+  String get developerModeEnabled => 'Developer mode enabled';
+
+  @override
+  String get widgetUsesSystemPalette => 'Use system palette for widget';
+
+  @override
+  String get globalSystemPaletteExperimental =>
+      'Use system palette throughout app (experimental)';
+
+  @override
+  String get importPalette => 'Import palette';
+
+  @override
+  String get paletteImported => 'Palette imported and applied.';
+
+  @override
+  String get defaultPalette => 'Default';
+
+  @override
+  String get lightModePalette => 'Light mode palette';
+
+  @override
+  String get darkModePalette => 'Dark mode palette';
+
+  @override
+  String deletePalette(String name) {
+    return 'Delete $name';
+  }
+
+  @override
+  String get github => 'GitHub';
+
+  @override
   String get language => 'Language';
 
   @override
@@ -396,9 +439,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsLicenses => 'Licenses';
-
-  @override
-  String get aboutOpenBitoolkitFailed => 'Could not open BIToolkit';
 
   @override
   String get aboutOpenGitHubFailed => 'Could not open GitHub';
@@ -1040,6 +1080,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get agendaKindExam => 'Exam';
 
   @override
+  String examSeat(String seat) {
+    return 'Seat: $seat';
+  }
+
+  @override
+  String examTeacher(String teacher) {
+    return 'Instructor: $teacher';
+  }
+
+  @override
   String timeRange(String start, String end) {
     return '$start–$end';
   }
@@ -1375,6 +1425,44 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get moocSaveResultFailed =>
       'Could not save the sync result. Try again shortly.';
+
+  @override
+  String get moocCourseTypeMooc => 'MOOC';
+
+  @override
+  String get moocCourseTypeSpoc => 'SPOC';
+
+  @override
+  String get moocTaskHomework => 'Homework';
+
+  @override
+  String get moocTaskQuiz => 'Quiz';
+
+  @override
+  String get moocTaskExam => 'Exam';
+
+  @override
+  String get moocTaskPeerReview => 'Peer review';
+
+  @override
+  String moocPeerReviewTitle(String title) {
+    return 'Peer review: $title';
+  }
+
+  @override
+  String moocOpenedAt(String time) {
+    return 'Opened: $time';
+  }
+
+  @override
+  String moocStartedAt(String time) {
+    return 'Starts: $time';
+  }
+
+  @override
+  String moocSubmissionDueAt(String time) {
+    return 'Submission due: $time';
+  }
 
   @override
   String get schoolLogin => 'Sign in to school account';

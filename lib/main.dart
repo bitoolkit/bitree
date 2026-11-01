@@ -15,6 +15,7 @@ import 'schedule/store.dart';
 import 'school/service.dart';
 import 'school/storage.dart';
 import 'ui/theme.dart';
+import 'updates/ui/update_check.dart' as updates;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,32 +48,37 @@ void main() {
 }
 
 class BitreeApp extends StatelessWidget {
-  const BitreeApp({super.key, required this.controller});
+  const BitreeApp({
+    super.key,
+    required this.controller,
+    this.updateChecker = updates.checkForUpdates,
+  });
 
   final AppController controller;
+  final AppUpdateChecker updateChecker;
 
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: controller,
+      listenable: Listenable.merge([controller, controller.settings]),
       builder: (context, _) => MaterialApp(
         onGenerateTitle: (context) => context.l10n.appName,
         debugShowCheckedModeBanner: false,
         theme: bitreeTheme(
           Brightness.light,
-          coursePalette: controller.paletteFor(Brightness.light),
-          systemPalette: controller.systemPalette,
+          coursePalette: controller.settings.paletteFor(Brightness.light),
+          systemPalette: controller.settings.systemPalette,
         ),
         darkTheme: bitreeTheme(
           Brightness.dark,
-          coursePalette: controller.paletteFor(Brightness.dark),
-          systemPalette: controller.systemPalette,
+          coursePalette: controller.settings.paletteFor(Brightness.dark),
+          systemPalette: controller.settings.systemPalette,
         ),
-        themeMode: controller.themeMode,
-        locale: controller.language.locale,
+        themeMode: controller.settings.themeMode,
+        locale: controller.settings.language.locale,
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
-        home: AppScreen(controller: controller),
+        home: AppScreen(controller: controller, updateChecker: updateChecker),
       ),
     );
   }

@@ -1,4 +1,4 @@
-import 'model.dart';
+import 'section_times.dart';
 import 'time_position.dart';
 
 class TimetableSelection {

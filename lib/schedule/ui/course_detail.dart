@@ -9,13 +9,14 @@ import '../../ui/app_notice.dart';
 import '../../ui/campus_time_builder.dart';
 import '../../ui/design.dart';
 import '../../ui/sheet_layout.dart';
-import '../../ui/theme.dart';
 import '../../wencui/place.dart';
 import '../../wencui/ui/location_card.dart';
 import '../../wencui/ui/wencui_map_screen.dart';
 import '../building_palette.dart';
 import '../model.dart';
+import '../section_times.dart';
 import '../selection.dart';
+import 'course_colors.dart';
 import 'course_editor.dart';
 
 Future<void> showCourse(

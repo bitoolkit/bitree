@@ -157,7 +157,7 @@ void main() {
   );
 
   for (final source in [DeadlineSource.lexue, DeadlineSource.eclass]) {
-    test('A source-specific DDL update only fetches ${source.label}', () async {
+    test('A source-specific DDL update only fetches ${source.name}', () async {
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       addTearDown(() => server.close(force: true));
       final hosts = <String>{};

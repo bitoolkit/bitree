@@ -1,17 +1,32 @@
+import 'package:flutter/material.dart' show ThemeMode;
+
 import '../agenda/calendar.dart';
 import '../agenda/deadline_clear_scope.dart';
 import '../agenda/deadline_source.dart';
 import '../agenda/model.dart';
 import '../classrooms/model.dart';
+import '../core/time.dart';
 import '../mooc/controller.dart';
+import '../mooc/errors.dart';
 import '../schedule/model.dart';
+import '../schedule/section_times.dart';
 import '../school/controller.dart';
 import '../sync/controller.dart';
+import '../updates/release.dart';
 import '../wencui/atlas.dart';
 import '../wencui/place.dart';
 import 'app_localizations.dart';
+import 'schedule.dart';
 
 export 'schedule.dart';
+
+extension LocalizedThemeMode on ThemeMode {
+  String localizedLabel(AppLocalizations l10n) => switch (this) {
+    ThemeMode.system => l10n.followSystem,
+    ThemeMode.light => l10n.themeLight,
+    ThemeMode.dark => l10n.themeDark,
+  };
+}
 
 String localizedWeekday(AppLocalizations l10n, int weekday) =>
     switch (weekday) {
@@ -151,10 +166,90 @@ String localizedAgendaTime(AppLocalizations l10n, AgendaEntry entry) {
   return l10n.timeRange(clockText(entry.startsAt), endTime);
 }
 
+String localizedAgendaDateTime(AppLocalizations l10n, DateTime date) =>
+    '${localizedAgendaDate(l10n, date)} ${clockText(date)}';
+
+String localizedAgendaTitle(
+  AppLocalizations l10n,
+  AgendaEntry entry,
+) => switch (entry.details) {
+  PhysicsLabDeadlineDetails(:final kind, :final courseLabel) => switch (kind) {
+    PhysicsLabDeadlineKind.preview => l10n.physicsLabPreviewReport(courseLabel),
+    PhysicsLabDeadlineKind.report => l10n.physicsLabReport(courseLabel),
+  },
+  MoocDeadlineDetails(kind: MoocDeadlineKind.peerReview) =>
+    l10n.moocPeerReviewTitle(entry.title),
+  _ => entry.title,
+};
+
+String localizedAgendaNotes(AppLocalizations l10n, AgendaEntry entry) =>
+    switch (entry.details) {
+      null => entry.notes,
+      PhysicsLabDeadlineDetails(:final classStartsAt, :final classEndsAt) =>
+        l10n.physicsLabGeneratedNotes(
+          localizedTerm(l10n, entry.term!),
+          dateText(classStartsAt),
+          '${clockText(classStartsAt)}–${clockText(classEndsAt)}',
+        ),
+      MoocDeadlineDetails(
+        :final kind,
+        :final spoc,
+        :final releaseAt,
+        :final submissionDueAt,
+      ) =>
+        [
+          spoc ? l10n.moocCourseTypeSpoc : l10n.moocCourseTypeMooc,
+          switch (kind) {
+            MoocDeadlineKind.homework => l10n.moocTaskHomework,
+            MoocDeadlineKind.quiz => l10n.moocTaskQuiz,
+            MoocDeadlineKind.exam => l10n.moocTaskExam,
+            MoocDeadlineKind.peerReview => l10n.moocTaskPeerReview,
+          },
+          if (releaseAt != null)
+            kind == MoocDeadlineKind.peerReview
+                ? l10n.moocStartedAt(localizedAgendaDateTime(l10n, releaseAt))
+                : l10n.moocOpenedAt(localizedAgendaDateTime(l10n, releaseAt)),
+          if (submissionDueAt != null)
+            l10n.moocSubmissionDueAt(
+              localizedAgendaDateTime(l10n, submissionDueAt),
+            ),
+        ].join(l10n.listSeparator),
+      ExamAgendaDetails(:final seat, :final mode, :final teacher) => [
+        if (seat.isNotEmpty) l10n.examSeat(seat),
+        if (mode.isNotEmpty) mode,
+        if (teacher.isNotEmpty) l10n.examTeacher(teacher),
+      ].join('\n'),
+    };
+
+String localizedReleaseNotes(
+  AppLocalizations l10n,
+  AppReleaseNotes notes,
+) => switch (notes) {
+  ReleaseMarkdownNotes(:final markdown) => markdown,
+  ReleaseChangeNotes(
+    :final commits,
+    :final totalCommits,
+    :final comparisonUrl,
+  ) =>
+    [
+      for (final commit in commits)
+        '- ${commit.message} ([${commit.shortSha}](${commit.url}))',
+      if (totalCommits > commits.length)
+        '\n${l10n.releaseMoreChanges(totalCommits - commits.length, comparisonUrl.toString())}',
+    ].join('\n'),
+  ReleaseUnchangedNotes() => l10n.releaseNotesUnchanged,
+  ReleaseUnavailableNotes() => l10n.releaseNotesUnavailable,
+};
+
 String localizedCalendarItemTime(AppLocalizations l10n, CalendarItem item) =>
     item.entry == null
     ? localizedCourseTime(l10n, item.course!)
     : localizedAgendaTime(l10n, item.entry!);
+
+String localizedCalendarItemTitle(AppLocalizations l10n, CalendarItem item) =>
+    item.entry == null
+    ? item.course!.name
+    : localizedAgendaTitle(l10n, item.entry!);
 
 String localizedAgendaClock(AppLocalizations l10n, AgendaEntry entry) =>
     entry.allDay ? l10n.allDay : clockText(entry.startsAt);
@@ -270,29 +365,12 @@ String localizedWencuiFeatureTitle(
   return l10n.wencuiFeatureLocation(l10n.currentFloor(feature.floor), label);
 }
 
-String? localizedKnownError(AppLocalizations l10n, String? message) =>
-    switch (message) {
-      '已取消' => l10n.cancelled,
-      '已同步' => l10n.synced,
-      '同步未完成，请重试' => l10n.syncNotFinished,
-      '同步失败，请重试' => l10n.syncFailed,
-      '需要登录学校账号' => l10n.schoolLoginRequired,
-      '未连接' => l10n.accountUnverified,
-      '已登录' => l10n.accountSignedIn,
-      '未登录' => l10n.accountSignedOut,
-      '需要重新登录' => l10n.accountExpired,
-      '需要短信验证' => l10n.accountSmsRequired,
-      '需要图形验证' => l10n.accountImageRequired,
-      '暂无可用课表' => l10n.noScheduleAvailable,
-      '未能保存大物实验 DDL' => l10n.physicsLabSaveFailed,
-      '未能保存同步结果' => l10n.syncResultSaveFailed,
-      '未能保存同步结果，请稍后重试。' => l10n.moocSaveResultFailed,
-      'MOOC 正在处理请求，请稍后重试。' => l10n.moocRequestBusy,
-      '中国大学MOOC 登录已失效，请重新登录。' => l10n.moocLoginExpired,
-      '没有读取到中国大学MOOC 会话，请先完成登录。' => l10n.moocNoSession,
-      '无法读取 MOOC 登录信息，请重新登录。' => l10n.moocReadAccountFailed,
-      '无法读取 MOOC 账号信息，请刷新登录页。' => l10n.moocAccountReadFailed,
-      '登录会话尚未就绪，请稍后重试。' => l10n.moocSessionNotReady,
-      '已取消连接' => l10n.moocConnectionCancelled,
-      _ => null,
+String localizedMoocFailure(AppLocalizations l10n, MoocFailure failure) =>
+    switch (failure.issue) {
+      MoocIssue.loginExpired => l10n.moocLoginExpired,
+      MoocIssue.noSession => l10n.moocNoSession,
+      MoocIssue.readAccountFailed => l10n.moocReadAccountFailed,
+      MoocIssue.requestBusy => l10n.moocRequestBusy,
+      MoocIssue.saveResultFailed => l10n.moocSaveResultFailed,
+      null => failure.message ?? failure.toString(),
     };

@@ -214,10 +214,11 @@ class _MoocLoginState extends State<_MoocLogin> {
         AppDiagnostics.instance.error('读取 MOOC 网页登录', error, stack);
       }
       if (mounted) {
-        final raw =
-            widget.controller.error ?? context.l10n.moocLoginStateReadFailed;
+        final failure = widget.controller.error;
         setState(
-          () => _message = localizedKnownError(context.l10n, raw) ?? raw,
+          () => _message = failure == null
+              ? l10n.moocLoginStateReadFailed
+              : localizedMoocFailure(l10n, failure),
         );
       }
     } finally {

@@ -5,17 +5,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/diagnostics.dart';
 import '../core/json.dart';
-import '../l10n/app_localizations.dart';
 import 'release.dart';
 
 /// Keeps update results across launches and prompts only for unseen stable releases.
 class UpdateRepository {
-  UpdateRepository(this._preferences, {required this.l10n});
+  UpdateRepository(this._preferences);
 
   static const _cacheKey = 'updates.cache';
   static const _maxAge = Duration(days: 1);
   final SharedPreferencesAsync _preferences;
-  final AppLocalizations l10n;
 
   Future<List<AppRelease>> check(
     String installed, {
@@ -56,8 +54,7 @@ class UpdateRepository {
       if (data['installed'] != installed ||
           jsonStringFieldOrNull(data, 'builtAt') !=
               builtAt?.toIso8601String() ||
-          data['abi'] != Abi.current().toString() ||
-          data['locale'] != l10n.localeName) {
+          data['abi'] != Abi.current().toString()) {
         return null;
       }
       final checkedAt = _cacheTime(jsonIntField(data, 'checkedAt'));
@@ -74,11 +71,7 @@ class UpdateRepository {
   }
 
   Future<List<AppRelease>> _refresh(String installed, DateTime? builtAt) async {
-    final available = await availableAppReleases(
-      installed,
-      builtAt: builtAt,
-      l10n: l10n,
-    );
+    final available = await availableAppReleases(installed, builtAt: builtAt);
     try {
       await _preferences.setString(
         _cacheKey,
@@ -86,7 +79,6 @@ class UpdateRepository {
           'installed': installed,
           'builtAt': builtAt?.toIso8601String(),
           'abi': Abi.current().toString(),
-          'locale': l10n.localeName,
           'checkedAt': DateTime.now().millisecondsSinceEpoch,
           'releases': available.map((release) => release.toJson()).toList(),
         }),

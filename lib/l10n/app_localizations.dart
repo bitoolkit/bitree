@@ -158,6 +158,84 @@ abstract class AppLocalizations {
   /// **'Appearance'**
   String get appearance;
 
+  /// No description provided for @projectDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'A handy little companion for BIT students.'**
+  String get projectDescription;
+
+  /// No description provided for @aboutIconSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'BITree icon'**
+  String get aboutIconSemantics;
+
+  /// No description provided for @aboutLicenseSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Made by BIToolkit with ♥️. Released under the Unlicense.'**
+  String get aboutLicenseSummary;
+
+  /// No description provided for @developerModeEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Developer mode enabled'**
+  String get developerModeEnabled;
+
+  /// No description provided for @widgetUsesSystemPalette.
+  ///
+  /// In en, this message translates to:
+  /// **'Use system palette for widget'**
+  String get widgetUsesSystemPalette;
+
+  /// No description provided for @globalSystemPaletteExperimental.
+  ///
+  /// In en, this message translates to:
+  /// **'Use system palette throughout app (experimental)'**
+  String get globalSystemPaletteExperimental;
+
+  /// No description provided for @importPalette.
+  ///
+  /// In en, this message translates to:
+  /// **'Import palette'**
+  String get importPalette;
+
+  /// No description provided for @paletteImported.
+  ///
+  /// In en, this message translates to:
+  /// **'Palette imported and applied.'**
+  String get paletteImported;
+
+  /// No description provided for @defaultPalette.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get defaultPalette;
+
+  /// No description provided for @lightModePalette.
+  ///
+  /// In en, this message translates to:
+  /// **'Light mode palette'**
+  String get lightModePalette;
+
+  /// No description provided for @darkModePalette.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark mode palette'**
+  String get darkModePalette;
+
+  /// No description provided for @deletePalette.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {name}'**
+  String deletePalette(String name);
+
+  /// No description provided for @github.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub'**
+  String get github;
+
   /// No description provided for @language.
   ///
   /// In en, this message translates to:
@@ -781,12 +859,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Licenses'**
   String get settingsLicenses;
-
-  /// No description provided for @aboutOpenBitoolkitFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Could not open BIToolkit'**
-  String get aboutOpenBitoolkitFailed;
 
   /// No description provided for @aboutOpenGitHubFailed.
   ///
@@ -1758,6 +1830,18 @@ abstract class AppLocalizations {
   /// **'Exam'**
   String get agendaKindExam;
 
+  /// No description provided for @examSeat.
+  ///
+  /// In en, this message translates to:
+  /// **'Seat: {seat}'**
+  String examSeat(String seat);
+
+  /// No description provided for @examTeacher.
+  ///
+  /// In en, this message translates to:
+  /// **'Instructor: {teacher}'**
+  String examTeacher(String teacher);
+
   /// No description provided for @timeRange.
   ///
   /// In en, this message translates to:
@@ -2369,6 +2453,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not save the sync result. Try again shortly.'**
   String get moocSaveResultFailed;
+
+  /// No description provided for @moocCourseTypeMooc.
+  ///
+  /// In en, this message translates to:
+  /// **'MOOC'**
+  String get moocCourseTypeMooc;
+
+  /// No description provided for @moocCourseTypeSpoc.
+  ///
+  /// In en, this message translates to:
+  /// **'SPOC'**
+  String get moocCourseTypeSpoc;
+
+  /// No description provided for @moocTaskHomework.
+  ///
+  /// In en, this message translates to:
+  /// **'Homework'**
+  String get moocTaskHomework;
+
+  /// No description provided for @moocTaskQuiz.
+  ///
+  /// In en, this message translates to:
+  /// **'Quiz'**
+  String get moocTaskQuiz;
+
+  /// No description provided for @moocTaskExam.
+  ///
+  /// In en, this message translates to:
+  /// **'Exam'**
+  String get moocTaskExam;
+
+  /// No description provided for @moocTaskPeerReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Peer review'**
+  String get moocTaskPeerReview;
+
+  /// No description provided for @moocPeerReviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Peer review: {title}'**
+  String moocPeerReviewTitle(String title);
+
+  /// No description provided for @moocOpenedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Opened: {time}'**
+  String moocOpenedAt(String time);
+
+  /// No description provided for @moocStartedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts: {time}'**
+  String moocStartedAt(String time);
+
+  /// No description provided for @moocSubmissionDueAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Submission due: {time}'**
+  String moocSubmissionDueAt(String time);
 
   /// No description provided for @schoolLogin.
   ///

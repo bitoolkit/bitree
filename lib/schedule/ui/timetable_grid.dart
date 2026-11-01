@@ -10,10 +10,10 @@ import '../../app/controller.dart';
 import '../../app/ui/add_menu.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/design.dart';
-import '../../ui/theme.dart';
 import '../layout.dart';
-import '../model.dart';
+import '../section_times.dart';
 import '../selection.dart';
+import 'course_colors.dart';
 import 'current_time_indicator.dart';
 
 class TimetableGrid extends StatefulWidget {

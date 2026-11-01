@@ -10,6 +10,7 @@ import '../../ui/external_link.dart';
 import '../../ui/sheet_layout.dart';
 import '../controller.dart';
 import '../credentials.dart';
+import '../errors.dart';
 import 'login.dart';
 
 Future<bool> showMoocAccount(
@@ -228,10 +229,12 @@ class _CookieEditorState extends State<_CookieEditor> {
       }
     } on Exception catch (error) {
       if (mounted) {
-        final raw = error is FormatException
-            ? error.message
-            : widget.controller.error ?? errorMessage(error);
-        setState(() => _error = localizedKnownError(context.l10n, raw) ?? raw);
+        final failure = error is MoocFailure ? error : widget.controller.error;
+        setState(
+          () => _error = failure == null
+              ? errorMessage(error)
+              : localizedMoocFailure(context.l10n, failure),
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);

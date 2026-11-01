@@ -1,4 +1,5 @@
 import 'package:bitree/app/controller.dart';
+import 'package:bitree/app/settings_controller.dart';
 import 'package:bitree/app/ui/app_screen.dart';
 import 'package:bitree/l10n/app_localizations.dart';
 import 'package:bitree/ui/theme.dart';
@@ -8,10 +9,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'support/test_app.dart';
 
 Widget _app(AppController controller) => ListenableBuilder(
-  listenable: controller,
+  listenable: Listenable.merge([controller, controller.settings]),
   builder: (context, _) => MaterialApp(
     theme: bitreeTheme(Brightness.light),
-    locale: controller.language.locale,
+    locale: controller.settings.language.locale,
     supportedLocales: AppLocalizations.supportedLocales,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     home: AppScreen(controller: controller),
@@ -29,7 +30,7 @@ void main() {
   testWidgets('Language selection updates the UI and persists', (tester) async {
     final preferences = MemoryPreferences();
     final controller = TestAppController(preferences: preferences);
-    await controller.setLanguage(AppLanguage.chinese);
+    await controller.settings.setLanguage(AppLanguage.chinese);
     await tester.pumpWidget(_app(controller));
 
     expect(_navigationLabels(tester), ['首页', '日程', '工具', '设置']);
@@ -60,6 +61,6 @@ void main() {
 
     await controller.initialize();
 
-    expect(controller.language, AppLanguage.english);
+    expect(controller.settings.language, AppLanguage.english);
   });
 }

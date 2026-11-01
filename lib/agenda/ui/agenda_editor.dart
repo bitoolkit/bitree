@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
-import '../../schedule/model.dart';
 import '../../schedule/selection.dart';
 import '../../ui/dialog_layout.dart';
 import '../../ui/editor_sheet.dart';
@@ -22,9 +22,15 @@ Future<void> editAgenda(
   String? term,
 }) => showAppSheet<void>(
   context: context,
-  builder: (_) => _AgendaEditor(
+  builder: (sheetContext) => _AgendaEditor(
     controller: controller,
     entry: entry,
+    entryTitle: entry == null
+        ? null
+        : localizedAgendaTitle(sheetContext.l10n, entry),
+    entryNotes: entry == null
+        ? null
+        : localizedAgendaNotes(sheetContext.l10n, entry),
     kind: entry?.kind ?? kind,
     startsAt: selection?.startsAt ?? date ?? campusNow(),
     endsAt: selection?.endsAt,
@@ -38,12 +44,16 @@ class _AgendaEditor extends StatefulWidget {
     required this.kind,
     required this.startsAt,
     this.entry,
+    this.entryTitle,
+    this.entryNotes,
     this.endsAt,
     this.term,
   });
 
   final AppController controller;
   final AgendaEntry? entry;
+  final String? entryTitle;
+  final String? entryNotes;
   final AgendaKind kind;
   final DateTime startsAt;
   final DateTime? endsAt;
@@ -55,9 +65,9 @@ class _AgendaEditor extends StatefulWidget {
 
 class _AgendaEditorState extends State<_AgendaEditor> {
   final _form = GlobalKey<FormState>();
-  late final _title = TextEditingController(text: widget.entry?.title);
+  late final _title = TextEditingController(text: widget.entryTitle);
   late final _location = TextEditingController(text: widget.entry?.location);
-  late final _notes = TextEditingController(text: widget.entry?.notes);
+  late final _notes = TextEditingController(text: widget.entryNotes);
   late AgendaKind _kind = widget.kind;
   late DateTime _start = widget.entry?.startsAt ?? widget.startsAt;
   late DateTime _end =
@@ -162,6 +172,9 @@ class _AgendaEditorState extends State<_AgendaEditor> {
         source: widget.entry?.source,
         course: widget.entry?.course ?? '',
         url: widget.entry?.url,
+        // Editing turns a generated record into a user-authored snapshot. Its
+        // localized presentation must not keep overriding the edited values.
+        details: null,
       ),
     );
     if (!mounted) return;

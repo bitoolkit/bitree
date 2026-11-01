@@ -39,6 +39,9 @@ Future<({String term, List<AgendaEntry> exams})> fetchSchoolExams(
     final start = at(times[0]);
     final subject = jsonStringField(row, 'KCM');
     final courseCode = jsonStringField(row, 'KCH');
+    final seat = jsonStringFieldOrNull(row, 'ZWH') ?? '';
+    final mode = jsonStringFieldOrNull(row, 'KSMC') ?? '';
+    final teacher = jsonStringFieldOrNull(row, 'ZJJSXM') ?? '';
     return AgendaEntry(
       id: 'exam-$term-$courseCode-$subject-${start.toIso8601String()}',
       title: subject,
@@ -46,14 +49,9 @@ Future<({String term, List<AgendaEntry> exams})> fetchSchoolExams(
       startsAt: start,
       endsAt: at(times[1]),
       location: jsonStringFieldOrNull(row, 'JASMC') ?? '',
-      notes: [
-        if (row['ZWH'] case final String seat when seat.isNotEmpty) '座位号：$seat',
-        if (row['KSMC'] case final String mode when mode.isNotEmpty) mode,
-        if (row['ZJJSXM'] case final String teacher when teacher.isNotEmpty)
-          '教师：$teacher',
-      ].join('\n'),
       term: term,
       local: false,
+      details: ExamAgendaDetails(seat: seat, mode: mode, teacher: teacher),
     );
   }).toList();
   return (term: term, exams: exams);

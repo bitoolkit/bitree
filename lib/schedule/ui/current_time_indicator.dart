@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../model.dart';
+import '../../core/time.dart';
+import '../section_times.dart';
 import '../time_position.dart';
 
 /// One non-interactive line over the grid, with a masked current-day segment.

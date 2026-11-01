@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../schedule/building_palette.dart';
-import '../schedule/model.dart';
+import '../core/platform/system_palette.dart';
 import 'course_palette.dart';
 import 'design.dart';
 import 'system_palette.dart';
@@ -286,41 +285,5 @@ ThemeData bitreeTheme(
       ),
       textStyle: TextStyle(fontSize: 12, color: scheme.onInverseSurface),
     ),
-  );
-}
-
-({Color fill, Color text, Color secondaryText, Color accent, Color elapsedFill})
-courseColors(BuildContext context, Course course) {
-  final palette =
-      matchCampusBuilding(course.room, campus: course.campus) ??
-      unknownBuildingPalette;
-  final theme = Theme.of(context);
-  final dark = theme.brightness == Brightness.dark;
-  final system = theme.extension<SystemPaletteTheme>()?.palette;
-  if (system != null) {
-    final colors = system.courseColors(palette.area, theme.brightness);
-    return (
-      fill: colors.fill,
-      text: colors.text,
-      secondaryText: Color.lerp(colors.fill, colors.text, 0.8)!,
-      accent: colors.accent,
-      elapsedFill: Color.lerp(colors.fill, colors.accent, dark ? 0.16 : 0.32)!,
-    );
-  }
-  final custom = theme.extension<CoursePaletteTheme>()?.palette;
-  final colors =
-      custom?.colorsFor(palette.area) ?? (dark ? palette.dark : palette.light);
-  final accent = Color(colors.accent);
-  // Custom palettes already contain the final mixed block fill.
-  final fill = dark && custom == null
-      ? Color.lerp(Color(colors.fill), accent, 0.24)!
-      : Color(colors.fill);
-  final text = Color(colors.text);
-  return (
-    fill: fill,
-    text: text,
-    secondaryText: Color.lerp(fill, text, 0.8)!,
-    accent: accent,
-    elapsedFill: Color.lerp(fill, accent, dark ? 0.16 : 0.32)!,
   );
 }

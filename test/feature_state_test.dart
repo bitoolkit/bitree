@@ -89,17 +89,20 @@ void main() {
     () async {
       final app = TestAppController(schedule: semester);
       await app.initialize();
-      var notifications = 0;
-      app.addListener(() => notifications++);
+      var appNotifications = 0;
+      var settingsNotifications = 0;
+      app.addListener(() => appNotifications++);
+      app.settings.addListener(() => settingsNotifications++);
       app.timetable.selectWeek(8);
       await app.agenda.save(deadline('one'));
       await app.school.loadAccount();
       expect(app.timetable.week, 8);
       expect(app.agenda.entries.single.id, 'one');
-      expect(notifications, 0);
-      await app.setTheme(ThemeMode.dark);
-      expect(app.themeMode, ThemeMode.dark);
-      expect(notifications, 1);
+      expect(appNotifications, 0);
+      await app.settings.setTheme(ThemeMode.dark);
+      expect(app.settings.themeMode, ThemeMode.dark);
+      expect(appNotifications, 0);
+      expect(settingsNotifications, 1);
     },
   );
 

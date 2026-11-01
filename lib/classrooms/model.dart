@@ -1,13 +1,8 @@
-import '../schedule/model.dart';
+import '../schedule/section_times.dart';
 
 typedef ClassroomPeriod = ({int start, int end});
 
 extension ClassroomPeriodLabels on ClassroomPeriod {
-  String get timeLabel =>
-      '${sectionTimes[start - 1].$1}–${sectionTimes[end - 1].$2}';
-
-  String get sectionLabel => start == end ? '第$start节' : '第$start–$end节';
-
   bool contains(int section) => start <= section && section <= end;
 
   bool includes(ClassroomPeriod other) =>

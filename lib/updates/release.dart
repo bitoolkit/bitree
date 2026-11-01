@@ -6,7 +6,106 @@ import 'package:pub_semver/pub_semver.dart';
 
 import '../core/diagnostics.dart';
 import '../core/json.dart';
-import '../l10n/app_localizations.dart';
+
+sealed class AppReleaseNotes {
+  const AppReleaseNotes();
+
+  factory AppReleaseNotes.fromJson(Object? value) {
+    final json = jsonObject(value, 'notes');
+    return switch (jsonStringField(json, 'type')) {
+      'markdown' => ReleaseMarkdownNotes(jsonStringField(json, 'markdown')),
+      'changes' => ReleaseChangeNotes.fromJson(json),
+      'unchanged' => const ReleaseUnchangedNotes(),
+      'unavailable' => const ReleaseUnavailableNotes(),
+      final type => throw FormatException('notes.type 格式不正确：$type'),
+    };
+  }
+
+  Map<String, Object?> toJson();
+}
+
+final class ReleaseMarkdownNotes extends AppReleaseNotes {
+  const ReleaseMarkdownNotes(this.markdown);
+
+  final String markdown;
+
+  @override
+  Map<String, Object?> toJson() => {'type': 'markdown', 'markdown': markdown};
+}
+
+final class ReleaseChangeNotes extends AppReleaseNotes {
+  ReleaseChangeNotes({
+    required List<ReleaseCommit> commits,
+    required this.totalCommits,
+    required this.comparisonUrl,
+  }) : commits = List.unmodifiable(commits) {
+    if (totalCommits < this.commits.length) {
+      throw const FormatException('更新记录数量不正确');
+    }
+  }
+
+  factory ReleaseChangeNotes.fromJson(Map<String, dynamic> json) =>
+      ReleaseChangeNotes(
+        commits: [
+          for (final commit in jsonListField(json, 'commits'))
+            ReleaseCommit.fromJson(jsonObject(commit, 'commits[]')),
+        ],
+        totalCommits: jsonIntField(json, 'totalCommits'),
+        comparisonUrl: _httpsUri(json['comparisonUrl'], 'comparisonUrl'),
+      );
+
+  final List<ReleaseCommit> commits;
+  final int totalCommits;
+  final Uri comparisonUrl;
+
+  @override
+  Map<String, Object?> toJson() => {
+    'type': 'changes',
+    'commits': [for (final commit in commits) commit.toJson()],
+    'totalCommits': totalCommits,
+    'comparisonUrl': comparisonUrl.toString(),
+  };
+}
+
+final class ReleaseCommit {
+  ReleaseCommit({required this.message, required this.sha, required this.url}) {
+    if (message.trim().isEmpty || sha.length < 7) {
+      throw const FormatException('更新提交格式不正确');
+    }
+  }
+
+  factory ReleaseCommit.fromJson(Map<String, dynamic> json) => ReleaseCommit(
+    message: jsonStringField(json, 'message'),
+    sha: jsonStringField(json, 'sha'),
+    url: _httpsUri(json['url'], 'url'),
+  );
+
+  final String message;
+  final String sha;
+  final Uri url;
+
+  String get shortSha => sha.substring(0, 7);
+
+  Map<String, Object?> toJson() => {
+    'message': message,
+    'sha': sha,
+    'url': url.toString(),
+  };
+}
+
+final class ReleaseUnchangedNotes extends AppReleaseNotes {
+  const ReleaseUnchangedNotes();
+
+  @override
+  Map<String, Object?> toJson() => {'type': 'unchanged'};
+}
+
+final class ReleaseUnavailableNotes extends AppReleaseNotes {
+  const ReleaseUnavailableNotes();
+
+  @override
+  Map<String, Object?> toJson() => {'type': 'unavailable'};
+}
 
 class AppRelease {
   const AppRelease({
@@ -36,7 +135,7 @@ class AppRelease {
       version: version ?? jsonStringField(release, 'tag_name'),
       url: url,
       downloadUrl: _assetDownload(release, suffixes) ?? url,
-      notes: jsonStringFieldOrNull(release, 'body') ?? '',
+      notes: ReleaseMarkdownNotes(jsonStringFieldOrNull(release, 'body') ?? ''),
       isDevelopment: jsonBoolField(release, 'prerelease', fallback: false),
     );
   }
@@ -45,21 +144,21 @@ class AppRelease {
     version: jsonStringField(json, 'version'),
     url: _httpsUri(json['url'], 'url'),
     downloadUrl: _httpsUri(json['downloadUrl'], 'downloadUrl'),
-    notes: jsonStringField(json, 'notes'),
+    notes: AppReleaseNotes.fromJson(json['notes']),
     isDevelopment: jsonBoolField(json, 'isDevelopment'),
   );
 
   final String version;
   final Uri url;
   final Uri downloadUrl;
-  final String notes;
+  final AppReleaseNotes notes;
   final bool isDevelopment;
 
   Map<String, dynamic> toJson() => {
     'version': version,
     'url': url.toString(),
     'downloadUrl': downloadUrl.toString(),
-    'notes': notes,
+    'notes': notes.toJson(),
     'isDevelopment': isDevelopment,
   };
 }
@@ -67,7 +166,6 @@ class AppRelease {
 Future<List<AppRelease>> availableAppReleases(
   String installed, {
   DateTime? builtAt,
-  required AppLocalizations l10n,
 }) async {
   final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
 
@@ -101,7 +199,7 @@ Future<List<AppRelease>> availableAppReleases(
 
     return await Future.wait([
       for (final update in [?stableUpdate, ?developmentUpdate])
-        _withUpdateNotes(client, update, installed, l10n),
+        _withUpdateNotes(client, update, installed),
     ]);
   } finally {
     client.close(force: true);
@@ -183,19 +281,17 @@ Future<AppRelease> _withUpdateNotes(
   HttpClient client,
   AppRelease release,
   String installed,
-  AppLocalizations l10n,
 ) async {
-  String notes;
+  late AppReleaseNotes notes;
   try {
     notes = await _updateNotes(
       client,
       _revision(installed),
       _revision(release.version),
-      l10n,
     );
   } on Exception catch (failure, stack) {
     AppDiagnostics.instance.error('读取 ${release.version} 更新日志', failure, stack);
-    notes = l10n.releaseNotesUnavailable;
+    notes = const ReleaseUnavailableNotes();
   }
   return AppRelease(
     version: release.version,
@@ -206,15 +302,14 @@ Future<AppRelease> _withUpdateNotes(
   );
 }
 
-Future<String> _updateNotes(
+Future<AppReleaseNotes> _updateNotes(
   HttpClient client,
   String base,
   String head,
-  AppLocalizations l10n,
 ) async {
   const previewCount = 6;
   const pageSize = 100;
-  if (base == head) return l10n.releaseNotesUnchanged;
+  if (base == head) return const ReleaseUnchangedNotes();
 
   Future<Map<String, dynamic>> readPage(int page) async {
     final url = Uri.https(
@@ -235,7 +330,7 @@ Future<String> _updateNotes(
   final first = await readPage(1);
   final total = jsonIntField(first, 'total_commits');
   if (total < 0) throw const FormatException('total_commits 格式不正确');
-  if (total == 0) return l10n.releaseNotesUnchanged;
+  if (total == 0) return const ReleaseUnchangedNotes();
 
   var commits = _commits(first);
   if (total > pageSize) {
@@ -249,12 +344,14 @@ Future<String> _updateNotes(
   }
 
   final preview = commits.reversed.take(previewCount).toList();
-  final notes = [
-    for (final commit in preview) _commitNote(commit),
-    if (total > preview.length)
-      '\n${l10n.releaseMoreChanges(total - preview.length, 'https://github.com/bitoolkit/bitree/compare/$base...$head')}',
-  ];
-  return notes.join('\n');
+  return ReleaseChangeNotes(
+    commits: preview.map(_releaseCommit).toList(),
+    totalCommits: total,
+    comparisonUrl: Uri.https(
+      'github.com',
+      '/bitoolkit/bitree/compare/$base...$head',
+    ),
+  );
 }
 
 Future<Object?> _readJson(HttpClient client, Uri url) async {
@@ -327,11 +424,12 @@ List<Map<String, dynamic>> _commits(Map<String, dynamic> comparison) => [
     jsonObject(commit, 'commits[]'),
 ];
 
-String _commitNote(Map<String, dynamic> commit) {
+ReleaseCommit _releaseCommit(Map<String, dynamic> commit) {
   final commitData = jsonObjectField(commit, 'commit');
   final message = jsonStringField(commitData, 'message').split('\n').first;
-  final sha = jsonStringField(commit, 'sha');
-  if (sha.length < 7) throw const FormatException('commits[].sha 格式不正确');
-  final url = _httpsUri(commit['html_url'], 'commits[].html_url');
-  return '- $message ([${sha.substring(0, 7)}]($url))';
+  return ReleaseCommit(
+    message: message,
+    sha: jsonStringField(commit, 'sha'),
+    url: _httpsUri(commit['html_url'], 'commits[].html_url'),
+  );
 }

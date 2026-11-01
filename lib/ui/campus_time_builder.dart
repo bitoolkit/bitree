@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../schedule/model.dart';
+import '../core/time.dart';
 
 /// Refreshes date and time labels while their page is visible.
 class CampusTimeBuilder extends StatefulWidget {

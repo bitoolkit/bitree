@@ -4,13 +4,14 @@ import 'dart:convert';
 import 'package:bitree/agenda/deadline_source.dart';
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/ui/timeline_colors.dart';
+import 'package:bitree/app/settings_controller.dart';
 import 'package:bitree/app/ui/settings_screen.dart';
+import 'package:bitree/core/platform/system_palette.dart';
 import 'package:bitree/main.dart';
 import 'package:bitree/schedule/building_palette.dart';
 import 'package:bitree/schedule/model.dart';
+import 'package:bitree/schedule/ui/course_colors.dart';
 import 'package:bitree/ui/course_palette.dart';
-import 'package:bitree/ui/system_palette.dart';
-import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -19,150 +20,135 @@ import 'support/system_palette.dart';
 import 'support/test_app.dart';
 
 void main() {
-  test(
-    'Platform palettes accept signed Android colours and reject incomplete data',
-    () {
-      final values = systemPaletteValues();
-      final palette = SystemPalette.fromPlatform(values)!;
-      expect(
-        palette.colorScheme(Brightness.light).primary,
-        Color(values['accent1']![8]),
-      );
-      expect(
-        palette.colorScheme(Brightness.dark).primary,
-        Color(values['accent1']![4]),
-      );
-      expect(SystemPalette.fromPlatform(null), isNull);
-      expect(
-        SystemPalette.fromPlatform({...values}..remove('neutral2')),
-        isNull,
-      );
-      expect(
-        SystemPalette.fromPlatform({
-          ...values,
-          'accent1': [1, 2],
-        }),
-        isNull,
-      );
-      expect(
-        SystemPalette.fromPlatform({
-          ...values,
-          'accent1': List.filled(13, 'invalid'),
-        }),
-        isNull,
-      );
-    },
-  );
+  test('Platform palettes accept signed Android colours and reject incomplete data', () {
+    final values = systemPaletteValues();
+    final palette = SystemPalette.fromPlatform(values)!;
+    expect(
+      palette.colorScheme(Brightness.light).primary,
+      Color(values['accent1']![8]),
+    );
+    expect(
+      palette.colorScheme(Brightness.dark).primary,
+      Color(values['accent1']![4]),
+    );
+    expect(SystemPalette.fromPlatform(null), isNull);
+    expect(SystemPalette.fromPlatform({...values}..remove('neutral2')), isNull);
+    expect(
+      SystemPalette.fromPlatform({
+        ...values,
+        'accent1': [1, 2],
+      }),
+      isNull,
+    );
+    expect(
+      SystemPalette.fromPlatform({
+        ...values,
+        'accent1': List.filled(13, 'invalid'),
+      }),
+      isNull,
+    );
+  });
 
-  test(
-    'Global palette defaults off and persists independently of other appearance choices',
-    () async {
-      final preferences = MemoryPreferences();
-      final source = MemorySystemPaletteSource(palette: testSystemPalette());
-      final first = TestAppController(
-        preferences: preferences,
-        systemPaletteSource: source,
-      );
-      await first.initialize();
-      expect(first.globalUseSystemPalette, isFalse);
-      expect(first.systemPalette, isNull);
-      expect(source.reads, 0);
-      await first.setCoursePalette(Brightness.dark, 'mocha');
-      await Future.wait([
-        first.setGlobalUseSystemPalette(true),
-        first.setGlobalUseSystemPalette(false),
-        first.setGlobalUseSystemPalette(true),
-      ]);
-      expect(first.systemPalette, same(source.palette));
-      expect(first.widgetUseSystemPalette, isFalse);
+  test('Global palette defaults off and persists independently of other appearance choices', () async {
+    final preferences = MemoryPreferences();
+    final source = MemorySystemPaletteSource(palette: testSystemPalette());
+    final first = TestAppController(
+      preferences: preferences,
+      systemPaletteSource: source,
+    );
+    await first.initialize();
+    expect(first.settings.globalUseSystemPalette, isFalse);
+    expect(first.settings.systemPalette, isNull);
+    expect(source.reads, 0);
+    await first.settings.setCoursePalette(Brightness.dark, 'mocha');
+    await Future.wait([
+      first.settings.setGlobalUseSystemPalette(true),
+      first.settings.setGlobalUseSystemPalette(false),
+      first.settings.setGlobalUseSystemPalette(true),
+    ]);
+    expect(first.settings.systemPalette, same(source.palette));
+    expect(first.settings.widgetUseSystemPalette, isFalse);
 
-      final second = TestAppController(
-        preferences: preferences,
-        systemPaletteSource: MemorySystemPaletteSource(palette: source.palette),
-      );
-      await second.initialize();
-      expect(second.globalUseSystemPalette, isTrue);
-      expect(second.systemPalette, same(source.palette));
-      expect(second.paletteIdFor(Brightness.dark), 'mocha');
-      expect(second.developerMode, isFalse);
-      expect(second.widgetUseSystemPalette, isFalse);
-      await second.setGlobalUseSystemPalette(false);
-      expect(second.systemPalette, isNull);
-      expect(second.paletteIdFor(Brightness.dark), 'mocha');
+    final second = TestAppController(
+      preferences: preferences,
+      systemPaletteSource: MemorySystemPaletteSource(palette: source.palette),
+    );
+    await second.initialize();
+    expect(second.settings.globalUseSystemPalette, isTrue);
+    expect(second.settings.systemPalette, same(source.palette));
+    expect(second.settings.paletteIdFor(Brightness.dark), 'mocha');
+    expect(second.settings.developerMode, isFalse);
+    expect(second.settings.widgetUseSystemPalette, isFalse);
+    await second.settings.setGlobalUseSystemPalette(false);
+    expect(second.settings.systemPalette, isNull);
+    expect(second.settings.paletteIdFor(Brightness.dark), 'mocha');
 
-      final third = TestAppController(preferences: preferences);
-      await third.initialize();
-      expect(third.globalUseSystemPalette, isFalse);
-    },
-  );
+    final third = TestAppController(preferences: preferences);
+    await third.initialize();
+    expect(third.settings.globalUseSystemPalette, isFalse);
+  });
 
-  test(
-    'Late platform reads cannot replace a newer palette or reactivate a disabled palette',
-    () async {
-      final requests = <Completer<SystemPalette?>>[];
-      final source = MemorySystemPaletteSource(
-        loader: () {
-          final request = Completer<SystemPalette?>();
-          requests.add(request);
-          return request.future;
-        },
-      );
-      final controller = TestAppController(systemPaletteSource: source);
-      await controller.initialize();
-      final first = controller.setGlobalUseSystemPalette(true);
-      await controller.setGlobalUseSystemPalette(false);
-      final second = controller.setGlobalUseSystemPalette(true);
-      final latest = testSystemPalette(hue: 250);
-      requests[1].complete(latest);
-      await second;
-      requests[0].complete(testSystemPalette());
-      await first;
-      expect(controller.systemPalette, same(latest));
-      final pending = controller.setGlobalUseSystemPalette(true);
-      await controller.setGlobalUseSystemPalette(false);
-      requests.last.complete(testSystemPalette());
-      await pending;
-      expect(controller.systemPalette, isNull);
-    },
-  );
+  test('Late platform reads cannot replace a newer palette or reactivate a disabled palette', () async {
+    final requests = <Completer<SystemPalette?>>[];
+    final source = MemorySystemPaletteSource(
+      loader: () {
+        final request = Completer<SystemPalette?>();
+        requests.add(request);
+        return request.future;
+      },
+    );
+    final controller = TestAppController(systemPaletteSource: source);
+    await controller.initialize();
+    final first = controller.settings.setGlobalUseSystemPalette(true);
+    await controller.settings.setGlobalUseSystemPalette(false);
+    final second = controller.settings.setGlobalUseSystemPalette(true);
+    final latest = testSystemPalette(hue: 250);
+    requests[1].complete(latest);
+    await second;
+    requests[0].complete(testSystemPalette());
+    await first;
+    expect(controller.settings.systemPalette, same(latest));
+    final pending = controller.settings.setGlobalUseSystemPalette(true);
+    await controller.settings.setGlobalUseSystemPalette(false);
+    requests.last.complete(testSystemPalette());
+    await pending;
+    expect(controller.settings.systemPalette, isNull);
+  });
 
-  test(
-    'System changes refresh colours only while enabled; unsupported systems use the app theme',
-    () async {
-      final source = MemorySystemPaletteSource();
-      final controller = TestAppController(systemPaletteSource: source);
-      await controller.initialize();
-      await controller.setGlobalUseSystemPalette(true);
-      expect(controller.globalUseSystemPalette, isTrue);
-      expect(controller.systemPalette, isNull);
-      final changed = Completer<void>();
-      controller.addListener(() {
-        if (controller.systemPalette != null && !changed.isCompleted) {
-          changed.complete();
-        }
-      });
-      source.palette = testSystemPalette();
-      source.onChanged!();
-      await changed.future;
-      expect(controller.systemPalette, same(source.palette));
-      await controller.setGlobalUseSystemPalette(false);
-      final reads = source.reads;
-      source.onChanged!();
-      expect(source.reads, reads);
-    },
-  );
+  test('System changes refresh colours only while enabled; unsupported systems use the app theme', () async {
+    final source = MemorySystemPaletteSource();
+    final controller = TestAppController(systemPaletteSource: source);
+    await controller.initialize();
+    await controller.settings.setGlobalUseSystemPalette(true);
+    expect(controller.settings.globalUseSystemPalette, isTrue);
+    expect(controller.settings.systemPalette, isNull);
+    final changed = Completer<void>();
+    controller.settings.addListener(() {
+      if (controller.settings.systemPalette != null && !changed.isCompleted) {
+        changed.complete();
+      }
+    });
+    source.palette = testSystemPalette();
+    source.onChanged!();
+    await changed.future;
+    expect(controller.settings.systemPalette, same(source.palette));
+    await controller.settings.setGlobalUseSystemPalette(false);
+    final reads = source.reads;
+    source.onChanged!();
+    expect(source.reads, reads);
+  });
 
   test('A failed palette refresh keeps the last working theme', () async {
     final source = MemorySystemPaletteSource(palette: testSystemPalette());
     final controller = TestAppController(systemPaletteSource: source);
     await controller.initialize();
-    await controller.setGlobalUseSystemPalette(true);
-    final last = controller.systemPalette;
+    await controller.settings.setGlobalUseSystemPalette(true);
+    final last = controller.settings.systemPalette;
     source.loader = () async => throw StateError('Platform unavailable');
-    await controller.setGlobalUseSystemPalette(true);
-    expect(controller.systemPalette, same(last));
-    await controller.setGlobalUseSystemPalette(false);
-    expect(controller.systemPalette, isNull);
+    await controller.settings.setGlobalUseSystemPalette(true);
+    expect(controller.settings.systemPalette, same(last));
+    await controller.settings.setGlobalUseSystemPalette(false);
+    expect(controller.settings.systemPalette, isNull);
   });
 
   for (final brightness in Brightness.values) {
@@ -173,14 +159,21 @@ void main() {
         final controller = TestAppController(
           systemPaletteSource: MemorySystemPaletteSource(palette: palette),
         );
-        await controller.setTheme(
+        await controller.initialize();
+        await controller.settings.setLanguage(AppLanguage.chinese);
+        await controller.settings.setTheme(
           brightness == Brightness.dark ? ThemeMode.dark : ThemeMode.light,
         );
-        await controller.setCoursePalette(Brightness.dark, 'mocha');
-        await controller.importCoursePalette(
+        await controller.settings.setCoursePalette(Brightness.dark, 'mocha');
+        await controller.settings.importCoursePalette(
           jsonEncode(lightTestPalette().toJson()),
         );
-        await tester.pumpWidget(BitreeApp(controller: controller));
+        await tester.pumpWidget(
+          BitreeApp(
+            controller: controller,
+            updateChecker: (context, {silent = false}) async {},
+          ),
+        );
         await tester.tap(
           find.descendant(
             of: find.byType(NavigationBar),
@@ -228,7 +221,7 @@ void main() {
           for (final entry in entries)
             agendaTimelineColors(context(), entry, now),
         ];
-        await controller.setGlobalUseSystemPalette(true);
+        await controller.settings.setGlobalUseSystemPalette(true);
         await tester.pumpAndSettle();
         final theme = Theme.of(context());
         expect(theme.colorScheme, palette.colorScheme(brightness));
@@ -239,7 +232,7 @@ void main() {
         );
         expect(
           theme.extension<CoursePaletteTheme>()!.palette,
-          controller.paletteFor(brightness),
+          controller.settings.paletteFor(brightness),
         );
         final colors = courseColors(context(), course);
         expect(
@@ -270,8 +263,8 @@ void main() {
           ).fill.a,
           0.5,
         );
-        expect(controller.widgetUseSystemPalette, isFalse);
-        await controller.setGlobalUseSystemPalette(false);
+        expect(controller.settings.widgetUseSystemPalette, isFalse);
+        await controller.settings.setGlobalUseSystemPalette(false);
         await tester.pumpAndSettle();
         expect(Theme.of(context()).colorScheme, originalTheme.colorScheme);
         expect(courseColors(context(), course), originalCourse);

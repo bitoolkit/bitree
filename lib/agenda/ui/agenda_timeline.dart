@@ -6,9 +6,9 @@ import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
 
 import '../../app/controller.dart';
+import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
-import '../../schedule/model.dart';
 import '../model.dart';
 import '../timeline_layout.dart';
 import 'agenda_detail.dart';

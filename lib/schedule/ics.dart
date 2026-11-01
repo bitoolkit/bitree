@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../l10n/app_localizations.dart';
 import '../l10n/formats.dart';
 import 'model.dart';
+import 'section_times.dart';
 
 String scheduleToIcs(SemesterSchedule schedule, AppLocalizations l10n) {
   final stamp = _timestamp(DateTime.now());
@@ -12,7 +13,7 @@ String scheduleToIcs(SemesterSchedule schedule, AppLocalizations l10n) {
     'VERSION:2.0',
     'PRODID:-//BITree//Schedule//$productLocale',
     'CALSCALE:GREGORIAN',
-    'X-WR-CALNAME:${_escapeText(l10n.icsCalendarName(localizedTerm(l10n, schedule)))}',
+    'X-WR-CALNAME:${_escapeText(l10n.icsCalendarName(localizedTerm(l10n, schedule.term)))}',
   ];
 
   for (final course in schedule.courses.where((course) => course.isScheduled)) {

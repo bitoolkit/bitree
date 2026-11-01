@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 
 import '../core/async/cancelable_request.dart';
+import '../core/async/serial_queue.dart';
 import '../core/diagnostics.dart';
+import '../core/time.dart';
 import 'model.dart';
 import 'store.dart';
 
@@ -11,7 +13,7 @@ class TimetableController extends ChangeNotifier {
 
   final ScheduleStore _store;
   final _schedules = <String, SemesterSchedule>{};
-  Future<void> _operations = Future<void>.value();
+  final _operations = SerialQueue();
   String? _selectedTerm;
   List<String> _terms = const [];
   int _week = 1;
@@ -27,7 +29,7 @@ class TimetableController extends ChangeNotifier {
   Iterable<SemesterSchedule> get schedules => _schedules.values;
   List<int> get weeks => schedule?.weeks ?? const [];
 
-  Future<void> load() => _serialize(() async {
+  Future<void> load() => _operations.run(() async {
     try {
       final library = await _store.read();
       _schedules
@@ -64,7 +66,7 @@ class TimetableController extends ChangeNotifier {
     SemesterSchedule incoming,
     List<String> availableTerms, {
     void Function()? checkActive,
-  }) => _serialize(() {
+  }) => _operations.run(() {
     final next = incoming.mergeLocalChanges(_schedules[incoming.term]);
     return _commit(
       next,
@@ -78,7 +80,7 @@ class TimetableController extends ChangeNotifier {
     Course course, {
     Course? replacing,
     SemesterSchedule? semester,
-  }) => _serialize(() async {
+  }) => _operations.run(() async {
     final current = semester == null
         ? schedule
         : _schedules[semester.term] ?? semester;
@@ -95,7 +97,7 @@ class TimetableController extends ChangeNotifier {
     );
   });
 
-  Future<bool> deleteCourse(Course course) => _serialize(() async {
+  Future<bool> deleteCourse(Course course) => _operations.run(() async {
     final current = schedule;
     if (current == null) return false;
     return _commit(
@@ -106,7 +108,7 @@ class TimetableController extends ChangeNotifier {
   });
 
   Future<bool> setWeekRange({required int first, required int last}) =>
-      _serialize(() async {
+      _operations.run(() async {
         final current = schedule;
         if (current == null) return false;
         return _commit(current.copyWith(firstWeek: first, lastWeek: last));
@@ -119,7 +121,7 @@ class TimetableController extends ChangeNotifier {
     final saved = _schedules[term];
     return saved == null
         ? importTerm(term)
-        : _serialize(() async {
+        : _operations.run(() async {
             final current = _schedules[term];
             return current != null && await _commit(current);
           });
@@ -167,7 +169,7 @@ class TimetableController extends ChangeNotifier {
     }
   }
 
-  Future<bool> clear() => _serialize(() async {
+  Future<bool> clear() => _operations.run(() async {
     _busy = true;
     _notify();
     try {
@@ -185,15 +187,6 @@ class TimetableController extends ChangeNotifier {
       _notify();
     }
   });
-
-  Future<T> _serialize<T>(Future<T> Function() operation) {
-    final result = _operations.then((_) => operation());
-    _operations = result.then<void>(
-      (_) {},
-      onError: (Object _, StackTrace _) {},
-    );
-    return result;
-  }
 
   void _notify() {
     if (!_disposed) notifyListeners();

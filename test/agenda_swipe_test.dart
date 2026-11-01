@@ -38,7 +38,7 @@ void main() {
       ],
     );
     await app.initialize();
-    await app.setAgendaViewMode(AgendaViewMode.list);
+    await app.settings.setAgendaViewMode(AgendaViewMode.list);
     await tester.pumpWidget(
       MaterialApp(
         theme: bitreeTheme(Brightness.light),

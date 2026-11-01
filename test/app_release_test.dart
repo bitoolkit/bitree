@@ -35,7 +35,7 @@ void main() {
       );
       expect(release.url.path, '/bitoolkit/bitree/releases/tag/v0.2.0');
       expect(release.version, 'v0.2.0');
-      expect(release.notes, '更新说明');
+      expect((release.notes as ReleaseMarkdownNotes).markdown, '更新说明');
     });
   }
 
@@ -131,7 +131,7 @@ void main() {
     final release = AppRelease.fromGitHub(data, abi: Abi.androidArm64);
 
     expect(release.downloadUrl, release.url);
-    expect(release.notes, isEmpty);
+    expect((release.notes as ReleaseMarkdownNotes).markdown, isEmpty);
     expect(release.isDevelopment, isFalse);
   });
 

@@ -39,7 +39,11 @@ List<MoocTask> readMoocTasks(
   }
   final entries = <String, MoocTask>{};
 
-  void add(Map<String, dynamic> activity, String kind, {bool exam = false}) {
+  void add(
+    Map<String, dynamic> activity,
+    MoocDeadlineKind kind, {
+    bool exam = false,
+  }) {
     final test = moocMap(activity['test']) ?? activity;
     if (activity['test'] != null && moocMap(activity['test']) == null) {
       throw const FormatException('课程任务格式不正确。');
@@ -51,14 +55,10 @@ List<MoocTask> readMoocTasks(
       throw const FormatException('课程任务缺少标题。');
     }
     final name = rawName.trim();
-    final key = 'mooc:$memberId:${course.termId}:$kind:$id';
+    final key =
+        'mooc:$memberId:${course.termId}:${_persistentKindToken(kind)}:$id';
     final deadline = _time(test['deadline']);
     final release = _time(test['releaseTime'] ?? activity['releaseTime']);
-    final notes = [
-      course.spoc ? 'SPOC' : 'MOOC',
-      kind,
-      if (release != null) '开放：${_dateTime(release)}',
-    ];
     if (deadline != null) {
       entries[key] = MoocTask._(
         AgendaEntry(
@@ -71,7 +71,11 @@ List<MoocTask> readMoocTasks(
           url: course.url,
           local: false,
           done: _submitted(test, exam: exam),
-          notes: notes.join(' · '),
+          details: MoocDeadlineDetails(
+            kind: kind,
+            spoc: course.spoc,
+            releaseAt: release,
+          ),
         ),
       );
     }
@@ -89,19 +93,19 @@ List<MoocTask> readMoocTasks(
       entries['$key:review'] = MoocTask._(
         AgendaEntry(
           id: '$key:review',
-          title: '互评：$name',
+          title: name,
           kind: AgendaKind.deadline,
           startsAt: end,
           course: course.name,
           source: DeadlineSource.mooc,
           url: course.url,
           local: false,
-          notes: [
-            course.spoc ? 'SPOC' : 'MOOC',
-            '互评',
-            if (start != null) '开始：${_dateTime(start)}',
-            if (deadline != null) '提交截止：${_dateTime(deadline)}',
-          ].join(' · '),
+          details: MoocDeadlineDetails(
+            kind: MoocDeadlineKind.peerReview,
+            spoc: course.spoc,
+            releaseAt: start,
+            submissionDueAt: deadline,
+          ),
         ),
         reviewTestId: reviewTestId,
       );
@@ -110,14 +114,17 @@ List<MoocTask> readMoocTasks(
 
   void exam(Object? value) {
     final record = moocMap(value);
-    if (record != null) add(record, '考试', exam: true);
+    if (record != null) add(record, MoocDeadlineKind.exam, exam: true);
   }
 
   for (final value in moocList(term['chapters'])) {
     final chapter = moocMap(value);
     if (chapter == null) throw const FormatException('课程章节格式不正确。');
     if (chapter['published'] == false || chapter['visible'] == 0) continue;
-    for (final (field, kind) in [('homeworks', '作业'), ('quizs', '测验')]) {
+    for (final (field, kind) in [
+      ('homeworks', MoocDeadlineKind.homework),
+      ('quizs', MoocDeadlineKind.quiz),
+    ]) {
       for (final value in moocList(chapter[field], optional: true)) {
         final activity = moocMap(value);
         if (activity == null) throw const FormatException('课程任务格式不正确。');
@@ -131,9 +138,9 @@ List<MoocTask> readMoocTasks(
       if (lesson['visible'] == 0) continue;
       switch (lesson['contentType']) {
         case 2:
-          add(lesson, '测验');
+          add(lesson, MoocDeadlineKind.quiz);
         case 3:
-          add(lesson, '作业');
+          add(lesson, MoocDeadlineKind.homework);
         case 4:
           exam(lesson['exam']);
       }
@@ -164,8 +171,13 @@ bool _submitted(Map<String, dynamic> test, {bool exam = false}) {
   return components.isNotEmpty && components.every(submitted);
 }
 
-String _dateTime(DateTime date) =>
-    '${date.year}年${date.month}月${date.day}日 ${clockText(date)}';
+String _persistentKindToken(MoocDeadlineKind kind) => switch (kind) {
+  // Keep the original key tokens so saved entries update instead of duplicating.
+  MoocDeadlineKind.homework => '作业',
+  MoocDeadlineKind.quiz => '测验',
+  MoocDeadlineKind.exam => '考试',
+  MoocDeadlineKind.peerReview => throw ArgumentError('互评任务使用原任务编号'),
+};
 
 DateTime? _time(Object? raw) {
   if (raw == null || raw == 0 || raw == -1) return null;

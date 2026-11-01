@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../../agenda/deadline_clear_scope.dart';
@@ -16,14 +14,12 @@ import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_menu_trigger.dart';
 import '../../ui/app_notice.dart';
 import '../../ui/app_page.dart';
-import '../../ui/external_link.dart';
 import '../../ui/section_label.dart';
-import '../../updates/version.dart';
 import '../controller.dart';
+import '../settings_controller.dart';
+import 'about_dialog.dart';
 import 'appearance_screen.dart';
 import 'logs_screen.dart';
-
-const _projectDescription = '面向北京理工大学的妙妙小工具';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({
@@ -68,179 +64,11 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
-  Future<void> _showAbout(BuildContext context) async {
-    final l10n = context.l10n;
-    final version = await appVersion();
-    final builtAt = appBuildTime?.toLocal();
-    if (!context.mounted) return;
-
-    var iconTaps = 0;
-    Timer? resetTaps;
-
-    await showAppDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        final theme = Theme.of(dialogContext);
-        final localizations = MaterialLocalizations.of(dialogContext);
-        var versionLabel = version;
-        if (builtAt != null) {
-          final date = localizations.formatCompactDate(builtAt);
-          final time = localizations.formatTimeOfDay(
-            TimeOfDay.fromDateTime(builtAt),
-            alwaysUse24HourFormat: true,
-          );
-          versionLabel += '\n${l10n.settingsBuiltAt(date, time)}';
-        }
-        return AlertDialog(
-          titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-          contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-          scrollable: true,
-          title: Row(
-            children: [
-              Semantics(
-                button: true,
-                label: 'BITree 图标',
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    if (controller.developerMode) return;
-                    resetTaps?.cancel();
-                    resetTaps = Timer(const Duration(seconds: 2), () {
-                      iconTaps = 0;
-                    });
-                    iconTaps++;
-                    if (iconTaps < 5) return;
-                    controller.unlockDeveloperMode();
-                    Navigator.pop(dialogContext);
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(const SnackBar(content: Text('已开启开发者模式')));
-                  },
-                  child: SizedBox(
-                    width: 48,
-                    height: 48,
-                    child: Center(
-                      child: Image.asset(
-                        'assets/brand/bitree.png',
-                        width: 40,
-                        height: 40,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Wrap(
-                      spacing: 8,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(
-                          'BITree',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          l10n.appChineseName,
-                          style: theme.textTheme.titleMedium,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      versionLabel,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(_projectDescription),
-              const SizedBox(height: 12),
-              Semantics(
-                link: true,
-                child: InkWell(
-                  onTap: () => openExternalLink(
-                    dialogContext,
-                    Uri.https('github.com', '/bitoolkit'),
-                    failureTitle: l10n.aboutOpenBitoolkitFailed,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text.rich(
-                      TextSpan(
-                        children: [
-                          const TextSpan(text: 'Unlicense. Made by '),
-                          TextSpan(
-                            text: 'BIToolkit',
-                            style: TextStyle(
-                              color: theme.colorScheme.primary,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                          const TextSpan(text: ' with ♥️'),
-                        ],
-                      ),
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-                showLicensePage(
-                  context: context,
-                  applicationName: l10n.aboutLicenseName,
-                  applicationVersion: version,
-                  applicationIcon: Image.asset(
-                    'assets/brand/bitree.png',
-                    width: 40,
-                    height: 40,
-                  ),
-                );
-              },
-              child: Text(l10n.settingsLicenses),
-            ),
-            TextButton(
-              onPressed: () => openExternalLink(
-                dialogContext,
-                Uri.https('github.com', '/bitoolkit/bitree'),
-                failureTitle: l10n.aboutOpenGitHubFailed,
-              ),
-              child: const Text('GitHub'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(l10n.close),
-            ),
-          ],
-        );
-      },
-    );
-    resetTaps?.cancel();
-  }
-
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: Listenable.merge([
       controller,
+      controller.settings,
       controller.timetable,
       controller.agenda,
     ]),
@@ -276,16 +104,15 @@ class SettingsScreen extends StatelessWidget {
             child: ListTile(
               contentPadding: tilePadding,
               leading: const Icon(Icons.palette_outlined),
-              title: const Text('外观'),
-              subtitle: Text(switch (controller.themeMode) {
-                ThemeMode.system => '跟随系统',
-                ThemeMode.light => '浅色',
-                ThemeMode.dark => '深色',
-              }),
+              title: Text(l10n.appearance),
+              subtitle: Text(
+                controller.settings.themeMode.localizedLabel(l10n),
+              ),
               trailing: const Icon(Icons.chevron_right_rounded, size: 20),
               onTap: () => Navigator.of(context).push<void>(
                 MaterialPageRoute(
-                  builder: (_) => AppearanceScreen(controller: controller),
+                  builder: (_) =>
+                      AppearanceScreen(settings: controller.settings),
                 ),
               ),
             ),
@@ -312,9 +139,9 @@ class SettingsScreen extends StatelessWidget {
                   label: Text(l10n.languageEnglish),
                 ),
               ],
-              selected: {controller.language},
+              selected: {controller.settings.language},
               onSelectionChanged: (selection) =>
-                  controller.setLanguage(selection.single),
+                  controller.settings.setLanguage(selection.single),
             ),
           ]),
           if (controller.timetable.schedule != null)
@@ -344,7 +171,7 @@ class SettingsScreen extends StatelessWidget {
                     leading: const Icon(Icons.calendar_month_outlined),
                     title: Text(l10n.settingsTerm),
                     subtitle: Text(
-                      localizedTerm(l10n, controller.timetable.schedule!),
+                      localizedTerm(l10n, controller.timetable.schedule!.term),
                     ),
                     trailing: AppMenuArrow(isOpen: isOpen),
                     onTap: controller.timetable.busy
@@ -432,7 +259,7 @@ class SettingsScreen extends StatelessWidget {
               leading: const Icon(Icons.info_outline_rounded),
               title: Text(l10n.settingsAbout),
               trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-              onTap: () => _showAbout(context),
+              onTap: () => showBitreeAboutDialog(context, controller.settings),
             ),
           ]),
         ],

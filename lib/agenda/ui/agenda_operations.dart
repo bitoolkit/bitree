@@ -28,13 +28,14 @@ Future<bool> deleteAgendaEntry(
   bool confirm = true,
 }) async {
   final l10n = context.l10n;
+  final title = localizedAgendaTitle(l10n, entry);
   // The originating sheet can close while the undo action remains visible.
   final overlay = Overlay.of(context, rootOverlay: true);
   if (confirm) {
     final confirmed = await showAppConfirmDialog(
       context,
       title: l10n.agendaDeleteQuestion(entry.kind.localizedLabel(l10n)),
-      body: entry.title,
+      body: title,
       confirmLabel: l10n.delete,
       destructive: true,
     );
@@ -51,7 +52,7 @@ Future<bool> deleteAgendaEntry(
     final restored = await controller.agenda.restore(entry);
     if (!overlay.mounted) return;
     if (restored) {
-      showOverlayNotice(overlay, l10n.agendaRestored(entry.title));
+      showOverlayNotice(overlay, l10n.agendaRestored(title));
     } else {
       showOverlayNotice(overlay, l10n.operationRestoreFailed);
     }
@@ -59,7 +60,7 @@ Future<bool> deleteAgendaEntry(
 
   showOverlayNotice(
     overlay,
-    l10n.agendaDeleted(entry.title),
+    l10n.agendaDeleted(title),
     action: (label: l10n.undo, onPressed: restore),
   );
   return true;

@@ -10,6 +10,26 @@
   "themeLight": "Light",
   "themeDark": "Dark",
   "appearance": "Appearance",
+  "projectDescription": "A handy little companion for BIT students.",
+  "aboutIconSemantics": "BITree icon",
+  "aboutLicenseSummary": "Made by BIToolkit with ♥️. Released under the Unlicense.",
+  "developerModeEnabled": "Developer mode enabled",
+  "widgetUsesSystemPalette": "Use system palette for widget",
+  "globalSystemPaletteExperimental": "Use system palette throughout app (experimental)",
+  "importPalette": "Import palette",
+  "paletteImported": "Palette imported and applied.",
+  "defaultPalette": "Default",
+  "lightModePalette": "Light mode palette",
+  "darkModePalette": "Dark mode palette",
+  "deletePalette": "Delete {name}",
+  "@deletePalette": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "github": "GitHub",
   "language": "Language",
   "languageChinese": "简体中文",
   "languageEnglish": "English",
@@ -270,7 +290,6 @@
     }
   },
   "settingsLicenses": "Licenses",
-  "aboutOpenBitoolkitFailed": "Could not open BIToolkit",
   "aboutOpenGitHubFailed": "Could not open GitHub",
   "aboutLicenseName": "BITree 理枝",
   "homeTitle": "Home",
@@ -811,6 +830,22 @@
   "agendaKindEvent": "Event",
   "agendaKindDeadline": "DDL",
   "agendaKindExam": "Exam",
+  "examSeat": "Seat: {seat}",
+  "@examSeat": {
+    "placeholders": {
+      "seat": {
+        "type": "String"
+      }
+    }
+  },
+  "examTeacher": "Instructor: {teacher}",
+  "@examTeacher": {
+    "placeholders": {
+      "teacher": {
+        "type": "String"
+      }
+    }
+  },
   "timeRange": "{start}–{end}",
   "@timeRange": {
     "placeholders": {
@@ -994,6 +1029,44 @@
   "moocRequestBusy": "MOOC is already handling a request. Try again shortly.",
   "moocReadAccountFailed": "Could not read the saved MOOC sign-in. Sign in again.",
   "moocSaveResultFailed": "Could not save the sync result. Try again shortly.",
+  "moocCourseTypeMooc": "MOOC",
+  "moocCourseTypeSpoc": "SPOC",
+  "moocTaskHomework": "Homework",
+  "moocTaskQuiz": "Quiz",
+  "moocTaskExam": "Exam",
+  "moocTaskPeerReview": "Peer review",
+  "moocPeerReviewTitle": "Peer review: {title}",
+  "@moocPeerReviewTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "moocOpenedAt": "Opened: {time}",
+  "@moocOpenedAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "moocStartedAt": "Starts: {time}",
+  "@moocStartedAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "moocSubmissionDueAt": "Submission due: {time}",
+  "@moocSubmissionDueAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "schoolLogin": "Sign in to school account",
   "schoolStudentId": "Student ID",
   "schoolEnterStudentId": "Enter your student ID",

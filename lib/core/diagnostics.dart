@@ -7,6 +7,7 @@ import 'dart:typed_data';
 
 import 'package:path_provider/path_provider.dart';
 
+import 'async/serial_queue.dart';
 import 'error_message.dart';
 
 class AppDiagnostics {
@@ -20,7 +21,7 @@ class AppDiagnostics {
 
   final _messages = StreamController<String>.broadcast();
   Future<Directory>? _directory;
-  Future<void> _pending = Future.value();
+  final _accessQueue = SerialQueue();
 
   Stream<String> get messages => _messages.stream;
 
@@ -49,12 +50,8 @@ class AppDiagnostics {
 
   void info(String message) => _append('INFO', message);
 
-  Future<T> _access<T>(Future<T> Function() operation) {
-    final result = _pending.then((_) => operation());
-    // Keep later reads and writes moving after the caller handles a failure.
-    _pending = result.then<void>((_) {}, onError: (Object _, StackTrace _) {});
-    return result;
-  }
+  Future<T> _access<T>(Future<T> Function() operation) =>
+      _accessQueue.run(operation);
 
   void _append(String level, String message) {
     final now = DateTime.now();

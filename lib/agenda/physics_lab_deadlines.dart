@@ -1,7 +1,6 @@
 import 'dart:convert';
 
-import '../l10n/app_localizations.dart';
-import '../l10n/schedule.dart';
+import '../core/time.dart';
 import '../schedule/model.dart';
 import '../schedule/selection.dart';
 import 'model.dart';
@@ -16,10 +15,7 @@ bool isPhysicsLabDeadline(AgendaEntry entry) =>
     entry.source == null &&
     entry.id.startsWith(_physicsLabPrefix);
 
-List<AgendaEntry> physicsLabDeadlines(
-  SemesterSchedule schedule,
-  AppLocalizations l10n,
-) {
+List<AgendaEntry> physicsLabDeadlines(SemesterSchedule schedule) {
   final entries = <String, AgendaEntry>{};
   for (final course in schedule.courses) {
     if (!course.isScheduled ||
@@ -52,10 +48,10 @@ List<AgendaEntry> physicsLabDeadlines(
       for (final deadline in [
         (
           key: 'preview',
-          title: l10n.physicsLabPreviewReport(name),
+          kind: PhysicsLabDeadlineKind.preview,
           due: selection.startsAt,
         ),
-        (key: 'report', title: l10n.physicsLabReport(name), due: reportDue),
+        (key: 'report', kind: PhysicsLabDeadlineKind.report, due: reportDue),
       ]) {
         // No clock in the ID: editing a local course's section updates the same
         // occurrence. The semester and course ID isolate separate lab sessions.
@@ -68,18 +64,19 @@ List<AgendaEntry> physicsLabDeadlines(
         final id = '$_physicsLabPrefix$identity';
         entries[id] = AgendaEntry(
           id: id,
-          title: deadline.title,
+          title: name,
           kind: AgendaKind.deadline,
           startsAt: deadline.due,
           location: course.room,
-          notes: l10n.physicsLabGeneratedNotes(
-            localizedTerm(l10n, schedule),
-            dateText(date),
-            course.timeLabel,
-          ),
           term: schedule.term,
-          local: false,
           course: course.name,
+          local: false,
+          details: PhysicsLabDeadlineDetails(
+            kind: deadline.kind,
+            courseLabel: name,
+            classStartsAt: selection.startsAt,
+            classEndsAt: selection.endsAt,
+          ),
         );
       }
     }

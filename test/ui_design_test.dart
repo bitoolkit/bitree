@@ -2,7 +2,7 @@ import 'package:bitree/agenda/controller.dart';
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/ui/calendar_screen.dart';
 import 'package:bitree/agenda/view_mode.dart';
-import 'package:bitree/schedule/model.dart';
+import 'package:bitree/core/time.dart';
 import 'package:bitree/ui/app_menu_trigger.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
@@ -97,7 +97,7 @@ void main() {
         final agenda = AgendaController(_Store());
         await agenda.load();
         final controller = TestAppController(agenda: agenda);
-        await controller.setAgendaViewMode(AgendaViewMode.list);
+        await controller.settings.setAgendaViewMode(AgendaViewMode.list);
 
         await tester.pumpWidget(
           MaterialApp(

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import '../agenda/calendar.dart';
 import '../agenda/model.dart';
+import '../core/time.dart';
 import '../schedule/model.dart';
 
 class ExamConflict {

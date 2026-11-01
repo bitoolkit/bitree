@@ -5,8 +5,9 @@ import 'package:flutter/rendering.dart';
 
 import '../../agenda/calendar.dart';
 import '../../app/controller.dart';
+import '../../core/time.dart';
 import '../layout.dart';
-import '../model.dart';
+import '../section_times.dart';
 import '../time_position.dart';
 import 'timetable_grid.dart';
 import 'timetable_header.dart';

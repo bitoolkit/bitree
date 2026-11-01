@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../agenda/ui/calendar_list.dart';
 import '../../app/controller.dart';
+import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/design.dart';
-import '../model.dart';
 
 class TimetableHeader extends StatelessWidget {
   const TimetableHeader({

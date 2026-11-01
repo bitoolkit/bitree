@@ -1,15 +1,11 @@
 import '../core/json.dart';
-import '../schedule/model.dart';
+import '../core/time.dart';
 import 'deadline_source.dart';
+import 'details.dart';
 
-enum AgendaKind {
-  event('活动'),
-  deadline('DDL'),
-  exam('考试');
+export 'details.dart';
 
-  const AgendaKind(this.label);
-  final String label;
-}
+enum AgendaKind { event, deadline, exam }
 
 /// Times use the same Beijing wall-clock convention as campusNow().
 class AgendaEntry {
@@ -29,6 +25,7 @@ class AgendaEntry {
     this.source,
     this.course = '',
     this.url,
+    this.details,
   }) {
     if (id.isEmpty || title.trim().isEmpty) {
       throw const FormatException('日程标题或编号缺失');
@@ -45,6 +42,20 @@ class AgendaEntry {
             entryUrl.host != entrySource.host ||
             entryUrl.userInfo.isNotEmpty)) {
       throw const FormatException('作业链接不属于对应的来源平台');
+    }
+    final entryDetails = details;
+    final entryTerm = term;
+    if (entryDetails case PhysicsLabDeadlineDetails()
+        when entrySource != null) {
+      throw const FormatException('大物实验日程不能标记学习平台来源');
+    }
+    if (entryDetails is PhysicsLabDeadlineDetails &&
+        (entryTerm == null || entryTerm.trim().isEmpty)) {
+      throw const FormatException('大物实验日程缺少学期');
+    }
+    if (entryDetails case MoocDeadlineDetails()
+        when entrySource != DeadlineSource.mooc) {
+      throw const FormatException('MOOC 日程必须标记 MOOC 来源');
     }
   }
 
@@ -63,6 +74,7 @@ class AgendaEntry {
   final DeadlineSource? source;
   final String course;
   final Uri? url;
+  final AgendaEntryDetails? details;
 
   bool get isDeadline => kind == AgendaKind.deadline;
 
@@ -72,15 +84,6 @@ class AgendaEntry {
   bool overdue(DateTime now) => isDeadline && !done && dueAt.isBefore(now);
 
   bool isFinished(DateTime now) => isDeadline ? done : !endsAt!.isAfter(now);
-
-  String get timeLabel {
-    if (allDay) return '全天';
-    if (isDeadline) return '${clockText(startsAt)} 截止';
-    final end = endsAt!;
-    final sameDay = calendarDate(startsAt) == calendarDate(end);
-    return '${clockText(startsAt)}–'
-        '${sameDay ? '' : '${end.month}月${end.day}日 '}${clockText(end)}';
-  }
 
   bool occursOn(DateTime date) {
     final day = calendarDate(date);
@@ -105,6 +108,7 @@ class AgendaEntry {
     source: source,
     course: course,
     url: url,
+    details: details,
   );
 
   Map<String, dynamic> toJson() => {
@@ -123,6 +127,7 @@ class AgendaEntry {
     'source': source?.name,
     'course': course,
     'url': url?.toString(),
+    'details': details?.toJson(),
   };
 
   factory AgendaEntry.fromJson(Map<String, dynamic> json) {
@@ -143,6 +148,7 @@ class AgendaEntry {
     }
 
     final rawUrl = jsonStringFieldOrNull(json, 'url');
+    final rawDetails = json['details'];
     return AgendaEntry(
       id: jsonStringField(json, 'id'),
       title: jsonStringField(json, 'title'),
@@ -161,23 +167,9 @@ class AgendaEntry {
       url: rawUrl == null
           ? null
           : Uri.tryParse(rawUrl) ?? (throw FormatException('url 格式不正确')),
+      details: rawDetails == null
+          ? null
+          : AgendaEntryDetails.fromJson(jsonObject(rawDetails, 'details')),
     );
   }
-}
-
-String clockText(DateTime value) =>
-    '${value.hour.toString().padLeft(2, '0')}:'
-    '${value.minute.toString().padLeft(2, '0')}';
-
-String agendaDateLabel(DateTime date) {
-  final day = calendarDate(date);
-  final today = calendarDate(campusNow());
-  final relative = switch (day.difference(today).inDays) {
-    0 => '今天 ',
-    1 => '明天 ',
-    -1 => '昨天 ',
-    _ => '',
-  };
-  final year = date.year == today.year ? '' : '${date.year}年';
-  return '$relative$year${date.month}月${date.day}日 ${weekdays[date.weekday - 1]}';
 }

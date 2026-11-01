@@ -2,9 +2,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
-import '../../schedule/model.dart';
+import '../../schedule/section_times.dart';
 import '../../ui/app_dialog.dart';
 import '../../ui/app_dropdown_field.dart';
 import '../../ui/design.dart';

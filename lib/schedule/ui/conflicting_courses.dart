@@ -5,8 +5,8 @@ import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/design.dart';
 import '../../ui/sheet_layout.dart';
-import '../../ui/theme.dart';
 import '../model.dart';
+import 'course_colors.dart';
 import 'course_detail.dart';
 
 class ConflictingCourses extends StatelessWidget {

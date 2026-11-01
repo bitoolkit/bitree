@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:bitree/academics/model.dart';
 import 'package:bitree/academics/store.dart';
+import 'package:bitree/agenda/deadline_source.dart';
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/store.dart';
 import 'package:bitree/schedule/model.dart';
@@ -12,6 +13,89 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('Agenda details round-trip and older entries remain readable', () {
+    final entries = [
+      AgendaEntry(
+        id: 'physics-lab:one',
+        title: '干涉',
+        kind: AgendaKind.deadline,
+        startsAt: DateTime.utc(2026, 11, 2),
+        term: '2026-2027-1',
+        local: false,
+        details: PhysicsLabDeadlineDetails(
+          kind: PhysicsLabDeadlineKind.preview,
+          courseLabel: '干涉',
+          classStartsAt: DateTime.utc(2026, 10, 27, 8),
+          classEndsAt: DateTime.utc(2026, 10, 27, 9, 35),
+        ),
+      ),
+      AgendaEntry(
+        id: 'mooc:review',
+        title: '期末考试',
+        kind: AgendaKind.deadline,
+        startsAt: DateTime.utc(2026, 11, 5),
+        source: DeadlineSource.mooc,
+        local: false,
+        details: MoocDeadlineDetails(
+          kind: MoocDeadlineKind.peerReview,
+          spoc: true,
+          releaseAt: DateTime.utc(2026, 11, 3),
+          submissionDueAt: DateTime.utc(2026, 11, 2),
+        ),
+      ),
+      AgendaEntry(
+        id: 'exam:math',
+        title: '高等数学',
+        kind: AgendaKind.exam,
+        startsAt: DateTime.utc(2026, 12, 28, 9),
+        endsAt: DateTime.utc(2026, 12, 28, 11),
+        local: false,
+        details: const ExamAgendaDetails(
+          seat: '12',
+          mode: '闭卷',
+          teacher: '张老师',
+        ),
+      ),
+    ];
+
+    final restored = [
+      for (final entry in entries)
+        AgendaEntry.fromJson(
+          jsonDecode(jsonEncode(entry.toJson())) as Map<String, dynamic>,
+        ),
+    ];
+    expect(
+      restored[0].details,
+      isA<PhysicsLabDeadlineDetails>()
+          .having(
+            (details) => details.kind,
+            'kind',
+            PhysicsLabDeadlineKind.preview,
+          )
+          .having((details) => details.courseLabel, 'courseLabel', '干涉'),
+    );
+    expect(
+      restored[1].details,
+      isA<MoocDeadlineDetails>()
+          .having(
+            (details) => details.kind,
+            'kind',
+            MoocDeadlineKind.peerReview,
+          )
+          .having((details) => details.spoc, 'spoc', isTrue),
+    );
+    expect(
+      restored[2].details,
+      isA<ExamAgendaDetails>()
+          .having((details) => details.seat, 'seat', '12')
+          .having((details) => details.teacher, 'teacher', '张老师'),
+    );
+
+    final legacy = Map<String, dynamic>.from(entries[2].toJson())
+      ..remove('details');
+    expect(AgendaEntry.fromJson(legacy).details, isNull);
+  });
 
   test('Feature modules retain existing filenames and JSON formats across restarts', () async {
     final directory = await Directory.systemTemp.createTemp('bitree-storage-');

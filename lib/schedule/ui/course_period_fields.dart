@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n.dart';
 import '../../ui/app_dropdown_field.dart';
-import '../model.dart';
+import '../section_times.dart';
 
 class CoursePeriodFields extends StatelessWidget {
   const CoursePeriodFields({

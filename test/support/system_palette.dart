@@ -1,5 +1,4 @@
 import 'package:bitree/core/platform/system_palette.dart';
-import 'package:bitree/ui/system_palette.dart';
 import 'package:flutter/material.dart';
 
 Map<String, List<int>> systemPaletteValues({double hue = 150}) => {

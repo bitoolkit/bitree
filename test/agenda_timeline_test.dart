@@ -1,6 +1,8 @@
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/timeline_layout.dart';
 import 'package:bitree/agenda/ui/agenda_timeline.dart';
+import 'package:bitree/l10n/app_localizations_zh.dart';
+import 'package:bitree/l10n/formats.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -19,7 +21,9 @@ AgendaEntry _event(String id, int hour, {bool exam = false}) => AgendaEntry(
 );
 
 Finder _bar(AgendaEntry entry) => find.bySemanticsLabel(
-  RegExp('^${RegExp.escape('${entry.kind.label}，${entry.title}，')}'),
+  RegExp(
+    '^${RegExp.escape('${entry.kind.localizedLabel(AppLocalizationsZh())}，${entry.title}，')}',
+  ),
 );
 
 Finder _paintedBar(AgendaEntry entry) =>

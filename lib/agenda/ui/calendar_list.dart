@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
-import '../../schedule/model.dart';
 import '../../schedule/ui/course_detail.dart';
 import '../../ui/campus_time_builder.dart';
 import '../../ui/design.dart';
@@ -246,7 +246,7 @@ class _CalendarItemRow extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         CompletionText(
-          item.title,
+          localizedCalendarItemTitle(l10n, item),
           completed: entry?.done == true,
           style: theme.textTheme.titleMedium?.copyWith(fontSize: 17),
         ),

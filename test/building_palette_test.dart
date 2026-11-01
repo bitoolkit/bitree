@@ -4,6 +4,7 @@ import 'dart:math' as math;
 
 import 'package:bitree/schedule/building_palette.dart';
 import 'package:bitree/schedule/model.dart';
+import 'package:bitree/schedule/ui/course_colors.dart';
 import 'package:bitree/ui/course_palette.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
@@ -63,13 +64,10 @@ void main() {
     },
   );
 
-  final table =
-      jsonDecode(
-            File(
-              'android/app/src/main/assets/building_palette.json',
-            ).readAsStringSync(),
-          )
-          as Map<String, dynamic>;
+  final table = jsonDecode(
+    File('android/app/src/main/assets/building_palette.json')
+        .readAsStringSync(),
+  ) as Map<String, dynamic>;
   final buildings = (table['buildings'] as List).cast<Map<String, dynamic>>();
 
   test('Android and Flutter share every alias and both theme palettes', () {
@@ -335,9 +333,9 @@ void main() {
                     );
                   }
                   if (brightness == Brightness.dark) {
-                    final column = Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainer;
+                    final column = Theme.of(context)
+                        .colorScheme
+                        .surfaceContainer;
                     expect(
                       (colors.fill.computeLuminance() + 0.05) /
                           (column.computeLuminance() + 0.05),

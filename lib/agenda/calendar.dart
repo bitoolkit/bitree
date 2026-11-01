@@ -1,4 +1,6 @@
+import '../core/time.dart';
 import '../schedule/model.dart';
+import '../schedule/section_times.dart';
 import '../schedule/selection.dart';
 import 'model.dart';
 
@@ -12,7 +14,6 @@ class CalendarItem {
     return CalendarItem._(
       course: value,
       entry: null,
-      title: value.name,
       location: value.room,
       startsAt: selection.startsAt,
       endsAt: selection.endsAt,
@@ -23,7 +24,6 @@ class CalendarItem {
     : this._(
         course: null,
         entry: value,
-        title: value.title,
         location: value.location,
         startsAt: value.startsAt,
         endsAt: value.endsAt,
@@ -32,7 +32,6 @@ class CalendarItem {
   const CalendarItem._({
     required this.course,
     required this.entry,
-    required this.title,
     required this.location,
     required this.startsAt,
     required this.endsAt,
@@ -40,14 +39,14 @@ class CalendarItem {
 
   final Course? course;
   final AgendaEntry? entry;
-  final String title;
   final String location;
   final DateTime startsAt;
   final DateTime? endsAt;
 
-  String get kindLabel => entry?.kind.label ?? '课程';
-  String get timeLabel => entry?.timeLabel ?? course!.timeLabel;
   bool get pinned => entry?.allDay == true || entry?.isDeadline == true;
+
+  /// Stable source text for ordering, never for display.
+  String get stableTitle => course?.name ?? entry!.title;
 }
 
 List<CalendarItem> calendarItemsOn(

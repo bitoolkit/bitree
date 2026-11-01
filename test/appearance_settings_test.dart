@@ -1,3 +1,4 @@
+import 'package:bitree/app/settings_controller.dart';
 import 'package:bitree/app/ui/appearance_screen.dart';
 import 'package:bitree/app/ui/settings_screen.dart';
 import 'package:bitree/main.dart';
@@ -17,8 +18,14 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       final controller = TestAppController();
-      await controller.loadCoursePalettes();
-      await tester.pumpWidget(BitreeApp(controller: controller));
+      await controller.initialize();
+      await controller.settings.setLanguage(AppLanguage.chinese);
+      await tester.pumpWidget(
+        BitreeApp(
+          controller: controller,
+          updateChecker: (context, {silent = false}) async {},
+        ),
+      );
       await tester.tap(
         find.descendant(
           of: find.byType(NavigationBar),
@@ -26,7 +33,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(controller.developerMode, isFalse);
+      expect(controller.settings.developerMode, isFalse);
       expect(find.byType(SegmentedButton<ThemeMode>), findsNothing);
       expect(find.text('深色模式调色板'), findsNothing);
       await tester.tap(find.text('外观'));
@@ -49,7 +56,7 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        expect(controller.themeMode, mode);
+        expect(controller.settings.themeMode, mode);
         expect(
           tester
               .widget<SegmentedButton<ThemeMode>>(
@@ -68,7 +75,7 @@ void main() {
       expect(tester.widget<SwitchListTile>(systemPaletteSwitch).value, isFalse);
       await tester.tap(systemPaletteSwitch);
       await tester.pumpAndSettle();
-      expect(controller.widgetUseSystemPalette, isTrue);
+      expect(controller.settings.widgetUseSystemPalette, isTrue);
       expect(tester.widget<SwitchListTile>(systemPaletteSwitch).value, isTrue);
       final globalPaletteSwitch = find.widgetWithText(
         SwitchListTile,
@@ -78,11 +85,11 @@ void main() {
       expect(tester.widget<SwitchListTile>(globalPaletteSwitch).value, isFalse);
       await tester.tap(globalPaletteSwitch);
       await tester.pumpAndSettle();
-      expect(controller.globalUseSystemPalette, isTrue);
-      expect(controller.widgetUseSystemPalette, isTrue);
+      expect(controller.settings.globalUseSystemPalette, isTrue);
+      expect(controller.settings.widgetUseSystemPalette, isTrue);
       expect(tester.widget<SwitchListTile>(globalPaletteSwitch).value, isTrue);
       // Missing platform colours keep the existing app appearance.
-      expect(controller.systemPalette, isNull);
+      expect(controller.settings.systemPalette, isNull);
       await tester.ensureVisible(find.text('深色模式调色板'));
       await tester.tap(find.text('深色模式调色板'));
       await tester.pumpAndSettle();
@@ -92,17 +99,17 @@ void main() {
       await tester.tap(find.widgetWithText(AppMenuItemButton, 'Mocha'));
       await tester.pumpAndSettle();
       expect(find.text('Mocha'), findsOneWidget);
-      expect(controller.paletteIdFor(Brightness.dark), 'mocha');
-      expect(controller.widgetUseSystemPalette, isTrue);
+      expect(controller.settings.paletteIdFor(Brightness.dark), 'mocha');
+      expect(controller.settings.widgetUseSystemPalette, isTrue);
       final theme = Theme.of(tester.element(find.byType(AppearanceScreen)));
       expect(
         theme.extension<CoursePaletteTheme>()!.palette,
-        same(controller.paletteFor(Brightness.dark)),
+        same(controller.settings.paletteFor(Brightness.dark)),
       );
       expect(theme.colorScheme.surface, const Color(0xFF171717));
       expect(theme.colorScheme.surfaceContainer, const Color(0xFF282828));
 
-      await tester.pageBack();
+      await tester.tap(find.byType(BackButton));
       await tester.pumpAndSettle();
       expect(find.byType(SettingsScreen), findsOneWidget);
       expect(find.byType(AppearanceScreen), findsNothing);
@@ -113,7 +120,7 @@ void main() {
       expect(find.text('Mocha'), findsOneWidget);
       expect(tester.widget<SwitchListTile>(systemPaletteSwitch).value, isTrue);
       expect(tester.widget<SwitchListTile>(globalPaletteSwitch).value, isTrue);
-      expect(controller.developerMode, isFalse);
+      expect(controller.settings.developerMode, isFalse);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();

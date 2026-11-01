@@ -3,8 +3,10 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:bitree/agenda/calendar.dart';
+import 'package:bitree/core/time.dart';
 import 'package:bitree/schedule/layout.dart';
 import 'package:bitree/schedule/model.dart';
+import 'package:bitree/schedule/section_times.dart';
 import 'package:bitree/schedule/selection.dart';
 import 'package:bitree/schedule/time_position.dart';
 import 'package:bitree/schedule/ui/course_tile.dart';
