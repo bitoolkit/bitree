@@ -7,6 +7,7 @@ import '../../l10n/l10n.dart';
 import '../../schedule/model.dart';
 import '../../sync/controller.dart';
 import '../../sync/ui/sync.dart';
+import '../../ui/app_dialog.dart';
 import '../../ui/app_page.dart';
 import '../../ui/design.dart';
 import '../../ui/external_link.dart';
@@ -183,7 +184,7 @@ class AcademicUpdatedAt extends StatelessWidget {
   }
 }
 
-Future<void> showGpaRules(BuildContext context) => showDialog<void>(
+Future<void> showGpaRules(BuildContext context) => showAppDialog<void>(
   context: context,
   builder: (dialogContext) {
     final l10n = dialogContext.l10n;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n.dart';
 import '../../schedule/model.dart';
+import '../../ui/app_dialog.dart';
 import '../../ui/app_dropdown_field.dart';
 import '../../ui/design.dart';
 import '../model.dart';
@@ -11,7 +12,7 @@ Future<ProjectedCourse?> showProjectedCourseDialog(
   required List<CourseGrade> grades,
   required Iterable<Course> courses,
   ProjectedCourse? course,
-}) => showDialog<ProjectedCourse>(
+}) => showAppDialog<ProjectedCourse>(
   context: context,
   builder: (_) =>
       _ProjectedCourseDialog(grades: grades, courses: courses, course: course),

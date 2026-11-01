@@ -2,6 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../l10n/l10n.dart';
 
+/// Shows a focused task over the current page and returns its result.
+///
+/// Use dialogs for a decision, a short input, or brief reference content.
+/// Use `showAppSheet` for object details, long forms, batch tools, and progress.
+Future<T?> showAppDialog<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  bool barrierDismissible = true,
+}) => showDialog<T>(
+  context: context,
+  barrierDismissible: barrierDismissible,
+  builder: builder,
+);
+
 /// Shared confirmation dialog for actions that need one explicit decision.
 Future<bool> showAppConfirmDialog(
   BuildContext context, {
@@ -10,7 +24,7 @@ Future<bool> showAppConfirmDialog(
   required String confirmLabel,
   bool destructive = false,
 }) async {
-  final confirmed = await showDialog<bool>(
+  final confirmed = await showAppDialog<bool>(
     context: context,
     builder: (dialogContext) {
       final scheme = Theme.of(dialogContext).colorScheme;

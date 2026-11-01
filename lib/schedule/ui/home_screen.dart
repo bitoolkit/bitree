@@ -6,6 +6,7 @@ import '../../app/ui/add_menu.dart';
 import '../../l10n/l10n.dart';
 import '../../sync/ui/sync.dart';
 import '../../sync/ui/sync_button.dart';
+import '../../ui/app_dialog.dart';
 import '../../ui/app_page.dart';
 import '../model.dart';
 import 'course_detail.dart';
@@ -168,7 +169,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _unscheduled(BuildContext context) => showDialog<void>(
+  Future<void> _unscheduled(BuildContext context) => showAppDialog<void>(
     context: context,
     builder: (dialogContext) => SimpleDialog(
       title: Text(context.l10n.timedCourses),

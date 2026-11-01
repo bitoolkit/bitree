@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 import '../l10n/l10n.dart';
 import 'design.dart';
 
+/// Shows a contextual workspace over the current page.
+///
+/// Use sheets for object details, scrolling content, forms, multi-select tools,
+/// and ongoing progress where the current page remains the user's context.
+/// Use `showAppDialog` for focused decisions and compact input.
 Future<T?> showAppSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,

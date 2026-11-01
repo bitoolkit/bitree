@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n.dart';
+import '../../ui/app_dialog.dart';
 import '../../ui/design.dart';
 import '../controller.dart';
 
 Future<void> editCreditTargets(
   BuildContext context,
   AcademicController controller,
-) => showDialog<void>(
+) => showAppDialog<void>(
   context: context,
   builder: (_) => _CreditTargetsDialog(controller: controller),
 );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 import '../../l10n/l10n.dart';
+import '../../ui/app_dialog.dart';
 import '../../ui/design.dart';
 import '../../ui/external_link.dart';
 import '../release.dart';
@@ -10,7 +11,7 @@ Future<void> showUpdateDialog(
   BuildContext context, {
   required List<AppRelease> releases,
   required bool preferDevelopment,
-}) => showDialog<void>(
+}) => showAppDialog<void>(
   context: context,
   builder: (_) =>
       UpdateDialog(releases: releases, preferDevelopment: preferDevelopment),
