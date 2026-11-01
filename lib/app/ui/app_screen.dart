@@ -55,12 +55,12 @@ class _AppScreenState extends State<AppScreen> {
     _started = true;
     widget.controller.removeListener(_onReady);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) unawaited(_restoreAccount());
+      if (mounted) unawaited(_restoreAccountSilently());
     });
   }
 
-  Future<void> _restoreAccount() async {
-    await widget.controller.school.restoreAccount();
+  Future<void> _restoreAccountSilently() async {
+    await widget.controller.school.restoreAccount(notifyErrors: false);
     if (mounted) await _checkUpdates(silent: true);
   }
 

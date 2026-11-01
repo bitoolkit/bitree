@@ -180,43 +180,40 @@ void main() {
   );
 
   for (final kind in SchoolVerificationKind.values) {
-    test(
-      'Startup defers $kind before loading a code or asking for input',
-      () async {
-        final server = await _LoginServer.start(kind);
-        addTearDown(() => server.server.close(force: true));
-        final app = await _app();
-        final schedule = app.timetable.schedule;
-        final deadline = app.agenda.entries.single;
-        final academics = app.academics.record;
-        final status = kind == SchoolVerificationKind.sms
-            ? AccountStatus.smsRequired
-            : AccountStatus.imageRequired;
-        final notice = expectLater(
-          AppDiagnostics.instance.messages,
-          emits('学校登录验证未完成，请在设置中完成验证。'),
-        );
-        final success = await HttpOverrides.runWithHttpOverrides(
-          app.school.restoreAccount,
-          server.network,
-        );
-        await notice;
-        expect(success, isFalse);
-        expect(app.school.accountStatus, status);
-        expect(app.school.busy, isFalse);
-        expect(
-          server.paths,
-          isNot(contains('/sso.bit.edu.cn/cas/captcha.png')),
-        );
-        expect(
-          server.unexpected,
-          isEmpty,
-        ); // Also excludes phone lookup and SMS sending.
-        expect(app.timetable.schedule, same(schedule));
-        expect(app.agenda.entries.single, same(deadline));
-        expect(app.academics.record, same(academics));
-      },
-    );
+    test('Startup defers $kind without interrupting the interface', () async {
+      final server = await _LoginServer.start(kind);
+      addTearDown(() => server.server.close(force: true));
+      final app = await _app();
+      final schedule = app.timetable.schedule;
+      final deadline = app.agenda.entries.single;
+      final academics = app.academics.record;
+      final status = kind == SchoolVerificationKind.sms
+          ? AccountStatus.smsRequired
+          : AccountStatus.imageRequired;
+      final notices = <String>[];
+      final subscription = AppDiagnostics.instance.messages
+          .where((message) => message.startsWith('学校登录验证未完成'))
+          .listen(notices.add);
+      addTearDown(subscription.cancel);
+
+      final success = await HttpOverrides.runWithHttpOverrides(
+        () => app.school.restoreAccount(notifyErrors: false),
+        server.network,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(success, isFalse);
+      expect(notices, isEmpty);
+      expect(app.school.accountStatus, status);
+      expect(app.school.busy, isFalse);
+      expect(server.paths, isNot(contains('/sso.bit.edu.cn/cas/captcha.png')));
+      expect(
+        server.unexpected,
+        isEmpty,
+      ); // Also excludes phone lookup and SMS sending.
+      expect(app.timetable.schedule, same(schedule));
+      expect(app.agenda.entries.single, same(deadline));
+      expect(app.academics.record, same(academics));
+    });
   }
 
   test('Manual verification reaches SSO despite a valid service session, and cancellation is retryable', () async {
