@@ -215,6 +215,7 @@ void main() {
               phone: '138****0000',
               sendCode: () async {
                 sends++;
+                return const Duration(seconds: 60);
               },
               checkCode: (code) async {
                 checkedCode = code;
