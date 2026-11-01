@@ -99,7 +99,7 @@ DDL 绘制与布局分离：右端为 `dueAt`，左侧渐隐，屏幕宽度为�
 ## 手势与布局
 
 - `SwipePager` 统一鼠标与触摸分页，拖过半页即报告新页，程序切页不报告中间页。
-- `SwipeActionTile` 以明确的横向意图接管单条操作，不增加按住等待。短滑露出按钮，长滑达到阈值后松手执行；左滑完成或恢复 DDL，右滑删除。快速收回和反向拖回都可以取消。`TapRegion` 处理外部触摸收起，最近的纵向 `ScrollPosition` 处理滚动收起，不额外维护全局打开条目。滑出、按钮停靠与回弹共用动画，保存失败回到原位。行的增删尺寸动画由 `AnimatedSliverChildren` 统一处理。
+- `SwipeActionTile` 以明确的横向意图接管单条操作，不增加按住等待。短滑露出按钮，长滑达到阈值后松手执行；左滑删除，右滑完成或恢复 DDL。快速收回和反向拖回都可以取消。`TapRegion` 处理外部触摸收起，最近的纵向 `ScrollPosition` 处理滚动收起，不额外维护全局打开条目。滑出、按钮停靠与回弹共用动画，保存失败回到原位。行的增删尺寸动画由 `AnimatedSliverChildren` 统一处理。
 - `PullToRevealList` 管理下拉手势和展开状态，`RevealScrollController` 在布局阶段同步内容高度与滚动位置。用户重新拖动时解除滚动保持，直接接管滚动。
 - `AppMenuAnchor` 使用原生 `RawMenuAnchor` 管理焦点与菜单生命周期，统一面板的开合动效。菜单高度取触发器上下的实际可用空间。
 - `SheetLayout`、`EditorSheet` 和主题共同约束弹层尺寸、固定操作区与可滚动内容。地图的缩放、绘制和命中测试由 `WencuiFloorMap` 管理。
