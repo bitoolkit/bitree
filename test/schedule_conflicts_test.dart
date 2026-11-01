@@ -116,4 +116,54 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets(
+    'A wide conflict card fills its height with distinct course bands',
+    (tester) async {
+      final courses = [
+        course('a', 'erwer', start: 6, end: 7),
+        course('b', '大学物理 A II', start: 6, end: 7),
+      ];
+      final app = TestAppController(
+        schedule: SemesterSchedule(
+          term: '2026-2027-1',
+          firstMonday: DateTime.utc(2026, 10, 26),
+          courses: courses,
+        ),
+      );
+      await app.initialize();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: bitreeTheme(Brightness.light),
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 240,
+                height: 180,
+                child: ConflictingCourses(
+                  courses: courses,
+                  controller: app,
+                  isToday: false,
+                  date: date,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final first = tester.getRect(
+        find.byKey(const ValueKey('conflict-course-a')),
+      );
+      final second = tester.getRect(
+        find.byKey(const ValueKey('conflict-course-b')),
+      );
+      expect(first.height, closeTo(second.height, 1));
+      expect(first.height, greaterThan(40));
+      expect(first.bottom, lessThan(second.top));
+      expect(find.byType(Tooltip), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

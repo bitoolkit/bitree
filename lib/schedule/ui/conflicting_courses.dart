@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
@@ -77,12 +75,6 @@ class ConflictingCourses extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
-    final firstSection = courses
-        .map((course) => course.startSection!)
-        .reduce(math.min);
-    final lastSection = courses
-        .map((course) => course.endSection!)
-        .reduce(math.max);
     final summary = courses
         .map(
           (course) =>
@@ -95,132 +87,77 @@ class ConflictingCourses extends StatelessWidget {
       button: true,
       label: l10n.coursesOverlap(courses.length, summary),
       child: ExcludeSemantics(
-        child: Tooltip(
-          triggerMode: TooltipTriggerMode.manual,
-          message: summary,
-          child: Material(
-            color: Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: AppCorners.compact,
-              side: BorderSide(
-                color: isToday ? scheme.primary : scheme.outlineVariant,
-                width: isToday ? 1.5 : 1,
-              ),
+        child: Material(
+          color: scheme.surfaceContainerLow,
+          shape: RoundedRectangleBorder(
+            borderRadius: AppCorners.compact,
+            side: BorderSide(
+              color: isToday ? scheme.primary : scheme.outlineVariant,
+              width: isToday ? 1.5 : 1,
             ),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: () => _selectCourse(context),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final showCount = constraints.maxHeight >= 32;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 2,
-                      vertical: 2,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (showCount) ...[
-                          Row(
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => _selectCourse(context),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final showHeader = constraints.maxHeight >= 30;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (showHeader)
+                      ColoredBox(
+                        color: isToday
+                            ? scheme.primaryContainer
+                            : scheme.surfaceContainer,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(4, 3, 4, 3),
+                          child: Row(
                             children: [
                               Icon(
                                 Icons.warning_amber_rounded,
                                 size: 11,
                                 color: scheme.primary,
                               ),
-                              const SizedBox(width: 1),
-                              Flexible(
+                              const SizedBox(width: 2),
+                              Expanded(
                                 child: Text(
                                   l10n.courseOverlapCount(courses.length),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontSize: 9,
-                                    height: 1,
+                                    height: 1.1,
                                     fontWeight: FontWeight.w700,
-                                    color: scheme.primary,
+                                    color: isToday
+                                        ? scheme.onPrimaryContainer
+                                        : scheme.onSurfaceVariant,
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 2),
-                        ],
-                        Expanded(
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              const rowHeight = 20.0;
-                              final positionsAtStart =
-                                  constraints.maxHeight >=
-                                  courses.length * (rowHeight + 1);
-                              if (!positionsAtStart) {
-                                return Column(
-                                  children: [
-                                    for (final course in courses)
-                                      Expanded(
-                                        child: _ConflictCourseRow(
-                                          course: course,
-                                          section: localizedCourseSection(
-                                            l10n,
-                                            course,
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                );
-                              }
-
-                              final span = lastSection - firstSection + 1;
-                              final sorted = [...courses]
-                                ..sort((first, second) {
-                                  final section = first.startSection!.compareTo(
-                                    second.startSection!,
-                                  );
-                                  return section != 0
-                                      ? section
-                                      : first.name.compareTo(second.name);
-                                });
-                              final rows = <Widget>[];
-                              var nextTop = 0.0;
-                              for (final course in sorted) {
-                                final offset =
-                                    course.startSection! - firstSection;
-                                final proposed =
-                                    offset / span * constraints.maxHeight;
-                                final top = math
-                                    .max(proposed, nextTop)
-                                    .clamp(
-                                      0.0,
-                                      constraints.maxHeight - rowHeight,
-                                    )
-                                    .toDouble();
-                                nextTop = top + rowHeight + 1;
-                                rows.add(
-                                  Positioned(
-                                    left: 0,
-                                    right: 0,
-                                    top: top,
-                                    height: rowHeight,
-                                    child: _ConflictCourseRow(
-                                      course: course,
-                                      section: localizedCourseSection(
-                                        l10n,
-                                        course,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }
-                              return Stack(children: rows);
-                            },
-                          ),
                         ),
-                      ],
+                      ),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          for (final (index, course) in courses.indexed) ...[
+                            if (index > 0) const SizedBox(height: 1),
+                            Expanded(
+                              child: _ConflictCourseRow(
+                                key: ValueKey('conflict-course-${course.id}'),
+                                course: course,
+                                section: localizedCourseSection(l10n, course),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                  );
-                },
-              ),
+                  ],
+                );
+              },
             ),
           ),
         ),
@@ -230,7 +167,11 @@ class ConflictingCourses extends StatelessWidget {
 }
 
 class _ConflictCourseRow extends StatelessWidget {
-  const _ConflictCourseRow({required this.course, required this.section});
+  const _ConflictCourseRow({
+    super.key,
+    required this.course,
+    required this.section,
+  });
 
   final Course course;
   final String section;
@@ -238,44 +179,87 @@ class _ConflictCourseRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = courseColors(context, course);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colors.fill,
-        borderRadius: BorderRadius.circular(3),
-        border: Border(left: BorderSide(color: colors.accent, width: 2)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                course.name,
-                maxLines: 1,
-                style: TextStyle(
-                  fontSize: 9,
-                  height: 1.05,
-                  fontWeight: FontWeight.w600,
-                  color: colors.text,
-                ),
-              ),
-              const SizedBox(height: 1),
-              Text(
-                section,
-                maxLines: 1,
-                style: TextStyle(
-                  fontSize: 8,
-                  height: 1,
-                  color: colors.secondaryText,
-                ),
-              ),
-            ],
+    return ColoredBox(
+      color: colors.fill,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 3,
+            child: ColoredBox(color: colors.accent),
           ),
-        ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(6, 2, 3, 2),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final inline = constraints.maxWidth >= 88;
+                final showSection = constraints.maxHeight >= (inline ? 16 : 25);
+                final name = Text(
+                  course.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10,
+                    height: 1.08,
+                    fontWeight: FontWeight.w600,
+                    color: colors.text,
+                  ),
+                );
+                final sectionText = Text(
+                  section,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 8.5,
+                    height: 1.05,
+                    fontWeight: FontWeight.w500,
+                    color: colors.secondaryText,
+                  ),
+                );
+                final content = inline
+                    ? Row(
+                        children: [
+                          Expanded(child: name),
+                          if (showSection) ...[
+                            const SizedBox(width: 3),
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 72),
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: colors.text.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 3,
+                                    vertical: 1,
+                                  ),
+                                  child: sectionText,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      )
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          name,
+                          if (showSection) ...[
+                            const SizedBox(height: 1),
+                            sectionText,
+                          ],
+                        ],
+                      );
+                return Align(alignment: Alignment.centerLeft, child: content);
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
