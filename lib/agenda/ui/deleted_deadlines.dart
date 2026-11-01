@@ -44,7 +44,10 @@ class _DeletedDeadlinesSheetState extends State<_DeletedDeadlinesSheet> {
       _restoring = false;
       if (saved) _selected.removeAll(restoredIds);
     });
-    if (!saved) return;
+    if (!saved) {
+      showAppNotice(context, context.l10n.operationRestoreFailed);
+      return;
+    }
 
     final l10n = context.l10n;
     final message = switch (entries.length) {

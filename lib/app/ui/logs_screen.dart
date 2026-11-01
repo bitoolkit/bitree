@@ -20,6 +20,8 @@ class _LogsScreenState extends State<LogsScreen> {
   String? _preview;
   bool _loading = true;
   bool _exporting = false;
+  String? _loadError;
+  String? _exportError;
 
   @override
   void initState() {
@@ -34,12 +36,17 @@ class _LogsScreenState extends State<LogsScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+    final error = context.l10n.logsReadFailed;
     try {
       final preview = await AppDiagnostics.instance.recentLines();
       if (mounted) setState(() => _preview = preview);
     } on Exception catch (failure, stack) {
       AppDiagnostics.instance.report('读取日志', failure, stack);
+      if (mounted) setState(() => _loadError = error);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -47,7 +54,10 @@ class _LogsScreenState extends State<LogsScreen> {
 
   Future<void> _export() async {
     final l10n = context.l10n;
-    setState(() => _exporting = true);
+    setState(() {
+      _exporting = true;
+      _exportError = null;
+    });
     try {
       final bytes = await AppDiagnostics.instance.export();
       if (!mounted) return;
@@ -61,6 +71,7 @@ class _LogsScreenState extends State<LogsScreen> {
       if (mounted && saved != null) showAppNotice(context, l10n.logsExported);
     } on Exception catch (failure, stack) {
       AppDiagnostics.instance.report('导出日志', failure, stack);
+      if (mounted) setState(() => _exportError = l10n.logsExportFailed);
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
@@ -84,9 +95,37 @@ class _LogsScreenState extends State<LogsScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(l10n.logsRecent, style: Theme.of(context).textTheme.bodySmall),
+            if (_loadError case final error?) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      error,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: _loading ? null : _load,
+                    child: Text(l10n.refresh),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 12),
             Expanded(child: _buildPreview(context)),
             const SizedBox(height: 16),
+            if (_exportError case final error?)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  error,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
             FilledButton.icon(
               onPressed: _exporting ? null : _export,
               icon: _exporting

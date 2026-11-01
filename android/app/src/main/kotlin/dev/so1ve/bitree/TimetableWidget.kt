@@ -12,6 +12,8 @@ import android.text.TextPaint
 import android.view.View
 import android.widget.RemoteViews
 import androidx.core.widget.RemoteViewsCompat
+import kotlin.math.max
+import kotlin.math.roundToInt
 
 open class TimetableWidget : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
@@ -85,6 +87,7 @@ open class TimetableWidget : AppWidgetProvider() {
                 views.setTextViewText(R.id.widget_empty, content.emptyMessage)
                 views.setEmptyView(R.id.widget_courses, R.id.widget_empty)
                 views.setOnClickPendingIntent(R.id.widget_root, open)
+                views.setOnClickPendingIntent(R.id.widget_empty, open)
                 // Collection views consume taps; forward them to the same app launch.
                 views.setPendingIntentTemplate(R.id.widget_courses, open)
 
@@ -100,7 +103,8 @@ open class TimetableWidget : AppWidgetProvider() {
                 }
 
                 val widthPx = widgetWidthPx(context, manager, id)
-                val items = entryItems(context, content.entries, widthPx, columns)
+                val heightPx = widgetContentMinHeightPx(context, manager, id)
+                val items = entryItems(context, content.entries, widthPx, heightPx, columns)
 
                 RemoteViewsCompat.setRemoteAdapter(
                     context, views, id, R.id.widget_courses, items,
@@ -127,10 +131,31 @@ open class TimetableWidget : AppWidgetProvider() {
             }
         }
 
+        private fun widgetContentMinHeightPx(
+            context: Context,
+            manager: AppWidgetManager,
+            id: Int,
+        ): Float {
+            val resources = context.resources
+            val options = manager.getAppWidgetOptions(id)
+            val heightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT)
+            val widgetHeight = if (heightDp > 0) {
+                heightDp * resources.displayMetrics.density
+            } else {
+                manager.getAppWidgetInfo(id)?.minHeight?.toFloat() ?: 0f
+            }
+            val chromeHeight =
+                2 * resources.getDimension(R.dimen.widget_vertical_padding) +
+                    resources.getDimension(R.dimen.widget_header_min_height) +
+                    resources.getDimension(R.dimen.widget_header_spacing)
+            return max(0f, widgetHeight - chromeHeight)
+        }
+
         private fun entryItems(
             context: Context,
             entries: List<WidgetEntry>,
             widthPx: Float,
+            heightPx: Float,
             columns: Int,
         ): RemoteViewsCompat.RemoteCollectionItems {
             val resources = context.resources
@@ -146,6 +171,10 @@ open class TimetableWidget : AppWidgetProvider() {
 
             val items = RemoteViewsCompat.RemoteCollectionItems.Builder()
                 .setViewTypeCount(1)
+            if (entries.isEmpty()) return items.build()
+
+            val content = RemoteViews(context.packageName, R.layout.widget_content)
+            content.removeAllViews(R.id.widget_content_stack)
             entries.chunked(columns).forEachIndexed { index, entriesInRow ->
                 val row = RemoteViews(context.packageName, R.layout.widget_row)
                 row.removeAllViews(R.id.widget_first_column)
@@ -165,9 +194,13 @@ open class TimetableWidget : AppWidgetProvider() {
                         entryView(context, entry, label),
                     )
                 }
-                row.setOnClickFillInIntent(R.id.widget_row, Intent())
-                items.addItem(index.toLong(), row)
+                content.addView(R.id.widget_content_stack, row)
             }
+            with(RemoteViewsCompat) {
+                content.setViewMinimumHeight(R.id.widget_content_stack, heightPx.roundToInt())
+            }
+            content.setOnClickFillInIntent(R.id.widget_content_stack, Intent())
+            items.addItem(0L, content)
 
             return items.build()
         }

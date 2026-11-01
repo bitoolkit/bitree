@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/ui/calendar_screen.dart';
+import 'package:bitree/schedule/model.dart';
+import 'package:bitree/schedule/store.dart';
 import 'package:bitree/schedule/ui/home_screen.dart';
 import 'package:bitree/ui/editor_sheet.dart';
 import 'package:bitree/ui/theme.dart';
@@ -7,6 +11,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/test_app.dart';
+
+class _BlockingScheduleStore extends MemoryScheduleStore {
+  _BlockingScheduleStore({required super.selected});
+
+  final started = Completer<void>();
+  final release = Completer<void>();
+
+  @override
+  Future<void> write(ScheduleLibrary library) async {
+    if (!started.isCompleted) started.complete();
+    await release.future;
+    await super.write(library);
+  }
+}
 
 void main() {
   final now = DateTime.utc(2026, 10, 28, 12);
@@ -137,4 +155,61 @@ void main() {
       );
     }
   }
+
+  testWidgets('One busy editor does not block unrelated add actions', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 844);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final schedule = SemesterSchedule(
+      term: '2026-2027-1',
+      firstMonday: DateTime.utc(2026, 10, 26),
+      courses: const [],
+    );
+    final store = _BlockingScheduleStore(selected: schedule);
+    final controller = TestAppController(scheduleStore: store);
+    await controller.initialize();
+    final save = controller.timetable.setWeekRange(first: 1, last: 16);
+    await store.started.future;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: bitreeTheme(Brightness.light),
+        home: Scaffold(
+          body: HomeScreen(controller: controller, now: now, active: false),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(controller.timetable.busy, isTrue);
+    await tester.tap(find.byTooltip('添加'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<MenuItemButton>(find.widgetWithText(MenuItemButton, '添加课程'))
+          .onPressed,
+      isNull,
+    );
+    expect(
+      tester
+          .widget<MenuItemButton>(find.widgetWithText(MenuItemButton, '添加日程'))
+          .onPressed,
+      isNotNull,
+    );
+    expect(
+      tester
+          .widget<MenuItemButton>(find.widgetWithText(MenuItemButton, '添加 DDL'))
+          .onPressed,
+      isNotNull,
+    );
+    expect(tester.takeException(), isNull);
+
+    store.release.complete();
+    await save;
+    await tester.pumpAndSettle();
+  });
 }

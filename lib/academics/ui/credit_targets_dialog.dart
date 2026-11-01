@@ -41,6 +41,7 @@ class _CreditTargetsDialogState extends State<_CreditTargetsDialog> {
   };
   final _newCategory = TextEditingController();
   bool _saving = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -62,7 +63,11 @@ class _CreditTargetsDialogState extends State<_CreditTargetsDialog> {
 
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    final error = context.l10n.operationSaveFailed;
     final record = widget.controller.record;
     final saved = await widget.controller.save(
       record.withCreditTargets(
@@ -78,13 +83,17 @@ class _CreditTargetsDialogState extends State<_CreditTargetsDialog> {
     if (saved) {
       Navigator.pop(context);
     } else {
-      setState(() => _saving = false);
+      setState(() {
+        _saving = false;
+        _error = error;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final theme = Theme.of(context);
     return PopScope(
       canPop: !_saving,
       child: AlertDialog(
@@ -154,6 +163,16 @@ class _CreditTargetsDialogState extends State<_CreditTargetsDialog> {
                   ),
                 ],
               ),
+              if (_error != null) ...[
+                const SizedBox(height: AppSpacing.lg),
+                Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    _error!,
+                    style: TextStyle(color: theme.colorScheme.error),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

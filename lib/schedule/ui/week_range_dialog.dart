@@ -50,6 +50,7 @@ class _WeekRangeDialogState extends State<_WeekRangeDialog> {
   late final _first = TextEditingController(text: '${widget.first}');
   late final _last = TextEditingController(text: '${widget.last}');
   bool _saving = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -84,14 +85,21 @@ class _WeekRangeDialogState extends State<_WeekRangeDialog> {
     );
     final controller = widget.controller;
     if (controller != null) {
-      setState(() => _saving = true);
+      setState(() {
+        _saving = true;
+        _error = null;
+      });
+      final error = context.l10n.operationSaveFailed;
       final saved = await controller.timetable.setWeekRange(
         first: range.first,
         last: range.last,
       );
       if (!mounted) return;
       if (!saved) {
-        setState(() => _saving = false);
+        setState(() {
+          _saving = false;
+          _error = error;
+        });
         return;
       }
     }
@@ -198,6 +206,18 @@ class _WeekRangeDialogState extends State<_WeekRangeDialog> {
                   first,
                   const SizedBox(height: AppSpacing.lg),
                   last,
+                ],
+                if (_error != null) ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      _error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
                 ],
               ],
             ),

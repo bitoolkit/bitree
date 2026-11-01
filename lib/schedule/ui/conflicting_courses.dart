@@ -75,9 +75,6 @@ class ConflictingCourses extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
-    final fill = isToday
-        ? Color.lerp(scheme.primaryContainer, scheme.primary, 0.12)!
-        : scheme.primaryContainer;
     final summary = courses
         .map(
           (course) =>
@@ -90,102 +87,190 @@ class ConflictingCourses extends StatelessWidget {
       button: true,
       label: l10n.coursesOverlap(courses.length, summary),
       child: ExcludeSemantics(
-        child: Tooltip(
-          triggerMode: TooltipTriggerMode.manual,
-          message: summary,
-          child: Material(
-            color: fill,
-            shape: RoundedRectangleBorder(
-              borderRadius: AppCorners.compact,
-              side: isToday
-                  ? BorderSide(color: scheme.primary, width: 1.5)
-                  : BorderSide.none,
+        child: Material(
+          color: scheme.surfaceContainerLow,
+          shape: RoundedRectangleBorder(
+            borderRadius: AppCorners.compact,
+            side: BorderSide(
+              color: isToday ? scheme.primary : scheme.outlineVariant,
+              width: isToday ? 1.5 : 1,
             ),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: () => _selectCourse(context),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final scaler = MediaQuery.textScalerOf(context);
-                  final titleHeight = scaler.scale(12) * 1.25;
-                  final sectionHeight = scaler.scale(10) * 1.25;
-                  final available = constraints.maxHeight - sectionHeight - 12;
-                  final showSections =
-                      available >= titleHeight + sectionHeight + 3;
-                  final sectionSpace = showSections ? sectionHeight + 3 : 0;
-                  final shownCount =
-                      available >= (titleHeight * 2 + sectionSpace) * 2 + 4
-                      ? 2
-                      : 1;
-                  final titleLines =
-                      ((available - (shownCount - 1) * 4) / shownCount -
-                          sectionSpace) ~/
-                      titleHeight;
-
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 3,
-                      vertical: 4,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          l10n.courseOverlapCount(courses.length),
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 10,
-                            height: 1.25,
-                            fontWeight: FontWeight.w600,
-                            color: scheme.primary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => _selectCourse(context),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final showHeader = constraints.maxHeight >= 30;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (showHeader)
+                      ColoredBox(
+                        color: isToday
+                            ? scheme.primaryContainer
+                            : scheme.surfaceContainer,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(4, 3, 4, 3),
+                          child: Row(
                             children: [
-                              for (var i = 0; i < shownCount; i++) ...[
-                                if (i > 0) const SizedBox(height: 4),
-                                Text(
-                                  courses[i].name,
-                                  textAlign: TextAlign.center,
-                                  maxLines: titleLines.clamp(1, 3),
+                              Icon(
+                                Icons.warning_amber_rounded,
+                                size: 11,
+                                color: scheme.primary,
+                              ),
+                              const SizedBox(width: 2),
+                              Expanded(
+                                child: Text(
+                                  l10n.courseOverlapCount(courses.length),
+                                  maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    fontSize: 12,
-                                    height: 1.25,
-                                    fontWeight: FontWeight.w600,
-                                    color: scheme.onPrimaryContainer,
+                                    fontSize: 9,
+                                    height: 1.1,
+                                    fontWeight: FontWeight.w700,
+                                    color: isToday
+                                        ? scheme.onPrimaryContainer
+                                        : scheme.onSurfaceVariant,
                                   ),
                                 ),
-                                if (showSections) ...[
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    localizedCourseSection(l10n, courses[i]),
-                                    textAlign: TextAlign.center,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      height: 1.25,
-                                      color: scheme.onPrimaryContainer,
-                                    ),
-                                  ),
-                                ],
-                              ],
+                              ),
                             ],
                           ),
                         ),
-                      ],
+                      ),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          for (final (index, course) in courses.indexed) ...[
+                            if (index > 0) const SizedBox(height: 1),
+                            Expanded(
+                              child: _ConflictCourseRow(
+                                key: ValueKey('conflict-course-${course.id}'),
+                                course: course,
+                                section: localizedCourseSection(l10n, course),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                  );
-                },
-              ),
+                  ],
+                );
+              },
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ConflictCourseRow extends StatelessWidget {
+  const _ConflictCourseRow({
+    super.key,
+    required this.course,
+    required this.section,
+  });
+
+  final Course course;
+  final String section;
+
+  @override
+  Widget build(BuildContext context) {
+    final location = course.room.trim();
+    final colors = courseColors(context, course);
+    return ColoredBox(
+      color: colors.fill,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(4, 2, 3, 2),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final inline = constraints.maxWidth >= 88;
+            final showDetails = constraints.maxHeight >= (inline ? 25 : 36);
+            final name = Text(
+              course.name,
+              maxLines: inline ? 1 : 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10,
+                height: 1.08,
+                fontWeight: FontWeight.w600,
+                color: colors.text,
+              ),
+            );
+            final locationText = location.isEmpty
+                ? null
+                : Text(
+                    location,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 8.5,
+                      height: 1.05,
+                      color: colors.secondaryText,
+                    ),
+                  );
+            final sectionText = Text(
+              section,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 8.5,
+                height: 1.05,
+                fontWeight: FontWeight.w500,
+                color: colors.secondaryText,
+              ),
+            );
+            final details = Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                name,
+                if (showDetails && locationText != null) ...[
+                  const SizedBox(height: 1),
+                  locationText,
+                ],
+              ],
+            );
+            final content = inline
+                ? Row(
+                    children: [
+                      Expanded(child: details),
+                      if (showDetails) ...[
+                        const SizedBox(width: 3),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 72),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: colors.text.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 3,
+                                vertical: 1,
+                              ),
+                              child: sectionText,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      details,
+                      if (showDetails) ...[
+                        const SizedBox(height: 1),
+                        sectionText,
+                      ],
+                    ],
+                  );
+            return Align(alignment: Alignment.centerLeft, child: content);
+          },
         ),
       ),
     );

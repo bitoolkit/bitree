@@ -42,13 +42,18 @@ Future<bool> deleteAgendaEntry(
   }
   final deleted = await controller.agenda.delete(entry);
   if (!overlay.mounted) return deleted;
-  if (!deleted) return false;
+  if (!deleted) {
+    showOverlayNotice(overlay, l10n.operationDeleteFailed);
+    return false;
+  }
 
   Future<void> restore() async {
     final restored = await controller.agenda.restore(entry);
     if (!overlay.mounted) return;
     if (restored) {
       showOverlayNotice(overlay, l10n.agendaRestored(entry.title));
+    } else {
+      showOverlayNotice(overlay, l10n.operationRestoreFailed);
     }
   }
 

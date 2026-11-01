@@ -116,6 +116,7 @@ class _CourseEditorState extends State<_CourseEditor> {
       _saving = true;
       _error = null;
     });
+    final error = context.l10n.operationSaveFailed;
     final course = Course(
       id:
           widget.course?.stableId ??
@@ -151,6 +152,7 @@ class _CourseEditorState extends State<_CourseEditor> {
     } else {
       setState(() {
         _saving = false;
+        _error = error;
       });
     }
   }

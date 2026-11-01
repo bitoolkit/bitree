@@ -13,8 +13,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'support/test_app.dart';
 
 void main() {
-  const rowHeight = 64.0;
-  const gutterWidth = 64.0;
+  const defaultRowHeight = 64.0;
+  const defaultGutterWidth = 64.0;
   final monday = DateTime.utc(2026, 10, 26);
   final course = Course(
     id: 'course',
@@ -42,6 +42,8 @@ void main() {
     WidgetTester tester, {
     VoidCallback? onOutsideTap,
     Size size = const Size(800, 1000),
+    double gutterWidth = defaultGutterWidth,
+    double rowHeight = defaultRowHeight,
   }) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = size;
@@ -93,9 +95,12 @@ void main() {
 
   Offset cell(WidgetTester tester, int day, int section) {
     final grid = tester.getRect(find.byType(TimetableGrid));
-    final width = (grid.width - gutterWidth) / 7;
+    final width = (grid.width - defaultGutterWidth) / 7;
     return grid.topLeft +
-        Offset(gutterWidth + (day + 0.5) * width, (section - 0.5) * rowHeight);
+        Offset(
+          defaultGutterWidth + (day + 0.5) * width,
+          (section - 0.5) * defaultRowHeight,
+        );
   }
 
   Future<void> openMenu(
@@ -124,6 +129,18 @@ void main() {
     expect(tester.widget<AddMenu>(find.byType(AddMenu)).selection, isNull);
     expect(tester.takeException(), isNull);
   }
+
+  testWidgets('Compact period labels fit their rows', (tester) async {
+    await showGrid(
+      tester,
+      size: const Size(320, 844),
+      gutterWidth: 30,
+      rowHeight: 53.2,
+    );
+
+    expect(find.text('08:00\n08:45'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   for (final sameCell in [true, false]) {
     testWidgets(

@@ -132,16 +132,20 @@ class TestAppController extends AppController {
     MoocStorage? moocStorage,
     SchoolService? school,
     SharedPreferencesAsync? preferences,
+    ScheduleStore? scheduleStore,
+    AcademicStore? academicStore,
     super.systemPaletteSource,
   }) : super(
          coursePaletteLoader: () async => testPalettes(),
-         store: MemoryScheduleStore(schedules: schedules, selected: schedule),
+         store:
+             scheduleStore ??
+             MemoryScheduleStore(schedules: schedules, selected: schedule),
          school: school ?? SchoolService(),
          schoolStorage: schoolStorage ?? MemorySchoolStorage(),
          preferences: preferences ?? MemoryPreferences(),
          moocStorage: moocStorage ?? MemoryMoocStorage(),
          agenda: agenda ?? AgendaController(MemoryAgendaStore(entries)),
-         academics: AcademicController(MemoryAcademicStore()),
+         academics: AcademicController(academicStore ?? MemoryAcademicStore()),
        ) {
     addTearDown(dispose);
   }

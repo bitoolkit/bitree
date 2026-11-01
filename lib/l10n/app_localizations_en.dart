@@ -79,6 +79,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get confirm => 'Confirm';
 
   @override
+  String get operationSaveFailed =>
+      'Couldn’t save your changes. Please try again.';
+
+  @override
+  String get operationDeleteFailed =>
+      'Couldn’t delete this item. Please try again.';
+
+  @override
+  String get operationRestoreFailed =>
+      'Couldn’t restore this item. Please try again.';
+
+  @override
   String get view => 'View';
 
   @override
@@ -620,6 +632,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get exportScheduleSuccess => 'Schedule exported';
 
   @override
+  String get exportScheduleFailed =>
+      'Couldn’t export the schedule. Please try again.';
+
+  @override
   String exportScheduleSkipped(int count) {
     return 'Schedule exported; skipped $count courses without a fixed time';
   }
@@ -1007,7 +1023,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncSchoolData => 'School data';
 
   @override
-  String get syncDeadlineData => 'Deadlines and coursework';
+  String get syncDeadlineData => 'DDL sources';
 
   @override
   String get syncTooltip => 'Sync';
@@ -1404,6 +1420,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get toolsTitle => 'Tools';
 
   @override
+  String get academicTools => 'Academics & planning';
+
+  @override
+  String get campusTools => 'Campus lookup';
+
+  @override
   String get gradesAndAcademics => 'Grades and academics';
 
   @override
@@ -1435,6 +1457,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reloadLogs => 'Reload logs';
+
+  @override
+  String get logsReadFailed => 'Couldn’t read logs. Please try again.';
+
+  @override
+  String get logsExportFailed => 'Couldn’t export logs. Please try again.';
 
   @override
   String get noLogs => 'No logs';

@@ -214,7 +214,9 @@ void main() {
     await tester.tap(find.text('下载测试版'));
     await tester.pumpAndSettle();
     expect(find.text('无法打开下载链接'), findsOneWidget);
+    expect(find.byType(UpdateDialog), findsOneWidget);
     expect(find.byType(AlertDialog), findsNWidgets(2));
+    expect(find.byType(BottomSheet), findsNothing);
     expect(find.textContaining(release.downloadUrl.toString()), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

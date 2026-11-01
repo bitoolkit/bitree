@@ -192,7 +192,10 @@ class SchoolController extends ChangeNotifier {
     return true;
   });
 
-  Future<bool> restoreAccount({VerifySchoolLogin? verify}) async {
+  Future<bool> restoreAccount({
+    VerifySchoolLogin? verify,
+    bool notifyErrors = true,
+  }) async {
     if (_username == null) return false;
     return _run('恢复学校登录', () async {
       await _access.read(
@@ -202,7 +205,7 @@ class SchoolController extends ChangeNotifier {
         service: verify == null ? null : SchoolNetwork.campus.accountPage,
       );
       return true;
-    });
+    }, notifyErrors: notifyErrors);
   }
 
   Future<bool> synchronize({String? term, VerifySchoolLogin? verify}) => _run(

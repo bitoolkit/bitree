@@ -39,6 +39,7 @@ class _ClearDeadlinesSheet extends StatefulWidget {
 class _ClearDeadlinesSheetState extends State<_ClearDeadlinesSheet> {
   final _selected = <DeadlineClearScope>{};
   bool _saving = false;
+  String? _error;
 
   Future<void> _clear(
     Set<DeadlineClearScope> scopes,
@@ -50,13 +51,20 @@ class _ClearDeadlinesSheetState extends State<_ClearDeadlinesSheet> {
       showAppNotice(context, context.l10n.clearDeadlinesUnavailable);
       return;
     }
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    final error = context.l10n.operationDeleteFailed;
     final cleared = await agenda.clearDeadlines(
       scopes,
       expectedIds: expectedIds,
     );
     if (!mounted) return;
-    setState(() => _saving = false);
+    setState(() {
+      _saving = false;
+      _error = cleared ? null : error;
+    });
     if (cleared) Navigator.pop<int>(context, expectedIds.length);
   }
 
@@ -87,9 +95,14 @@ class _ClearDeadlinesSheetState extends State<_ClearDeadlinesSheet> {
                 totalCount: DeadlineClearScope.values.length,
                 summary: l10n.clearDeadlinesSelection(scopes.length, count),
                 enabled: enabled,
-                onSelectAll: () =>
-                    setState(() => _selected.addAll(DeadlineClearScope.values)),
-                onClear: () => setState(_selected.clear),
+                onSelectAll: () => setState(() {
+                  _selected.addAll(DeadlineClearScope.values);
+                  _error = null;
+                }),
+                onClear: () => setState(() {
+                  _selected.clear();
+                  _error = null;
+                }),
               ),
               for (final scope in DeadlineClearScope.values)
                 AppSelectionTile(
@@ -107,8 +120,14 @@ class _ClearDeadlinesSheetState extends State<_ClearDeadlinesSheet> {
                           } else {
                             _selected.remove(scope);
                           }
+                          _error = null;
                         })
                       : null,
+                ),
+              if (_error case final error?)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.sm),
+                  child: Text(error, style: TextStyle(color: scheme.error)),
                 ),
               const SizedBox(height: AppSpacing.md),
               Text(

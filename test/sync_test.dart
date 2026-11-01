@@ -431,10 +431,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('学校数据'), findsOneWidget);
-      expect(find.text('DDL 与课业'), findsOneWidget);
+      expect(find.text('DDL 来源'), findsOneWidget);
       expect(
         tester.getTopLeft(find.text('学校数据')).dy,
-        lessThan(tester.getTopLeft(find.text('DDL 与课业')).dy),
+        lessThan(tester.getTopLeft(find.text('DDL 来源')).dy),
       );
       expect(find.widgetWithText(AppSelectionTile, '课表'), findsOneWidget);
       expect(find.widgetWithText(AppSelectionTile, '乐学 DDL'), findsOneWidget);

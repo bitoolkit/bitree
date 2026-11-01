@@ -476,13 +476,20 @@ class _PeriodLabel extends StatelessWidget {
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 2),
-            Text(
-              '${time.$1}\n${time.$2}',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 10,
-                height: 1.2,
-                color: scheme.onSurfaceVariant,
+            SizedBox(
+              width: double.infinity,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  '${time.$1}\n${time.$2}',
+                  softWrap: false,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 10,
+                    height: 1.2,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
               ),
             ),
           ],
