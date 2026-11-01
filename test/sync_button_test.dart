@@ -1,5 +1,6 @@
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/app/ui/settings_screen.dart';
+import 'package:bitree/sync/controller.dart';
 import 'package:bitree/sync/ui/sync_button.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
@@ -30,6 +31,29 @@ void main() {
       '自定义同步',
     ]);
     expect(find.byType(Divider), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Custom sync excludes academic records', (tester) async {
+    final app = TestAppController();
+    await app.initialize();
+    expect(app.sync.bulkTargets, isNot(contains(SyncTarget.grades)));
+    expect(app.sync.bulkTargets, isNot(contains(SyncTarget.studyPlan)));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: bitreeTheme(Brightness.light),
+        home: Scaffold(body: SyncButton(controller: app)),
+      ),
+    );
+    await tester.tap(find.byTooltip('同步'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('自定义同步'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('成绩'), findsNothing);
+    expect(find.text('学分进度'), findsNothing);
+    expect(find.text('课表'), findsOneWidget);
+    expect(find.text('大物实验 DDL'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

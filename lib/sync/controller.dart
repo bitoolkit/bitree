@@ -24,6 +24,7 @@ enum SyncTarget {
   const SyncTarget([this.source]);
   final DeadlineSource? source;
   bool get isSchool => this != mooc && this != physicsLab;
+  bool get isAcademicRecord => this == grades || this == studyPlan;
 }
 
 enum SyncOutcome {
@@ -76,8 +77,12 @@ class SyncController extends ChangeNotifier {
   String? get term => _term;
   List<SyncTarget> get targets => _targets;
   Map<SyncTarget, SyncResult> get results => Map.unmodifiable(_results);
-  Set<SyncTarget> get defaultTargets => {
+  Set<SyncTarget> get bulkTargets => {
     for (final target in SyncTarget.values)
+      if (!target.isAcademicRecord) target,
+  };
+  Set<SyncTarget> get defaultTargets => {
+    for (final target in bulkTargets)
       if (target != SyncTarget.mooc || !_mooc.needsLogin) target,
   };
   Set<SyncTarget> get incompleteTargets => {

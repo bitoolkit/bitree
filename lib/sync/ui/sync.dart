@@ -102,6 +102,7 @@ class _CustomSyncSheet extends StatefulWidget {
 }
 
 class _CustomSyncSheetState extends State<_CustomSyncSheet> {
+  late final _availableTargets = widget.app.sync.bulkTargets;
   late final _selected = widget.app.sync.defaultTargets;
 
   @override
@@ -133,7 +134,7 @@ class _CustomSyncSheetState extends State<_CustomSyncSheet> {
                 ),
                 TextButton(
                   onPressed: () =>
-                      setState(() => _selected.addAll(SyncTarget.values)),
+                      setState(() => _selected.addAll(_availableTargets)),
                   child: Text(context.l10n.selectAll),
                 ),
                 TextButton(
@@ -142,7 +143,7 @@ class _CustomSyncSheetState extends State<_CustomSyncSheet> {
                 ),
               ],
             ),
-            for (final target in SyncTarget.values) ...[
+            for (final target in _availableTargets) ...[
               if (target == SyncTarget.lexue) const Divider(),
               CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
