@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -242,10 +241,14 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final rowHeight = math.max(
-                48.0 * scale,
-                constraints.maxHeight / sectionTimes.length,
-              );
+              final preferredRowHeight = 48.0 * scale;
+              final availableRowHeight =
+                  constraints.maxHeight / sectionTimes.length;
+              // A tiny shortfall should compress the grid instead of creating
+              // a distracting few-pixel vertical scroll.
+              final rowHeight = availableRowHeight >= preferredRowHeight * 0.9
+                  ? availableRowHeight
+                  : preferredRowHeight;
               _rowHeight = rowHeight;
 
               return NotificationListener<ScrollMetricsNotification>(
