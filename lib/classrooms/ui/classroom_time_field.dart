@@ -8,7 +8,6 @@ import '../../schedule/model.dart';
 import '../../ui/app_dropdown_field.dart';
 import '../../ui/design.dart';
 import '../../ui/selection_controls.dart';
-import '../../ui/sheet_layout.dart';
 import '../model.dart';
 
 enum _TimePreset { all, current, morning, afternoon, evening, custom }
@@ -96,9 +95,9 @@ class ClassroomTimeField extends StatelessWidget {
           onChanged(ranges[preset]);
           return;
         }
-        final selection = await showAppSheet<({ClassroomPeriod? period})>(
+        final selection = await showDialog<({ClassroomPeriod? period})>(
           context: context,
-          builder: (_) => _ClassroomTimeSheet(
+          builder: (_) => _ClassroomTimeDialog(
             initial: value ?? (start: current ?? 1, end: current ?? 2),
           ),
         );
@@ -110,16 +109,16 @@ class ClassroomTimeField extends StatelessWidget {
   }
 }
 
-class _ClassroomTimeSheet extends StatefulWidget {
-  const _ClassroomTimeSheet({required this.initial});
+class _ClassroomTimeDialog extends StatefulWidget {
+  const _ClassroomTimeDialog({required this.initial});
 
   final ClassroomPeriod initial;
 
   @override
-  State<_ClassroomTimeSheet> createState() => _ClassroomTimeSheetState();
+  State<_ClassroomTimeDialog> createState() => _ClassroomTimeDialogState();
 }
 
-class _ClassroomTimeSheetState extends State<_ClassroomTimeSheet> {
+class _ClassroomTimeDialogState extends State<_ClassroomTimeDialog> {
   late ClassroomPeriod _period = widget.initial;
   bool _choosingEnd = false;
 
@@ -141,35 +140,47 @@ class _ClassroomTimeSheetState extends State<_ClassroomTimeSheet> {
     final scheme = theme.colorScheme;
     final l10n = context.l10n;
 
-    return SheetLayout(
-      header: SheetHeader(
-        title: Text(l10n.chooseFreePeriod),
-        actions: const [SheetCloseButton()],
-      ),
-      content: LayoutBuilder(
-        builder: (context, constraints) {
-          final columns =
-              (constraints.maxWidth /
-                      (MediaQuery.textScalerOf(context).scale(11) * 7 + 20))
-                  .floor()
-                  .clamp(1, 4);
-          final width =
-              (constraints.maxWidth - (columns - 1) * AppSpacing.xs) / columns;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(l10n.periodSelectionHint, style: theme.textTheme.bodySmall),
-              const SizedBox(height: AppSpacing.md),
-              Semantics(
-                liveRegion: true,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: scheme.primaryContainer,
-                    borderRadius: AppCorners.control,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.md),
+    return ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+      child: AlertDialog(
+        titlePadding: const EdgeInsets.fromLTRB(24, 12, 12, 0),
+        contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+        scrollable: true,
+        title: Row(
+          children: [
+            Expanded(child: Text(l10n.chooseFreePeriod)),
+            IconButton(
+              tooltip: l10n.close,
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.close_rounded, size: 20),
+            ),
+          ],
+        ),
+        content: LayoutBuilder(
+          builder: (context, constraints) {
+            final columns =
+                (constraints.maxWidth /
+                        (MediaQuery.textScalerOf(context).scale(11) * 7 + 20))
+                    .floor()
+                    .clamp(1, 4);
+            final width = (constraints.maxWidth - (columns - 1) * 6) / columns;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  l10n.periodSelectionHint,
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: 12),
+                Semantics(
+                  liveRegion: true,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: scheme.primaryContainer,
+                      borderRadius: AppCorners.control,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
@@ -178,7 +189,7 @@ class _ClassroomTimeSheetState extends State<_ClassroomTimeSheet> {
                           _period.localizedTime(l10n),
                           style: theme.textTheme.titleMedium,
                         ),
-                        const SizedBox(height: AppSpacing.xxs),
+                        const SizedBox(height: 2),
                         Text(
                           l10n.freeThroughoutSections(
                             _period.localizedSection(l10n),
@@ -189,61 +200,61 @@ class _ClassroomTimeSheetState extends State<_ClassroomTimeSheet> {
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Wrap(
-                spacing: AppSpacing.xs,
-                runSpacing: AppSpacing.xs,
-                children: [
-                  for (
-                    var section = 1;
-                    section <= sectionTimes.length;
-                    section++
-                  )
-                    SizedBox(
-                      width: width,
-                      child: AppSelectionButton(
-                        selected: _period.contains(section),
-                        minimumSize: const Size(0, 54),
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 7,
-                          horizontal: 3,
-                        ),
-                        onPressed: () => _select(section),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              l10n.sectionShort(section),
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                            const SizedBox(height: AppSpacing.xxs),
-                            Text(
-                              (
-                                start: section,
-                                end: section,
-                              ).localizedTime(l10n),
-                              style: const TextStyle(fontSize: 11),
-                            ),
-                          ],
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (
+                      var section = 1;
+                      section <= sectionTimes.length;
+                      section++
+                    )
+                      SizedBox(
+                        width: width,
+                        child: AppSelectionButton(
+                          selected: _period.contains(section),
+                          minimumSize: const Size(0, 54),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 7,
+                            horizontal: 3,
+                          ),
+                          onPressed: () => _select(section),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                l10n.sectionShort(section),
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                (
+                                  start: section,
+                                  end: section,
+                                ).localizedTime(l10n),
+                                style: const TextStyle(fontSize: 11),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                ],
-              ),
-            ],
-          );
-        },
-      ),
-      actions: SheetActionBar.split(
-        leading: TextButton(
-          onPressed: () => Navigator.pop(context, (period: null)),
-          child: Text(l10n.allPeriods),
+                  ],
+                ),
+              ],
+            );
+          },
         ),
-        primary: FilledButton(
-          onPressed: () => Navigator.pop(context, (period: _period)),
-          child: Text(l10n.apply),
-        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, (period: null)),
+            child: Text(l10n.allPeriods),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, (period: _period)),
+            child: Text(l10n.apply),
+          ),
+        ],
       ),
     );
   }

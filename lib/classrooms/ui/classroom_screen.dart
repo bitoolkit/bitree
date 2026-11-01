@@ -7,7 +7,7 @@ import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../schedule/model.dart';
 import '../../school/ui/school_screen.dart';
-import '../../school/ui/school_verification_sheet.dart';
+import '../../school/ui/school_verification_dialog.dart';
 import '../../ui/app_dropdown_field.dart';
 import '../../ui/app_page.dart';
 import '../../ui/campus_time_builder.dart';

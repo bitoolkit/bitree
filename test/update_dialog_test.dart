@@ -1,10 +1,9 @@
 import 'dart:ffi' show Abi;
 import 'dart:math' as math;
 
-import 'package:bitree/ui/sheet_layout.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:bitree/updates/release.dart';
-import 'package:bitree/updates/ui/update_sheet.dart';
+import 'package:bitree/updates/ui/update_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -48,7 +47,7 @@ Future<void> _show(
       home: Scaffold(
         body: Builder(
           builder: (context) => TextButton(
-            onPressed: () => showUpdateSheet(
+            onPressed: () => showUpdateDialog(
               context,
               releases: releases,
               preferDevelopment: true,
@@ -98,8 +97,12 @@ void main() {
       tester,
     ) async {
       await _show(tester, size: size, textScale: scale, releases: [_release()]);
-      final surface = tester.getRect(find.byType(SheetLayout));
-      expect(surface.width, math.min(560, size.width));
+      final surface = tester.getRect(
+        find.byWidgetPredicate(
+          (widget) => widget is Material && widget.type == MaterialType.card,
+        ),
+      );
+      expect(surface.width, math.min(360, size.width - 48));
       final download = tester.getRect(
         find.widgetWithText(FilledButton, '下载测试版'),
       );
@@ -118,11 +121,11 @@ void main() {
     await tester.tap(find.text('发布页'));
     await tester.pumpAndSettle();
     expect(launched, [release.url.toString()]);
-    expect(find.byType(UpdateSheet), findsOneWidget);
+    expect(find.byType(UpdateDialog), findsOneWidget);
     await tester.tap(find.text('下载测试版'));
     await tester.pumpAndSettle();
     expect(launched, [release.url.toString(), release.downloadUrl.toString()]);
-    expect(find.byType(UpdateSheet), findsNothing);
+    expect(find.byType(UpdateDialog), findsNothing);
   });
 
   testWidgets(
@@ -159,7 +162,7 @@ void main() {
       await tester.tapAt(editable.localToGlobal(box.toRect().center));
       await tester.pumpAndSettle();
       expect(launched, [comparison]);
-      expect(find.byType(UpdateSheet), findsOneWidget);
+      expect(find.byType(UpdateDialog), findsOneWidget);
       expect(find.text('发布页'), findsOneWidget);
       expect(find.text('下载测试版'), findsOneWidget);
     },
@@ -197,7 +200,7 @@ void main() {
     expect(find.text('稍后').hitTestable(), findsOneWidget);
     await tester.tap(find.text('稍后'));
     await tester.pumpAndSettle();
-    expect(find.byType(UpdateSheet), findsNothing);
+    expect(find.byType(UpdateDialog), findsNothing);
     expect(launched, isEmpty);
     expect(tester.takeException(), isNull);
   });
@@ -211,7 +214,7 @@ void main() {
     await tester.tap(find.text('下载测试版'));
     await tester.pumpAndSettle();
     expect(find.text('无法打开下载链接'), findsOneWidget);
-    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNWidgets(2));
     expect(find.textContaining(release.downloadUrl.toString()), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

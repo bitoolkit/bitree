@@ -3,19 +3,17 @@ import 'package:flutter/material.dart';
 import '../../app/controller.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/design.dart';
-import '../../ui/editor_sheet.dart';
-import '../../ui/sheet_layout.dart';
 import '../model.dart';
 
-Future<({int first, int last})?> showWeekRangeSheet(
+Future<({int first, int last})?> showWeekRangeDialog(
   BuildContext context, {
   required int first,
   required int last,
   AppController? controller,
-}) => showAppSheet<({int first, int last})>(
+}) => showDialog<({int first, int last})>(
   context: context,
   builder: (_) =>
-      _WeekRangeSheet(first: first, last: last, controller: controller),
+      _WeekRangeDialog(first: first, last: last, controller: controller),
 );
 
 Future<void> manageTermWeeks(
@@ -23,7 +21,7 @@ Future<void> manageTermWeeks(
   AppController controller,
 ) async {
   final schedule = controller.timetable.schedule!;
-  await showWeekRangeSheet(
+  await showWeekRangeDialog(
     context,
     first: schedule.firstWeek,
     last: schedule.lastWeek,
@@ -31,8 +29,8 @@ Future<void> manageTermWeeks(
   );
 }
 
-class _WeekRangeSheet extends StatefulWidget {
-  const _WeekRangeSheet({
+class _WeekRangeDialog extends StatefulWidget {
+  const _WeekRangeDialog({
     required this.first,
     required this.last,
     this.controller,
@@ -43,10 +41,10 @@ class _WeekRangeSheet extends StatefulWidget {
   final AppController? controller;
 
   @override
-  State<_WeekRangeSheet> createState() => _WeekRangeSheetState();
+  State<_WeekRangeDialog> createState() => _WeekRangeDialogState();
 }
 
-class _WeekRangeSheetState extends State<_WeekRangeSheet> {
+class _WeekRangeDialogState extends State<_WeekRangeDialog> {
   final _form = GlobalKey<FormState>();
   late final _first = TextEditingController(text: '${widget.first}');
   late final _last = TextEditingController(text: '${widget.last}');
@@ -85,18 +83,14 @@ class _WeekRangeSheetState extends State<_WeekRangeSheet> {
     );
     final controller = widget.controller;
     if (controller != null) {
-      setState(() {
-        _saving = true;
-      });
+      setState(() => _saving = true);
       final saved = await controller.timetable.setWeekRange(
         first: range.first,
         last: range.last,
       );
       if (!mounted) return;
       if (!saved) {
-        setState(() {
-          _saving = false;
-        });
+        setState(() => _saving = false);
         return;
       }
     }
@@ -169,41 +163,55 @@ class _WeekRangeSheetState extends State<_WeekRangeSheet> {
     final first = _input(l10n.weekStart, _first);
     final last = _input(l10n.weekEnd, _last, last: true);
 
-    return EditorSheet(
-      title: l10n.weekRangeDialogTitle,
-      formKey: _form,
-      saving: _saving,
-      onSave: _save,
-      saveLabel: Text(_saving ? l10n.saving : l10n.confirm),
-      child: LayoutBuilder(
-        builder: (context, constraints) => Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (constraints.maxWidth >= minimumFieldWidth * 2 + AppSpacing.xl)
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: first),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      AppSpacing.sm,
-                      42,
-                      AppSpacing.sm,
-                      0,
-                    ),
-                    child: Text('—'),
-                  ),
-                  Expanded(child: last),
+    return PopScope(
+      canPop: !_saving,
+      child: AlertDialog(
+        scrollable: true,
+        title: Text(l10n.weekRangeDialogTitle),
+        content: LayoutBuilder(
+          builder: (context, constraints) => Form(
+            key: _form,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (constraints.maxWidth >=
+                    minimumFieldWidth * 2 + AppSpacing.xl)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: first),
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          AppSpacing.sm,
+                          42,
+                          AppSpacing.sm,
+                          0,
+                        ),
+                        child: Text('—'),
+                      ),
+                      Expanded(child: last),
+                    ],
+                  )
+                else ...[
+                  first,
+                  const SizedBox(height: AppSpacing.lg),
+                  last,
                 ],
-              )
-            else ...[
-              first,
-              const SizedBox(height: AppSpacing.lg),
-              last,
-            ],
-          ],
+              ],
+            ),
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: _saving ? null : () => Navigator.pop(context),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: _saving ? null : _save,
+            child: Text(_saving ? l10n.saving : l10n.confirm),
+          ),
+        ],
       ),
     );
   }

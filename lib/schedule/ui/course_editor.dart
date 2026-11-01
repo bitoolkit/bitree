@@ -11,7 +11,7 @@ import '../model.dart';
 import '../selection.dart';
 import 'course_period_fields.dart';
 import 'course_week_picker.dart';
-import 'week_range_sheet.dart';
+import 'week_range_dialog.dart';
 
 Future<void> editCourse(
   BuildContext context,
@@ -88,7 +88,7 @@ class _CourseEditorState extends State<_CourseEditor> {
   }
 
   Future<void> _manageWeeks() async {
-    final range = await showWeekRangeSheet(
+    final range = await showWeekRangeDialog(
       context,
       first: _firstWeek,
       last: _lastWeek,

@@ -1,8 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:bitree/classrooms/ui/classroom_time_field.dart';
-import 'package:bitree/schedule/ui/week_range_sheet.dart';
-import 'package:bitree/school/ui/school_verification_sheet.dart';
+import 'package:bitree/schedule/ui/week_range_dialog.dart';
+import 'package:bitree/school/ui/school_verification_dialog.dart';
 import 'package:bitree/school/verification.dart';
 import 'package:bitree/ui/dialog_layout.dart';
 import 'package:bitree/ui/theme.dart';
@@ -101,7 +101,7 @@ void main() {
       });
     }
 
-    testWidgets('Week management uses the shared sheet at $size', (
+    testWidgets('Week management uses the shared dialog at $size', (
       tester,
     ) async {
       ({int first, int last})? saved;
@@ -110,14 +110,14 @@ void main() {
         size,
         (context) => TextButton(
           onPressed: () async =>
-              saved = await showWeekRangeSheet(context, first: -3, last: 25),
+              saved = await showWeekRangeDialog(context, first: -3, last: 25),
           child: const Text('打开'),
         ),
       );
       await tester.tap(find.text('打开'));
       await tester.pumpAndSettle();
-      expect(find.byType(AlertDialog), findsNothing);
-      expect(find.byType(BottomSheet), findsOneWidget);
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.byType(BottomSheet), findsNothing);
       await tester.tap(find.byTooltip('增加一周').first);
       await tester.tap(find.text('确定'));
       await tester.pumpAndSettle();
@@ -125,7 +125,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('Custom classroom times use the shared sheet at $size', (
+    testWidgets('Custom classroom times use the shared dialog at $size', (
       tester,
     ) async {
       ({int start, int end})? selected;
@@ -148,8 +148,8 @@ void main() {
       await tester.ensureVisible(custom);
       await tester.tap(custom);
       await tester.pumpAndSettle();
-      expect(find.byType(AlertDialog), findsNothing);
-      expect(find.byType(BottomSheet), findsOneWidget);
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.byType(BottomSheet), findsNothing);
       await tester.tap(find.text('第3节'));
       await tester.tap(find.text('第4节'));
       await tester.tap(find.text('应用'));
@@ -198,7 +198,7 @@ void main() {
     }
   });
 
-  testWidgets('School verification uses the shared sheet with large text', (
+  testWidgets('School verification uses the shared dialog with large text', (
     tester,
   ) async {
     var sends = 0;
@@ -232,8 +232,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(sends, 1);
-    expect(find.byType(AlertDialog), findsNothing);
-    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.byType(BottomSheet), findsNothing);
     expect(find.text('短信验证'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
