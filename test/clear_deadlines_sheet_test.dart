@@ -90,6 +90,13 @@ void main() {
     await tester.pump();
     expect(tester.widget<Checkbox>(find.byType(Checkbox).first).value, isNull);
     expect(app.agenda.deadlineIdsIn({DeadlineClearScope.eclass}), {'eclass'});
+
+    final sheet = tester.widget<BottomSheet>(find.byType(BottomSheet));
+    expect(sheet.enableDrag, isTrue);
+    expect(sheet.showDragHandle, isTrue);
+    await tester.tapAt(const Offset(8, 8));
+    await tester.pumpAndSettle();
+    expect(find.byType(SheetLayout), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

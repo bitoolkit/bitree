@@ -19,8 +19,6 @@ Future<void> showClearDeadlines(
   }
   final count = await showAppSheet<int>(
     context: context,
-    isDismissible: false,
-    enableDrag: false,
     builder: (_) => _ClearDeadlinesSheet(agenda: agenda),
   );
   if (!context.mounted || count == null) return;
