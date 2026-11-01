@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../schedule/model.dart';
+import '../../ui/app_dialog.dart';
 import '../../ui/app_dropdown_field.dart';
 import '../../ui/design.dart';
 import '../../ui/selection_controls.dart';
@@ -95,7 +96,7 @@ class ClassroomTimeField extends StatelessWidget {
           onChanged(ranges[preset]);
           return;
         }
-        final selection = await showDialog<({ClassroomPeriod? period})>(
+        final selection = await showAppDialog<({ClassroomPeriod? period})>(
           context: context,
           builder: (_) => _ClassroomTimeDialog(
             initial: value ?? (start: current ?? 1, end: current ?? 2),

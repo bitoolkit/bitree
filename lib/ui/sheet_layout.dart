@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 import '../l10n/l10n.dart';
 import 'design.dart';
 
+/// Shows a contextual workspace over the current page.
+///
+/// Use sheets for object details, scrolling content, forms, multi-select tools,
+/// and ongoing progress where the current page remains the user's context.
+/// Use `showAppDialog` for focused decisions and compact input.
 Future<T?> showAppSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
@@ -34,8 +39,14 @@ class SheetCloseButton extends StatelessWidget {
 }
 
 class SheetHeader extends StatelessWidget {
-  const SheetHeader({super.key, required this.title, required this.actions});
+  const SheetHeader({
+    super.key,
+    this.leading,
+    required this.title,
+    required this.actions,
+  });
 
+  final Widget? leading;
   final Widget title;
   final List<Widget> actions;
 
@@ -44,6 +55,7 @@ class SheetHeader extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(24, 0, 8, 8),
     child: Row(
       children: [
+        ?leading,
         Expanded(
           child: Semantics(
             header: true,

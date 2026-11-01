@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../core/diagnostics.dart';
 import '../../core/error_message.dart';
 import '../../l10n/l10n.dart';
+import '../../ui/app_dialog.dart';
 import '../../ui/design.dart';
 import '../verification.dart';
 
@@ -14,7 +15,7 @@ Future<String?> verifySchoolLogin(
   SchoolVerification request,
 ) {
   if (!context.mounted) return Future.value(null);
-  return showDialog<String>(
+  return showAppDialog<String>(
     context: context,
     builder: (_) => _VerificationDialog(request: request),
   );

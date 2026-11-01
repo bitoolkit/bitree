@@ -7,6 +7,7 @@ import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../schedule/location.dart';
 import '../../schedule/model.dart';
+import '../../ui/app_dialog.dart';
 import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_page.dart';
 import '../../ui/design.dart';
@@ -34,7 +35,7 @@ class WencuiMapScreen extends StatefulWidget {
   State<WencuiMapScreen> createState() => _WencuiMapScreenState();
 }
 
-void _showMapInfo(BuildContext context) => showDialog<void>(
+void _showMapInfo(BuildContext context) => showAppDialog<void>(
   context: context,
   builder: (dialogContext) {
     final l10n = dialogContext.l10n;

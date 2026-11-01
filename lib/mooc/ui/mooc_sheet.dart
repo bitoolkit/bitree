@@ -58,6 +58,7 @@ class _MoocSheet extends StatefulWidget {
 class _MoocSheetState extends State<_MoocSheet> {
   String? _error;
   bool _loginOpen = false;
+  bool _editingCookie = false;
 
   Future<void> _login() async {
     if (_loginOpen) return;
@@ -71,14 +72,6 @@ class _MoocSheetState extends State<_MoocSheet> {
     } finally {
       if (mounted) setState(() => _loginOpen = false);
     }
-  }
-
-  Future<void> _cookie() async {
-    final success = await showAppSheet<bool>(
-      context: context,
-      builder: (_) => _CookieSheet(controller: widget.controller),
-    );
-    if (success == true && mounted) Navigator.pop(context, true);
   }
 
   Future<void> _disconnect() async {
@@ -99,104 +92,117 @@ class _MoocSheetState extends State<_MoocSheet> {
   }
 
   @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: widget.controller,
-    builder: (context, _) {
-      final model = widget.controller;
-      final theme = Theme.of(context);
-      final scheme = theme.colorScheme;
-      final enabled = !model.busy && !_loginOpen;
-      final l10n = context.l10n;
-      return SheetLayout(
-        header: SheetHeader(
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(l10n.moocName),
-              if (model.account case final account?) ...[
-                const SizedBox(height: 6),
-                Text(
-                  account.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-                if (model.needsLogin)
+  Widget build(BuildContext context) {
+    if (_editingCookie) {
+      return _CookieEditor(
+        controller: widget.controller,
+        onBack: () => setState(() => _editingCookie = false),
+      );
+    }
+    return ListenableBuilder(
+      listenable: widget.controller,
+      builder: (context, _) {
+        final model = widget.controller;
+        final theme = Theme.of(context);
+        final scheme = theme.colorScheme;
+        final enabled = !model.busy && !_loginOpen;
+        final l10n = context.l10n;
+        return SheetLayout(
+          header: SheetHeader(
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.moocName),
+                if (model.account case final account?) ...[
+                  const SizedBox(height: 6),
                   Text(
-                    model.status.localizedLabel(l10n),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: scheme.error,
+                    account.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                  if (model.needsLogin)
+                    Text(
+                      model.status.localizedLabel(l10n),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.error,
+                      ),
+                    ),
+                ],
+              ],
+            ),
+            actions: const [SheetCloseButton()],
+          ),
+          content: ListTileTheme(
+            data: theme.listTileTheme.copyWith(
+              contentPadding: EdgeInsets.zero,
+              minTileHeight: 48,
+              minVerticalPadding: 8,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.login_rounded),
+                  title: Text(model.needsLogin ? l10n.webLogin : l10n.relogin),
+                  subtitle: model.needsLogin
+                      ? Text(l10n.moocLoginMethods)
+                      : null,
+                  trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+                  enabled: enabled,
+                  onTap: enabled ? _login : null,
+                ),
+                ListTile(
+                  leading: const Icon(Icons.key_outlined),
+                  title: Text(l10n.useCookie),
+                  subtitle: model.needsLogin ? Text(l10n.backupLogin) : null,
+                  trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+                  enabled: enabled,
+                  onTap: enabled
+                      ? () => setState(() => _editingCookie = true)
+                      : null,
+                ),
+                if (model.account != null) ...[
+                  const Divider(height: 24),
+                  ListTile(
+                    leading: Icon(Icons.logout_rounded, color: scheme.error),
+                    title: Text(
+                      l10n.moocSignOutAccount,
+                      style: TextStyle(color: scheme.error),
+                    ),
+                    enabled: enabled,
+                    onTap: enabled ? _disconnect : null,
+                  ),
+                ],
+                if (_error case final error?)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Text(
+                      error,
+                      style: TextStyle(color: theme.colorScheme.error),
                     ),
                   ),
               ],
-            ],
+            ),
           ),
-          actions: const [SheetCloseButton()],
-        ),
-        content: ListTileTheme(
-          data: theme.listTileTheme.copyWith(
-            contentPadding: EdgeInsets.zero,
-            minTileHeight: 48,
-            minVerticalPadding: 8,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.login_rounded),
-                title: Text(model.needsLogin ? l10n.webLogin : l10n.relogin),
-                subtitle: model.needsLogin ? Text(l10n.moocLoginMethods) : null,
-                trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-                enabled: enabled,
-                onTap: enabled ? _login : null,
-              ),
-              ListTile(
-                leading: const Icon(Icons.key_outlined),
-                title: Text(l10n.useCookie),
-                subtitle: model.needsLogin ? Text(l10n.backupLogin) : null,
-                trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-                enabled: enabled,
-                onTap: enabled ? _cookie : null,
-              ),
-              if (model.account != null) ...[
-                const Divider(height: 24),
-                ListTile(
-                  leading: Icon(Icons.logout_rounded, color: scheme.error),
-                  title: Text(
-                    l10n.moocSignOutAccount,
-                    style: TextStyle(color: scheme.error),
-                  ),
-                  enabled: enabled,
-                  onTap: enabled ? _disconnect : null,
-                ),
-              ],
-              if (_error case final error?)
-                Padding(
-                  padding: const EdgeInsets.only(top: 16),
-                  child: Text(
-                    error,
-                    style: TextStyle(color: theme.colorScheme.error),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      );
-    },
-  );
+        );
+      },
+    );
+  }
 }
 
-class _CookieSheet extends StatefulWidget {
-  const _CookieSheet({required this.controller});
+class _CookieEditor extends StatefulWidget {
+  const _CookieEditor({required this.controller, required this.onBack});
   final MoocController controller;
+  final VoidCallback onBack;
   @override
-  State<_CookieSheet> createState() => _CookieSheetState();
+  State<_CookieEditor> createState() => _CookieEditorState();
 }
 
-class _CookieSheetState extends State<_CookieSheet> {
+class _CookieEditorState extends State<_CookieEditor> {
   final _form = GlobalKey<FormState>();
   final _text = TextEditingController();
   bool _saving = false;
@@ -248,6 +254,7 @@ class _CookieSheetState extends State<_CookieSheet> {
       onSave: _save,
       saveLabel: Text(_saving ? l10n.moocConnecting : l10n.connect),
       error: _error,
+      onBack: widget.onBack,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -13,6 +13,7 @@ class EditorSheet extends StatelessWidget {
     required this.saveLabel,
     required this.child,
     this.onDelete,
+    this.onBack,
     this.error,
   });
 
@@ -23,6 +24,7 @@ class EditorSheet extends StatelessWidget {
   final Widget saveLabel;
   final Widget child;
   final VoidCallback? onDelete;
+  final VoidCallback? onBack;
   final String? error;
 
   @override
@@ -35,6 +37,14 @@ class EditorSheet extends StatelessWidget {
         ),
         child: SheetLayout(
           header: SheetHeader(
+            leading: onBack == null
+                ? null
+                : IconButton(
+                    tooltip: MaterialLocalizations.of(context)
+                        .backButtonTooltip,
+                    onPressed: saving ? null : onBack,
+                    icon: const Icon(Icons.arrow_back_rounded, size: 20),
+                  ),
             title: Text(title),
             actions: [SheetCloseButton(enabled: !saving)],
           ),

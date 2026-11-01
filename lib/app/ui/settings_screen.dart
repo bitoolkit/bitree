@@ -66,7 +66,7 @@ class SettingsScreen extends StatelessWidget {
     final builtAt = appBuildTime?.toLocal();
     if (!context.mounted) return;
 
-    await showDialog<void>(
+    await showAppDialog<void>(
       context: context,
       builder: (dialogContext) {
         final theme = Theme.of(dialogContext);

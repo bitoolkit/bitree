@@ -95,6 +95,14 @@ void main() {
         expect(find.text('网页登录'), findsOneWidget);
         await tester.tap(find.text('使用 Cookie'));
         await tester.pumpAndSettle();
+        expect(find.byType(BottomSheet), findsOneWidget);
+        expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
+        await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+        await tester.pumpAndSettle();
+        expect(find.byType(BottomSheet), findsOneWidget);
+        expect(find.text('网页登录'), findsOneWidget);
+        await tester.tap(find.text('使用 Cookie'));
+        await tester.pumpAndSettle();
         await tester.ensureVisible(find.widgetWithText(FilledButton, '连接'));
         await tester.tap(find.widgetWithText(FilledButton, '连接'));
         await tester.pump();

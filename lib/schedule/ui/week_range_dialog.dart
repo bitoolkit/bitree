@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
 import '../../l10n/l10n.dart';
+import '../../ui/app_dialog.dart';
 import '../../ui/design.dart';
 import '../model.dart';
 
@@ -10,7 +11,7 @@ Future<({int first, int last})?> showWeekRangeDialog(
   required int first,
   required int last,
   AppController? controller,
-}) => showDialog<({int first, int last})>(
+}) => showAppDialog<({int first, int last})>(
   context: context,
   builder: (_) =>
       _WeekRangeDialog(first: first, last: last, controller: controller),
