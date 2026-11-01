@@ -924,6 +924,25 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get deletedDeadlinesEmptyAction => '清空回收站';
+
+  @override
+  String get deletedDeadlinesEmptyTitle => '清空回收站？';
+
+  @override
+  String deletedDeadlinesEmptyConfirm(int count) {
+    return '将永久删除 $count 条 DDL，无法恢复。';
+  }
+
+  @override
+  String get deletedDeadlinesDeleteForever => '永久删除';
+
+  @override
+  String deletedDeadlinesEmptied(int count) {
+    return '已清空 $count 条 DDL';
+  }
+
+  @override
   String get deadlineManual => '手动添加';
 
   @override

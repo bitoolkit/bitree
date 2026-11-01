@@ -780,6 +780,25 @@
       }
     }
   },
+  "deletedDeadlinesEmptyAction": "Empty recycle bin",
+  "deletedDeadlinesEmptyTitle": "Empty recycle bin?",
+  "deletedDeadlinesEmptyConfirm": "{count, plural, =1{Permanently delete 1 DDL. This cannot be undone.} other{Permanently delete {count} DDLs. This cannot be undone.}}",
+  "@deletedDeadlinesEmptyConfirm": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "deletedDeadlinesDeleteForever": "Delete permanently",
+  "deletedDeadlinesEmptied": "{count, plural, =1{Cleared 1 DDL} other{Cleared {count} DDLs}}",
+  "@deletedDeadlinesEmptied": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "deadlineManual": "Manually created",
   "deadlineManualScope": "Manually created DDLs",
   "deadlinePhysicsLab": "Physics lab DDLs",

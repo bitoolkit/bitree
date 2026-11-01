@@ -973,6 +973,37 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get deletedDeadlinesEmptyAction => 'Empty recycle bin';
+
+  @override
+  String get deletedDeadlinesEmptyTitle => 'Empty recycle bin?';
+
+  @override
+  String deletedDeadlinesEmptyConfirm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Permanently delete $count DDLs. This cannot be undone.',
+      one: 'Permanently delete 1 DDL. This cannot be undone.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get deletedDeadlinesDeleteForever => 'Delete permanently';
+
+  @override
+  String deletedDeadlinesEmptied(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Cleared $count DDLs',
+      one: 'Cleared 1 DDL',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get deadlineManual => 'Manually created';
 
   @override

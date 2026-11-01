@@ -170,6 +170,33 @@ void main() {
     },
   );
 
+  testWidgets(
+    'Emptying the recycle bin requires confirmation and permanently deletes DDLs',
+    (tester) async {
+      final app = await showAgenda(tester, count: 3, deleted: true);
+      await tester.tap(find.byTooltip('已删除的 DDL'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('清空回收站'));
+      await tester.pumpAndSettle();
+      expect(find.text('清空回收站？'), findsOneWidget);
+      expect(find.text('将永久删除 3 条 DDL，无法恢复。'), findsOneWidget);
+      await tester.tap(find.text('取消'));
+      await tester.pumpAndSettle();
+      expect(app.agenda.deletedDeadlines, hasLength(3));
+
+      await tester.tap(find.text('清空回收站'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('永久删除'));
+      await tester.pumpAndSettle();
+
+      expect(app.agenda.deletedDeadlines, isEmpty);
+      expect(find.text('已清空 3 条 DDL'), findsOneWidget);
+      expect(find.byTooltip('已删除的 DDL'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   for (final kind in [PointerDeviceKind.touch, PointerDeviceKind.mouse]) {
     testWidgets(
       'A short $kind swipe reveals delete immediately, without changing data',

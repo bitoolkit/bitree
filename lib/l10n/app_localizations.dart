@@ -1656,6 +1656,36 @@ abstract class AppLocalizations {
   /// **'Restored {count} DDLs'**
   String deletedDeadlinesRestoredCount(int count);
 
+  /// No description provided for @deletedDeadlinesEmptyAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty recycle bin'**
+  String get deletedDeadlinesEmptyAction;
+
+  /// No description provided for @deletedDeadlinesEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty recycle bin?'**
+  String get deletedDeadlinesEmptyTitle;
+
+  /// No description provided for @deletedDeadlinesEmptyConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Permanently delete 1 DDL. This cannot be undone.} other{Permanently delete {count} DDLs. This cannot be undone.}}'**
+  String deletedDeadlinesEmptyConfirm(int count);
+
+  /// No description provided for @deletedDeadlinesDeleteForever.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete permanently'**
+  String get deletedDeadlinesDeleteForever;
+
+  /// No description provided for @deletedDeadlinesEmptied.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Cleared 1 DDL} other{Cleared {count} DDLs}}'**
+  String deletedDeadlinesEmptied(int count);
+
   /// No description provided for @deadlineManual.
   ///
   /// In en, this message translates to:

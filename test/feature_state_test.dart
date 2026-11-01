@@ -44,6 +44,7 @@ AgendaEntry deadline(
   String title = '作业',
   bool local = false,
   bool done = false,
+  bool deleted = false,
 }) => AgendaEntry(
   id: id,
   title: title,
@@ -51,6 +52,7 @@ AgendaEntry deadline(
   startsAt: DateTime.utc(2026, 11, 1),
   local: local,
   done: done,
+  deleted: deleted,
 );
 
 void main() {
@@ -322,5 +324,21 @@ void main() {
     expect(restarted.deletedDeadlines.single.id, 'deleted');
     await restarted.restoreDeletedDeadlines();
     expect(restarted.entries, hasLength(4));
+  });
+
+  test('Emptying deleted DDLs keeps every active agenda entry', () async {
+    final store = MemoryAgendaStore([
+      deadline('active'),
+      deadline('deleted', deleted: true),
+    ]);
+    final agenda = AgendaController(store);
+    addTearDown(agenda.dispose);
+    await agenda.load();
+
+    expect(agenda.deletedDeadlines.single.id, 'deleted');
+    expect(await agenda.emptyDeletedDeadlines(), isTrue);
+    expect(agenda.entries.single.id, 'active');
+    expect(agenda.deletedDeadlines, isEmpty);
+    expect(store.entries.single.id, 'active');
   });
 }

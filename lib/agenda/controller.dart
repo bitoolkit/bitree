@@ -28,7 +28,7 @@ class AgendaController extends ChangeNotifier {
       _entries.where((entry) => !entry.deleted);
 
   Iterable<AgendaEntry> get deletedDeadlines =>
-      _entries.where((entry) => entry.deleted);
+      _entries.where((entry) => entry.deleted && entry.isDeadline);
 
   List<AgendaEntry> pendingOn(DateTime date, {required DateTime now}) =>
       entries
@@ -87,6 +87,13 @@ class AgendaController extends ChangeNotifier {
   );
 
   Future<bool> restoreDeletedDeadlines() => restoreEntries(deletedDeadlines);
+
+  Future<bool> emptyDeletedDeadlines() => _write((entries) {
+    final remaining = entries
+        .where((entry) => !(entry.deleted && entry.isDeadline))
+        .toList();
+    return remaining.length == entries.length ? null : remaining;
+  });
 
   Future<bool> replaceExams(
     String term,
