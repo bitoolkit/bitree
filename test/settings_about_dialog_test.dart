@@ -18,6 +18,8 @@ void main() {
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
     const channel = MethodChannel('dev.fluttercommunity.plus/package_info');
+    const urlLauncherChannel = MethodChannel('plugins.flutter.io/url_launcher');
+    final launchedUrls = <String>[];
     messenger.setMockMethodCallHandler(
       channel,
       (_) async => {
@@ -28,7 +30,16 @@ void main() {
         'buildSignature': '',
       },
     );
+    messenger.setMockMethodCallHandler(urlLauncherChannel, (call) async {
+      if (call.method == 'launch') {
+        launchedUrls.add((call.arguments as Map)['url'] as String);
+      }
+      return true;
+    });
     addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+    addTearDown(
+      () => messenger.setMockMethodCallHandler(urlLauncherChannel, null),
+    );
 
     final controller = TestAppController();
     await controller.initialize();
@@ -53,6 +64,10 @@ void main() {
     expect(find.byType(AlertDialog), findsOneWidget);
     expect(find.byType(BottomSheet), findsNothing);
     expect(find.text('面向北京理工大学的妙妙小工具'), findsOneWidget);
+
+    await tester.tap(find.text('加入 BITree 交流群'));
+    await tester.pumpAndSettle();
+    expect(launchedUrls, ['https://qm.qq.com/q/V472c8UjwQ']);
 
     await tester.tap(find.text('关闭'));
     await tester.pumpAndSettle();

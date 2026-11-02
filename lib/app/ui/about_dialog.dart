@@ -143,6 +143,15 @@ Future<void> showBitreeAboutDialog(
             child: Text(l10n.github),
           ),
           TextButton(
+            key: const ValueKey('about-qq-group'),
+            onPressed: () => openExternalLink(
+              dialogContext,
+              Uri.https('qm.qq.com', '/q/V472c8UjwQ'),
+              failureTitle: l10n.aboutOpenQQGroupFailed,
+            ),
+            child: Text(l10n.aboutOpenQQGroup),
+          ),
+          TextButton(
             onPressed: () => Navigator.pop(dialogContext),
             child: Text(l10n.close),
           ),

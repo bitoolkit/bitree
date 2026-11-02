@@ -81,6 +81,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get github => 'GitHub';
 
   @override
+  String get aboutOpenQQGroup => '加入 BITree 交流群';
+
+  @override
   String get language => '语言';
 
   @override
@@ -430,6 +433,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutOpenGitHubFailed => '无法打开 GitHub';
+
+  @override
+  String get aboutOpenQQGroupFailed => '无法打开 BITree 交流群';
 
   @override
   String get aboutLicenseName => 'BITree 理枝';

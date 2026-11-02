@@ -30,6 +30,7 @@
     }
   },
   "github": "GitHub",
+  "aboutOpenQQGroup": "Join BITree QQ group",
   "language": "Language",
   "languageChinese": "简体中文",
   "languageEnglish": "English",
@@ -291,6 +292,7 @@
   },
   "settingsLicenses": "Licenses",
   "aboutOpenGitHubFailed": "Could not open GitHub",
+  "aboutOpenQQGroupFailed": "Could not open BITree QQ group",
   "aboutLicenseName": "BITree 理枝",
   "homeTitle": "Home",
   "backToThisWeek": "Back to this week",

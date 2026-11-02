@@ -236,6 +236,12 @@ abstract class AppLocalizations {
   /// **'GitHub'**
   String get github;
 
+  /// No description provided for @aboutOpenQQGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Join BITree QQ group'**
+  String get aboutOpenQQGroup;
+
   /// No description provided for @language.
   ///
   /// In en, this message translates to:
@@ -865,6 +871,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not open GitHub'**
   String get aboutOpenGitHubFailed;
+
+  /// No description provided for @aboutOpenQQGroupFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open BITree QQ group'**
+  String get aboutOpenQQGroupFailed;
 
   /// No description provided for @aboutLicenseName.
   ///
