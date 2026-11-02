@@ -71,7 +71,10 @@ class MoocApi {
         if (response == null) break; // Official personal centre's empty result.
         final data = moocMap(response);
         if (data == null) throw const FormatException('MOOC 课程列表格式不正确。');
-        final rows = moocList(data['list'] ?? data['result']);
+        final rows = moocList(
+          data['list'] ?? data['result'],
+          field: 'MOOC 课程列表',
+        );
         final before = seenTerms.length;
         for (final row in rows) {
           final panel = moocMap(row);

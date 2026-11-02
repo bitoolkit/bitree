@@ -242,9 +242,41 @@ void main() {
 
     test('Malformed metadata fails instead of reporting an empty successful import', () {
       final broken = term(7)..['chapters'] = 'not a list';
-      expect(() => readMoocTasks(broken, course, '8'), throwsFormatException);
+      expect(
+        () => readMoocTasks(broken, course, '8'),
+        throwsA(
+          isA<FormatException>().having(
+            (error) => error.message,
+            'message',
+            contains('课程章节'),
+          ),
+        ),
+      );
       expect(() => readMoocTasks(term(6), course, '8'), throwsFormatException);
     });
+
+    test(
+      'Missing or empty optional collections do not fail the whole course',
+      () {
+        for (final value in <Object?>[null, '', <String, dynamic>{}]) {
+          final data = term(7)..['chapters'] = value;
+          expect(readMoocTasks(data, course, '8'), isEmpty);
+        }
+
+        final data = term(7);
+        final chapter =
+            (data['chapters'] as List).single as Map<String, dynamic>;
+        data['chapters'] = [
+          <String, dynamic>{
+            ...chapter,
+            'homeworks': <String, dynamic>{},
+            'quizs': '',
+            'lessons': null,
+          },
+        ];
+        expect(readMoocTasks(data, course, '8'), isEmpty);
+      },
+    );
 
     test(
       'Hidden chapters and activities without a deadline do not create tasks',

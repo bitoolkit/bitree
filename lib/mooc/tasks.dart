@@ -117,7 +117,11 @@ List<MoocTask> readMoocTasks(
     if (record != null) add(record, MoocDeadlineKind.exam, exam: true);
   }
 
-  for (final value in moocList(term['chapters'])) {
+  for (final value in moocList(
+    term['chapters'],
+    optional: true,
+    field: '课程章节',
+  )) {
     final chapter = moocMap(value);
     if (chapter == null) throw const FormatException('课程章节格式不正确。');
     if (chapter['published'] == false || chapter['visible'] == 0) continue;
@@ -125,14 +129,22 @@ List<MoocTask> readMoocTasks(
       ('homeworks', MoocDeadlineKind.homework),
       ('quizs', MoocDeadlineKind.quiz),
     ]) {
-      for (final value in moocList(chapter[field], optional: true)) {
+      for (final value in moocList(
+        chapter[field],
+        optional: true,
+        field: field == 'homeworks' ? '章节作业' : '章节测验',
+      )) {
         final activity = moocMap(value);
         if (activity == null) throw const FormatException('课程任务格式不正确。');
         add(activity, kind);
       }
     }
     exam(chapter['exam']);
-    for (final value in moocList(chapter['lessons'], optional: true)) {
+    for (final value in moocList(
+      chapter['lessons'],
+      optional: true,
+      field: '课程课时',
+    )) {
       final lesson = moocMap(value);
       if (lesson == null) throw const FormatException('课程课时格式不正确。');
       if (lesson['visible'] == 0) continue;
@@ -146,7 +158,7 @@ List<MoocTask> readMoocTasks(
       }
     }
   }
-  for (final value in moocList(term['exams'], optional: true)) {
+  for (final value in moocList(term['exams'], optional: true, field: '课程考试')) {
     exam(value);
   }
   return entries.values.toList()
@@ -194,10 +206,19 @@ DateTime? _time(Object? raw) {
 
 Map<String, dynamic>? moocMap(Object? value) =>
     value is Map<String, dynamic> ? value : null;
-List<dynamic> moocList(Object? value, {bool optional = false}) {
-  if (value == null && optional) return const [];
+List<dynamic> moocList(
+  Object? value, {
+  bool optional = false,
+  String field = '列表',
+}) {
+  if (optional &&
+      (value == null ||
+          (value is String && value.trim().isEmpty) ||
+          (value is Map && value.isEmpty))) {
+    return const [];
+  }
   if (value is List) return value;
-  throw const FormatException('中国大学MOOC 列表格式不正确。');
+  throw FormatException('$field格式不正确。');
 }
 
 String? moocId(Object? value) {
