@@ -219,7 +219,7 @@ void main() {
                 sends++;
                 return const Duration(seconds: 60);
               },
-              checkCode: (code) async {
+              submitCode: (code) async {
                 checkedCode = code;
               },
             ),

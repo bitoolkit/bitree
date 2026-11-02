@@ -90,8 +90,8 @@ class _VerificationDialogState extends State<_VerificationDialog> {
     });
     try {
       final code = _code.text.trim();
-      if (widget.request case SchoolSmsVerification(:final checkCode)) {
-        await checkCode(code);
+      if (widget.request case SchoolSmsVerification(:final submitCode)) {
+        await submitCode(code);
       }
       if (mounted) Navigator.pop(context, code);
     } on Exception catch (failure, stack) {

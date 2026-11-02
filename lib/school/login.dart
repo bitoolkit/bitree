@@ -241,6 +241,8 @@ class SchoolLogin {
     );
     final phoneId = jsonStringField(data, 'tel');
     final maskedPhone = jsonStringField(data, 'maskTel');
+    var currentPage = page;
+    Uri? callback;
     final code = await verify(
       SchoolSmsVerification(
         phone: maskedPhone,
@@ -252,7 +254,7 @@ class SchoolLogin {
           );
           return SchoolSmsCodeDelivery.fromResponse(response).resendAfter;
         },
-        checkCode: (code) async {
+        submitCode: (code) async {
           final result = await _json(
             '/cas/api/protected/sms/checkToken',
             body: {
@@ -267,28 +269,34 @@ class SchoolLogin {
               _message(result).isEmpty ? '验证码错误或已失效。' : _message(result),
             );
           }
+          session.checkActive();
+
+          // Finish the login while the verification dialog is still open. A
+          // rejected SMS login can then be retried without the password step.
+          final response = await _request(
+            currentPage.action,
+            form: {
+              'username': username,
+              'password': code,
+              'type': 'smsLogin',
+              '_eventId': 'submit',
+              'geolocation': '',
+              'execution': currentPage.execution,
+              'captcha_code': '',
+              'trustDevice': 'true',
+            },
+            followRedirects: false,
+            checkStatus: false,
+          );
+          final nextPage = _LoginPage(response);
+          if (nextPage.requiresSms) currentPage = nextPage;
+          callback = _smsCallback(response);
         },
       ),
     );
     if (code == null) throw const RequestCancelled();
     session.checkActive();
-    return _callback(
-      await _request(
-        page.action,
-        form: {
-          'username': username,
-          'password': code,
-          'type': 'smsLogin',
-          '_eventId': 'submit',
-          'geolocation': '',
-          'execution': page.execution,
-          'captcha_code': '',
-          'trustDevice': 'true',
-        },
-        followRedirects: false,
-        checkStatus: false,
-      ),
-    );
+    return callback ?? (throw StateError('短信验证已返回，但学校登录请求尚未完成。'));
   }
 
   Uri _callback(SchoolResponse response) {
@@ -310,7 +318,50 @@ class SchoolLogin {
     if (code == '1030027' || code == '1030031') {
       throw SchoolCredentialsRequired(message);
     }
-    if (response.status == 429) throw const SchoolRequestError('登录过于频繁，请稍后重试。');
+    _throwResponseFailure(
+      response,
+      code: code,
+      message: message,
+      label: '统一身份认证',
+      fallback: '学校未完成登录，请重试。',
+    );
+  }
+
+  Uri _smsCallback(SchoolResponse response) {
+    final location = response.location;
+    if (location != null && response.status >= 300 && response.status < 400) {
+      return location;
+    }
+    final page = _LoginPage(response);
+    final code = page.field('login-error-code');
+    final message = switch (code) {
+      '1030027' || '1030031' => '短信验证未完成，请重新获取验证码后重试。',
+      '1030028' => '账号已被锁定，请先在学校统一身份认证平台解锁。',
+      '1320007' || '1320010' => '验证码错误或已失效，请重试。',
+      '1330001' => '学校要求进一步验证，请稍后重试。',
+      '1410040' || '1410041' => '学校账号状态异常，请联系学校处理。',
+      '3910001' => '账号已休眠，请先在学校统一身份认证平台激活。',
+      _ => page.field('login-error-msg'),
+    };
+    _throwResponseFailure(
+      response,
+      code: code,
+      message: message,
+      label: '短信登录',
+      fallback: '短信验证未完成，请重试。',
+    );
+  }
+
+  Never _throwResponseFailure(
+    SchoolResponse response, {
+    required String code,
+    required String message,
+    required String label,
+    required String fallback,
+  }) {
+    if (response.status == 429) {
+      throw const SchoolRequestError('登录过于频繁，请稍后重试。');
+    }
     if (response.status >= 500) {
       throw SchoolConnectionError(
         response.url,
@@ -322,11 +373,11 @@ class SchoolLogin {
     }
     if (message.isEmpty) {
       AppDiagnostics.instance.info(
-        '统一身份认证未返回跳转：HTTP ${response.status}，'
+        '$label未返回跳转：HTTP ${response.status}，'
         '${response.url.origin}${response.url.path}，错误码 ${code.isEmpty ? '未提供' : code}',
       );
     }
-    throw SchoolRequestError(message.isEmpty ? '学校未完成登录，请重试。' : message);
+    throw SchoolRequestError(message.isEmpty ? fallback : message);
   }
 
   Future<Uint8List> _captchaImage(Map<String, dynamic> captcha) async {

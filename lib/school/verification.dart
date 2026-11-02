@@ -33,12 +33,12 @@ class SchoolSmsVerification extends SchoolVerification {
   const SchoolSmsVerification({
     required this.phone,
     required this.sendCode,
-    required this.checkCode,
+    required this.submitCode,
   });
 
   final String phone;
   final Future<Duration> Function() sendCode;
-  final Future<void> Function(String) checkCode;
+  final Future<void> Function(String) submitCode;
 }
 
 /// The school keeps the previous SMS valid when another code is requested

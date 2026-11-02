@@ -91,7 +91,7 @@ void main() {
                     phone: '138****0000',
                     sendCode: () async =>
                         Duration(seconds: ++sends == 1 ? 1 : 62),
-                    checkCode: (_) async {},
+                    submitCode: (_) async {},
                   ),
                 ),
               ),
@@ -123,5 +123,60 @@ void main() {
 
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('A failed SMS login stays open and can be retried', (
+    tester,
+  ) async {
+    var attempts = 0;
+    String? result;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: bitreeTheme(Brightness.light),
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async {
+                result = await verifySchoolLogin(
+                  context,
+                  SchoolSmsVerification(
+                    phone: '138****0000',
+                    sendCode: () async => const Duration(seconds: 60),
+                    submitCode: (code) async {
+                      attempts++;
+                      if (attempts == 1) {
+                        throw const SchoolRequestError('短信验证未完成，请重试。');
+                      }
+                    },
+                  ),
+                );
+              },
+              child: const Text('打开'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('打开'));
+    await tester.pump();
+    await tester.pump();
+    await tester.enterText(find.byType(TextFormField), '123456');
+    await tester.tap(find.text('确定'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(attempts, 1);
+    expect(result, isNull);
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.text('短信验证未完成，请重试。'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextFormField), '654321');
+    await tester.tap(find.text('确定'));
+    await tester.pumpAndSettle();
+
+    expect(attempts, 2);
+    expect(result, '654321');
+    expect(find.byType(AlertDialog), findsNothing);
   });
 }
