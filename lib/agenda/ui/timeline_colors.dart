@@ -75,8 +75,6 @@ enum _TimelineTone {
   final _TimelineColors dark;
 }
 
-const _overdueSourceTint = 0.2;
-
 /// Source/type colors are specific to the timeline, not other agenda views.
 ({Color fill, Color text, Color accent}) agendaTimelineColors(
   BuildContext context,
@@ -141,9 +139,5 @@ const _overdueSourceTint = 0.2;
   }
 
   if (!entry.overdue(now)) return colors;
-  return (
-    fill: Color.lerp(scheme.errorContainer, colors.fill, _overdueSourceTint)!,
-    text: colors.text,
-    accent: scheme.error,
-  );
+  return (fill: colors.fill, text: colors.text, accent: scheme.error);
 }

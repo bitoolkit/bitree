@@ -11,7 +11,7 @@ void main() {
   for (final brightness in Brightness.values) {
     for (final system in [false, true]) {
       testWidgets(
-        'Overdue DDLs add an error tint to source colours in $brightness, system=$system',
+        'Overdue DDLs show an error badge without changing source colours in $brightness, system=$system',
         (tester) async {
           final theme = bitreeTheme(
             brightness,
@@ -81,24 +81,32 @@ void main() {
           Color warningColor() => tester
               .widget<Icon>(find.byIcon(Icons.warning_amber_rounded))
               .color!;
+          BoxDecoration overdueStatusDecoration() {
+            final status = find.byKey(
+              const ValueKey(('agenda-timeline-overdue-status', 'eclass')),
+            );
+            final box = find.descendant(
+              of: status,
+              matching: find.byType(DecoratedBox),
+            );
+            return tester.widget<DecoratedBox>(box).decoration as BoxDecoration;
+          }
 
           await show(entry, due.subtract(const Duration(minutes: 1)));
           final originalFill = fill();
           final originalText = titleColor();
           final originalCaption = captionColor();
           final originalBorder = border().right;
+          expect(
+            find.byKey(
+              const ValueKey(('agenda-timeline-overdue-status', 'eclass')),
+            ),
+            findsNothing,
+          );
 
           await show(entry, due.add(const Duration(minutes: 1)));
-          expect(
-            fill().last,
-            Color.lerp(
-              theme.colorScheme.errorContainer,
-              originalFill.last,
-              0.2,
-            ),
-          );
+          expect(fill(), originalFill);
           expect(titleColor(), originalText);
-          expect(captionColor(), theme.colorScheme.error);
           expect(
             border().right,
             BorderSide(color: theme.colorScheme.error, width: 3),
@@ -107,7 +115,13 @@ void main() {
           expect(border().top, BorderSide.none);
           expect(border().bottom, BorderSide.none);
           expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
-          expect(warningColor(), theme.colorScheme.error);
+          expect(warningColor(), theme.colorScheme.onError);
+          expect(find.text('13:00 已逾期'), findsOneWidget);
+          expect(overdueStatusDecoration().color, theme.colorScheme.error);
+          expect(
+            tester.widget<Text>(find.text('13:00 已逾期')).style!.color,
+            theme.colorScheme.onError,
+          );
 
           await show(
             entry.copyWith(done: true),
@@ -123,6 +137,12 @@ void main() {
           expect(border().right.width, originalBorder.width);
           expect(find.byIcon(Icons.warning_amber_rounded), findsNothing);
           expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
+          expect(
+            find.byKey(
+              const ValueKey(('agenda-timeline-overdue-status', 'eclass')),
+            ),
+            findsNothing,
+          );
           expect(tester.takeException(), isNull);
         },
       );
