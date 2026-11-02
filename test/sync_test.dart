@@ -140,7 +140,10 @@ void main() {
                   name: '测试账号',
                   credentials: MoocCredentials(
                     userAgent: 'test',
-                    cookies: [Cookie('NTESSTUDYSI', 'csrf')],
+                    cookies: [
+                      Cookie('NTESSTUDYSI', 'csrf'),
+                      Cookie('STUDY_SESS', 'session'),
+                    ],
                   ),
                 ))
             : null,

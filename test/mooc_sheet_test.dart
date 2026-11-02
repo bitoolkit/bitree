@@ -12,21 +12,24 @@ import 'package:webview_all/webview_all.dart';
 
 import 'support/http.dart';
 import 'support/mooc_browser.dart';
+import 'support/mooc_login_server.dart';
 import 'support/test_app.dart';
 
 void main() {
   late TestMoocBrowser browser;
   setUp(() => WebViewPlatform.instance = browser = TestMoocBrowser());
-  MemoryMoocStorage signedInStorage() =>
-      MemoryMoocStorage()
-        ..account = MoocAccount(
-          id: '8',
-          name: '姓名很长的中国大学MOOC 测试账号',
-          credentials: MoocCredentials(
-            userAgent: 'test',
-            cookies: [Cookie('NTESSTUDYSI', 'csrf')],
-          ),
-        );
+  MemoryMoocStorage signedInStorage() => MemoryMoocStorage()
+    ..account = MoocAccount(
+      id: '8',
+      name: '姓名很长的中国大学MOOC 测试账号',
+      credentials: MoocCredentials(
+        userAgent: 'test',
+        cookies: [
+          Cookie('NTESSTUDYSI', 'csrf'),
+          Cookie('STUDY_SESS', 'session'),
+        ],
+      ),
+    );
 
   Future<void> pump(
     WidgetTester tester,
@@ -54,11 +57,40 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Future<MoocLoginServer> startLoginServer(WidgetTester tester) async {
+    final server = (await tester.runAsync(MoocLoginServer.start))!;
+    final previous = HttpOverrides.current;
+    HttpOverrides.global = LocalHttpOverrides(server.port);
+    addTearDown(() async {
+      HttpOverrides.global = previous;
+      await server.close();
+    });
+    return server;
+  }
+
+  Future<void> waitFor(WidgetTester tester, bool Function() condition) async {
+    final watch = Stopwatch()..start();
+    while (!condition() && watch.elapsed < const Duration(seconds: 5)) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
+      await tester.pump();
+    }
+    expect(condition(), isTrue);
+  }
+
   void finishLogin() {
     browser.cookies.add(
       const WebViewCookie(
         name: 'NTESSTUDYSI',
         value: 'test',
+        domain: '.icourse163.org',
+      ),
+    );
+    browser.cookies.add(
+      const WebViewCookie(
+        name: 'STUDY_SESS',
+        value: 'session',
         domain: '.icourse163.org',
       ),
     );
@@ -117,6 +149,149 @@ void main() {
     );
   }
 
+  testWidgets('Account and SMS forms keep native login inside one drawer', (
+    tester,
+  ) async {
+    final server = await startLoginServer(tester);
+    final model = TestAppController();
+    await pump(tester, model, scale: 1.3);
+
+    await tester.tap(find.text('账号密码'));
+    await tester.pumpAndSettle();
+    expect(find.byType(BottomSheet), findsOneWidget);
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'student@example.com',
+    );
+    await tester.enterText(find.byType(TextFormField).at(1), 'password');
+    await tester.tap(find.widgetWithText(FilledButton, '登录'));
+    await waitFor(tester, () => model.mooc.account?.id == '123');
+    await tester.pumpAndSettle();
+
+    expect(model.mooc.account!.name, '测试账号');
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.byType(WebViewWidget), findsNothing);
+    expect(
+      server.requests,
+      contains('POST /reg.icourse163.org/dl/zj/yd/pwd/l'),
+    );
+  });
+
+  testWidgets('Failed password login preserves fields and the saved account', (
+    tester,
+  ) async {
+    final server = await startLoginServer(tester);
+    server.passwordResult = {'ret': 413};
+    final model = TestAppController(moocStorage: signedInStorage());
+    await pump(tester, model, scale: 1.4);
+
+    await tester.tap(find.text('账号密码'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'student@example.com',
+    );
+    await tester.enterText(find.byType(TextFormField).at(1), 'wrong');
+    await tester.tap(find.widgetWithText(FilledButton, '登录'));
+    await waitFor(tester, () => find.text('账号或密码错误').evaluate().isNotEmpty);
+
+    expect(find.text('student@example.com'), findsOneWidget);
+    expect(find.text('wrong'), findsOneWidget);
+    expect(model.mooc.account!.id, '8');
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Human verification offers the existing web sign-in fallback', (
+    tester,
+  ) async {
+    final server = await startLoginServer(tester);
+    server.passwordResult = {'ret': 445};
+    final model = TestAppController();
+    await pump(tester, model);
+
+    await tester.tap(find.text('账号密码'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'student@example.com',
+    );
+    await tester.enterText(find.byType(TextFormField).at(1), 'password');
+    await tester.tap(find.widgetWithText(FilledButton, '登录'));
+    await waitFor(tester, () => find.text('登录需要完成人机验证').evaluate().isNotEmpty);
+    expect(find.text('改用网页登录'), findsOneWidget);
+
+    await tester.tap(find.text('改用网页登录'));
+    await tester.pumpAndSettle();
+    expect(find.text('登录中国大学MOOC'), findsOneWidget);
+    expect(find.byType(WebViewWidget), findsOneWidget);
+    finishLogin();
+    await tester.pumpAndSettle();
+
+    expect(model.mooc.account!.name, '测试账号');
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.text('同步中国大学MOOC DDL'), findsNothing);
+    expect(model.agenda.entries, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('SMS send, countdown and login share one drawer session', (
+    tester,
+  ) async {
+    final server = await startLoginServer(tester);
+    final model = TestAppController();
+    await pump(tester, model, scale: 1.3);
+
+    await tester.tap(find.text('短信验证码'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).at(0), '13800138000');
+    await tester.tap(find.text('获取验证码'));
+    await waitFor(
+      tester,
+      () => find.textContaining('秒后重发').evaluate().isNotEmpty,
+    );
+    await tester.enterText(find.byType(TextFormField).at(1), '123456');
+    await tester.tap(find.widgetWithText(FilledButton, '登录'));
+    await waitFor(tester, () => model.mooc.account?.id == '123');
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(
+      server.requests.where(
+        (request) => request == 'POST /reg.icourse163.org/dl/zj/yd/sms/sm',
+      ),
+      hasLength(1),
+    );
+    expect(
+      server.requests.where(
+        (request) => request == 'POST /reg.icourse163.org/dl/zj/yd/sms/vfsms',
+      ),
+      hasLength(1),
+    );
+  });
+
+  testWidgets('Cookie login validates natively without opening a WebView', (
+    tester,
+  ) async {
+    await startLoginServer(tester);
+    final model = TestAppController();
+    await pump(tester, model);
+
+    await tester.tap(find.text('使用 Cookie'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(TextFormField),
+      'NTESSTUDYSI=csrf; STUDY_SESS=session',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, '连接'));
+    await waitFor(tester, () => model.mooc.account?.id == '123');
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.byType(WebViewWidget), findsNothing);
+    expect(model.mooc.account!.name, '测试账号');
+  });
+
   testWidgets('Connected account actions fit without repeating its status', (
     tester,
   ) async {
@@ -124,7 +299,7 @@ void main() {
     await pump(tester, model, scale: 1.4);
     expect(find.textContaining('已连接'), findsNothing);
     expect(find.text('同步 DDL'), findsNothing);
-    for (final action in ['重新登录', '使用 Cookie', '退出账号']) {
+    for (final action in ['账号密码', '短信验证码', '网页登录', '使用 Cookie', '退出账号']) {
       await tester.ensureVisible(find.text(action));
       expect(find.text(action).hitTestable(), findsOneWidget);
     }
@@ -147,23 +322,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(storage.account, isNull);
     expect(find.text('网页登录'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('Account login returns to settings without synchronizing', (
-    tester,
-  ) async {
-    final model = TestAppController();
-    await pump(tester, model);
-    await tester.tap(find.text('网页登录'));
-    await tester.pumpAndSettle();
-    finishLogin();
-    await tester.pumpAndSettle();
-    expect(model.mooc.account!.name, '测试账号');
-    expect(find.byType(BottomSheet), findsNothing);
-    expect(find.byType(WebViewWidget), findsNothing);
-    expect(find.text('同步中国大学MOOC DDL'), findsNothing);
-    expect(model.agenda.entries, isEmpty);
     expect(tester.takeException(), isNull);
   });
 

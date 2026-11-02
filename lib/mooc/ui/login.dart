@@ -96,7 +96,6 @@ class _MoocLoginState extends State<_MoocLogin> {
           true,
         );
       }
-      await cookies.clearCookies().timeout(const Duration(seconds: 10));
       for (final cookie in widget.initialCookies ?? <Cookie>[]) {
         await cookies
             .setCookie(
@@ -181,7 +180,14 @@ class _MoocLoginState extends State<_MoocLogin> {
       final exported = await _cookies!
           .getCookies(domain: MoocCredentials.rpcDirectory)
           .timeout(const Duration(seconds: 8));
-      if (!exported.any((cookie) => cookie.name == 'NTESSTUDYSI')) {
+      final exportedCookies = [
+        for (final cookie in exported)
+          MoocCookie(cookie.name, cookie.value)
+            ..domain = cookie.domain
+            ..path = cookie.path
+            ..secure = true,
+      ];
+      if (!MoocCredentials.hasSession(exportedCookies)) {
         if (manual && mounted) {
           setState(() => _message = l10n.moocSessionNotReady);
         }
@@ -189,13 +195,7 @@ class _MoocLoginState extends State<_MoocLogin> {
       }
       final credentials = MoocCredentials(
         userAgent: agent,
-        cookies: [
-          for (final cookie in exported)
-            MoocCookie(cookie.name, cookie.value)
-              ..domain = cookie.domain
-              ..path = cookie.path
-              ..secure = true,
-        ],
+        cookies: exportedCookies,
       );
       if (!mounted) return;
       setState(() => _message = l10n.moocSavingLogin);
