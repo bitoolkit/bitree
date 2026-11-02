@@ -11,7 +11,7 @@ void main() {
   for (final brightness in Brightness.values) {
     for (final system in [false, true]) {
       testWidgets(
-        'Overdue DDLs show an error badge without changing source colours in $brightness, system=$system',
+        'Overdue DDLs keep source colours under a light error mask in $brightness, system=$system',
         (tester) async {
           final theme = bitreeTheme(
             brightness,
@@ -53,13 +53,15 @@ void main() {
             const ValueKey(('agenda-timeline-bar', 'eclass')),
           );
 
-          List<Color> fill() {
+          BoxDecoration fillDecoration() {
             final ink = tester.widget<Ink>(
               find.descendant(of: bar, matching: find.byType(Ink)),
             );
-            final decoration = ink.decoration! as BoxDecoration;
-            return (decoration.gradient! as LinearGradient).colors;
+            return ink.decoration! as BoxDecoration;
           }
+
+          List<Color> fill() =>
+              (fillDecoration().gradient! as LinearGradient).colors;
 
           Border border() {
             final foreground = find.descendant(
@@ -76,37 +78,30 @@ void main() {
 
           Color titleColor() =>
               tester.widget<Text>(find.text(entry.title)).style!.color!;
-          Color captionColor() =>
-              tester.widget<Text>(find.text('13:00 截止')).style!.color!;
+          Color captionColor(String text) =>
+              tester.widget<Text>(find.text(text)).style!.color!;
           Color warningColor() => tester
               .widget<Icon>(find.byIcon(Icons.warning_amber_rounded))
               .color!;
-          BoxDecoration overdueStatusDecoration() {
-            final status = find.byKey(
-              const ValueKey(('agenda-timeline-overdue-status', 'eclass')),
-            );
-            final box = find.descendant(
-              of: status,
-              matching: find.byType(DecoratedBox),
-            );
-            return tester.widget<DecoratedBox>(box).decoration as BoxDecoration;
-          }
 
           await show(entry, due.subtract(const Duration(minutes: 1)));
           final originalFill = fill();
           final originalText = titleColor();
-          final originalCaption = captionColor();
+          final originalCaption = captionColor('13:00 截止');
           final originalBorder = border().right;
-          expect(
-            find.byKey(
-              const ValueKey(('agenda-timeline-overdue-status', 'eclass')),
-            ),
-            findsNothing,
-          );
+          expect(find.byIcon(Icons.warning_amber_rounded), findsNothing);
 
           await show(entry, due.add(const Duration(minutes: 1)));
-          expect(fill(), originalFill);
-          expect(titleColor(), originalText);
+          final warningBackground = theme.colorScheme.errorContainer;
+          final warningForeground = theme.colorScheme.onErrorContainer;
+          expect(fillDecoration().color, isNull);
+          expect(
+            (fillDecoration().gradient! as LinearGradient).stops,
+            const [0, 0.18, 1],
+          );
+          expect(fill().first.a, 0);
+          expect(fill().last, warningBackground);
+          expect(titleColor(), warningForeground);
           expect(
             border().right,
             BorderSide(color: theme.colorScheme.error, width: 3),
@@ -115,13 +110,15 @@ void main() {
           expect(border().top, BorderSide.none);
           expect(border().bottom, BorderSide.none);
           expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
-          expect(warningColor(), theme.colorScheme.onError);
-          expect(find.text('13:00 已逾期'), findsOneWidget);
-          expect(overdueStatusDecoration().color, theme.colorScheme.error);
           expect(
-            tester.widget<Text>(find.text('13:00 已逾期')).style!.color,
-            theme.colorScheme.onError,
+            find.byKey(
+              const ValueKey(('agenda-timeline-overdue-watermark', 'eclass')),
+            ),
+            findsOneWidget,
           );
+          expect(warningColor(), warningForeground.withValues(alpha: 0.2));
+          expect(captionColor('13:00 已逾期'), warningForeground);
+          expect(find.text('13:00 截止'), findsNothing);
 
           await show(
             entry.copyWith(done: true),
@@ -129,7 +126,10 @@ void main() {
           );
           expect(fill().last, originalFill.last.withValues(alpha: 0.5));
           expect(titleColor(), originalText.withValues(alpha: 0.5));
-          expect(captionColor(), originalCaption.withValues(alpha: 0.5));
+          expect(
+            captionColor('13:00 截止'),
+            originalCaption.withValues(alpha: 0.5),
+          );
           expect(
             border().right.color,
             originalBorder.color.withValues(alpha: 0.5),
@@ -137,12 +137,6 @@ void main() {
           expect(border().right.width, originalBorder.width);
           expect(find.byIcon(Icons.warning_amber_rounded), findsNothing);
           expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
-          expect(
-            find.byKey(
-              const ValueKey(('agenda-timeline-overdue-status', 'eclass')),
-            ),
-            findsNothing,
-          );
           expect(tester.takeException(), isNull);
         },
       );

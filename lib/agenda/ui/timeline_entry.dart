@@ -40,6 +40,10 @@ class AgendaTimelineEntry extends StatelessWidget {
     final overdueCaption = l10n.agendaReminderOverdue(
       entry.allDay ? l10n.allDay : clockText(entry.dueAt),
     );
+    final warningBackground = scheme.errorContainer;
+    final warningForeground = scheme.onErrorContainer;
+    final deadlineFill = overdue ? warningBackground : colors.fill;
+    final contentColor = overdue ? warningForeground : colors.text;
     final titleText = localizedAgendaTitle(l10n, entry);
     final radius = entry.isDeadline ? null : BorderRadius.circular(8);
     final description = l10n.agendaTimelineSemanticsEntry(
@@ -68,7 +72,7 @@ class AgendaTimelineEntry extends StatelessWidget {
         fontSize: 14,
         height: 1.2,
         fontWeight: FontWeight.w600,
-        color: colors.text,
+        color: contentColor,
         decoration: entry.done ? TextDecoration.lineThrough : null,
       ),
     );
@@ -96,11 +100,11 @@ class AgendaTimelineEntry extends StatelessWidget {
                       gradient: entry.isDeadline
                           ? LinearGradient(
                               colors: [
-                                colors.fill.withValues(alpha: 0),
-                                colors.fill,
-                                colors.fill,
+                                deadlineFill.withValues(alpha: 0),
+                                deadlineFill,
+                                deadlineFill,
                               ],
-                              stops: const [0, 0.35, 1],
+                              stops: const [0, 0.18, 1],
                             )
                           : null,
                       borderRadius: radius,
@@ -120,90 +124,106 @@ class AgendaTimelineEntry extends StatelessWidget {
                               )
                             : Border.all(color: colors.accent),
                       ),
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          left: entry.isDeadline ? deadlineWidth * 0.37 : 8,
-                          right: 8,
-                          top: 4,
-                          bottom: 4,
-                        ),
-                        child: barWidth < 48
-                            ? const SizedBox.shrink()
-                            : Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: entry.isDeadline
-                                    ? CrossAxisAlignment.end
-                                    : CrossAxisAlignment.start,
-                                children: [
-                                  if (entry.isDeadline)
-                                    title
-                                  else
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          kindIcon,
-                                          size: 13 * scale,
-                                          color: colors.text,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Expanded(child: title),
-                                      ],
-                                    ),
-                                  if (entry.isDeadline)
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          entry.done
-                                              ? Icons.check_circle_outline
-                                              : kindIcon,
-                                          size: 13 * scale,
-                                          color: colors.text,
-                                        ),
-                                        const SizedBox(width: 3),
-                                        Flexible(
-                                          child: Text(
-                                            source,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              height: 1.1,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          if (overdue)
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 12),
+                                child: Icon(
+                                  key: ValueKey((
+                                    'agenda-timeline-overdue-watermark',
+                                    entry.id,
+                                  )),
+                                  Icons.warning_amber_rounded,
+                                  size: 56 * scale,
+                                  color: warningForeground.withValues(
+                                    alpha: 0.2,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          Padding(
+                            padding: EdgeInsets.only(
+                              left: entry.isDeadline ? deadlineWidth * 0.37 : 8,
+                              right: 8,
+                              top: 4,
+                              bottom: 4,
+                            ),
+                            child: barWidth < 48
+                                ? const SizedBox.shrink()
+                                : Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: entry.isDeadline
+                                        ? CrossAxisAlignment.end
+                                        : CrossAxisAlignment.start,
+                                    children: [
+                                      if (entry.isDeadline)
+                                        title
+                                      else
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              kindIcon,
+                                              size: 13 * scale,
                                               color: colors.text,
                                             ),
-                                          ),
+                                            const SizedBox(width: 4),
+                                            Expanded(child: title),
+                                          ],
                                         ),
-                                      ],
-                                    ),
-                                  const SizedBox(height: 2),
-                                  if (overdue)
-                                    _OverdueStatusBadge(
-                                      key: ValueKey((
-                                        'agenda-timeline-overdue-status',
-                                        entry.id,
-                                      )),
-                                      label: overdueCaption,
-                                    )
-                                  else
-                                    Text(
-                                      caption,
-                                      maxLines: entry.isDeadline ? 1 : 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      textAlign: entry.isDeadline
-                                          ? TextAlign.right
-                                          : TextAlign.left,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        height: 1.2,
-                                        fontWeight: FontWeight.w600,
-                                        fontFeatures: const [
-                                          FontFeature.tabularFigures(),
-                                        ],
-                                        color: colors.accent,
+                                      if (entry.isDeadline)
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              entry.done
+                                                  ? Icons.check_circle_outline
+                                                  : kindIcon,
+                                              size: 13 * scale,
+                                              color: contentColor,
+                                            ),
+                                            const SizedBox(width: 3),
+                                            Flexible(
+                                              child: Text(
+                                                source,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  height: 1.1,
+                                                  color: contentColor,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        overdue ? overdueCaption : caption,
+                                        maxLines: entry.isDeadline ? 1 : 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: entry.isDeadline
+                                            ? TextAlign.right
+                                            : TextAlign.left,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          height: 1.2,
+                                          fontWeight: FontWeight.w600,
+                                          fontFeatures: const [
+                                            FontFeature.tabularFigures(),
+                                          ],
+                                          color: overdue
+                                              ? warningForeground
+                                              : colors.accent,
+                                        ),
                                       ),
-                                    ),
-                                ],
-                              ),
+                                    ],
+                                  ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -211,47 +231,6 @@ class AgendaTimelineEntry extends StatelessWidget {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _OverdueStatusBadge extends StatelessWidget {
-  const _OverdueStatusBadge({super.key, required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: scheme.error,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.warning_amber_rounded, size: 11, color: scheme.onError),
-            const SizedBox(width: 3),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 11,
-                  height: 1.1,
-                  fontWeight: FontWeight.w600,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                  color: scheme.onError,
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );
