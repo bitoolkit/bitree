@@ -201,25 +201,32 @@ class AgendaTimelineEntry extends StatelessWidget {
                                           ],
                                         ),
                                       const SizedBox(height: 2),
-                                      Text(
-                                        overdue ? overdueCaption : caption,
-                                        maxLines: entry.isDeadline ? 1 : 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        textAlign: entry.isDeadline
-                                            ? TextAlign.right
-                                            : TextAlign.left,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          height: 1.2,
-                                          fontWeight: FontWeight.w600,
-                                          fontFeatures: const [
-                                            FontFeature.tabularFigures(),
-                                          ],
-                                          color: overdue
-                                              ? warningForeground
-                                              : colors.accent,
+                                      if (overdue)
+                                        _OverdueStatusBadge(
+                                          key: ValueKey((
+                                            'agenda-timeline-overdue-status',
+                                            entry.id,
+                                          )),
+                                          label: overdueCaption,
+                                        )
+                                      else
+                                        Text(
+                                          caption,
+                                          maxLines: entry.isDeadline ? 1 : 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          textAlign: entry.isDeadline
+                                              ? TextAlign.right
+                                              : TextAlign.left,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            height: 1.2,
+                                            fontWeight: FontWeight.w600,
+                                            fontFeatures: const [
+                                              FontFeature.tabularFigures(),
+                                            ],
+                                            color: colors.accent,
+                                          ),
                                         ),
-                                      ),
                                     ],
                                   ),
                           ),
@@ -231,6 +238,47 @@ class AgendaTimelineEntry extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OverdueStatusBadge extends StatelessWidget {
+  const _OverdueStatusBadge({super.key, required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.error,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.warning_amber_rounded, size: 11, color: scheme.onError),
+            const SizedBox(width: 3),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  height: 1.1,
+                  fontWeight: FontWeight.w600,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                  color: scheme.onError,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
