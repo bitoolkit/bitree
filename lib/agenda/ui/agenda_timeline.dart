@@ -288,10 +288,6 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                   .ceil(),
         );
         final placements = _layout(minimumEventSpan);
-        final laneCount = placements.fold<int>(
-          0,
-          (count, placement) => math.max(count, placement.lane + 1),
-        );
         final left = _timeAt(0, width, pixelsPerHour);
         final right = _timeAt(width, width, pixelsPerHour);
         final painter = _TimelineGridPainter(
@@ -509,27 +505,40 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                             child: LayoutBuilder(
                               builder: (context, laneConstraints) {
                                 final height = laneConstraints.maxHeight;
-                                final contentHeight = math.max(
-                                  height,
-                                  laneCount * laneHeight + 24,
-                                );
                                 final offset = _lanes.hasClients
                                     ? _lanes.offset
                                     : 0.0;
-                                final visible = placements.where(
-                                  (placement) =>
-                                      placement.layoutEnd.isAfter(left) &&
-                                      (placement.entry.isDeadline
-                                              ? placement.end.subtract(
-                                                  deadlineDuration,
-                                                )
-                                              : placement.start)
-                                          .isBefore(right) &&
-                                      (placement.lane + 1) * laneHeight >=
-                                          offset &&
-                                      placement.lane * laneHeight + 12 <=
-                                          offset + height,
+                                final placementsInTime = placements
+                                    .where(
+                                      (placement) =>
+                                          placement.layoutEnd.isAfter(left) &&
+                                          (placement.entry.isDeadline
+                                                  ? placement.end.subtract(
+                                                      deadlineDuration,
+                                                    )
+                                                  : placement.start)
+                                              .isBefore(right),
+                                    )
+                                    .toList(growable: false);
+                                final displayedLaneCount = placementsInTime
+                                    .fold<int>(
+                                      0,
+                                      (count, placement) =>
+                                          math.max(count, placement.lane + 1),
+                                    );
+                                final contentHeight = math.max(
+                                  height,
+                                  displayedLaneCount * laneHeight + 12,
                                 );
+                                final visible = placementsInTime
+                                    .where(
+                                      (placement) =>
+                                          (placement.lane + 1) * laneHeight >=
+                                              offset &&
+                                          placement.lane * laneHeight + 12 <=
+                                              offset + height,
+                                    )
+                                    .toList(growable: false);
                                 return Stack(
                                   fit: StackFit.expand,
                                   children: [
@@ -550,6 +559,9 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                                       behavior: ScrollConfiguration.of(context)
                                           .copyWith(scrollbars: false),
                                       child: SingleChildScrollView(
+                                        key: const ValueKey(
+                                          'agenda-timeline-lanes',
+                                        ),
                                         controller: _lanes,
                                         physics:
                                             const NeverScrollableScrollPhysics(),

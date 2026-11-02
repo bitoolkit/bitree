@@ -226,6 +226,64 @@ void main() {
     },
   );
 
+  testWidgets('Off-screen lanes do not add vertical blank pages', (
+    tester,
+  ) async {
+    final current = _event('current', 11);
+    final farDay = _date.add(const Duration(days: 30));
+    final offScreen = [
+      for (var index = 0; index < 20; index++)
+        AgendaEntry(
+          id: 'off-screen-$index',
+          title: '远处日程 $index',
+          kind: AgendaKind.event,
+          startsAt: farDay.add(Duration(hours: 10, minutes: index)),
+          endsAt: farDay.add(const Duration(hours: 14)),
+        ),
+    ];
+    await _show(tester, [current, ...offScreen]);
+
+    final scrollable = tester.state<ScrollableState>(
+      find.descendant(
+        of: find.byKey(const ValueKey('agenda-timeline-lanes')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(scrollable.position.maxScrollExtent, 0);
+    expect(_paintedBar(current), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Overlapping entries remain reachable below the viewport', (
+    tester,
+  ) async {
+    final entries = [
+      for (var index = 0; index < 20; index++)
+        AgendaEntry(
+          id: 'overlap-$index',
+          title: '重叠日程 $index',
+          kind: AgendaKind.event,
+          startsAt: _date.add(Duration(hours: 11, minutes: index)),
+          endsAt: _date.add(const Duration(hours: 14)),
+        ),
+    ];
+    await _show(tester, entries);
+
+    final scrollable = tester.state<ScrollableState>(
+      find.descendant(
+        of: find.byKey(const ValueKey('agenda-timeline-lanes')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(scrollable.position.maxScrollExtent, greaterThan(0));
+    scrollable.position.jumpTo(scrollable.position.maxScrollExtent);
+    await tester.pumpAndSettle();
+    expect(_paintedBar(entries.last), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets(
     'Time ranges are visible on cards and long press previews complete endpoints',
     (tester) async {
