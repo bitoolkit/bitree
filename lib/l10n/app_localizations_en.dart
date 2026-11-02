@@ -2448,6 +2448,19 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get timetableHeight => 'Timetable height';
+
+  @override
+  String get timetableHeightNormal => 'Normal height';
+
+  @override
+  String get timetableHeightFit => 'Fit to screen';
+
+  @override
+  String get timetableHeightHint =>
+      'Fit to screen shows every period at once. Normal height keeps comfortable rows and vertical scrolling.';
+
+  @override
   String releaseVersion(String channel, String version) {
     return '$channel $version';
   }

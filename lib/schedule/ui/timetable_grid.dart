@@ -62,6 +62,9 @@ class _TimetableGridState extends State<TimetableGrid> {
     final box = _grid.currentContext!.findRenderObject()! as RenderBox;
     final local = box.globalToLocal(position);
 
+    if (box.size.width <= 0 || widget.rowHeight <= 0) {
+      return (day: 0, section: 1);
+    }
     return (
       day: (local.dx / (box.size.width / 7)).floor().clamp(0, 6),
       section:
@@ -204,7 +207,20 @@ class _TimetableGridState extends State<TimetableGrid> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columnWidth = (constraints.maxWidth - widget.gutterWidth) / 7;
+        final columnWidth = math.max(
+          0.0, (constraints.maxWidth - widget.gutterWidth) / 7,
+        );
+        Rect boundsFor(int day, double start, double end) {
+          final height = math.max(0.0, (end - start) * rowHeight);
+          final insetX = math.min(2.0, columnWidth / 4);
+          final insetY = math.min(2.0, height / 4);
+          return Rect.fromLTWH(
+            day * columnWidth + insetX,
+            start * rowHeight + insetY,
+            math.max(0.0, columnWidth - insetX * 2),
+            math.max(0.0, height - insetY * 2),
+          );
+        }
         final blocks = [
           for (var day = 0; day < 7; day++)
             for (final block in widget.layouts[day])
@@ -214,12 +230,7 @@ class _TimetableGridState extends State<TimetableGrid> {
                 course: block.items.length == 1
                     ? block.items.single.course
                     : null,
-                bounds: Rect.fromLTWH(
-                  day * columnWidth + 2,
-                  block.start * rowHeight + 2,
-                  columnWidth - 4,
-                  (block.end - block.start) * rowHeight - 4,
-                ),
+                bounds: boundsFor(day, block.start, block.end),
               ),
         ];
         final masks = [
@@ -316,7 +327,9 @@ class _TimetableGridState extends State<TimetableGrid> {
                                         startSection: course.startSection!,
                                         endSection: course.endSection!,
                                       ).progressAt(now);
-                                      if (elapsed != null) {
+                                      if (elapsed != null &&
+                                          layout.bounds.height > 0 &&
+                                          gridHeight >= 2) {
                                         final section =
                                             block.start +
                                             elapsed * (block.end - block.start);
@@ -353,19 +366,14 @@ class _TimetableGridState extends State<TimetableGrid> {
                               ),
                             ),
                             if (_selection case final selection?)
-                              Positioned(
-                                left: selection.day * columnWidth + 2,
-                                width: columnWidth - 4,
-                                top:
-                                    (math.min(selection.anchor, selection.end) -
-                                            1) *
-                                        rowHeight +
-                                    2,
-                                height:
-                                    ((selection.end - selection.anchor).abs() +
-                                            1) *
-                                        rowHeight -
-                                    4,
+                              Positioned.fromRect(
+                                rect: boundsFor(
+                                  selection.day,
+                                  (math.min(selection.anchor, selection.end) - 1)
+                                      .toDouble(),
+                                  math.max(selection.anchor, selection.end)
+                                      .toDouble(),
+                                ),
                                 child: IgnorePointer(
                                   child: DecoratedBox(
                                     decoration: BoxDecoration(
@@ -421,7 +429,7 @@ class _TimetableBackground extends CustomPainter {
         0,
         section * rowHeight + 2,
         size.width,
-        rowHeight - 4,
+        math.max(0.0, rowHeight - 4),
       );
       canvas.drawRRect(
         RRect.fromRectAndRadius(band, const Radius.circular(4)),
@@ -433,7 +441,7 @@ class _TimetableBackground extends CustomPainter {
       final column = Rect.fromLTWH(
         todayColumn! * columnWidth + 2,
         0,
-        columnWidth - 4,
+        math.max(0.0, columnWidth - 4),
         size.height,
       );
       canvas.drawRRect(
@@ -468,31 +476,49 @@ class _PeriodLabel extends StatelessWidget {
     return Semantics(
       label: l10n.sectionSemantics(section, time.$1, time.$2),
       child: ExcludeSemantics(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              '$section',
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 2),
-            SizedBox(
-              width: double.infinity,
-              child: FittedBox(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final scale = MediaQuery.textScalerOf(context).scale(1);
+            if (constraints.maxHeight < 44 * scale) {
+              return FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
-                  '${time.$1}\n${time.$2}',
-                  softWrap: false,
+                  '$section\n${time.$1}',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 10,
-                    height: 1.2,
-                    color: scheme.onSurfaceVariant,
+                  style: TextStyle(fontSize: 10, color: scheme.onSurfaceVariant),
+                ),
+              );
+            }
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '$section',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-              ),
-            ),
-          ],
+                const SizedBox(height: 2),
+                SizedBox(
+                  width: double.infinity,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '${time.$1}\n${time.$2}',
+                      softWrap: false,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 10,
+                        height: 1.2,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

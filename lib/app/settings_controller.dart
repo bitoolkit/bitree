@@ -8,6 +8,7 @@ import '../core/async/serial_queue.dart';
 import '../core/diagnostics.dart';
 import '../core/platform/desktop_widget.dart';
 import '../core/platform/system_palette.dart';
+import '../schedule/height_mode.dart';
 import '../ui/course_palette.dart';
 
 enum AppLanguage {
@@ -43,6 +44,7 @@ class AppSettingsController extends ChangeNotifier {
   final _preferenceWrites = <String, Future<void>>{};
   final SystemPaletteSource _systemPaletteSource;
   final agendaViewMode = ValueNotifier(AgendaViewMode.timeline);
+  final timetableHeightMode = ValueNotifier(TimetableHeightMode.normal);
 
   Future<void>? _paletteSettingsLoad;
   SystemPalette? _systemPalette;
@@ -50,6 +52,7 @@ class AppSettingsController extends ChangeNotifier {
   AppLanguage _language = AppLanguage.system;
   bool _themeChosen = false;
   bool _agendaViewChosen = false;
+  bool _timetableHeightChosen = false;
   bool _developerMode = false;
   bool _widgetUseSystemPalette = false;
   bool _globalUseSystemPalette = false;
@@ -130,6 +133,17 @@ class AppSettingsController extends ChangeNotifier {
       }
     } on Exception catch (failure, stack) {
       AppDiagnostics.instance.error('读取日程视图设置', failure, stack);
+    }
+    try {
+      final savedHeight = await _preferences.getString('timetableHeightMode');
+      if (!_timetableHeightChosen && !_disposed) {
+        timetableHeightMode.value = TimetableHeightMode.values
+                .where((mode) => mode.name == savedHeight)
+                .firstOrNull ??
+            TimetableHeightMode.normal;
+      }
+    } on Exception catch (failure, stack) {
+      AppDiagnostics.instance.error('读取课表高度设置', failure, stack);
     }
   }
 
@@ -324,6 +338,12 @@ class AppSettingsController extends ChangeNotifier {
     return _writePreference('agendaViewMode', value.name, '保存日程视图设置');
   }
 
+  Future<void> setTimetableHeightMode(TimetableHeightMode value) {
+    _timetableHeightChosen = true;
+    timetableHeightMode.value = value;
+    return _writePreference('timetableHeightMode', value.name, '保存课表高度设置');
+  }
+
   Future<void> _writePreference(String key, String value, String operation) {
     final previous = _preferenceWrites[key] ?? Future<void>.value();
     final write = previous.then((_) async {
@@ -347,6 +367,7 @@ class AppSettingsController extends ChangeNotifier {
     _paletteRequest++;
     _systemPaletteSource.dispose();
     agendaViewMode.dispose();
+    timetableHeightMode.dispose();
     super.dispose();
   }
 }

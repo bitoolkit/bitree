@@ -75,13 +75,18 @@ class CourseTile extends StatelessWidget {
                       final narrow = constraints.maxWidth < 100;
                       final fontSize = narrow ? 12.0 : 14.0;
                       final media = MediaQuery.of(context);
-                      final horizontalPadding = narrow ? 3.0 : 10.0;
-                      final verticalPadding = narrow ? 4.0 : 6.0;
+                      final compact = constraints.maxHeight <
+                          40 * media.textScaler.scale(1);
+                      final horizontalPadding = compact ? 1.0 : (narrow ? 3.0 : 10.0);
+                      final verticalPadding = compact ? 0.0 : (narrow ? 4.0 : 6.0);
                       final spacing = narrow ? 3.0 : 4.0;
                       final width =
                           constraints.maxWidth - horizontalPadding * 2;
                       final available =
                           constraints.maxHeight - verticalPadding * 2;
+                      if (width <= 0 || available <= 0) {
+                        return const SizedBox.shrink();
+                      }
                       final defaults = DefaultTextStyle.of(context);
                       final titleStyle = TextStyle(
                         fontSize: fontSize,
@@ -152,6 +157,7 @@ class CourseTile extends StatelessWidget {
                       }
                       title.dispose();
                       room.dispose();
+                      if (titleLines <= 0) return const SizedBox.shrink();
                       return Padding(
                         padding: EdgeInsets.symmetric(
                           horizontal: horizontalPadding,
@@ -165,7 +171,7 @@ class CourseTile extends StatelessWidget {
                                 course.name,
                                 textAlign: TextAlign.start,
                                 softWrap: true,
-                                maxLines: titleLines > 0 ? titleLines : 1,
+                                maxLines: titleLines,
                                 overflow: TextOverflow.ellipsis,
                                 style: titleStyle,
                               ),

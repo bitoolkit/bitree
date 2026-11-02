@@ -1709,6 +1709,10 @@
       }
     }
   },
+  "timetableHeight": "Timetable height",
+  "timetableHeightNormal": "Normal height",
+  "timetableHeightFit": "Fit to screen",
+  "timetableHeightHint": "Fit to screen shows every period at once. Normal height keeps comfortable rows and vertical scrolling.",
   "releaseVersion": "{channel} {version}",
   "@releaseVersion": {
     "placeholders": {

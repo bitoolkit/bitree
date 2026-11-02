@@ -97,6 +97,28 @@ class CalendarBlockTile extends StatelessWidget {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final scale = MediaQuery.textScalerOf(context).scale(1);
+                if (constraints.maxHeight < 40 * scale ||
+                    constraints.maxWidth < 20) {
+                  if (constraints.maxHeight < 15 * scale ||
+                      constraints.maxWidth < 4) {
+                    return const SizedBox.expand();
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 1),
+                    child: Center(
+                      child: Text(
+                        items.map((item) => localizedCalendarItemTitle(l10n, item))
+                            .join(' / '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12, height: 1.25, color: foreground,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  );
+                }
                 final detailed = constraints.maxHeight >= 90 * scale;
                 return Padding(
                   padding: const EdgeInsets.symmetric(

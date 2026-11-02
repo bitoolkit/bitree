@@ -687,5 +687,9 @@
   "releaseNotesUnchanged": "此版本没有代码变更。",
   "releaseNotesUnavailable": "暂时无法读取更新说明。",
   "releaseMoreChanges": "另有 {count} 项变更，[查看完整变更]({url})。",
+  "timetableHeight": "课表高度",
+  "timetableHeightNormal": "正常高度",
+  "timetableHeightFit": "适应屏幕",
+  "timetableHeightHint": "适应屏幕可一屏总览全部节次；正常高度保留舒适行高和纵向滚动。",
   "releaseVersion": "{channel} {version}"
 }

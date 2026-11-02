@@ -101,7 +101,29 @@ class ConflictingCourses extends StatelessWidget {
             onTap: () => _selectCourse(context),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final showHeader = constraints.maxHeight >= 30;
+                final scale = MediaQuery.textScalerOf(context).scale(1);
+                if (constraints.maxHeight < courses.length * 12 * scale ||
+                    constraints.maxWidth < 20) {
+                  return Tooltip(
+                    message: summary,
+                    child: constraints.maxHeight < 10 || constraints.maxWidth < 10
+                        ? const SizedBox.expand()
+                        : FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Padding(
+                              padding: const EdgeInsets.all(2),
+                              child: Text(
+                                l10n.courseOverlapCount(courses.length),
+                                style: TextStyle(fontSize: 10, color: scheme.primary),
+                              ),
+                            ),
+                          ),
+                  );
+                }
+                final showHeader = constraints.maxWidth >= 24 &&
+                    constraints.maxHeight >= 30 * scale &&
+                    constraints.maxHeight >=
+                        18 * scale + courses.length * 12 * scale;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -269,7 +291,14 @@ class _ConflictCourseRow extends StatelessWidget {
                       ],
                     ],
                   );
-            return Align(alignment: Alignment.centerLeft, child: content);
+            return Align(
+              alignment: Alignment.centerLeft,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: SizedBox(width: constraints.maxWidth, child: content),
+              ),
+            );
           },
         ),
       ),

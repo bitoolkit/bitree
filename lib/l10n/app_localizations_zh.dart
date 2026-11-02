@@ -2346,6 +2346,18 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get timetableHeight => '课表高度';
+
+  @override
+  String get timetableHeightNormal => '正常高度';
+
+  @override
+  String get timetableHeightFit => '适应屏幕';
+
+  @override
+  String get timetableHeightHint => '适应屏幕可一屏总览全部节次；正常高度保留舒适行高和纵向滚动。';
+
+  @override
   String releaseVersion(String channel, String version) {
     return '$channel $version';
   }

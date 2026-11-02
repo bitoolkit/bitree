@@ -28,7 +28,13 @@ class _WeekPagerState extends State<WeekPager> {
         controller: widget.controller,
         week: weeks[page],
         initialScrollOffset: _scrollOffset,
-        onScroll: (offset) => _scrollOffset = offset,
+        onScroll: (offset) {
+          // Retained neighboring weeks also restore after a height-mode change.
+          // Only the selected week owns the offset reused by new pages.
+          if (weeks[page] == widget.controller.timetable.week) {
+            _scrollOffset = offset;
+          }
+        },
         active:
             widget.active && weeks[page] == widget.controller.timetable.week,
       ),

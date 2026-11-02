@@ -4242,6 +4242,30 @@ abstract class AppLocalizations {
   /// **'Plus {count} more changes. [View full changes]({url}).'**
   String releaseMoreChanges(int count, String url);
 
+  /// No description provided for @timetableHeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Timetable height'**
+  String get timetableHeight;
+
+  /// No description provided for @timetableHeightNormal.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal height'**
+  String get timetableHeightNormal;
+
+  /// No description provided for @timetableHeightFit.
+  ///
+  /// In en, this message translates to:
+  /// **'Fit to screen'**
+  String get timetableHeightFit;
+
+  /// No description provided for @timetableHeightHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Fit to screen shows every period at once. Normal height keeps comfortable rows and vertical scrolling.'**
+  String get timetableHeightHint;
+
   /// No description provided for @releaseVersion.
   ///
   /// In en, this message translates to:

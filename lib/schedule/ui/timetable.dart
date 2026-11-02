@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import '../../agenda/calendar.dart';
 import '../../app/controller.dart';
 import '../../core/time.dart';
+import '../height_mode.dart';
 import '../layout.dart';
 import '../section_times.dart';
 import '../time_position.dart';
@@ -39,6 +40,39 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
   double _rowHeight = 0;
   bool _followingTime = true;
   bool _scrollingToTime = false;
+  late double _normalScrollOffset;
+  bool _restoringScroll = false;
+  int _scrollRestoreGeneration = 0;
+
+  bool get _fitToScreen =>
+      widget.controller.settings.timetableHeightMode.value ==
+      TimetableHeightMode.fit;
+
+  void _heightModeChanged() {
+    _restoringScroll = true;
+    setState(() {});
+    _restoreScrollAfterLayout();
+  }
+
+  void _restoreScrollAfterLayout() {
+    final generation = ++_scrollRestoreGeneration;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || generation != _scrollRestoreGeneration) return;
+      if (_vertical.hasClients && _vertical.position.hasContentDimensions) {
+        final position = _vertical.position;
+        final target = _fitToScreen ? 0.0 : _normalScrollOffset;
+        _vertical.jumpTo(
+          target.clamp(position.minScrollExtent, position.maxScrollExtent)
+              .toDouble(),
+        );
+        if (!_fitToScreen) {
+          _normalScrollOffset = position.pixels;
+          widget.onScroll(_normalScrollOffset);
+        }
+      }
+      _restoringScroll = false;
+    });
+  }
 
   bool get _active {
     final lifecycle = WidgetsBinding.instance.lifecycleState;
@@ -49,8 +83,10 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    _normalScrollOffset = widget.initialScrollOffset;
+    widget.controller.settings.timetableHeightMode.addListener(_heightModeChanged);
     _vertical = ScrollController(
-      initialScrollOffset: widget.initialScrollOffset,
+      initialScrollOffset: _fitToScreen ? 0 : widget.initialScrollOffset,
       keepScrollOffset: false,
     )..addListener(_rememberScroll);
     WidgetsBinding.instance.addObserver(this);
@@ -60,6 +96,15 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
   @override
   void didUpdateWidget(covariant Timetable oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller.settings.timetableHeightMode !=
+        widget.controller.settings.timetableHeightMode) {
+      oldWidget.controller.settings.timetableHeightMode
+          .removeListener(_heightModeChanged);
+      widget.controller.settings.timetableHeightMode
+          .addListener(_heightModeChanged);
+      _restoringScroll = true;
+      _restoreScrollAfterLayout();
+    }
     if (!_active) {
       _timer?.cancel();
     } else if (!oldWidget.active || oldWidget.week != widget.week) {
@@ -112,7 +157,9 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
   Future<void> _revealCurrentTime({bool force = false}) async {
     final schedule = widget.controller.timetable.schedule;
     final now = _currentTime.value;
-    if (!_active ||
+    if (_fitToScreen ||
+        _restoringScroll ||
+        !_active ||
         !_followingTime ||
         !_vertical.hasClients ||
         _rowHeight <= 0 ||
@@ -168,6 +215,7 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
   }
 
   bool _onScroll(ScrollNotification notification) {
+    if (_restoringScroll) return false;
     if (notification.depth == 0 &&
         ((notification is ScrollStartNotification &&
                 (!_scrollingToTime || notification.dragDetails != null)) ||
@@ -178,12 +226,18 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
     return false;
   }
 
-  void _rememberScroll() => widget.onScroll(_vertical.offset);
+  void _rememberScroll() {
+    if (_fitToScreen || _restoringScroll) return;
+    _normalScrollOffset = _vertical.offset;
+    widget.onScroll(_normalScrollOffset);
+  }
 
   @override
   void dispose() {
     _timer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
+    widget.controller.settings.timetableHeightMode
+        .removeListener(_heightModeChanged);
     _currentTime.dispose();
     _vertical.dispose();
     super.dispose();
@@ -247,7 +301,8 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
                   constraints.maxHeight / sectionTimes.length;
               // A tiny shortfall should compress the grid instead of creating
               // a distracting few-pixel vertical scroll.
-              final rowHeight = availableRowHeight >= preferredRowHeight * 0.9
+              final rowHeight = _fitToScreen ||
+                      availableRowHeight >= preferredRowHeight * 0.9
                   ? availableRowHeight
                   : preferredRowHeight;
               _rowHeight = rowHeight;
@@ -261,6 +316,9 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
                   onNotification: _onScroll,
                   child: SingleChildScrollView(
                     controller: _vertical,
+                    physics: _fitToScreen
+                        ? const NeverScrollableScrollPhysics()
+                        : null,
                     child: RepaintBoundary(
                       child: TimetableGrid(
                         controller: controller,
