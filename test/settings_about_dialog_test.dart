@@ -67,7 +67,7 @@ void main() {
 
     await tester.tap(find.text('加入 BITree 交流群'));
     await tester.pumpAndSettle();
-    expect(launchedUrls, ['https://qm.qq.com/q/V472c8UjwQ']);
+    expect(launchedUrls, ['https://qm.qq.com/q/84t3ZHKMpO']);
 
     await tester.tap(find.text('关闭'));
     await tester.pumpAndSettle();

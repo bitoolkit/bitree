@@ -146,7 +146,7 @@ Future<void> showBitreeAboutDialog(
             key: const ValueKey('about-qq-group'),
             onPressed: () => openExternalLink(
               dialogContext,
-              Uri.https('qm.qq.com', '/q/V472c8UjwQ'),
+              Uri.https('qm.qq.com', '/q/84t3ZHKMpO'),
               failureTitle: l10n.aboutOpenQQGroupFailed,
             ),
             child: Text(l10n.aboutOpenQQGroup),

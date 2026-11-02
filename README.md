@@ -13,7 +13,7 @@
   &nbsp;|&nbsp;
   <a href="https://github.com/bitoolkit/bitree/releases?q=prerelease%3Atrue">下载测试版</a>
   &nbsp;|&nbsp;
-  <a href="https://qm.qq.com/q/V472c8UjwQ">加入 BITree 交流群</a>
+  <a href="https://qm.qq.com/q/84t3ZHKMpO">加入 BITree 交流群（184242558）</a>
 </p>
 
 支持 Android、Windows、macOS、Linux 和 iOS。课表和日程保存在本机，已同步的内容可以离线查看。
