@@ -139,5 +139,9 @@ enum _TimelineTone {
   }
 
   if (!entry.overdue(now)) return colors;
-  return (fill: colors.fill, text: colors.text, accent: scheme.error);
+  return (
+    fill: scheme.errorContainer,
+    text: scheme.onErrorContainer,
+    accent: scheme.error,
+  );
 }

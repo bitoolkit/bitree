@@ -60,5 +60,40 @@ void main() {
       ];
       expect(fills.toSet(), hasLength(entries.length));
     });
+
+    testWidgets('Overdue DDLs use error semantic colors in $brightness', (
+      tester,
+    ) async {
+      late BuildContext context;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: bitreeTheme(brightness),
+          home: Builder(
+            builder: (value) {
+              context = value;
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+      final scheme = Theme.of(context).colorScheme;
+      final pastDue = start.add(const Duration(minutes: 1));
+      for (final entry in entries.where((entry) => entry.isDeadline)) {
+        final colors = agendaTimelineColors(context, entry, pastDue);
+        expect(colors.fill, scheme.errorContainer);
+        expect(colors.text, scheme.onErrorContainer);
+        expect(colors.accent, scheme.error);
+
+        final completed = entry.copyWith(done: true);
+        final finishedColors = agendaTimelineColors(context, completed, pastDue);
+        expect(
+          finishedColors,
+          agendaTimelineColors(context, completed, now),
+        );
+        expect(finishedColors.fill.a, closeTo(0.5, 0.01));
+        expect(finishedColors.text.a, closeTo(0.5, 0.01));
+        expect(finishedColors.accent.a, closeTo(0.5, 0.01));
+      }
+    });
   }
 }
