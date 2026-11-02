@@ -71,10 +71,14 @@ class MoocApi {
         if (response == null) break; // Official personal centre's empty result.
         final data = moocMap(response);
         if (data == null) throw const FormatException('MOOC 课程列表格式不正确。');
-        final rows = moocList(
-          data['list'] ?? data['result'],
-          field: 'MOOC 课程列表',
-        );
+        final pagination = moocMap(data['pagination']);
+        final total = pagination?['totleCount'];
+        final rows = switch ((data['result'], total)) {
+          (final List<dynamic> value, _) => moocList(value, field: 'MOOC 课程列表'),
+          (null, 0) => const <dynamic>[],
+          (null, _) => throw const FormatException('MOOC 课程列表为空，但分页数据不一致。'),
+          _ => moocList(data['result'], field: 'MOOC 课程列表'),
+        };
         final before = seenTerms.length;
         for (final row in rows) {
           final panel = moocMap(row);
@@ -96,7 +100,6 @@ class MoocApi {
           );
           seenTerms.add(tid);
         }
-        final pagination = moocMap(data['query'] ?? data['pagination']);
         final pages = pagination?['totlePageCount'];
         if (rows.isEmpty || (pages is int ? page >= pages : rows.length < 8)) {
           break;
@@ -106,6 +109,7 @@ class MoocApi {
         }
       }
     }
+    if (courses.isEmpty) await _verifySession();
     final entries = <AgendaEntry>[];
     final failures = <({String course, String message})>[];
     var count = 0;
@@ -167,13 +171,7 @@ class MoocApi {
     Uri? referer,
   }) async {
     _cancellation.check();
-    if (!_seeded) {
-      await _cookies.saveFromResponse(
-        MoocCredentials.origin,
-        _credentials.cookies.map(MoocCookie.fromSetCookieValue).toList(),
-      );
-      _seeded = true;
-    }
+    await _seedCookies();
     final url = MoocCredentials.origin.resolve('/web/j/$method.rpc');
     final cookies = await _requestCookies(url);
     final csrf = cookies
@@ -206,31 +204,7 @@ class MoocApi {
       request.write(Uri(queryParameters: form).query);
       final response = await request.close().timeout(_timeout);
       _cancellation.check();
-      final received =
-          (response.headers[HttpHeaders.setCookieHeader] ?? <String>[])
-              .map(MoocCookie.fromSetCookieValue)
-              .where((cookie) {
-                final domain = cookie.domain?.toLowerCase().replaceFirst(
-                  RegExp(r'^\.'),
-                  '',
-                );
-                return domain == null ||
-                    (MoocCredentials.isMoocHost(domain) &&
-                        (url.host == domain || url.host.endsWith('.$domain')));
-              })
-              .toList();
-      // Convert relative lifetime at arrival, before persisting the session.
-      // Reopening the app must not restart a server cookie's Max-Age clock.
-      for (final cookie in received) {
-        final seconds = cookie.maxAge;
-        if (seconds != null && seconds > 0) {
-          cookie.expires = DateTime.now().toUtc().add(
-            Duration(seconds: seconds),
-          );
-          cookie.maxAge = null;
-        }
-      }
-      await _cookies.saveFromResponse(url, received);
+      await _saveResponseCookies(url, response);
       final text = await utf8.decoder.bind(response).join().timeout(_timeout);
       _cancellation.check();
       if ([301, 302, 303, 307, 308, 401, 403].contains(response.statusCode)) {
@@ -253,6 +227,83 @@ class MoocApi {
         throw const MoocLoginRequired();
       }
       throw const MoocFailure('MOOC 未完成请求，请稍后重试或重新登录。');
+    } on Exception catch (error) {
+      _cancellation.check();
+      if (error is SocketException ||
+          error is HttpException ||
+          error is HandshakeException ||
+          error is TimeoutException) {
+        throw const MoocFailure('无法连接中国大学MOOC，请检查网络后重试。');
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> _seedCookies() async {
+    if (_seeded) return;
+    await _cookies.saveFromResponse(
+      MoocCredentials.origin,
+      _credentials.cookies.map(MoocCookie.fromSetCookieValue).toList(),
+    );
+    _seeded = true;
+  }
+
+  Future<void> _saveResponseCookies(
+    Uri url,
+    HttpClientResponse response,
+  ) async {
+    final received =
+        (response.headers[HttpHeaders.setCookieHeader] ?? <String>[])
+            .map(MoocCookie.fromSetCookieValue)
+            .where((cookie) {
+              final domain = cookie.domain?.toLowerCase().replaceFirst(
+                RegExp(r'^\.'),
+                '',
+              );
+              return domain == null ||
+                  (MoocCredentials.isMoocHost(domain) &&
+                      (url.host == domain || url.host.endsWith('.$domain')));
+            })
+            .toList();
+    // Convert relative lifetime at arrival, before persisting the session.
+    // Reopening the app must not restart a server cookie's Max-Age clock.
+    for (final cookie in received) {
+      final seconds = cookie.maxAge;
+      if (seconds != null && seconds > 0) {
+        cookie.expires = DateTime.now().toUtc().add(Duration(seconds: seconds));
+        cookie.maxAge = null;
+      }
+    }
+    await _cookies.saveFromResponse(url, received);
+  }
+
+  Future<void> _verifySession() async {
+    _cancellation.check();
+    await _seedCookies();
+    final url = MoocCredentials.origin.resolve('/home.htm');
+    final cookies = await _requestCookies(url);
+    try {
+      final request = await _http.getUrl(url).timeout(_timeout);
+      _cancellation.check();
+      request.followRedirects = false;
+      request.headers
+        ..set(HttpHeaders.userAgentHeader, _credentials.userAgent)
+        ..set(HttpHeaders.acceptHeader, 'text/html');
+      request.cookies.addAll(cookies);
+      final response = await request.close().timeout(_timeout);
+      _cancellation.check();
+      await _saveResponseCookies(url, response);
+      await utf8.decoder.bind(response).join().timeout(_timeout);
+      _cancellation.check();
+      if ([301, 302, 303, 307, 308, 401, 403].contains(response.statusCode)) {
+        throw const MoocLoginRequired();
+      }
+      if (response.statusCode == 429) {
+        throw const MoocFailure('MOOC 请求过于频繁，请稍后重试。');
+      }
+      if (response.statusCode != 200) {
+        throw MoocFailure('MOOC 请求失败（${response.statusCode}），请稍后重试。');
+      }
     } on Exception catch (error) {
       _cancellation.check();
       if (error is SocketException ||

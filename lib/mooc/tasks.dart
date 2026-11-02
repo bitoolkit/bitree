@@ -211,10 +211,7 @@ List<dynamic> moocList(
   bool optional = false,
   String field = '列表',
 }) {
-  if (optional &&
-      (value == null ||
-          (value is String && value.trim().isEmpty) ||
-          (value is Map && value.isEmpty))) {
+  if (optional && value == null) {
     return const [];
   }
   if (value is List) return value;

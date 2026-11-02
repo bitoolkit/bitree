@@ -81,6 +81,8 @@ Map<String, dynamic> term(int course) => {
   'exams': [],
 };
 
+enum _CoursePageMode { normal, empty, malformed, inconsistent }
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late Directory directory;
@@ -255,28 +257,24 @@ void main() {
       expect(() => readMoocTasks(term(6), course, '8'), throwsFormatException);
     });
 
-    test(
-      'Missing or empty optional collections do not fail the whole course',
-      () {
-        for (final value in <Object?>[null, '', <String, dynamic>{}]) {
-          final data = term(7)..['chapters'] = value;
-          expect(readMoocTasks(data, course, '8'), isEmpty);
-        }
+    test('Missing optional collections are empty, malformed ones fail', () {
+      final absent = term(7)..['chapters'] = null;
+      expect(readMoocTasks(absent, course, '8'), isEmpty);
 
-        final data = term(7);
-        final chapter =
-            (data['chapters'] as List).single as Map<String, dynamic>;
-        data['chapters'] = [
-          <String, dynamic>{
-            ...chapter,
-            'homeworks': <String, dynamic>{},
-            'quizs': '',
-            'lessons': null,
-          },
-        ];
-        expect(readMoocTasks(data, course, '8'), isEmpty);
-      },
-    );
+      for (final value in <Object?>['', <String, dynamic>{}]) {
+        final broken = term(7)..['chapters'] = value;
+        expect(
+          () => readMoocTasks(broken, course, '8'),
+          throwsA(
+            isA<FormatException>().having(
+              (error) => error.message,
+              'message',
+              contains('课程章节'),
+            ),
+          ),
+        );
+      }
+    });
 
     test(
       'Hidden chapters and activities without a deadline do not create tasks',
@@ -345,7 +343,7 @@ void main() {
     late MoocAccount account;
     var expired = false;
     var brokenCourse = false;
-    var malformedPage = false;
+    var pageMode = _CoursePageMode.normal;
     var completed = false;
     var reviewed = false;
     var brokenReview = false;
@@ -355,7 +353,7 @@ void main() {
     setUp(() async {
       expired = false;
       brokenCourse = false;
-      malformedPage = false;
+      pageMode = _CoursePageMode.normal;
       completed = false;
       reviewed = false;
       brokenReview = false;
@@ -389,11 +387,7 @@ void main() {
       server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       network = LocalHttpOverrides(server.port);
       server.listen((request) async {
-        final form = Uri.splitQueryString(
-          await utf8.decoder.bind(request).join(),
-        );
-        expect(request.method, 'POST');
-        expect(request.uri.path, startsWith('/www.icourse163.org/web/j/'));
+        final path = request.uri.path;
         expect(
           request.headers.value(HttpHeaders.userAgentHeader),
           'MOOC test browser',
@@ -401,6 +395,25 @@ void main() {
         final cookie = request.headers.value(HttpHeaders.cookieHeader)!;
         expect(cookie, isNot(contains('foreign')));
         expect(cookie, isNot(contains('wrong-path')));
+        if (request.method == 'GET' && path == '/www.icourse163.org/home.htm') {
+          expect(cookie, contains('STUDY_SESS=session,token=='));
+          if (expired) {
+            request.response.statusCode = HttpStatus.found;
+            request.response.headers.set(
+              HttpHeaders.locationHeader,
+              'https://www.icourse163.org/passport/logingate/changeCookie.htm',
+            );
+          } else {
+            request.response.write('<html>signed in</html>');
+          }
+          await request.response.close();
+          return;
+        }
+        final form = Uri.splitQueryString(
+          await utf8.decoder.bind(request).join(),
+        );
+        expect(request.method, 'POST');
+        expect(path, startsWith('/www.icourse163.org/web/j/'));
         expect(cookie, contains('STUDY_SESS=specific,token=='));
         expect(
           cookie.indexOf('STUDY_SESS=specific'),
@@ -410,13 +423,7 @@ void main() {
           request.headers.value('edu-script-token'),
           request.uri.queryParameters['csrfKey'],
         );
-        if (expired) {
-          request.response.write(
-            jsonEncode({'code': 1, 'message': 'not_auth', 'result': null}),
-          );
-        } else if (request.uri.path.endsWith(
-          'getMyLearnedCoursePanelList.rpc',
-        )) {
+        if (path.endsWith('getMyLearnedCoursePanelList.rpc')) {
           request.response.cookies.add(
             Cookie('NTESSTUDYSI', 'rotated')..path = '/',
           );
@@ -434,25 +441,38 @@ void main() {
               : form['p'] == '1'
               ? List.generate(8, (i) => i + 1)
               : [9];
+          final (rows, total, pageCount) = expired
+              ? (null, 0, 1)
+              : switch (pageMode) {
+                  _CoursePageMode.normal => (
+                    [
+                      for (final id in ids)
+                        {
+                          'id': id,
+                          'name': '课程 $id',
+                          'termPanel': {'id': id + 100},
+                        },
+                    ],
+                    spoc ? 1 : 9,
+                    spoc ? 1 : 2,
+                  ),
+                  _CoursePageMode.empty => (null, 0, 1),
+                  _CoursePageMode.malformed => ('wrong', 9, 2),
+                  _CoursePageMode.inconsistent => (null, 9, 2),
+                };
           request.response.write(
             jsonEncode({
               'code': 0,
               'result': {
-                'list': malformedPage
-                    ? 'wrong'
-                    : [
-                        for (final id in ids)
-                          {
-                            'id': id,
-                            'name': '课程 $id',
-                            'termPanel': {'id': id + 100},
-                          },
-                      ],
-                'query': {'totlePageCount': spoc ? 1 : 2},
+                'pagination': {
+                  'totleCount': total,
+                  'totlePageCount': pageCount,
+                },
+                'result': rows,
               },
             }),
           );
-        } else if (request.uri.path.endsWith('getLastLearnedMocTermDto.rpc')) {
+        } else if (path.endsWith('getLastLearnedMocTermDto.rpc')) {
           expect(cookie, contains('_ntes_nnid=rotated,value=='));
           expect(request.uri.queryParameters['csrfKey'], 'rotated');
           expect(form.keys, ['termId']);
@@ -619,6 +639,18 @@ void main() {
     );
 
     test(
+      'A valid empty course page imports zero tasks',
+      () => HttpOverrides.runWithHttpOverrides(() async {
+        await controller.connect(account);
+        pageMode = _CoursePageMode.empty;
+        final result = (await controller.synchronize())!;
+        expect(result.entries, isEmpty);
+        expect(result.failures, isEmpty);
+        expect(controller.needsLogin, isFalse);
+      }, network),
+    );
+
+    test(
       'Partial course failure is visible in the import result',
       () => HttpOverrides.runWithHttpOverrides(() async {
         await controller.connect(account);
@@ -633,8 +665,27 @@ void main() {
       'Invalid course pages do not overwrite the agenda',
       () => HttpOverrides.runWithHttpOverrides(() async {
         await controller.connect(account);
-        malformedPage = true;
+        pageMode = _CoursePageMode.malformed;
         await expectLater(controller.synchronize(), throwsFormatException);
+        expect(agenda.entries, isEmpty);
+      }, network),
+    );
+
+    test(
+      'A null result with a nonzero total is rejected',
+      () => HttpOverrides.runWithHttpOverrides(() async {
+        await controller.connect(account);
+        pageMode = _CoursePageMode.inconsistent;
+        await expectLater(
+          controller.synchronize(),
+          throwsA(
+            isA<FormatException>().having(
+              (error) => error.message,
+              'message',
+              contains('分页数据不一致'),
+            ),
+          ),
+        );
         expect(agenda.entries, isEmpty);
       }, network),
     );
