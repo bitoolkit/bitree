@@ -75,6 +75,8 @@ enum _TimelineTone {
   final _TimelineColors dark;
 }
 
+const _overdueSourceTint = 0.2;
+
 /// Source/type colors are specific to the timeline, not other agenda views.
 ({Color fill, Color text, Color accent}) agendaTimelineColors(
   BuildContext context,
@@ -102,41 +104,46 @@ enum _TimelineTone {
       finished && (entry.isDeadline || entry.kind == AgendaKind.exam);
   final fillAlpha = fadeAll ? 0.5 : (finished ? 0.55 : 1.0);
   final foregroundAlpha = fadeAll ? 0.5 : 1.0;
+  late final _TimelineColors colors;
   if (tone != null) {
     final values = theme.brightness == Brightness.dark ? tone.dark : tone.light;
-    return (
+    colors = (
       fill: values.fill.withValues(alpha: fillAlpha),
       text: values.text.withValues(alpha: foregroundAlpha),
       accent: values.accent.withValues(alpha: foregroundAlpha),
     );
-  }
-
-  final blockPalette = agendaPaletteColors(theme);
-  if (blockPalette != null) {
-    return (
+  } else if (agendaPaletteColors(theme) case final blockPalette?) {
+    colors = (
       fill: Color(blockPalette.fill).withValues(alpha: fillAlpha),
       text: Color(blockPalette.text).withValues(alpha: foregroundAlpha),
       accent: Color(blockPalette.accent).withValues(alpha: foregroundAlpha),
     );
+  } else {
+    final manualDeadline =
+        entry.isDeadline && entry.source == null && !physicsLabDeadline;
+    final fill = finished
+        ? scheme.surfaceContainerHighest
+        : manualDeadline
+        ? scheme.secondaryContainer
+        : scheme.primaryContainer;
+    final text = finished
+        ? scheme.onSurfaceVariant
+        : manualDeadline
+        ? scheme.onSecondaryContainer
+        : scheme.onPrimaryContainer;
+    colors = (
+      fill: fill.withValues(alpha: fillAlpha),
+      text: text.withValues(alpha: foregroundAlpha),
+      accent: (manualDeadline ? scheme.secondary : scheme.primary).withValues(
+        alpha: foregroundAlpha,
+      ),
+    );
   }
 
-  final manualDeadline =
-      entry.isDeadline && entry.source == null && !physicsLabDeadline;
-  final fill = finished
-      ? scheme.surfaceContainerHighest
-      : manualDeadline
-      ? scheme.secondaryContainer
-      : scheme.primaryContainer;
-  final text = finished
-      ? scheme.onSurfaceVariant
-      : manualDeadline
-      ? scheme.onSecondaryContainer
-      : scheme.onPrimaryContainer;
+  if (!entry.overdue(now)) return colors;
   return (
-    fill: fill.withValues(alpha: fillAlpha),
-    text: text.withValues(alpha: foregroundAlpha),
-    accent: (manualDeadline ? scheme.secondary : scheme.primary).withValues(
-      alpha: foregroundAlpha,
-    ),
+    fill: Color.lerp(scheme.errorContainer, colors.fill, _overdueSourceTint)!,
+    text: colors.text,
+    accent: scheme.error,
   );
 }

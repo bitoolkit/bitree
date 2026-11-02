@@ -153,7 +153,7 @@ void main() {
 
   for (final brightness in Brightness.values) {
     testWidgets(
-      'Global palette updates the app and courses, preserves agenda source colours and restores $brightness colours',
+      'Global palette updates the app, tints overdue DDLs and restores $brightness colours',
       (tester) async {
         final palette = testSystemPalette();
         final controller = TestAppController(
@@ -247,14 +247,22 @@ void main() {
           );
         }
         final overdue = entries.last.copyWith();
-        expect(
-          agendaTimelineColors(
-            context(),
-            overdue,
-            now.add(const Duration(days: 2)),
-          ),
-          originalAgenda.last,
+        final overdueColors = agendaTimelineColors(
+          context(),
+          overdue,
+          now.add(const Duration(days: 2)),
         );
+        expect(overdueColors.fill, isNot(originalAgenda.last.fill));
+        expect(
+          overdueColors.fill,
+          Color.lerp(
+            theme.colorScheme.errorContainer,
+            originalAgenda.last.fill,
+            0.2,
+          ),
+        );
+        expect(overdueColors.text, originalAgenda.last.text);
+        expect(overdueColors.accent, theme.colorScheme.error);
         expect(
           agendaTimelineColors(
             context(),

@@ -11,7 +11,7 @@ void main() {
   for (final brightness in Brightness.values) {
     for (final system in [false, true]) {
       testWidgets(
-        'Overdue DDLs keep source colours and only turn the right border red in $brightness, system=$system',
+        'Overdue DDLs add an error tint to source colours in $brightness, system=$system',
         (tester) async {
           final theme = bitreeTheme(
             brightness,
@@ -78,6 +78,9 @@ void main() {
               tester.widget<Text>(find.text(entry.title)).style!.color!;
           Color captionColor() =>
               tester.widget<Text>(find.text('13:00 截止')).style!.color!;
+          Color warningColor() => tester
+              .widget<Icon>(find.byIcon(Icons.warning_amber_rounded))
+              .color!;
 
           await show(entry, due.subtract(const Duration(minutes: 1)));
           final originalFill = fill();
@@ -86,9 +89,16 @@ void main() {
           final originalBorder = border().right;
 
           await show(entry, due.add(const Duration(minutes: 1)));
-          expect(fill(), originalFill);
+          expect(
+            fill().last,
+            Color.lerp(
+              theme.colorScheme.errorContainer,
+              originalFill.last,
+              0.2,
+            ),
+          );
           expect(titleColor(), originalText);
-          expect(captionColor(), originalCaption);
+          expect(captionColor(), theme.colorScheme.error);
           expect(
             border().right,
             BorderSide(color: theme.colorScheme.error, width: 3),
@@ -97,6 +107,7 @@ void main() {
           expect(border().top, BorderSide.none);
           expect(border().bottom, BorderSide.none);
           expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
+          expect(warningColor(), theme.colorScheme.error);
 
           await show(
             entry.copyWith(done: true),
@@ -104,6 +115,7 @@ void main() {
           );
           expect(fill().last, originalFill.last.withValues(alpha: 0.5));
           expect(titleColor(), originalText.withValues(alpha: 0.5));
+          expect(captionColor(), originalCaption.withValues(alpha: 0.5));
           expect(
             border().right.color,
             originalBorder.color.withValues(alpha: 0.5),

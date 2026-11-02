@@ -29,6 +29,7 @@ class AgendaTimelineEntry extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final colors = agendaTimelineColors(context, entry, now);
+    final overdue = entry.overdue(now);
     final scale = math.max(
       1.0,
       MediaQuery.textScalerOf(context).scale(14) / 14,
@@ -109,7 +110,7 @@ class AgendaTimelineEntry extends StatelessWidget {
                         border: entry.isDeadline
                             ? Border(
                                 right: BorderSide(
-                                  color: entry.overdue(now)
+                                  color: overdue
                                       ? Theme.of(context).colorScheme.error
                                       : colors.accent,
                                   width: 3,
@@ -153,11 +154,13 @@ class AgendaTimelineEntry extends StatelessWidget {
                                         Icon(
                                           entry.done
                                               ? Icons.check_circle_outline
-                                              : entry.overdue(now)
+                                              : overdue
                                               ? Icons.warning_amber_rounded
                                               : kindIcon,
                                           size: 13 * scale,
-                                          color: colors.text,
+                                          color: overdue
+                                              ? colors.accent
+                                              : colors.text,
                                         ),
                                         const SizedBox(width: 3),
                                         Flexible(
