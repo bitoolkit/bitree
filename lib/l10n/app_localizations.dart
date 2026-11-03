@@ -161,7 +161,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectDescription.
   ///
   /// In en, this message translates to:
-  /// **'A handy little companion for BIT students.'**
+  /// **'A handy little companion for students at 【REDACTED】.'**
   String get projectDescription;
 
   /// No description provided for @aboutIconSemantics.

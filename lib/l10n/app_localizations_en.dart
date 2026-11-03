@@ -40,7 +40,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appearance => 'Appearance';
 
   @override
-  String get projectDescription => 'A handy little companion for BIT students.';
+  String get projectDescription =>
+      'A handy little companion for students at 【REDACTED】.';
 
   @override
   String get aboutIconSemantics => 'BITree icon';

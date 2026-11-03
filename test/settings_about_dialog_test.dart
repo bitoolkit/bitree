@@ -63,7 +63,7 @@ void main() {
 
     expect(find.byType(AlertDialog), findsOneWidget);
     expect(find.byType(BottomSheet), findsNothing);
-    expect(find.text('面向北京理工大学的妙妙小工具'), findsOneWidget);
+    expect(find.text('面向【REDACTED】的妙妙小工具'), findsOneWidget);
 
     await tester.tap(find.text('加入 BITree 交流群'));
     await tester.pumpAndSettle();

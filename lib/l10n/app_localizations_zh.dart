@@ -40,7 +40,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appearance => '外观';
 
   @override
-  String get projectDescription => '面向北京理工大学的妙妙小工具';
+  String get projectDescription => '面向【REDACTED】的妙妙小工具';
 
   @override
   String get aboutIconSemantics => 'BITree 图标';

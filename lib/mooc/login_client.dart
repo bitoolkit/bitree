@@ -172,6 +172,20 @@ class MoocLoginClient {
     return await _account(account);
   }
 
+  Future<List<Cookie>> exportCookies() async {
+    final values = <String, Cookie>{};
+    for (final uri in [
+      MoocCredentials.origin,
+      Uri.parse(_loginOrigin),
+      MoocCredentials.rpcDirectory,
+    ]) {
+      for (final cookie in await _cookies.loadForRequest(uri)) {
+        values['${cookie.domain}\n${cookie.path}\n${cookie.name}'] = cookie;
+      }
+    }
+    return values.values.toList(growable: false);
+  }
+
   Future<({Map<String, Object>? parameter, String? sid})> _readProof({
     required String account,
     required int channel,
