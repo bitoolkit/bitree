@@ -781,6 +781,20 @@
     }
   },
   "deletedDeadlinesTitle": "Deleted DDLs",
+  "deletedDeadlinesRecycleBin": "DDL recycle bin",
+  "deletedDeadlinesSearchHint": "Search titles, courses, or sources",
+  "deletedDeadlinesNoMatches": "No matching DDLs",
+  "deletedDeadlinesSelectionCount": "{selected} of {total} selected",
+  "@deletedDeadlinesSelectionCount": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "deletedDeadlinesNone": "No deleted DDLs",
   "deletedDeadlinesRestoreAll": "Restore all",
   "deletedDeadlinesRestoreAction": "Restore",

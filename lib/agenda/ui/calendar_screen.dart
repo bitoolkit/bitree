@@ -265,7 +265,7 @@ class _AgendaOverflowMenu extends StatelessWidget {
             leadingIcon: const Icon(Icons.restore_from_trash_outlined),
             trailingIcon: Text('$deletedDeadlineCount'),
             onPressed: deletedDeadlinesEnabled ? onOpenDeletedDeadlines : null,
-            child: Text(l10n.deletedDeadlinesTitle),
+            child: Text(l10n.deletedDeadlinesRecycleBin),
           ),
         const Divider(height: 9),
         for (final term in values)

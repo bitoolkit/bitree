@@ -998,6 +998,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deletedDeadlinesTitle => 'Deleted DDLs';
 
   @override
+  String get deletedDeadlinesRecycleBin => 'DDL recycle bin';
+
+  @override
+  String get deletedDeadlinesSearchHint => 'Search titles, courses, or sources';
+
+  @override
+  String get deletedDeadlinesNoMatches => 'No matching DDLs';
+
+  @override
+  String deletedDeadlinesSelectionCount(int selected, int total) {
+    return '$selected of $total selected';
+  }
+
+  @override
   String get deletedDeadlinesNone => 'No deleted DDLs';
 
   @override

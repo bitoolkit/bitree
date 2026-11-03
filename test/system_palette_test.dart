@@ -252,8 +252,8 @@ void main() {
           overdue,
           now.add(const Duration(days: 2)),
         );
-        expect(overdueColors.fill, originalAgenda.last.fill);
-        expect(overdueColors.text, originalAgenda.last.text);
+        expect(overdueColors.fill, theme.colorScheme.errorContainer);
+        expect(overdueColors.text, theme.colorScheme.onErrorContainer);
         expect(overdueColors.accent, theme.colorScheme.error);
         expect(
           agendaTimelineColors(

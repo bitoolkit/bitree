@@ -1704,6 +1704,30 @@ abstract class AppLocalizations {
   /// **'Deleted DDLs'**
   String get deletedDeadlinesTitle;
 
+  /// No description provided for @deletedDeadlinesRecycleBin.
+  ///
+  /// In en, this message translates to:
+  /// **'DDL recycle bin'**
+  String get deletedDeadlinesRecycleBin;
+
+  /// No description provided for @deletedDeadlinesSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search titles, courses, or sources'**
+  String get deletedDeadlinesSearchHint;
+
+  /// No description provided for @deletedDeadlinesNoMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching DDLs'**
+  String get deletedDeadlinesNoMatches;
+
+  /// No description provided for @deletedDeadlinesSelectionCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{selected} of {total} selected'**
+  String deletedDeadlinesSelectionCount(int selected, int total);
+
   /// No description provided for @deletedDeadlinesNone.
   ///
   /// In en, this message translates to:
