@@ -13,6 +13,7 @@ import '../controller.dart';
 import '../credentials.dart';
 import '../errors.dart';
 import '../login_client.dart';
+import 'captcha_dialog.dart';
 import 'login.dart';
 
 Future<bool> showMoocAccount(
@@ -94,6 +95,26 @@ class _MoocSheetState extends State<_MoocSheet> {
     }
   }
 
+  Future<MoocCaptchaSolution?> _verify(
+    MoocLoginClient client,
+    MoocLoginChallenge challenge,
+  ) async {
+    if (_webLoginOpen) return null;
+    setState(() => _webLoginOpen = true);
+    try {
+      final cookies = await client.exportCookies();
+      if (!mounted) return null;
+      return await showMoocCaptchaDialog(
+        context,
+        challenge: challenge,
+        userAgent: client.userAgent,
+        cookies: cookies,
+      );
+    } finally {
+      if (mounted) setState(() => _webLoginOpen = false);
+    }
+  }
+
   Future<void> _disconnect() async {
     final l10n = context.l10n;
     final confirmed = await showAppConfirmDialog(
@@ -116,12 +137,12 @@ class _MoocSheetState extends State<_MoocSheet> {
     _MoocSurface.password => _PasswordEditor(
       onBack: () => _open(_MoocSurface.menu),
       onConnected: _connect,
-      onWebLogin: _webLogin,
+      onVerify: _verify,
     ),
     _MoocSurface.sms => _SmsEditor(
       onBack: () => _open(_MoocSurface.menu),
       onConnected: _connect,
-      onWebLogin: _webLogin,
+      onVerify: _verify,
     ),
     _MoocSurface.cookie => _CookieEditor(
       onBack: () => _open(_MoocSurface.menu),
@@ -264,12 +285,16 @@ class _PasswordEditor extends StatefulWidget {
   const _PasswordEditor({
     required this.onBack,
     required this.onConnected,
-    required this.onWebLogin,
+    required this.onVerify,
   });
 
   final VoidCallback onBack;
   final Future<void> Function(MoocAccount account) onConnected;
-  final VoidCallback onWebLogin;
+  final Future<MoocCaptchaSolution?> Function(
+    MoocLoginClient client,
+    MoocLoginChallenge challenge,
+  )
+  onVerify;
 
   @override
   State<_PasswordEditor> createState() => _PasswordEditorState();
@@ -283,31 +308,56 @@ class _PasswordEditorState extends State<_PasswordEditor> {
   bool _saving = false;
   bool _hidePassword = true;
   String? _error;
-  bool _challenge = false;
+  MoocLoginChallenge? _challenge;
 
   Future<void> _save() async {
     if (_saving || !_form.currentState!.validate()) return;
+    await _login();
+  }
+
+  Future<void> _login({
+    MoocCaptchaSolution? captcha,
+    bool allowChallenge = true,
+  }) async {
+    if (_saving) return;
     FocusScope.of(context).unfocus();
     setState(() {
       _saving = true;
       _error = null;
-      _challenge = false;
+      _challenge = null;
     });
+    MoocCaptchaSolution? retry;
     try {
       final account = await _client.loginWithPassword(
         account: _account.text.trim(),
         password: _password.text,
+        captcha: captcha,
       );
       await widget.onConnected(account);
     } on Exception catch (error) {
       if (mounted) {
         setState(() {
           _error = _loginError(context, error);
-          _challenge = error is MoocLoginChallenge;
+          _challenge = error is MoocLoginChallenge ? error : null;
         });
+        if (error is MoocLoginChallenge && allowChallenge) {
+          retry = await widget.onVerify(_client, error);
+        }
       }
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+    if (retry != null && mounted) {
+      await _login(captcha: retry, allowChallenge: false);
+    }
+  }
+
+  Future<void> _verifyAndRetry() async {
+    final challenge = _challenge;
+    if (challenge == null || _saving) return;
+    final captcha = await widget.onVerify(_client, challenge);
+    if (captcha != null && mounted) {
+      await _login(captcha: captcha, allowChallenge: false);
     }
   }
 
@@ -329,10 +379,10 @@ class _PasswordEditorState extends State<_PasswordEditor> {
       onSave: _save,
       saveLabel: Text(_saving ? l10n.moocSigningIn : l10n.moocSignIn),
       error: _error,
-      errorAction: _challenge
+      errorAction: _challenge != null
           ? TextButton(
-              onPressed: _saving ? null : widget.onWebLogin,
-              child: Text(l10n.moocUseWebLogin),
+              onPressed: _saving ? null : _verifyAndRetry,
+              child: Text(l10n.moocVerifyNow),
             )
           : null,
       onBack: widget.onBack,
@@ -392,16 +442,22 @@ class _PasswordEditorState extends State<_PasswordEditor> {
   }
 }
 
+enum _SmsChallengeAction { sendCode, login }
+
 class _SmsEditor extends StatefulWidget {
   const _SmsEditor({
     required this.onBack,
     required this.onConnected,
-    required this.onWebLogin,
+    required this.onVerify,
   });
 
   final VoidCallback onBack;
   final Future<void> Function(MoocAccount account) onConnected;
-  final VoidCallback onWebLogin;
+  final Future<MoocCaptchaSolution?> Function(
+    MoocLoginClient client,
+    MoocLoginChallenge challenge,
+  )
+  onVerify;
 
   @override
   State<_SmsEditor> createState() => _SmsEditorState();
@@ -420,63 +476,122 @@ class _SmsEditorState extends State<_SmsEditor> {
   bool _saving = false;
   int _resendSeconds = 0;
   String? _error;
-  bool _challenge = false;
+  MoocLoginChallenge? _challenge;
+  _SmsChallengeAction? _challengeAction;
 
-  void _setError(Object error) {
+  void _setError(Object error, _SmsChallengeAction action) {
     _error = _loginError(context, error, sms: true);
-    _challenge = error is MoocLoginChallenge;
+    _challenge = error is MoocLoginChallenge ? error : null;
+    _challengeAction = error is MoocLoginChallenge ? action : null;
   }
 
   Future<void> _send() async {
     if (_sending || _saving || !_phoneField.currentState!.validate()) return;
+    await _requestCode();
+  }
+
+  Future<void> _requestCode({
+    MoocCaptchaSolution? captcha,
+    bool allowChallenge = true,
+  }) async {
+    if (_sending || _saving) return;
     FocusScope.of(context).unfocus();
     setState(() {
       _sending = true;
       _error = null;
-      _challenge = false;
+      _challenge = null;
+      _challengeAction = null;
     });
+    MoocCaptchaSolution? retry;
     try {
-      final delay = await _client.sendSmsCode(_phone.text.trim());
+      final delay = await _client.sendSmsCode(
+        _phone.text.trim(),
+        captcha: captcha,
+      );
       if (!mounted) return;
-      final seconds = (delay.inMilliseconds + 999) ~/ 1000;
-      _timer?.cancel();
-      setState(() => _resendSeconds = seconds);
-      if (seconds > 0) {
-        _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-          if (!mounted) return;
-          if (_resendSeconds <= 1) {
-            timer.cancel();
-            setState(() => _resendSeconds = 0);
-          } else {
-            setState(() => _resendSeconds--);
-          }
-        });
-      }
+      _startResendCountdown(delay);
     } on Exception catch (error) {
-      if (mounted) setState(() => _setError(error));
+      if (mounted) {
+        setState(() => _setError(error, _SmsChallengeAction.sendCode));
+        if (error is MoocLoginChallenge && allowChallenge) {
+          retry = await widget.onVerify(_client, error);
+        }
+      }
     } finally {
       if (mounted) setState(() => _sending = false);
+    }
+    if (retry != null && mounted) {
+      await _requestCode(captcha: retry, allowChallenge: false);
     }
   }
 
   Future<void> _save() async {
     if (_sending || _saving || !_form.currentState!.validate()) return;
+    await _login();
+  }
+
+  Future<void> _login({
+    MoocCaptchaSolution? captcha,
+    bool allowChallenge = true,
+  }) async {
+    if (_sending || _saving) return;
     FocusScope.of(context).unfocus();
     setState(() {
       _saving = true;
       _error = null;
-      _challenge = false;
+      _challenge = null;
+      _challengeAction = null;
     });
+    MoocCaptchaSolution? retry;
     try {
       final account = await _client.loginWithSmsCode(
         phone: _phone.text.trim(),
         code: _code.text.trim(),
+        captcha: captcha,
       );
       await widget.onConnected(account);
     } on Exception catch (error) {
-      if (mounted) setState(() => _setError(error));
+      if (mounted) {
+        setState(() => _setError(error, _SmsChallengeAction.login));
+        if (error is MoocLoginChallenge && allowChallenge) {
+          retry = await widget.onVerify(_client, error);
+        }
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+    if (retry != null && mounted) {
+      await _login(captcha: retry, allowChallenge: false);
+    }
+  }
+
+  void _startResendCountdown(Duration delay) {
+    final seconds = (delay.inMilliseconds + 999) ~/ 1000;
+    _timer?.cancel();
+    setState(() => _resendSeconds = seconds);
+    if (seconds <= 0) return;
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      if (_resendSeconds <= 1) {
+        timer.cancel();
+        setState(() => _resendSeconds = 0);
+      } else {
+        setState(() => _resendSeconds--);
+      }
+    });
+  }
+
+  Future<void> _verifyAndRetry() async {
+    final challenge = _challenge;
+    final action = _challengeAction;
+    if (challenge == null || action == null || _sending || _saving) return;
+    final captcha = await widget.onVerify(_client, challenge);
+    if (captcha == null || !mounted) return;
+    switch (action) {
+      case _SmsChallengeAction.sendCode:
+        await _requestCode(captcha: captcha, allowChallenge: false);
+      case _SmsChallengeAction.login:
+        await _login(captcha: captcha, allowChallenge: false);
     }
   }
 
@@ -500,10 +615,10 @@ class _SmsEditorState extends State<_SmsEditor> {
       onSave: _save,
       saveLabel: Text(_saving ? l10n.moocSigningIn : l10n.moocSignIn),
       error: _error,
-      errorAction: _challenge
+      errorAction: _challenge != null
           ? TextButton(
-              onPressed: busy ? null : widget.onWebLogin,
-              child: Text(l10n.moocUseWebLogin),
+              onPressed: busy ? null : _verifyAndRetry,
+              child: Text(l10n.moocVerifyNow),
             )
           : null,
       onBack: widget.onBack,

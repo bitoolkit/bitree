@@ -7,8 +7,12 @@ class MoocLoginServer {
   final HttpServer _server;
   final requests = <String>[];
   Map<String, dynamic> passwordResult = {'ret': 201};
+  Map<String, dynamic> smsSendResult = {'ret': 201, 'cd': 2};
+  Map<String, dynamic> smsLoginResult = {'ret': 201};
   bool requireProofOnFirstPassword = false;
   int passwordAttempts = 0;
+  int smsSendAttempts = 0;
+  int smsLoginAttempts = 0;
   var _proofCalls = 0;
 
   int get port => _server.port;
@@ -88,12 +92,16 @@ class MoocLoginServer {
       return;
     }
     if (path.endsWith('/sms/sm')) {
-      await _json(request.response, {'ret': 201, 'cd': 2});
+      smsSendAttempts++;
+      await _json(request.response, smsSendResult);
       return;
     }
     if (path.endsWith('/sms/vfsms')) {
-      _setSession(request.response);
-      await _json(request.response, {'ret': 201});
+      smsLoginAttempts++;
+      if (smsLoginResult['ret'] == 201) {
+        _setSession(request.response);
+      }
+      await _json(request.response, smsLoginResult);
       return;
     }
     if (path.endsWith('/ini')) {

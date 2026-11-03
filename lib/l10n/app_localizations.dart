@@ -2460,11 +2460,23 @@ abstract class AppLocalizations {
   /// **'Signing in…'**
   String get moocSigningIn;
 
-  /// No description provided for @moocUseWebLogin.
+  /// No description provided for @moocVerificationTitle.
   ///
   /// In en, this message translates to:
-  /// **'Use web sign-in'**
-  String get moocUseWebLogin;
+  /// **'Complete verification'**
+  String get moocVerificationTitle;
+
+  /// No description provided for @moocVerifyNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify'**
+  String get moocVerifyNow;
+
+  /// No description provided for @moocVerificationLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load verification'**
+  String get moocVerificationLoadFailed;
 
   /// No description provided for @moocWrongCredentials.
   ///

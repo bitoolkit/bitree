@@ -22,6 +22,7 @@ const _loginFrame =
 const _loginTop = 'https://www.icourse163.org/member/login.htm#/webLoginIndex';
 const _product = 'imooc';
 const _productMark = 'cjJVGQM';
+const _captchaId = 'a3b396bb2f589bbc1151f0fa61d14747';
 const _commandTimeout = Duration(seconds: 25);
 
 enum MoocLoginError {
@@ -46,9 +47,23 @@ class MoocLoginException implements Exception {
   String toString() => 'MOOC login failed: ${kind.name}';
 }
 
+class MoocCaptchaSolution {
+  const MoocCaptchaSolution({required this.validate, this.captchaType});
+
+  final String validate;
+  final String? captchaType;
+}
+
 class MoocLoginChallenge extends MoocLoginException {
   const MoocLoginChallenge(String code)
     : super(MoocLoginError.unavailable, code: code);
+
+  int? get captchaType => switch (code) {
+    '109' || '444' => 2,
+    '110' || '445' => 3,
+    '111' || '447' => 4,
+    _ => null,
+  };
 }
 
 /// Uses MOOC's own web sign-in protocol without loading its login UI.
@@ -73,6 +88,7 @@ class MoocLoginClient {
   Future<MoocAccount> loginWithPassword({
     required String account,
     required String password,
+    MoocCaptchaSolution? captcha,
   }) async {
     await _initialize();
     final proof = await _readProof(account: account, channel: 1);
@@ -90,13 +106,17 @@ class MoocLoginClient {
         'domains': '',
         'channel': 1,
         'pVParam': ?proofParam,
+        ..._captchaFields(captcha),
       },
       path: '/dl/zj/yd/pwd/l',
     );
     return _finish(result);
   }
 
-  Future<Duration> sendSmsCode(String phone) async {
+  Future<Duration> sendSmsCode(
+    String phone, {
+    MoocCaptchaSolution? captcha,
+  }) async {
     await _initialize();
     final proof = await _readProof(account: phone, channel: 2);
     var response = await _post('/dl/zj/yd/sms/sm', {
@@ -104,6 +124,7 @@ class MoocLoginClient {
       'un': phone,
       'channel': 2,
       'pVParam': ?proof.parameter,
+      ..._captchaFields(captcha),
     });
     if (_isProofRequired(response)) {
       final retryProof = await _readProof(
@@ -116,6 +137,7 @@ class MoocLoginClient {
         'un': phone,
         'channel': 2,
         'pVParam': ?retryProof.parameter,
+        ..._captchaFields(captcha),
       });
     }
     _requireSuccess(response);
@@ -139,6 +161,7 @@ class MoocLoginClient {
   Future<MoocAccount> loginWithSmsCode({
     required String phone,
     required String code,
+    MoocCaptchaSolution? captcha,
   }) async {
     await _initialize();
     final proof = await _readProof(account: phone, channel: 2);
@@ -154,6 +177,7 @@ class MoocLoginClient {
         'domains': '',
         'channel': 2,
         'pVParam': ?proofParam,
+        ..._captchaFields(captcha),
       },
       path: '/dl/zj/yd/sms/vfsms',
     );
@@ -305,6 +329,18 @@ class MoocLoginClient {
     'topURL': _loginTop,
     'rtid': _randomId(32),
   };
+
+  Map<String, Object> _captchaFields(MoocCaptchaSolution? captcha) {
+    if (captcha == null) return const {};
+    if (captcha.validate.isEmpty) {
+      throw ArgumentError.value(
+        captcha.validate,
+        'captcha.validate',
+        'CAPTCHA validation must not be empty',
+      );
+    }
+    return {'cap': captcha.validate, 'capkey': _captchaId};
+  }
 
   Future<Map<String, dynamic>> _post(
     String path,
@@ -480,7 +516,6 @@ class MoocLoginClient {
       '444',
       '445',
       '447',
-      '691',
     }.contains(code)) {
       throw MoocLoginChallenge(code.isEmpty ? 'challenge' : code);
     }

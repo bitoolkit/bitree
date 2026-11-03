@@ -202,7 +202,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Human verification offers the existing web sign-in fallback', (
+  testWidgets('Human verification is a CAPTCHA-only dialog and retries login', (
     tester,
   ) async {
     final server = await startLoginServer(tester);
@@ -218,20 +218,149 @@ void main() {
     );
     await tester.enterText(find.byType(TextFormField).at(1), 'password');
     await tester.tap(find.widgetWithText(FilledButton, '登录'));
-    await waitFor(tester, () => find.text('登录需要完成人机验证').evaluate().isNotEmpty);
-    expect(find.text('改用网页登录'), findsOneWidget);
+    await waitFor(tester, () => find.text('完成人机验证').evaluate().isNotEmpty);
+    await waitFor(
+      tester,
+      () => find.byType(WebViewWidget).evaluate().isNotEmpty,
+    );
 
-    await tester.tap(find.text('改用网页登录'));
-    await tester.pumpAndSettle();
-    expect(find.text('登录中国大学MOOC'), findsOneWidget);
+    expect(find.text('登录需要完成人机验证'), findsOneWidget);
+    expect(find.text('改用网页登录'), findsNothing);
+    expect(find.text('登录中国大学MOOC'), findsNothing);
+    expect(find.byType(AlertDialog), findsOneWidget);
     expect(find.byType(WebViewWidget), findsOneWidget);
-    finishLogin();
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(browser.controller.html, contains('initNECaptcha'));
+    expect(
+      browser.controller.html,
+      contains("element: document.getElementById('captcha')"),
+    );
+    expect(browser.controller.html, contains('width: 256'));
+    expect(
+      browser.controller.html,
+      contains('a3b396bb2f589bbc1151f0fa61d14747'),
+    );
+    expect(browser.controller.html, isNot(contains('/member/login.htm')));
+    expect(browser.controller.html, isNot(contains('登录中国大学MOOC')));
+    expect(browser.controller.html, isNot(contains('课程')));
+    expect(browser.controller.baseUrl, startsWith('https://'));
+    expect(browser.controller.userAgent, contains('Chrome/140'));
+    expect(browser.cookies.any((cookie) => cookie.name == 'utid'), isTrue);
+    server.passwordResult = {'ret': 201};
+    browser.controller.finishLoading();
+    await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    browser.controller.snapshot = {
+      'ready': true,
+      'solution': {'validate': 'verified-token', 'captchaType': '3'},
+    };
+    await tester.pump(const Duration(milliseconds: 200));
+    await waitFor(tester, () => model.mooc.account?.id == '123');
     await tester.pumpAndSettle();
 
     expect(model.mooc.account!.name, '测试账号');
     expect(find.byType(BottomSheet), findsNothing);
+    expect(find.byType(AlertDialog), findsNothing);
     expect(find.text('同步中国大学MOOC DDL'), findsNothing);
     expect(model.agenda.entries, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Cancelling CAPTCHA keeps the form and signed-in account', (
+    tester,
+  ) async {
+    final server = await startLoginServer(tester);
+    server.passwordResult = {'ret': 445};
+    final model = TestAppController(moocStorage: signedInStorage());
+    await pump(tester, model);
+
+    await tester.tap(find.text('账号密码'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'student@example.com',
+    );
+    await tester.enterText(find.byType(TextFormField).at(1), 'password');
+    await tester.tap(find.widgetWithText(FilledButton, '登录'));
+    await waitFor(tester, () => find.byType(AlertDialog).evaluate().isNotEmpty);
+
+    await tester.tap(find.widgetWithText(TextButton, '取消'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(find.text('student@example.com'), findsOneWidget);
+    expect(find.text('password'), findsOneWidget);
+    expect(find.text('登录需要完成人机验证'), findsOneWidget);
+    expect(model.mooc.account!.id, '8');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Sending an SMS code can verify and retry in place', (
+    tester,
+  ) async {
+    final server = await startLoginServer(tester);
+    server.smsSendResult = {'ret': 445};
+    final model = TestAppController();
+    await pump(tester, model);
+
+    await tester.tap(find.text('短信验证码'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).at(0), '13800138000');
+    await tester.tap(find.text('获取验证码'));
+    await waitFor(tester, () => find.text('完成人机验证').evaluate().isNotEmpty);
+
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(server.smsSendAttempts, 1);
+    server.smsSendResult = {'ret': 201, 'cd': 2};
+    browser.controller.snapshot = {
+      'ready': true,
+      'solution': {'validate': 'sms-send-token', 'captchaType': '3'},
+    };
+    browser.controller.finishLoading();
+    await waitFor(
+      tester,
+      () => find.textContaining('秒后重发').evaluate().isNotEmpty,
+    );
+
+    expect(server.smsSendAttempts, 2);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text('13800138000'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Logging in with an SMS code can verify and retry in place', (
+    tester,
+  ) async {
+    final server = await startLoginServer(tester);
+    server.smsLoginResult = {'ret': 445};
+    final model = TestAppController();
+    await pump(tester, model);
+
+    await tester.tap(find.text('短信验证码'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).at(0), '13800138000');
+    await tester.tap(find.text('获取验证码'));
+    await waitFor(
+      tester,
+      () => find.textContaining('秒后重发').evaluate().isNotEmpty,
+    );
+    await tester.enterText(find.byType(TextFormField).at(1), '123456');
+    await tester.tap(find.widgetWithText(FilledButton, '登录'));
+    await waitFor(tester, () => find.text('完成人机验证').evaluate().isNotEmpty);
+
+    expect(server.smsLoginAttempts, 1);
+    server.smsLoginResult = {'ret': 201};
+    browser.controller.snapshot = {
+      'ready': true,
+      'solution': {'validate': 'sms-login-token', 'captchaType': '3'},
+    };
+    browser.controller.finishLoading();
+    await waitFor(tester, () => model.mooc.account?.id == '123');
+    await tester.pumpAndSettle();
+
+    expect(server.smsLoginAttempts, 2);
+    expect(find.byType(BottomSheet), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

@@ -146,9 +146,8 @@ void main() {
       '444',
       '445',
       '447',
-      '691',
     }) {
-      test('challenge $code asks the caller to use web sign-in', () async {
+      test('challenge $code asks the caller to verify', () async {
         server.passwordResult = {'ret': code};
         final client = MoocLoginClient();
         addTearDown(client.close);
@@ -168,6 +167,50 @@ void main() {
         );
       });
     }
+
+    test('691 is not treated as a recoverable CAPTCHA challenge', () async {
+      server.passwordResult = {'ret': 691};
+      final client = MoocLoginClient();
+      addTearDown(client.close);
+
+      await expectLater(
+        client.loginWithPassword(
+          account: 'student@example.com',
+          password: 'password',
+        ),
+        throwsA(
+          isA<MoocLoginException>()
+              .having((error) => error.kind, 'kind', MoocLoginError.unavailable)
+              .having((error) => error.code, 'code', '691'),
+        ),
+      );
+    });
+
+    test('password login retries with a CAPTCHA solution', () async {
+      server.passwordResult = {'ret': 445};
+      final client = MoocLoginClient();
+      addTearDown(client.close);
+
+      await expectLater(
+        client.loginWithPassword(
+          account: 'student@example.com',
+          password: 'password',
+        ),
+        throwsA(isA<MoocLoginChallenge>()),
+      );
+      server.passwordResult = {'ret': 201};
+      final account = await client.loginWithPassword(
+        account: 'student@example.com',
+        password: 'password',
+        captcha: const MoocCaptchaSolution(
+          validate: 'verified-token',
+          captchaType: '3',
+        ),
+      );
+
+      expect(account.id, '123');
+      expect(server.passwordAttempts, 2);
+    });
 
     test('SMS send and login share one initialized session', () async {
       final client = MoocLoginClient();

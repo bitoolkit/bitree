@@ -1356,7 +1356,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get moocSigningIn => '登录中…';
 
   @override
-  String get moocUseWebLogin => '改用网页登录';
+  String get moocVerificationTitle => '完成人机验证';
+
+  @override
+  String get moocVerifyNow => '完成验证';
+
+  @override
+  String get moocVerificationLoadFailed => '验证码加载失败';
 
   @override
   String get moocWrongCredentials => '账号或密码错误';

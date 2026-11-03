@@ -32,6 +32,9 @@ class TestMoocWebView extends PlatformWebViewController {
   TestMoocWebView(super.params) : super.implementation();
   late _Navigation _navigation;
   Uri? url;
+  String? html;
+  String? baseUrl;
+  String? userAgent;
   Object snapshot = false;
 
   void finishLoading() {
@@ -42,12 +45,28 @@ class TestMoocWebView extends PlatformWebViewController {
   @override
   Future<void> setJavaScriptMode(JavaScriptMode mode) async {}
   @override
+  Future<void> setUserAgent(String? userAgent) async {
+    this.userAgent = userAgent;
+  }
+
+  @override
+  Future<void> setOnConsoleMessage(
+    void Function(JavaScriptConsoleMessage message) onConsoleMessage,
+  ) async {}
+  @override
   Future<void> setPlatformNavigationDelegate(
     PlatformNavigationDelegate handler,
   ) async => _navigation = handler as _Navigation;
   @override
   Future<void> loadRequest(LoadRequestParams params) async {
     url = params.uri;
+    finishLoading();
+  }
+
+  @override
+  Future<void> loadHtmlString(String html, {String? baseUrl}) async {
+    this.html = html;
+    this.baseUrl = baseUrl;
     finishLoading();
   }
 
@@ -98,6 +117,6 @@ class _View extends PlatformWebViewWidget {
   @override
   Widget build(BuildContext context) => const ColoredBox(
     color: Colors.white,
-    child: Center(child: Text('MOOC 网页（系统控件替身）')),
+    child: Center(child: Text('MOOC 人机验证（系统控件替身）')),
   );
 }

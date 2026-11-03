@@ -33,8 +33,10 @@ Future<bool> loginToMooc(
 
 class _MoocLogin extends StatefulWidget {
   const _MoocLogin({required this.controller, this.initialCookies});
+
   final MoocController controller;
   final List<Cookie>? initialCookies;
+
   @override
   State<_MoocLogin> createState() => _MoocLoginState();
 }

@@ -1421,7 +1421,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get moocSigningIn => 'Signing in…';
 
   @override
-  String get moocUseWebLogin => 'Use web sign-in';
+  String get moocVerificationTitle => 'Complete verification';
+
+  @override
+  String get moocVerifyNow => 'Verify';
+
+  @override
+  String get moocVerificationLoadFailed => 'Could not load verification';
 
   @override
   String get moocWrongCredentials => 'Incorrect account or password';
