@@ -123,6 +123,11 @@ void main() {
     );
     await _pumpAgenda(tester, [current, past, allOnly]);
 
+    final titleRect = tester.getRect(find.text(l10n.agendaTitle));
+    final termRect = tester.getRect(find.byType(SemesterDropdown));
+    final statusRect = tester.getRect(find.byType(SegmentedButton<int>));
+    expect(termRect.center.dy, closeTo(titleRect.center.dy, 8));
+    expect(termRect.bottom, lessThan(statusRect.top));
     expect(find.text(l10n.agendaPendingTab(1)), findsOneWidget);
     expect(find.text(current.title), findsWidgets);
     expect(find.text(past.title), findsNothing);
@@ -148,28 +153,29 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('The period dropdown remains usable on a narrow large-text layout', (
-    tester,
-  ) async {
-    await _pumpAgenda(
-      tester,
-      [
-        _event(
-          id: 'current',
-          title: '本学期活动',
-          startsAt: DateTime.utc(2026, 11, 5, 10),
-          term: _currentSchedule.term,
-        ),
-      ],
-      size: const Size(320, 640),
-      scale: 1.8,
-    );
+  testWidgets(
+    'The period dropdown remains usable on a narrow large-text layout',
+    (tester) async {
+      await _pumpAgenda(
+        tester,
+        [
+          _event(
+            id: 'current',
+            title: '本学期活动',
+            startsAt: DateTime.utc(2026, 11, 5, 10),
+            term: _currentSchedule.term,
+          ),
+        ],
+        size: const Size(320, 640),
+        scale: 1.8,
+      );
 
-    expect(
-      find.bySemanticsLabel(AppLocalizationsZh().agendaPeriod),
-      findsOneWidget,
-    );
-    expect(find.text('本学期活动'), findsWidgets);
-    expect(tester.takeException(), isNull);
-  });
+      expect(
+        find.bySemanticsLabel(AppLocalizationsZh().agendaPeriod),
+        findsOneWidget,
+      );
+      expect(find.text('本学期活动'), findsWidgets);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
