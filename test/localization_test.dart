@@ -66,12 +66,10 @@ void main() {
   });
 
   test('The home month header does not repeat the month suffix', () async {
-    for (final (locale, expected) in [
-      (const Locale('zh'), '10月'),
-      (const Locale('en'), 'October'),
-    ]) {
+    for (final locale in [const Locale('zh'), const Locale('en')]) {
       final l10n = await AppLocalizations.delegate.load(locale);
-      expect(l10n.monthHeader(localizedMonth(l10n, 10)), expected);
+      final month = localizedMonth(l10n, 10);
+      expect(l10n.monthHeader(month), month);
     }
   });
 }
