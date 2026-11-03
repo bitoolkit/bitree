@@ -946,6 +946,20 @@ class AppLocalizationsZh extends AppLocalizations {
   String get deletedDeadlinesTitle => '已删除的 DDL';
 
   @override
+  String get deletedDeadlinesRecycleBin => 'DDL 回收站';
+
+  @override
+  String get deletedDeadlinesSearchHint => '搜索标题、课程或来源';
+
+  @override
+  String get deletedDeadlinesNoMatches => '没有匹配的 DDL';
+
+  @override
+  String deletedDeadlinesSelectionCount(int selected, int total) {
+    return '已选 $selected / $total';
+  }
+
+  @override
   String get deletedDeadlinesNone => '没有已删除的 DDL';
 
   @override

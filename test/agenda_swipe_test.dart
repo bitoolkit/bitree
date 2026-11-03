@@ -62,7 +62,7 @@ void main() {
 
   Future<void> openDeletedDeadlines(WidgetTester tester) async {
     await openAgendaMenu(tester);
-    await tester.tap(find.text('已删除的 DDL'));
+    await tester.tap(find.text('DDL 回收站'));
     await tester.pumpAndSettle();
   }
 
@@ -115,18 +115,17 @@ void main() {
     },
   );
 
-  testWidgets('Deleted deadlines can be restored from the agenda header', (
-    tester,
-  ) async {
+  testWidgets('Deleted deadlines open in a recoverable page', (tester) async {
     final app = await showAgenda(tester, deleted: true);
     await openDeletedDeadlines(tester);
-    expect(find.text('已删除的 DDL'), findsOneWidget);
+    expect(find.text('DDL 回收站'), findsOneWidget);
+    expect(find.byType(BottomSheet), findsNothing);
     await tester.tap(find.byTooltip('恢复'));
     await tester.pumpAndSettle();
     expect(app.agenda.entries.single.id, 'task');
     expect(app.agenda.deletedDeadlines, isEmpty);
     await openAgendaMenu(tester);
-    expect(find.text('已删除的 DDL'), findsNothing);
+    expect(find.text('DDL 回收站'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -141,10 +140,32 @@ void main() {
       );
       expect(find.byTooltip('更多').hitTestable(), findsOneWidget);
       await openDeletedDeadlines(tester);
-      expect(find.text('已删除的 DDL'), findsOneWidget);
+      expect(find.text('DDL 回收站'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('Deleted DDL recovery can search by title', (tester) async {
+    await showAgenda(tester, count: 3, deleted: true);
+    await openDeletedDeadlines(tester);
+
+    await tester.enterText(find.byType(TextField), '作业 1');
+    await tester.pumpAndSettle();
+    final results = find.byType(ListView);
+    expect(
+      find.descendant(of: results, matching: find.text('作业 1')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: results, matching: find.text('第三章作业')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: results, matching: find.text('作业 2')),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'Deleted DDL recovery supports select all, clear, and partial restore',
@@ -154,16 +175,16 @@ void main() {
 
       await tester.tap(find.byType(Checkbox).first);
       await tester.pump();
-      expect(find.text('已选 3 项'), findsOneWidget);
+      expect(find.text('已选 3 / 3'), findsOneWidget);
       expect(find.text('全部恢复'), findsOneWidget);
 
       await tester.tap(find.text('清空'));
       await tester.pump();
-      expect(find.text('已选 0 项'), findsOneWidget);
+      expect(find.text('已选 0 / 3'), findsOneWidget);
 
       await tester.tap(find.text('作业 1'));
       await tester.pump();
-      expect(find.text('已选 1 项'), findsOneWidget);
+      expect(find.text('已选 1 / 3'), findsOneWidget);
       await tester.tap(find.text('恢复所选'));
       await tester.pumpAndSettle();
 
@@ -182,6 +203,8 @@ void main() {
       final app = await showAgenda(tester, count: 3, deleted: true);
       await openDeletedDeadlines(tester);
 
+      await tester.tap(find.byTooltip('更多'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('清空回收站'));
       await tester.pumpAndSettle();
       expect(find.text('清空回收站？'), findsOneWidget);
@@ -190,6 +213,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(app.agenda.deletedDeadlines, hasLength(3));
 
+      await tester.tap(find.byTooltip('更多'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('清空回收站'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('永久删除'));
@@ -198,7 +223,7 @@ void main() {
       expect(app.agenda.deletedDeadlines, isEmpty);
       expect(find.text('已清空 3 条 DDL'), findsOneWidget);
       await openAgendaMenu(tester);
-      expect(find.text('已删除的 DDL'), findsNothing);
+      expect(find.text('DDL 回收站'), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
