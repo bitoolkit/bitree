@@ -21,10 +21,10 @@ struct _WebviewAllLinuxPlugin {
   GtkWidget *flutter_input_widget;
   GHashTable *webviews;
   gint next_webview_id;
+  gint active_webview_id;
+  guint active_pointer_button;
+  gboolean pointer_event_filter_installed;
   guint input_region_update_source_id;
-  gulong button_press_hook_id;
-  gulong button_release_hook_id;
-  gulong motion_hook_id;
   gboolean disposing;
 };
 

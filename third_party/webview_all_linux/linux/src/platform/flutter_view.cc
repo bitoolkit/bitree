@@ -149,35 +149,47 @@ static LinuxWebView *webview_at_input_position(WebviewAllLinuxPlugin *self,
   return topmost;
 }
 
-static void forward_pointer_event(WebviewAllLinuxPlugin *self,
-                                  GdkEvent *source_event) {
+static gboolean forward_pointer_event(WebviewAllLinuxPlugin *self,
+                                      GdkEvent *source_event) {
   if (self == nullptr || self->flutter_input_widget == nullptr ||
       self->disposing || source_event == nullptr) {
-    return;
+    return FALSE;
   }
 
   gdouble root_x = 0;
   gdouble root_y = 0;
   if (!gdk_event_get_root_coords(source_event, &root_x, &root_y)) {
-    return;
+    return FALSE;
   }
   GdkWindow *input_window = gtk_widget_get_window(self->flutter_input_widget);
   if (input_window == nullptr) {
-    return;
+    return FALSE;
   }
   gint input_x = 0;
   gint input_y = 0;
   gdk_window_get_origin(input_window, &input_x, &input_y);
-  LinuxWebView *webview =
-      webview_at_input_position(self, root_x - input_x, root_y - input_y);
+  LinuxWebView *webview = nullptr;
+  if (self->active_webview_id != 0) {
+    webview = static_cast<LinuxWebView *>(
+        g_hash_table_lookup(self->webviews,
+                            GINT_TO_POINTER(self->active_webview_id)));
+    if (webview == nullptr) {
+      self->active_webview_id = 0;
+      self->active_pointer_button = 0;
+    }
+  }
   if (webview == nullptr) {
-    return;
+    webview =
+        webview_at_input_position(self, root_x - input_x, root_y - input_y);
+  }
+  if (webview == nullptr) {
+    return FALSE;
   }
 
   GtkWidget *webview_widget = GTK_WIDGET(webview->web_view);
   GdkWindow *webview_window = gtk_widget_get_window(webview_widget);
   if (webview_window == nullptr) {
-    return;
+    return FALSE;
   }
   gint webview_x = 0;
   gint webview_y = 0;
@@ -198,79 +210,56 @@ static void forward_pointer_event(WebviewAllLinuxPlugin *self,
              event->type == GDK_3BUTTON_PRESS) {
     event->button.x = root_x - webview_x;
     event->button.y = root_y - webview_y;
+    if (event->type == GDK_BUTTON_PRESS) {
+      self->active_webview_id = webview->id;
+      self->active_pointer_button = event->button.button;
+      gtk_widget_grab_focus(webview_widget);
+    }
   }
-  gtk_main_do_event(event);
+  // Dispatch directly to WebKit so Flutter cannot claim the press first.
+  gtk_widget_event(webview_widget, event);
+  if (event->type == GDK_BUTTON_RELEASE &&
+      event->button.button == self->active_pointer_button) {
+    self->active_webview_id = 0;
+    self->active_pointer_button = 0;
+  }
   gdk_event_free(event);
-}
-
-static gboolean flutter_pointer_emission_hook(GSignalInvocationHint*,
-                                              guint parameter_count,
-                                              const GValue* parameters,
-                                              gpointer user_data) {
-  WebviewAllLinuxPlugin *self =
-      static_cast<WebviewAllLinuxPlugin *>(user_data);
-  if (self == nullptr || parameter_count < 2 ||
-      self->flutter_input_widget == nullptr) {
-    return TRUE;
-  }
-  GObject *instance = G_OBJECT(g_value_get_object(&parameters[0]));
-  if (instance != G_OBJECT(self->flutter_input_widget)) {
-    return TRUE;
-  }
-  GdkEvent *event =
-      static_cast<GdkEvent *>(g_value_get_boxed(&parameters[1]));
-  forward_pointer_event(self, event);
   return TRUE;
 }
 
-static void install_pointer_forwarding_hooks(
-    WebviewAllLinuxPlugin *self) {
-  if (self == nullptr || self->flutter_input_widget == nullptr ||
-      self->button_press_hook_id != 0) {
-    return;
+static GdkFilterReturn flutter_pointer_event_filter_cb(GdkXEvent*,
+                                                       GdkEvent* event,
+                                                       gpointer user_data) {
+  WebviewAllLinuxPlugin *self =
+      static_cast<WebviewAllLinuxPlugin *>(user_data);
+  if (event == nullptr || self == nullptr || self->disposing) {
+    return GDK_FILTER_CONTINUE;
   }
-  const guint press_signal =
-      g_signal_lookup("button-press-event", GTK_TYPE_WIDGET);
-  const guint release_signal =
-      g_signal_lookup("button-release-event", GTK_TYPE_WIDGET);
-  const guint motion_signal =
-      g_signal_lookup("motion-notify-event", GTK_TYPE_WIDGET);
-  if (press_signal == 0 || release_signal == 0 || motion_signal == 0) {
-    return;
+  if (event->type != GDK_MOTION_NOTIFY && event->type != GDK_BUTTON_PRESS &&
+      event->type != GDK_BUTTON_RELEASE &&
+      event->type != GDK_2BUTTON_PRESS && event->type != GDK_3BUTTON_PRESS) {
+    return GDK_FILTER_CONTINUE;
   }
-  self->button_press_hook_id = g_signal_add_emission_hook(
-      press_signal, 0, flutter_pointer_emission_hook,
-      g_object_ref(self), g_object_unref);
-  self->button_release_hook_id = g_signal_add_emission_hook(
-      release_signal, 0, flutter_pointer_emission_hook,
-      g_object_ref(self), g_object_unref);
-  self->motion_hook_id = g_signal_add_emission_hook(
-      motion_signal, 0, flutter_pointer_emission_hook,
-      g_object_ref(self), g_object_unref);
+  return forward_pointer_event(self, event) ? GDK_FILTER_REMOVE
+                                            : GDK_FILTER_CONTINUE;
 }
 
-static void remove_pointer_forwarding_hooks(WebviewAllLinuxPlugin *self) {
-  if (self == nullptr) {
+static void install_pointer_event_filter(WebviewAllLinuxPlugin *self) {
+  if (self == nullptr || self->pointer_event_filter_installed) {
     return;
   }
-  if (self->button_press_hook_id != 0) {
-    g_signal_remove_emission_hook(
-        g_signal_lookup("button-press-event", GTK_TYPE_WIDGET),
-        self->button_press_hook_id);
-    self->button_press_hook_id = 0;
+  gdk_window_add_filter(nullptr, flutter_pointer_event_filter_cb, self);
+  self->pointer_event_filter_installed = TRUE;
+}
+
+static void remove_pointer_event_filter(WebviewAllLinuxPlugin *self) {
+  if (self == nullptr || !self->pointer_event_filter_installed) {
+    return;
   }
-  if (self->button_release_hook_id != 0) {
-    g_signal_remove_emission_hook(
-        g_signal_lookup("button-release-event", GTK_TYPE_WIDGET),
-        self->button_release_hook_id);
-    self->button_release_hook_id = 0;
-  }
-  if (self->motion_hook_id != 0) {
-    g_signal_remove_emission_hook(
-        g_signal_lookup("motion-notify-event", GTK_TYPE_WIDGET),
-        self->motion_hook_id);
-    self->motion_hook_id = 0;
-  }
+  gdk_window_remove_filter(nullptr, flutter_pointer_event_filter_cb, self);
+  self->pointer_event_filter_installed = FALSE;
+  self->active_webview_id = 0;
+  self->active_pointer_button = 0;
 }
 
 static gboolean overlay_get_child_position_cb(GtkOverlay *overlay,
@@ -363,7 +352,6 @@ static void attach_linux_webview_host(WebviewAllLinuxPlugin *self,
     g_signal_connect(self->flutter_input_widget, "map",
                      G_CALLBACK(flutter_view_layout_changed_cb), self);
   }
-  install_pointer_forwarding_hooks(self);
   schedule_flutter_view_input_region_update(self);
 }
 
@@ -420,10 +408,10 @@ void update_flutter_view_input_region(WebviewAllLinuxPlugin* self) {
       gtk_widget_get_window(input_widget) == nullptr) {
     return;
   }
-  // Let Flutter receive pointer events over the native view, then forward the
-  // real device events to WebKit. Some GTK backends do not preserve a click
-  // when the Flutter window is shaped away from an overlapping native child.
+  // Keep Flutter's full input surface. Matching pointer events are dispatched
+  // directly to WebKit before Flutter handles them.
   gtk_widget_input_shape_combine_region(input_widget, nullptr);
+  install_pointer_event_filter(self);
 }
 
 static gboolean update_flutter_view_input_region_idle_cb(gpointer user_data) {
@@ -456,7 +444,7 @@ void detach_linux_webview_host(WebviewAllLinuxPlugin *self) {
   if (self == nullptr) {
     return;
   }
-  remove_pointer_forwarding_hooks(self);
+  remove_pointer_event_filter(self);
   if (self->input_region_update_source_id != 0) {
     g_source_remove(self->input_region_update_source_id);
     self->input_region_update_source_id = 0;
