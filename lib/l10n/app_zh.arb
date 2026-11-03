@@ -206,6 +206,7 @@
   "agendaNoUpcoming": "没有即将到来的日程",
   "agendaNoPending": "没有未完成的日程",
   "agendaType": "日程类型",
+  "agendaPeriod": "日程时段",
   "agendaCount": "{count}项日程",
   "agendaNoPendingShort": "没有未完成的日程",
   "agendaCompletedCount": "已完成 {count}",

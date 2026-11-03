@@ -759,6 +759,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get agendaType => 'Agenda type';
 
   @override
+  String get agendaPeriod => 'Agenda period';
+
+  @override
   String agendaCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
