@@ -11,6 +11,7 @@ import '../../l10n/l10n.dart';
 import '../../ui/app_dialog.dart';
 import '../credentials.dart';
 import '../login_client.dart';
+import '../webview_lifecycle.dart';
 
 const _captchaScriptUrl = 'https://cstaticdun.126.net/load.min.js';
 const _captchaId = 'a3b396bb2f589bbc1151f0fa61d14747';
@@ -50,6 +51,7 @@ class _MoocCaptchaDialog extends StatefulWidget {
 }
 
 class _MoocCaptchaDialogState extends State<_MoocCaptchaDialog> {
+  final _webViewHostKey = GlobalKey(debugLabel: 'mooc-captcha-webview-host');
   WebViewController? _browser;
   Timer? _poll;
   Timer? _loadTimeout;
@@ -71,12 +73,16 @@ class _MoocCaptchaDialogState extends State<_MoocCaptchaDialog> {
     _poll = null;
     _loadTimeout?.cancel();
     _loggedEvaluationFailure = false;
+    final previousBrowser = _browser;
+    _browser = null;
+    unawaited(disposeMoocWebView(previousBrowser));
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
       final browser = WebViewController();
+      _browser = browser;
       await browser.setJavaScriptMode(JavaScriptMode.unrestricted);
       await browser.setUserAgent(widget.userAgent);
       await browser.setOnConsoleMessage((message) {
@@ -130,7 +136,8 @@ class _MoocCaptchaDialogState extends State<_MoocCaptchaDialog> {
       if (!mounted || generation != _generation) return;
       final screen = MediaQuery.sizeOf(context);
       final width = math.min(360.0, math.max(220.0, screen.width - 64));
-      setState(() => _browser = browser);
+      setState(() {});
+      if (!await _waitForWebViewLayout(generation)) return;
       _loadTimeout = Timer(_captchaLoadTimeout, () {
         if (mounted && generation == _generation && _loading) _fail();
       });
@@ -149,6 +156,22 @@ class _MoocCaptchaDialogState extends State<_MoocCaptchaDialog> {
       AppDiagnostics.instance.error('打开 MOOC 人机验证', error, stack);
       _fail();
     }
+  }
+
+  Future<bool> _waitForWebViewLayout(int generation) async {
+    for (var frame = 0; frame < 4; frame++) {
+      if (!mounted || generation != _generation) return false;
+      final renderObject = _webViewHostKey.currentContext?.findRenderObject();
+      if (renderObject is RenderBox &&
+          renderObject.hasSize &&
+          renderObject.size.width > 0 &&
+          renderObject.size.height > 0) {
+        return true;
+      }
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    if (mounted && generation == _generation) _fail();
+    return false;
   }
 
   void _startPolling(int generation) {
@@ -174,6 +197,12 @@ class _MoocCaptchaDialogState extends State<_MoocCaptchaDialog> {
       final value = await browser.callAsyncJavaScript('''
         return {
           ready: window.__bitreeCaptchaReady === true,
+          visible: (function () {
+            var element = document.getElementById('captcha');
+            if (!element || element.childNodes.length === 0) return false;
+            var rect = element.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0;
+          })(),
           error: window.__bitreeCaptchaError || null,
           solution: window.__bitreeCaptcha || null
         };
@@ -202,7 +231,7 @@ class _MoocCaptchaDialogState extends State<_MoocCaptchaDialog> {
         _fail();
         return;
       }
-      if (result?['ready'] == true && _loading) {
+      if (result?['ready'] == true && result?['visible'] == true && _loading) {
         _loadTimeout?.cancel();
         setState(() => _loading = false);
       }
@@ -232,6 +261,9 @@ class _MoocCaptchaDialogState extends State<_MoocCaptchaDialog> {
     _generation++;
     _poll?.cancel();
     _loadTimeout?.cancel();
+    final browser = _browser;
+    _browser = null;
+    unawaited(disposeMoocWebView(browser));
     super.dispose();
   }
 
@@ -241,54 +273,82 @@ class _MoocCaptchaDialogState extends State<_MoocCaptchaDialog> {
     final width = math.min(360.0, math.max(220.0, screen.width - 64));
     final height = math.min(280.0, math.max(220.0, screen.height * 0.36));
     final l10n = context.l10n;
-    return AlertDialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      contentPadding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      title: Text(l10n.moocVerificationTitle),
-      content: SizedBox(
-        width: width,
-        height: height,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: ColoredBox(
-            color: Theme.of(context).colorScheme.surface,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (_browser case final browser?)
-                  WebViewWidget(
-                    key: const ValueKey('mooc-captcha-webview'),
-                    controller: browser,
+    final scheme = Theme.of(context).colorScheme;
+    return Semantics(
+      scopesRoute: true,
+      namesRoute: true,
+      explicitChildNodes: true,
+      label: l10n.moocVerificationTitle,
+      child: Center(
+        child: Material(
+          key: const ValueKey('mooc-captcha-dialog'),
+          type: MaterialType.canvas,
+          color: scheme.surfaceContainerHigh,
+          elevation: 6,
+          child: SizedBox(
+            width: width + 32,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    l10n.moocVerificationTitle,
+                    style: Theme.of(context).textTheme.headlineSmall,
                   ),
-                if (_loading) const Center(child: CircularProgressIndicator()),
-                if (_error case final error?)
-                  ColoredBox(
-                    color: Theme.of(context).colorScheme.surface,
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: height,
+                    child: ColoredBox(
+                      color: scheme.surface,
+                      child: Stack(
+                        fit: StackFit.expand,
                         children: [
-                          Text(error, textAlign: TextAlign.center),
-                          const SizedBox(height: 12),
-                          FilledButton.tonal(
-                            onPressed: _load,
-                            child: Text(l10n.refresh),
-                          ),
+                          if (_browser case final browser?)
+                            SizedBox.expand(
+                              key: _webViewHostKey,
+                              child: WebViewWidget(
+                                key: const ValueKey('mooc-captcha-webview'),
+                                controller: browser,
+                              ),
+                            ),
+                          if (_loading)
+                            const Center(child: CircularProgressIndicator()),
+                          if (_error case final error?)
+                            ColoredBox(
+                              color: scheme.surface,
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(error, textAlign: TextAlign.center),
+                                    const SizedBox(height: 12),
+                                    FilledButton.tonal(
+                                      onPressed: _load,
+                                      child: Text(l10n.refresh),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
                   ),
-              ],
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(l10n.cancel),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(l10n.cancel),
-        ),
-      ],
     );
   }
 }
@@ -317,7 +377,7 @@ String _captchaHtml({required int? captchaType, required int width}) {
     }
     #captcha {
       width: ${width}px;
-      max-width: calc(100% - 16px);
+      margin: 0 auto;
       min-height: 40px;
       box-sizing: border-box;
     }
@@ -349,11 +409,11 @@ String _captchaHtml({required int? captchaType, required int width}) {
             return;
           }
           window.initNECaptcha({
-            element: document.getElementById('captcha'),
+            element: '#captcha',
             captchaId: '$_captchaId',
             $type
             mode: 'embed',
-            width: $width,
+            width: '${width}px',
             lang: 'zh-CN',
             onReady: ready,
             onVerify: function (error, data) {

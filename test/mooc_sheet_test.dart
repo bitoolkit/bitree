@@ -227,15 +227,27 @@ void main() {
     expect(find.text('登录需要完成人机验证'), findsOneWidget);
     expect(find.text('改用网页登录'), findsNothing);
     expect(find.text('登录中国大学MOOC'), findsNothing);
-    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.byKey(const ValueKey('mooc-captcha-dialog')), findsOneWidget);
     expect(find.byType(WebViewWidget), findsOneWidget);
     expect(find.byType(BottomSheet), findsOneWidget);
-    expect(browser.controller.html, contains('initNECaptcha'));
     expect(
-      browser.controller.html,
-      contains("element: document.getElementById('captcha')"),
+      find.ancestor(
+        of: find.byType(WebViewWidget),
+        matching: find.byType(ClipRRect),
+      ),
+      findsNothing,
     );
-    expect(browser.controller.html, contains('width: 256'));
+    expect(
+      find.ancestor(
+        of: find.byType(WebViewWidget),
+        matching: find.byType(PhysicalShape),
+      ),
+      findsNothing,
+    );
+    expect(browser.controller.htmlLoadedAfterViewBuild, isTrue);
+    expect(browser.controller.html, contains('initNECaptcha'));
+    expect(browser.controller.html, contains("element: '#captcha'"));
+    expect(browser.controller.html, contains("width: '256px'"));
     expect(
       browser.controller.html,
       contains('a3b396bb2f589bbc1151f0fa61d14747'),
@@ -252,6 +264,7 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     browser.controller.snapshot = {
       'ready': true,
+      'visible': true,
       'solution': {'validate': 'verified-token', 'captchaType': '3'},
     };
     await tester.pump(const Duration(milliseconds: 200));
@@ -259,6 +272,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(model.mooc.account!.name, '测试账号');
+    expect(browser.controller.closeCount, 1);
     expect(find.byType(BottomSheet), findsNothing);
     expect(find.byType(AlertDialog), findsNothing);
     expect(find.text('同步中国大学MOOC DDL'), findsNothing);
@@ -282,12 +296,19 @@ void main() {
     );
     await tester.enterText(find.byType(TextFormField).at(1), 'password');
     await tester.tap(find.widgetWithText(FilledButton, '登录'));
-    await waitFor(tester, () => find.byType(AlertDialog).evaluate().isNotEmpty);
+    await waitFor(
+      tester,
+      () => find
+          .byKey(const ValueKey('mooc-captcha-dialog'))
+          .evaluate()
+          .isNotEmpty,
+    );
 
     await tester.tap(find.widgetWithText(TextButton, '取消'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(AlertDialog), findsNothing);
+    expect(browser.controller.closeCount, 1);
+    expect(find.byKey(const ValueKey('mooc-captcha-dialog')), findsNothing);
     expect(find.byType(BottomSheet), findsOneWidget);
     expect(find.text('student@example.com'), findsOneWidget);
     expect(find.text('password'), findsOneWidget);
@@ -315,6 +336,7 @@ void main() {
     server.smsSendResult = {'ret': 201, 'cd': 2};
     browser.controller.snapshot = {
       'ready': true,
+      'visible': true,
       'solution': {'validate': 'sms-send-token', 'captchaType': '3'},
     };
     browser.controller.finishLoading();
@@ -324,7 +346,7 @@ void main() {
     );
 
     expect(server.smsSendAttempts, 2);
-    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.byKey(const ValueKey('mooc-captcha-dialog')), findsNothing);
     expect(find.text('13800138000'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -353,6 +375,7 @@ void main() {
     server.smsLoginResult = {'ret': 201};
     browser.controller.snapshot = {
       'ready': true,
+      'visible': true,
       'solution': {'validate': 'sms-login-token', 'captchaType': '3'},
     };
     browser.controller.finishLoading();

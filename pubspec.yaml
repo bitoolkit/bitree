@@ -24,14 +24,18 @@ dependencies:
   package_info_plus: ^10.2.2
   pub_semver: ^2.2.1
   flutter_markdown_plus: ^1.0.12
-  webview_all: ^1.4.7
-  webview_all_android: ^1.4.7
+  webview_all: ^1.4.11
+  webview_all_android: ^1.4.11
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-  webview_platform_interface: ^1.4.7
+  webview_platform_interface: ^1.4.11
+
+dependency_overrides:
+  webview_all_linux:
+    path: third_party/webview_all_linux
 
 flutter:
   generate: true

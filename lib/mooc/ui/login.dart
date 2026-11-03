@@ -15,6 +15,7 @@ import '../controller.dart';
 import '../cookie.dart';
 import '../credentials.dart';
 import '../tasks.dart';
+import '../webview_lifecycle.dart';
 
 final _loginUrl = MoocCredentials.origin.resolve('/member/login.htm');
 
@@ -58,6 +59,9 @@ class _MoocLoginState extends State<_MoocLogin> {
   }
 
   Future<void> _prepare() async {
+    final previousBrowser = _browser;
+    _browser = null;
+    unawaited(disposeMoocWebView(previousBrowser));
     setState(() {
       _ready = false;
       _message = null;
@@ -231,6 +235,9 @@ class _MoocLoginState extends State<_MoocLogin> {
   @override
   void dispose() {
     _poll?.cancel();
+    final browser = _browser;
+    _browser = null;
+    unawaited(disposeMoocWebView(browser));
     if (!_finished) widget.controller.cancel();
     super.dispose();
   }
