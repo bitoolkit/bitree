@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../l10n/formats.dart';
 import '../l10n/l10n.dart';
 import 'app_dropdown_field.dart';
+import 'app_menu_anchor.dart';
+import 'app_menu_trigger.dart';
 
 List<String> orderedSemesterTerms(
   Iterable<String> terms, {
@@ -30,6 +32,7 @@ class SemesterDropdown extends StatelessWidget {
     required this.onChanged,
     this.currentTerm,
     this.includeAll = false,
+    this.compact = false,
   });
 
   final String label;
@@ -38,6 +41,7 @@ class SemesterDropdown extends StatelessWidget {
   final String? currentTerm;
   final ValueChanged<String?> onChanged;
   final bool includeAll;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -49,15 +53,41 @@ class SemesterDropdown extends StatelessWidget {
         ? null
         : ordered.firstOrNull;
 
+    String labelFor(String? term) =>
+        term == null ? l10n.allSemesters : localizedTerm(l10n, term);
+
+    final values = <String?>[...ordered, if (includeAll) null];
+    if (compact) {
+      return AppMenuAnchor(
+        menuChildren: [
+          for (final term in values)
+            Semantics(
+              selected: selected == term,
+              child: AppMenuItemButton(
+                onPressed: () => onChanged(term),
+                trailingIcon: selected == term
+                    ? const Icon(Icons.check_rounded, size: 18)
+                    : const SizedBox(width: 18),
+                child: Text(labelFor(term)),
+              ),
+            ),
+        ],
+        builder: (context, menu, isOpen) => AppMenuTrigger(
+          label: labelFor(selected),
+          semanticsLabel: label,
+          isOpen: isOpen,
+          onPressed: () => isOpen ? menu.close() : menu.open(),
+        ),
+      );
+    }
+
     return AppDropdownField<String?>(
       label: label,
       value: selected,
       onChanged: onChanged,
       entries: [
-        for (final term in ordered)
-          DropdownMenuEntry(value: term, label: localizedTerm(l10n, term)),
-        if (includeAll)
-          DropdownMenuEntry(value: null, label: l10n.allSemesters),
+        for (final term in values)
+          DropdownMenuEntry(value: term, label: labelFor(term)),
       ],
     );
   }

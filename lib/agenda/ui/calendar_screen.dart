@@ -111,56 +111,84 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ],
     );
 
-    Widget statusHeader() => Column(
+    Widget statusTabs() => SegmentedButton<int>(
+      showSelectedIcon: false,
+      segments: [
+        ButtonSegment(
+          value: 0,
+          label: Text(
+            l10n.agendaPendingTab(entries.length - doneCount),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        ButtonSegment(
+          value: 1,
+          label: Text(
+            l10n.agendaCompletedTab(doneCount),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ],
+      selected: {_status},
+      onSelectionChanged: (selection) => _setStatus(selection.single),
+    );
+
+    Widget filterHeader() => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: SegmentedButton<int>(
-            showSelectedIcon: false,
-            segments: [
-              ButtonSegment(
-                value: 0,
-                label: Text(
-                  l10n.agendaPendingTab(entries.length - doneCount),
-                  textAlign: TextAlign.center,
+          child: terms.isEmpty
+              ? statusTabs()
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final term = SemesterDropdown(
+                      label: l10n.agendaPeriod,
+                      terms: orderedTerms,
+                      currentTerm: currentTerm,
+                      value: selectedTerm,
+                      includeAll: true,
+                      compact: true,
+                      onChanged: _setTerm,
+                    );
+                    final status = statusTabs();
+                    final stack =
+                        constraints.maxWidth < 360 ||
+                        MediaQuery.textScalerOf(context).scale(1) > 1.3;
+                    if (stack) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: SizedBox(width: 260, child: term),
+                          ),
+                          const SizedBox(height: 4),
+                          status,
+                        ],
+                      );
+                    }
+
+                    final termWidth = (constraints.maxWidth * .38).clamp(
+                      136.0,
+                      280.0,
+                    );
+                    final statusWidth = (constraints.maxWidth - termWidth - 8)
+                        .clamp(180.0, 360.0);
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(width: termWidth, child: term),
+                        const SizedBox(width: 8),
+                        SizedBox(width: statusWidth, child: status),
+                      ],
+                    );
+                  },
                 ),
-              ),
-              ButtonSegment(
-                value: 1,
-                label: Text(
-                  l10n.agendaCompletedTab(doneCount),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-            selected: {_status},
-            onSelectionChanged: (selection) => _setStatus(selection.single),
-          ),
         ),
         loadStatus(),
       ],
     );
-
-    Widget termHeader() => terms.isEmpty
-        ? const SizedBox.shrink()
-        : Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 360),
-                child: SemesterDropdown(
-                  label: l10n.agendaPeriod,
-                  terms: orderedTerms,
-                  currentTerm: currentTerm,
-                  value: selectedTerm,
-                  includeAll: true,
-                  onChanged: _setTerm,
-                ),
-              ),
-            ),
-          );
 
     return AppPage(
       title: Row(
@@ -211,8 +239,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              termHeader(),
-              statusHeader(),
+              filterHeader(),
               Expanded(
                 child: IndexedStack(
                   index: _status,
@@ -233,8 +260,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              termHeader(),
-              loadStatus(),
+              filterHeader(),
               Expanded(
                 child: AgendaTimeline(
                   controller: controller,
