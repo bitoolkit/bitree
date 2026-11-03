@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../app/controller.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../sync/controller.dart';
 import '../../sync/ui/sync.dart';
-import '../../ui/app_dropdown_field.dart';
 import '../model.dart';
 import 'academic_common.dart';
 import 'credit_progress_screen.dart';
 import 'grade_detail.dart';
+import 'grade_scope_sheet.dart';
 
 class GradesScreen extends StatefulWidget {
   const GradesScreen({super.key, required this.controller});
@@ -20,7 +21,7 @@ class GradesScreen extends StatefulWidget {
 }
 
 class _GradesScreenState extends State<GradesScreen> {
-  String? _term;
+  GradeScope _scope = const GradeScope();
   bool _byTerm = false;
   bool _onlyFailed = false;
 
@@ -33,16 +34,27 @@ class _GradesScreenState extends State<GradesScreen> {
     builder: (context, _) {
       final controller = widget.controller;
       final record = controller.academics.record;
-      final terms = record.grades.map((grade) => grade.term).toSet().toList()
-        ..sort((a, b) => b.compareTo(a));
-      final term = terms.contains(_term) ? _term : null;
       final grades =
           record.grades
-              .where((grade) => term == null || grade.term == term)
+              .where((grade) => record.matchesScope(grade, _scope))
               .toList()
             ..sort((a, b) => a.name.compareTo(b.name));
       final stats = AcademicStats(grades);
+      final terms = stats.courses.map((course) => course.term).toSet().toList()
+        ..sort((a, b) => b.compareTo(a));
+      final singleTerm = _scope.terms.length == 1 ? _scope.terms.single : null;
+      final scopeFiltered =
+          _scope.terms.isNotEmpty ||
+          _scope.attributes.isNotEmpty ||
+          _scope.categories.isNotEmpty ||
+          _scope.courseKeys.isNotEmpty;
       final l10n = context.l10n;
+      final percentFormat = NumberFormat.percentPattern(
+        Localizations.localeOf(context).toString(),
+      )..maximumFractionDigits = 1;
+      final atLeast80 = stats.coursesAtLeast80Ratio == null
+          ? '—'
+          : percentFormat.format(stats.coursesAtLeast80Ratio);
       return AcademicPage(
         title: l10n.gradesAndAcademics,
         loading: controller.school.busy,
@@ -73,18 +85,27 @@ class _GradesScreenState extends State<GradesScreen> {
                   startSync(context, controller, targets: {SyncTarget.grades}),
             )
           else ...[
-            AppDropdownField<String?>(
-              label: l10n.settingsTerm,
-              value: term,
-              entries: [
-                DropdownMenuEntry(value: null, label: l10n.allSemesters),
-                for (final value in terms)
-                  DropdownMenuEntry(value: value, label: value),
-              ],
-              onChanged: (value) => setState(() {
-                _term = value;
-                _onlyFailed = false;
-              }),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const Key('grade-scope-button'),
+                onPressed: () async {
+                  final scope = await showGradeScopeSheet(
+                    context,
+                    record: record,
+                    scope: _scope,
+                  );
+                  if (scope == null || !mounted) return;
+                  setState(() {
+                    _scope = scope;
+                    _onlyFailed = false;
+                  });
+                },
+                icon: const Icon(Icons.tune_rounded),
+                label: Text(
+                  scopeFiltered ? l10n.gradeScopeFiltered : l10n.gradeScope,
+                ),
+              ),
             ),
             AcademicSummary(
               values: [
@@ -100,6 +121,15 @@ class _GradesScreenState extends State<GradesScreen> {
                   label: l10n.earnedCredits,
                   value: creditText(stats.earnedCredits),
                 ),
+                (
+                  label: l10n.scoredCourses,
+                  value: l10n.courseCount(stats.scoredCourseCount),
+                ),
+                (
+                  label: l10n.coursesAtLeast80,
+                  value: l10n.courseCount(stats.coursesAtLeast80),
+                ),
+                (label: l10n.atLeast80Ratio, value: atLeast80),
               ],
             ),
             SegmentedButton<bool>(
@@ -114,13 +144,11 @@ class _GradesScreenState extends State<GradesScreen> {
             ),
             const SizedBox(height: 12),
             if (_byTerm)
-              for (final value in terms.where(
-                (value) => term == null || value == term,
-              ))
+              for (final value in terms)
                 _TermPerformance(
                   term: value,
                   stats: AcademicStats(
-                    record.grades.where((grade) => grade.term == value),
+                    grades.where((grade) => grade.term == value),
                   ),
                 )
             else ...[
@@ -134,7 +162,7 @@ class _GradesScreenState extends State<GradesScreen> {
                   title: Text(
                     _onlyFailed
                         ? l10n.onlyFailedCourses
-                        : term == null
+                        : singleTerm == null
                         ? l10n.coursesNotPassed(stats.failed.length)
                         : l10n.termCoursesNotPassed(stats.failed.length),
                   ),
@@ -149,7 +177,7 @@ class _GradesScreenState extends State<GradesScreen> {
               if (grades.isEmpty)
                 Padding(
                   padding: const EdgeInsets.all(24),
-                  child: Text(l10n.noGradesThisTerm),
+                  child: Text(l10n.noCoursesInScope),
                 ),
             ],
             const Divider(height: 32),

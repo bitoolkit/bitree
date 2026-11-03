@@ -2916,6 +2916,12 @@ abstract class AppLocalizations {
   /// **'Weighted by credits. Only the highest result for a course is used; failed university elective courses do not count toward GPA. Pass/fail courses contribute credits only, and the weighted average uses percentage scores only.'**
   String get gpaRuleWeighting;
 
+  /// No description provided for @gpaRuleScoreScope.
+  ///
+  /// In en, this message translates to:
+  /// **'The 80+ share uses percentage-scored courses as its denominator and excludes five-level and pass/fail courses.'**
+  String get gpaRuleScoreScope;
+
   /// No description provided for @openGpaRulesFailed.
   ///
   /// In en, this message translates to:
@@ -2970,6 +2976,66 @@ abstract class AppLocalizations {
   /// **'Credits earned'**
   String get earnedCredits;
 
+  /// No description provided for @gradeScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Score scope'**
+  String get gradeScope;
+
+  /// No description provided for @gradeScopeFiltered.
+  ///
+  /// In en, this message translates to:
+  /// **'Score scope (filtered)'**
+  String get gradeScopeFiltered;
+
+  /// No description provided for @scoredCourses.
+  ///
+  /// In en, this message translates to:
+  /// **'Scored courses'**
+  String get scoredCourses;
+
+  /// No description provided for @coursesAtLeast80.
+  ///
+  /// In en, this message translates to:
+  /// **'80 or above'**
+  String get coursesAtLeast80;
+
+  /// No description provided for @atLeast80Ratio.
+  ///
+  /// In en, this message translates to:
+  /// **'80+ share'**
+  String get atLeast80Ratio;
+
+  /// No description provided for @courseCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 course} other{{count} courses}}'**
+  String courseCount(int count);
+
+  /// No description provided for @allCourses.
+  ///
+  /// In en, this message translates to:
+  /// **'All courses'**
+  String get allCourses;
+
+  /// No description provided for @searchCourses.
+  ///
+  /// In en, this message translates to:
+  /// **'Search courses'**
+  String get searchCourses;
+
+  /// No description provided for @noCoursesInScope.
+  ///
+  /// In en, this message translates to:
+  /// **'No courses in this scope'**
+  String get noCoursesInScope;
+
+  /// No description provided for @noMatchingCourses.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching courses'**
+  String get noMatchingCourses;
+
   /// No description provided for @courseGrades.
   ///
   /// In en, this message translates to:
@@ -3003,7 +3069,7 @@ abstract class AppLocalizations {
   /// No description provided for @noGradesThisTerm.
   ///
   /// In en, this message translates to:
-  /// **'No grades in this semester'**
+  /// **'No grades in this scope'**
   String get noGradesThisTerm;
 
   /// No description provided for @weightedAverageValue.

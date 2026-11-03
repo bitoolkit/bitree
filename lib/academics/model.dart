@@ -98,6 +98,38 @@ class CourseGrade {
   );
 }
 
+class GradeScope {
+  const GradeScope({
+    this.terms = const {},
+    this.attributes = const {},
+    this.categories = const {},
+    this.courseKeys = const {},
+  });
+
+  final Set<String> terms;
+  final Set<String> attributes;
+  final Set<String> categories;
+  final Set<String> courseKeys;
+
+  bool matches(CourseGrade grade, {required String category}) =>
+      (terms.isEmpty || terms.contains(grade.term)) &&
+      (attributes.isEmpty || attributes.contains(grade.attribute)) &&
+      (categories.isEmpty || categories.contains(category)) &&
+      (courseKeys.isEmpty || courseKeys.contains(grade.courseKey));
+
+  GradeScope copyWith({
+    Set<String>? terms,
+    Set<String>? attributes,
+    Set<String>? categories,
+    Set<String>? courseKeys,
+  }) => GradeScope(
+    terms: terms ?? this.terms,
+    attributes: attributes ?? this.attributes,
+    categories: categories ?? this.categories,
+    courseKeys: courseKeys ?? this.courseKeys,
+  );
+}
+
 List<CourseGrade> highestGrades(Iterable<CourseGrade> grades) {
   final best = <String, CourseGrade>{};
   for (final grade in grades) {
@@ -118,6 +150,9 @@ class AcademicStats {
   AcademicStats(Iterable<CourseGrade> grades) : courses = highestGrades(grades);
 
   final List<CourseGrade> courses;
+
+  Iterable<CourseGrade> get scoredCourses =>
+      courses.where((course) => course.score != null);
 
   double get earnedCredits => courses
       .where((course) => course.passed)
@@ -142,18 +177,25 @@ class AcademicStats {
   }
 
   double? get averageScore {
-    final numeric = courses.where((course) => course.score != null);
-    final credits = numeric.fold(
+    final credits = scoredCourses.fold(
       0.0,
       (total, course) => total + course.credits,
     );
     if (credits == 0) return null;
-    return numeric.fold(
+    return scoredCourses.fold(
           0.0,
           (total, course) => total + course.score! * course.credits,
         ) /
         credits;
   }
+
+  int get scoredCourseCount => scoredCourses.length;
+
+  int get coursesAtLeast80 =>
+      scoredCourses.where((course) => course.score! >= 80).length;
+
+  double? get coursesAtLeast80Ratio =>
+      scoredCourseCount == 0 ? null : coursesAtLeast80 / scoredCourseCount;
 }
 
 class StudyPlan {
@@ -208,6 +250,9 @@ class AcademicRecord {
   String categoryOf(CourseGrade grade) =>
       categoryOverrides[grade.courseKey] ??
       (grade.category.isEmpty ? '未分类' : grade.category);
+
+  bool matchesScope(CourseGrade grade, GradeScope scope) =>
+      scope.matches(grade, category: categoryOf(grade));
 
   AcademicRecord copyWith({
     List<CourseGrade>? grades,

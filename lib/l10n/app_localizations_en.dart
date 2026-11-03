@@ -1690,6 +1690,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Weighted by credits. Only the highest result for a course is used; failed university elective courses do not count toward GPA. Pass/fail courses contribute credits only, and the weighted average uses percentage scores only.';
 
   @override
+  String get gpaRuleScoreScope =>
+      'The 80+ share uses percentage-scored courses as its denominator and excludes five-level and pass/fail courses.';
+
+  @override
   String get openGpaRulesFailed => 'Could not open the GPA rules';
 
   @override
@@ -1719,6 +1723,44 @@ class AppLocalizationsEn extends AppLocalizations {
   String get earnedCredits => 'Credits earned';
 
   @override
+  String get gradeScope => 'Score scope';
+
+  @override
+  String get gradeScopeFiltered => 'Score scope (filtered)';
+
+  @override
+  String get scoredCourses => 'Scored courses';
+
+  @override
+  String get coursesAtLeast80 => '80 or above';
+
+  @override
+  String get atLeast80Ratio => '80+ share';
+
+  @override
+  String courseCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count courses',
+      one: '1 course',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get allCourses => 'All courses';
+
+  @override
+  String get searchCourses => 'Search courses';
+
+  @override
+  String get noCoursesInScope => 'No courses in this scope';
+
+  @override
+  String get noMatchingCourses => 'No matching courses';
+
+  @override
   String get courseGrades => 'Course grades';
 
   @override
@@ -1738,7 +1780,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get noGradesThisTerm => 'No grades in this semester';
+  String get noGradesThisTerm => 'No grades in this scope';
 
   @override
   String weightedAverageValue(String value) {

@@ -1606,6 +1606,9 @@ class AppLocalizationsZh extends AppLocalizations {
       '按学分加权。同一课程取最高成绩；校公选课的不及格成绩不计入绩点。合格制课程只统计学分，加权平均分仅统计百分制成绩。';
 
   @override
+  String get gpaRuleScoreScope => '80 分及以上统计以百分制课程数为分母，不包含五级制和合格制课程。';
+
+  @override
   String get openGpaRulesFailed => '无法打开计分规则';
 
   @override
@@ -1635,6 +1638,38 @@ class AppLocalizationsZh extends AppLocalizations {
   String get earnedCredits => '获得学分';
 
   @override
+  String get gradeScope => '统计范围';
+
+  @override
+  String get gradeScopeFiltered => '统计范围（已筛选）';
+
+  @override
+  String get scoredCourses => '计分课程';
+
+  @override
+  String get coursesAtLeast80 => '80 分及以上';
+
+  @override
+  String get atLeast80Ratio => '80 分及以上占比';
+
+  @override
+  String courseCount(int count) {
+    return '$count 门';
+  }
+
+  @override
+  String get allCourses => '全部课程';
+
+  @override
+  String get searchCourses => '搜索课程';
+
+  @override
+  String get noCoursesInScope => '当前范围暂无课程';
+
+  @override
+  String get noMatchingCourses => '没有匹配的课程';
+
+  @override
   String get courseGrades => '课程成绩';
 
   @override
@@ -1654,7 +1689,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get noGradesThisTerm => '这个学期暂无成绩';
+  String get noGradesThisTerm => '当前范围暂无成绩';
 
   @override
   String weightedAverageValue(String value) {

@@ -201,6 +201,8 @@ Future<void> showGpaRules(BuildContext context) => showAppDialog<void>(
           Text(l10n.gpaRuleFive),
           const SizedBox(height: AppSpacing.md),
           Text(l10n.gpaRuleWeighting),
+          const SizedBox(height: AppSpacing.md),
+          Text(l10n.gpaRuleScoreScope),
         ],
       ),
       actions: [

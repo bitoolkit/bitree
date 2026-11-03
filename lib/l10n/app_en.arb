@@ -1186,6 +1186,7 @@
   "gpaRulePercent": "Percentage scores: 60 and above use 4 − 3 × (100 − score)² ÷ 1600, rounded to one decimal place; below 60 is 0.",
   "gpaRuleFive": "Five-level scores: Excellent 4.0, Good 3.6, Average 2.8, Pass 1.7, Fail 0.",
   "gpaRuleWeighting": "Weighted by credits. Only the highest result for a course is used; failed university elective courses do not count toward GPA. Pass/fail courses contribute credits only, and the weighted average uses percentage scores only.",
+  "gpaRuleScoreScope": "The 80+ share uses percentage-scored courses as its denominator and excludes five-level and pass/fail courses.",
   "openGpaRulesFailed": "Could not open the GPA rules",
   "schoolSource": "School source",
   "syncedAt": "Synchronized {date} {time}",
@@ -1205,6 +1206,23 @@
   "averageGpa": "Average GPA",
   "weightedAverageScore": "Weighted average",
   "earnedCredits": "Credits earned",
+  "gradeScope": "Score scope",
+  "gradeScopeFiltered": "Score scope (filtered)",
+  "scoredCourses": "Scored courses",
+  "coursesAtLeast80": "80 or above",
+  "atLeast80Ratio": "80+ share",
+  "courseCount": "{count, plural, =1{1 course} other{{count} courses}}",
+  "@courseCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allCourses": "All courses",
+  "searchCourses": "Search courses",
+  "noCoursesInScope": "No courses in this scope",
+  "noMatchingCourses": "No matching courses",
   "courseGrades": "Course grades",
   "termPerformance": "Term performance",
   "onlyFailedCourses": "Showing failed courses only",
@@ -1224,7 +1242,7 @@
       }
     }
   },
-  "noGradesThisTerm": "No grades in this semester",
+  "noGradesThisTerm": "No grades in this scope",
   "weightedAverageValue": "Weighted average {value}",
   "@weightedAverageValue": {
     "placeholders": {
