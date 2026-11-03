@@ -612,7 +612,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String monthHeader(String month) {
-    return '$month月';
+    return month;
   }
 
   @override

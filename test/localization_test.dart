@@ -2,6 +2,7 @@ import 'package:bitree/app/controller.dart';
 import 'package:bitree/app/settings_controller.dart';
 import 'package:bitree/app/ui/app_screen.dart';
 import 'package:bitree/l10n/app_localizations.dart';
+import 'package:bitree/l10n/formats.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -62,5 +63,15 @@ void main() {
     await controller.initialize();
 
     expect(controller.settings.language, AppLanguage.english);
+  });
+
+  test('The home month header does not repeat the month suffix', () async {
+    for (final (locale, expected) in [
+      (const Locale('zh'), '10月'),
+      (const Locale('en'), 'October'),
+    ]) {
+      final l10n = await AppLocalizations.delegate.load(locale);
+      expect(l10n.monthHeader(localizedMonth(l10n, 10)), expected);
+    }
   });
 }

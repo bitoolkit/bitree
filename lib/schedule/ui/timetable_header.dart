@@ -43,9 +43,13 @@ class TimetableHeader extends StatelessWidget {
         SizedBox(
           width: gutterWidth,
           child: Center(
-            child: Text(
-              l10n.monthHeader(localizedMonth(l10n, monday.month)),
-              style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                _monthLabel(l10n, monday),
+                maxLines: 1,
+                style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+              ),
             ),
           ),
         ),
@@ -156,4 +160,15 @@ class _DateHeading extends StatelessWidget {
       ),
     );
   }
+}
+
+String _monthLabel(AppLocalizations l10n, DateTime monday) {
+  final label = l10n.monthHeader(localizedMonth(l10n, monday.month));
+  for (var offset = 0; offset < 7; offset++) {
+    final date = monday.add(Duration(days: offset));
+    if (date.month == 10 && date.day == 24) {
+      return label.replaceAll('月', '🈷️');
+    }
+  }
+  return label;
 }

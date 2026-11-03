@@ -5,7 +5,6 @@ import '../../agenda/ui/clear_deadlines_sheet.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../mooc/ui/mooc_sheet.dart';
-import '../../schedule/height_mode.dart';
 import '../../schedule/ui/week_range_dialog.dart';
 import '../../school/ui/school_account.dart';
 import '../../sync/controller.dart';
@@ -70,7 +69,6 @@ class SettingsScreen extends StatelessWidget {
     listenable: Listenable.merge([
       controller,
       controller.settings,
-      controller.settings.timetableHeightMode,
       controller.timetable,
       controller.agenda,
     ]),
@@ -144,42 +142,6 @@ class SettingsScreen extends StatelessWidget {
               selected: {controller.settings.language},
               onSelectionChanged: (selection) =>
                   controller.settings.setLanguage(selection.single),
-            ),
-          ]),
-          section(l10n.timetableHeight, [
-            SegmentedButton<TimetableHeightMode>(
-              expandedInsets: EdgeInsets.zero,
-              showSelectedIcon: false,
-              segments: [
-                ButtonSegment(
-                  value: TimetableHeightMode.fit,
-                  label: Text(
-                    l10n.timetableHeightFit,
-                    maxLines: 2,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                ButtonSegment(
-                  value: TimetableHeightMode.normal,
-                  label: Text(
-                    l10n.timetableHeightNormal,
-                    maxLines: 2,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-              selected: {controller.settings.timetableHeightMode.value},
-              onSelectionChanged: (selection) =>
-                  controller.settings.setTimetableHeightMode(selection.single),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                l10n.timetableHeightHint,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
             ),
           ]),
           if (controller.timetable.schedule != null)

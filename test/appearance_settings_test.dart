@@ -2,6 +2,7 @@ import 'package:bitree/app/settings_controller.dart';
 import 'package:bitree/app/ui/appearance_screen.dart';
 import 'package:bitree/app/ui/settings_screen.dart';
 import 'package:bitree/main.dart';
+import 'package:bitree/schedule/height_mode.dart';
 import 'package:bitree/ui/app_menu_anchor.dart';
 import 'package:bitree/ui/course_palette.dart';
 import 'package:flutter/material.dart';
@@ -36,9 +37,15 @@ void main() {
       expect(controller.settings.developerMode, isFalse);
       expect(find.byType(SegmentedButton<ThemeMode>), findsNothing);
       expect(find.text('深色模式调色板'), findsNothing);
+      expect(find.text('课表高度'), findsNothing);
       await tester.tap(find.text('外观'));
       await tester.pumpAndSettle();
       expect(find.byType(AppearanceScreen), findsOneWidget);
+      expect(find.text('课表高度'), findsOneWidget);
+      expect(
+        find.byType(SegmentedButton<TimetableHeightMode>),
+        findsOneWidget,
+      );
       expect(find.text('浅色模式调色板'), findsOneWidget);
       expect(find.text('深色模式调色板'), findsOneWidget);
       expect(find.text('导入调色板'), findsOneWidget);

@@ -179,7 +179,7 @@
   "weekStart": "开始周",
   "weekEnd": "截止周",
   "weekRangeDialogTitle": "周数管理",
-  "monthHeader": "{month}月",
+  "monthHeader": "{month}",
   "timetableDaySemantics": "{date}{weekday}{today}{agenda}",
   "timetableTodaySuffix": "，今天",
   "timetableAgendaSuffix": "，{count}项日程",

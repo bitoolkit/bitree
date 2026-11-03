@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:bitree/app/ui/settings_screen.dart';
+import 'package:bitree/app/ui/appearance_screen.dart';
 import 'package:bitree/l10n/app_localizations.dart';
 import 'package:bitree/schedule/height_mode.dart';
 import 'package:bitree/ui/theme.dart';
@@ -153,11 +153,7 @@ void main() {
           supportedLocales: AppLocalizations.supportedLocales,
           theme: bitreeTheme(Brightness.light),
           home: Scaffold(
-            body: SettingsScreen(
-              controller: app,
-              checkingForUpdates: false,
-              onCheckForUpdates: () {},
-            ),
+            body: AppearanceScreen(settings: app.settings),
           ),
         ),
       );
