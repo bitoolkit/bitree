@@ -3,20 +3,24 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../mooc/ui/mooc_sheet.dart';
+import '../../schedule/model.dart';
 import '../../school/ui/school_screen.dart';
 import '../../school/ui/school_verification_dialog.dart';
 import '../../ui/app_notice.dart';
 import '../../ui/design.dart';
 import '../../ui/section_label.dart';
 import '../../ui/selection_controls.dart';
+import '../../ui/semester_dropdown.dart';
 import '../../ui/sheet_layout.dart';
 import '../controller.dart';
 import 'sync_text.dart';
 
 final _progressSheets = <SyncController, Future<void>>{};
+typedef _CustomSyncSelection = ({Set<SyncTarget> targets, String? term});
 
 /// Starts one round silently. Only account authentication requires a page.
 Future<bool> startSync(
@@ -74,12 +78,12 @@ Future<bool> startSync(
 }
 
 Future<void> customizeSync(BuildContext context, AppController app) async {
-  final selected = await showAppSheet<Set<SyncTarget>>(
+  final selected = await showAppSheet<_CustomSyncSelection>(
     context: context,
     builder: (_) => _CustomSyncSheet(app: app),
   );
   if (selected == null || !context.mounted) return;
-  await startSync(context, app, targets: selected);
+  await startSync(context, app, targets: selected.targets, term: selected.term);
 }
 
 Future<void> showSyncProgress(BuildContext context, AppController app) {
@@ -104,6 +108,30 @@ class _CustomSyncSheet extends StatefulWidget {
 class _CustomSyncSheetState extends State<_CustomSyncSheet> {
   late final _availableTargets = widget.app.sync.bulkTargets;
   late final _selected = widget.app.sync.defaultTargets;
+  late final String? _currentTerm;
+  late final List<String> _terms;
+  String? _term;
+
+  bool get _usesTerm =>
+      _selected.contains(SyncTarget.schedule) ||
+      _selected.contains(SyncTarget.exams);
+
+  @override
+  void initState() {
+    super.initState();
+    _currentTerm = semesterAt(
+      widget.app.timetable.schedules,
+      campusNow(),
+    )?.term;
+    _terms = orderedSemesterTerms(
+      widget.app.timetable.terms,
+      currentTerm: _currentTerm,
+    );
+    _term =
+        _currentTerm ??
+        widget.app.timetable.schedule?.term ??
+        _terms.firstOrNull;
+  }
 
   @override
   Widget build(BuildContext context) => SheetLayout(
@@ -125,6 +153,18 @@ class _CustomSyncSheetState extends State<_CustomSyncSheet> {
         ),
         const SizedBox(height: AppSpacing.md),
         AppSectionHeader(context.l10n.syncSchoolData),
+        if (_usesTerm && _terms.isNotEmpty) ...[
+          SemesterDropdown(
+            label: context.l10n.syncTerm,
+            value: _term,
+            terms: _terms,
+            currentTerm: _currentTerm,
+            onChanged: (term) {
+              if (term != null) setState(() => _term = term);
+            },
+          ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
         _SyncTargetChoices(
           targets: _availableTargets.where(
             (target) => target.category == SyncCategory.schoolData,
@@ -168,7 +208,10 @@ class _CustomSyncSheetState extends State<_CustomSyncSheet> {
       primary: FilledButton(
         onPressed: _selected.isEmpty
             ? null
-            : () => Navigator.pop(context, _selected),
+            : () => Navigator.pop(context, (
+                targets: Set<SyncTarget>.unmodifiable(_selected),
+                term: _usesTerm ? _term : null,
+              )),
         child: Text(context.l10n.syncSelected),
       ),
     ),

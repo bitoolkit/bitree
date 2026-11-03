@@ -11,6 +11,7 @@ import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_menu_trigger.dart';
 import '../../ui/app_page.dart';
 import '../../ui/pull_to_reveal_list.dart';
+import '../../ui/semester_dropdown.dart';
 import '../model.dart';
 import '../period.dart';
 import '../view_mode.dart';
@@ -76,7 +77,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         if (entry.term?.trim() case final term? when term.isNotEmpty) term,
     }.toList();
     final currentTerm = semesterAt(schedules, now)?.term;
-    final orderedTerms = _orderedTerms(terms, currentTerm);
+    final orderedTerms = orderedSemesterTerms(terms, currentTerm: currentTerm);
     final defaultTerm =
         currentTerm ??
         controller.timetable.schedule?.term ??
@@ -145,10 +146,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ? const SizedBox.shrink()
         : Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: _AgendaTermFilter(
-              terms: orderedTerms,
-              value: selectedTerm,
-              onChanged: _setTerm,
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 360),
+                child: SemesterDropdown(
+                  label: l10n.agendaPeriod,
+                  terms: orderedTerms,
+                  currentTerm: currentTerm,
+                  value: selectedTerm,
+                  includeAll: true,
+                  onChanged: _setTerm,
+                ),
+              ),
             ),
           );
 
@@ -237,58 +247,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-List<String> _orderedTerms(List<String> terms, String? currentTerm) {
-  final remaining = terms.where((term) => term != currentTerm).toList()
-    ..sort((first, second) => second.compareTo(first));
-  return [
-    if (currentTerm != null && terms.contains(currentTerm)) currentTerm,
-    ...remaining,
-  ];
-}
-
-class _AgendaTermFilter extends StatelessWidget {
-  const _AgendaTermFilter({
-    required this.terms,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final List<String> terms;
-  final String? value;
-  final ValueChanged<String?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return Semantics(
-      label: l10n.agendaPeriod,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            for (final term in terms)
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ChoiceChip(
-                  label: Text(localizedTerm(l10n, term)),
-                  selected: value == term,
-                  showCheckmark: false,
-                  onSelected: (_) => onChanged(term),
-                ),
-              ),
-            ChoiceChip(
-              label: Text(l10n.allSemesters),
-              selected: value == null,
-              showCheckmark: false,
-              onSelected: (_) => onChanged(null),
-            ),
-          ],
-        ),
       ),
     );
   }

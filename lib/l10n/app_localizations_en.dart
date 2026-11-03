@@ -1111,6 +1111,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get customSync => 'Custom sync';
 
   @override
+  String get syncTerm => 'Semester to sync';
+
+  @override
   String get syncSchoolData => 'School data';
 
   @override

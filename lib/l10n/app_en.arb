@@ -862,6 +862,7 @@
   },
   "syncAll": "Sync all",
   "customSync": "Custom sync",
+  "syncTerm": "Semester to sync",
   "syncSchoolData": "School data",
   "syncDeadlineData": "DDL sources",
   "syncTooltip": "Sync",

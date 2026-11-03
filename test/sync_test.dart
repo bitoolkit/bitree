@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:bitree/agenda/controller.dart';
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/core/async/cancelable_request.dart';
+import 'package:bitree/core/time.dart';
 import 'package:bitree/l10n/app_localizations_zh.dart';
 import 'package:bitree/mooc/credentials.dart';
 import 'package:bitree/schedule/model.dart';
@@ -16,6 +17,7 @@ import 'package:bitree/sync/ui/sync.dart';
 import 'package:bitree/sync/ui/sync_button.dart';
 import 'package:bitree/sync/ui/sync_text.dart';
 import 'package:bitree/ui/selection_controls.dart';
+import 'package:bitree/ui/semester_dropdown.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -28,6 +30,7 @@ class _SchoolService extends SchoolService {
   final began = Completer<void>();
   final release = Completer<void>();
   final reads = <SyncTarget>[];
+  final requestedTerms = <String?>[];
   bool smsRequired = false;
   @override
   Future<({SemesterSchedule schedule, List<String> terms})> synchronize(
@@ -36,6 +39,7 @@ class _SchoolService extends SchoolService {
     String? term,
   }) async {
     reads.add(SyncTarget.schedule);
+    requestedTerms.add(term);
     if (!began.isCompleted) began.complete();
     await release.future;
     if (smsRequired) {
@@ -69,6 +73,7 @@ class _SchoolService extends SchoolService {
     String? term,
   }) async {
     reads.add(SyncTarget.exams);
+    requestedTerms.add(term);
     return (term: term ?? '2026-2027-1', exams: <AgendaEntry>[]);
   }
 }
@@ -124,30 +129,36 @@ void main() {
     await server.close(force: true);
   });
 
-  TestAppController app(_SchoolService service, {bool mooc = false}) =>
-      TestAppController(
-        school: service,
-        schoolStorage: MemorySchoolStorage(
-          credentials: const SchoolCredentials(
-            username: 'student',
-            password: 'test',
-          ),
-        ),
-        moocStorage: mooc
-            ? (MemoryMoocStorage()
-                ..account = MoocAccount(
-                  id: '8',
-                  name: '测试账号',
-                  credentials: MoocCredentials(
-                    userAgent: 'test',
-                    cookies: [
-                      Cookie('NTESSTUDYSI', 'csrf'),
-                      Cookie('STUDY_SESS', 'session'),
-                    ],
-                  ),
-                ))
-            : null,
-      );
+  TestAppController app(
+    _SchoolService service, {
+    bool mooc = false,
+    SemesterSchedule? schedule,
+    List<SemesterSchedule> schedules = const [],
+  }) => TestAppController(
+    school: service,
+    schedule: schedule,
+    schedules: schedules,
+    schoolStorage: MemorySchoolStorage(
+      credentials: const SchoolCredentials(
+        username: 'student',
+        password: 'test',
+      ),
+    ),
+    moocStorage: mooc
+        ? (MemoryMoocStorage()
+            ..account = MoocAccount(
+              id: '8',
+              name: '测试账号',
+              credentials: MoocCredentials(
+                userAgent: 'test',
+                cookies: [
+                  Cookie('NTESSTUDYSI', 'csrf'),
+                  Cookie('STUDY_SESS', 'session'),
+                ],
+              ),
+            ))
+        : null,
+  );
 
   test('Sync targets keep session dependencies separate from UI groups', () {
     expect(
@@ -461,6 +472,53 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('Custom sync sends the selected semester to school data', (
+    tester,
+  ) async {
+    final currentMonday = mondayOf(campusNow());
+    final current = SemesterSchedule(
+      term: '2026-2027-1',
+      firstMonday: currentMonday,
+      courses: const [],
+      firstWeek: 1,
+      lastWeek: 20,
+    );
+    final historical = SemesterSchedule(
+      term: '2025-2026-2',
+      firstMonday: currentMonday.subtract(const Duration(days: 7 * 26)),
+      courses: const [],
+      firstWeek: 1,
+      lastWeek: 20,
+    );
+    final service = _SchoolService()..release.complete();
+    final model = app(
+      service,
+      schedule: current,
+      schedules: [current, historical],
+    );
+    await model.initialize();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: bitreeTheme(Brightness.light),
+        home: Scaffold(body: SyncButton(controller: model)),
+      ),
+    );
+
+    await openCustom(tester);
+    await tester.tap(find.widgetWithText(AppSelectionTile, '课表'));
+    await tester.pump();
+    await tester.tap(find.byType(SemesterDropdown));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('2025–2026 春季学期').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('同步所选内容'));
+    await waitFor(tester, () => !model.sync.busy);
+
+    expect(service.requestedTerms, ['2025-2026-2']);
+    expect(model.timetable.schedule!.term, historical.term);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'Custom sync stays active after progress is collapsed and the page changes',

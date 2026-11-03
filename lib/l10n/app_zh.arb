@@ -293,6 +293,7 @@
   "timeRange": "{start}–{end}",
   "syncAll": "同步全部",
   "customSync": "自定义同步",
+  "syncTerm": "同步学期",
   "syncSchoolData": "学校数据",
   "syncDeadlineData": "DDL 来源",
   "syncTooltip": "同步",

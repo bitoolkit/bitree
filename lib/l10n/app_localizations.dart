@@ -1878,6 +1878,12 @@ abstract class AppLocalizations {
   /// **'Custom sync'**
   String get customSync;
 
+  /// No description provided for @syncTerm.
+  ///
+  /// In en, this message translates to:
+  /// **'Semester to sync'**
+  String get syncTerm;
+
   /// No description provided for @syncSchoolData.
   ///
   /// In en, this message translates to:

@@ -5,6 +5,7 @@ import 'package:bitree/agenda/view_mode.dart';
 import 'package:bitree/l10n/app_localizations_zh.dart';
 import 'package:bitree/l10n/schedule.dart';
 import 'package:bitree/schedule/model.dart';
+import 'package:bitree/ui/semester_dropdown.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -128,16 +129,18 @@ void main() {
     expect(find.text(allOnly.title), findsNothing);
 
     final pastTerm = find.text(localizedTerm(l10n, _pastSchedule.term));
-    await tester.ensureVisible(pastTerm);
-    await tester.tap(pastTerm);
+    await tester.tap(find.byType(SemesterDropdown));
+    await tester.pumpAndSettle();
+    await tester.tap(pastTerm.last);
     await tester.pumpAndSettle();
     expect(find.text(current.title), findsNothing);
     expect(find.text(past.title), findsWidgets);
     expect(find.text(allOnly.title), findsNothing);
 
     final allTerms = find.text(l10n.allSemesters);
-    await tester.ensureVisible(allTerms);
-    await tester.tap(allTerms);
+    await tester.tap(find.byType(SemesterDropdown));
+    await tester.pumpAndSettle();
+    await tester.tap(allTerms.last);
     await tester.pumpAndSettle();
     expect(find.text(current.title), findsWidgets);
     expect(find.text(past.title), findsWidgets);
@@ -145,7 +148,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('The period chips remain usable on a narrow large-text layout', (
+  testWidgets('The period dropdown remains usable on a narrow large-text layout', (
     tester,
   ) async {
     await _pumpAgenda(

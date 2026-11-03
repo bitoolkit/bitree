@@ -1047,6 +1047,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get customSync => '自定义同步';
 
   @override
+  String get syncTerm => '同步学期';
+
+  @override
   String get syncSchoolData => '学校数据';
 
   @override
