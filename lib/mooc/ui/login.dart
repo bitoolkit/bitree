@@ -15,7 +15,6 @@ import '../controller.dart';
 import '../cookie.dart';
 import '../credentials.dart';
 import '../tasks.dart';
-import '../webview_lifecycle.dart';
 
 final _loginUrl = MoocCredentials.origin.resolve('/member/login.htm');
 
@@ -34,10 +33,8 @@ Future<bool> loginToMooc(
 
 class _MoocLogin extends StatefulWidget {
   const _MoocLogin({required this.controller, this.initialCookies});
-
   final MoocController controller;
   final List<Cookie>? initialCookies;
-
   @override
   State<_MoocLogin> createState() => _MoocLoginState();
 }
@@ -59,9 +56,6 @@ class _MoocLoginState extends State<_MoocLogin> {
   }
 
   Future<void> _prepare() async {
-    final previousBrowser = _browser;
-    _browser = null;
-    unawaited(disposeMoocWebView(previousBrowser));
     setState(() {
       _ready = false;
       _message = null;
@@ -102,6 +96,7 @@ class _MoocLoginState extends State<_MoocLogin> {
           true,
         );
       }
+      await cookies.clearCookies().timeout(const Duration(seconds: 10));
       for (final cookie in widget.initialCookies ?? <Cookie>[]) {
         await cookies
             .setCookie(
@@ -186,14 +181,7 @@ class _MoocLoginState extends State<_MoocLogin> {
       final exported = await _cookies!
           .getCookies(domain: MoocCredentials.rpcDirectory)
           .timeout(const Duration(seconds: 8));
-      final exportedCookies = [
-        for (final cookie in exported)
-          MoocCookie(cookie.name, cookie.value)
-            ..domain = cookie.domain
-            ..path = cookie.path
-            ..secure = true,
-      ];
-      if (!MoocCredentials.hasSession(exportedCookies)) {
+      if (!exported.any((cookie) => cookie.name == 'NTESSTUDYSI')) {
         if (manual && mounted) {
           setState(() => _message = l10n.moocSessionNotReady);
         }
@@ -201,7 +189,13 @@ class _MoocLoginState extends State<_MoocLogin> {
       }
       final credentials = MoocCredentials(
         userAgent: agent,
-        cookies: exportedCookies,
+        cookies: [
+          for (final cookie in exported)
+            MoocCookie(cookie.name, cookie.value)
+              ..domain = cookie.domain
+              ..path = cookie.path
+              ..secure = true,
+        ],
       );
       if (!mounted) return;
       setState(() => _message = l10n.moocSavingLogin);
@@ -235,9 +229,6 @@ class _MoocLoginState extends State<_MoocLogin> {
   @override
   void dispose() {
     _poll?.cancel();
-    final browser = _browser;
-    _browser = null;
-    unawaited(disposeMoocWebView(browser));
     if (!_finished) widget.controller.cancel();
     super.dispose();
   }

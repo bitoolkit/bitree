@@ -91,7 +91,6 @@ void main() {
       expect(model.mooc.busy, isFalse);
       await tester.pageBack();
       await tester.pumpAndSettle();
-      expect(browser.controller.closeCount, 1);
     },
   );
 
@@ -138,7 +137,6 @@ void main() {
         expect(result, isTrue);
         expect(model.mooc.account!.id, '8');
         expect(find.byType(WebViewWidget), findsNothing);
-        expect(browser.controller.closeCount, 1);
       },
     );
   }

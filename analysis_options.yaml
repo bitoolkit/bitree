@@ -7,7 +7,6 @@ linter:
 analyzer:
   exclude:
     - build/**
-    - third_party/**
     - android/**
     - ios/**
     - web/**

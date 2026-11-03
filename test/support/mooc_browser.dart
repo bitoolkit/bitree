@@ -6,12 +6,11 @@ import 'package:webview_platform_interface/webview_platform_interface.dart';
 class TestMoocBrowser extends WebViewPlatform {
   late TestMoocWebView controller;
   final cookies = <WebViewCookie>[];
-  int viewBuildCount = 0;
 
   @override
   PlatformWebViewController createPlatformWebViewController(
     PlatformWebViewControllerCreationParams params,
-  ) => controller = TestMoocWebView(params, this);
+  ) => controller = TestMoocWebView(params);
 
   @override
   PlatformWebViewCookieManager createPlatformCookieManager(
@@ -26,24 +25,13 @@ class TestMoocBrowser extends WebViewPlatform {
   @override
   PlatformWebViewWidget createPlatformWebViewWidget(
     PlatformWebViewWidgetCreationParams params,
-  ) => _View(
-    params,
-    onBuild: () {
-      viewBuildCount++;
-    },
-  );
+  ) => _View(params);
 }
 
 class TestMoocWebView extends PlatformWebViewController {
-  TestMoocWebView(super.params, this.browser) : super.implementation();
-  final TestMoocBrowser browser;
+  TestMoocWebView(super.params) : super.implementation();
   late _Navigation _navigation;
   Uri? url;
-  String? html;
-  String? baseUrl;
-  String? userAgent;
-  bool htmlLoadedAfterViewBuild = false;
-  int closeCount = 0;
   Object snapshot = false;
 
   void finishLoading() {
@@ -53,15 +41,6 @@ class TestMoocWebView extends PlatformWebViewController {
 
   @override
   Future<void> setJavaScriptMode(JavaScriptMode mode) async {}
-  @override
-  Future<void> setUserAgent(String? userAgent) async {
-    this.userAgent = userAgent;
-  }
-
-  @override
-  Future<void> setOnConsoleMessage(
-    void Function(JavaScriptConsoleMessage message) onConsoleMessage,
-  ) async {}
   @override
   Future<void> setPlatformNavigationDelegate(
     PlatformNavigationDelegate handler,
@@ -73,24 +52,11 @@ class TestMoocWebView extends PlatformWebViewController {
   }
 
   @override
-  Future<void> loadHtmlString(String html, {String? baseUrl}) async {
-    htmlLoadedAfterViewBuild = browser.viewBuildCount > 0;
-    this.html = html;
-    this.baseUrl = baseUrl;
-    finishLoading();
-  }
-
-  @override
   Future<void> reload() async => finishLoading();
   @override
   Future<Object?> callAsyncJavaScript(
     JavaScriptInvocationParams params,
   ) async => snapshot;
-
-  @override
-  Future<void> closeOffscreenWebView() async {
-    closeCount++;
-  }
 }
 
 class _Navigation extends PlatformNavigationDelegate {
@@ -128,15 +94,10 @@ class _Cookies extends PlatformWebViewCookieManager {
 }
 
 class _View extends PlatformWebViewWidget {
-  _View(super.params, {required this.onBuild}) : super.implementation();
-  final VoidCallback onBuild;
-
+  _View(super.params) : super.implementation();
   @override
-  Widget build(BuildContext context) {
-    onBuild();
-    return const ColoredBox(
-      color: Colors.white,
-      child: Center(child: Text('MOOC 人机验证（系统控件替身）')),
-    );
-  }
+  Widget build(BuildContext context) => const ColoredBox(
+    color: Colors.white,
+    child: Center(child: Text('MOOC 网页（系统控件替身）')),
+  );
 }

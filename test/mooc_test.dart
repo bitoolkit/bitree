@@ -318,11 +318,7 @@ void main() {
     final credentials = MoocCredentials.fromJson(
       MoocCredentials(
         userAgent: 'browser',
-        cookies: [
-          Cookie('NTESSTUDYSI', 'csrf'),
-          Cookie('STUDY_SESS', 'session'),
-          browser,
-        ],
+        cookies: [Cookie('NTESSTUDYSI', 'csrf'), browser],
       ).toJson(),
     );
     final restored = MoocCookie.fromSetCookieValue(credentials.cookies.last);
@@ -759,10 +755,7 @@ void main() {
           name: '旧账号',
           credentials: MoocCredentials(
             userAgent: 'old',
-            cookies: [
-              Cookie('NTESSTUDYSI', 'old'),
-              Cookie('STUDY_SESS', 'old'),
-            ],
+            cookies: [Cookie('NTESSTUDYSI', 'old')],
           ),
         );
       final localAgenda = AgendaController(MemoryAgendaStore());
@@ -781,7 +774,7 @@ void main() {
         name: '新账号',
         credentials: MoocCredentials(
           userAgent: 'new',
-          cookies: [Cookie('NTESSTUDYSI', 'new'), Cookie('STUDY_SESS', 'new')],
+          cookies: [Cookie('NTESSTUDYSI', 'new')],
         ),
       );
       final connecting = lifecycle.connect(next);

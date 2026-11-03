@@ -1267,12 +1267,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get exitAction => '退出';
 
   @override
-  String get moocPasswordLogin => '账号密码';
-
-  @override
-  String get moocSmsLogin => '短信验证码';
-
-  @override
   String get webLogin => '网页登录';
 
   @override
@@ -1300,96 +1294,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get connect => '连接';
 
   @override
-  String get moocCookieInstructions => '粘贴浏览器请求头中的 Cookie。';
+  String get moocCookieInstructions => '从已登录网页的开发者工具中复制 Cookie。仅在网页登录不可用时使用。';
 
   @override
   String get moocPasteCookie => '请粘贴 Cookie';
-
-  @override
-  String get moocPhoneOrEmail => '手机号或邮箱';
-
-  @override
-  String get moocPassword => '密码';
-
-  @override
-  String get moocEnterAccount => '请输入手机号或邮箱';
-
-  @override
-  String get moocEnterPassword => '请输入密码';
-
-  @override
-  String get moocShowPassword => '显示密码';
-
-  @override
-  String get moocHidePassword => '隐藏密码';
-
-  @override
-  String get moocPhone => '手机号';
-
-  @override
-  String get moocEnterPhone => '请输入手机号';
-
-  @override
-  String get moocInvalidPhone => '手机号格式不正确';
-
-  @override
-  String get moocSmsCode => '短信验证码';
-
-  @override
-  String get moocEnterSmsCode => '请输入短信验证码';
-
-  @override
-  String get moocSendCode => '获取验证码';
-
-  @override
-  String get moocSendingCode => '发送中…';
-
-  @override
-  String moocResendIn(int seconds) {
-    return '$seconds 秒后重发';
-  }
-
-  @override
-  String get moocSignIn => '登录';
-
-  @override
-  String get moocSigningIn => '登录中…';
-
-  @override
-  String get moocVerificationTitle => '完成人机验证';
-
-  @override
-  String get moocVerifyNow => '完成验证';
-
-  @override
-  String get moocVerificationLoadFailed => '验证码加载失败';
-
-  @override
-  String get moocWrongCredentials => '账号或密码错误';
-
-  @override
-  String get moocSmsLoginFailed => '手机号或验证码错误';
-
-  @override
-  String get moocTooFrequent => '操作太频繁，请稍后再试';
-
-  @override
-  String get moocGetCodeFirst => '请先获取短信验证码';
-
-  @override
-  String get moocInvalidSmsCode => '验证码错误或已过期';
-
-  @override
-  String get moocNetworkFailed => '网络连接失败，请检查网络后重试';
-
-  @override
-  String get moocLoginUnavailable => '登录服务暂不可用，请稍后重试';
-
-  @override
-  String get moocLoginChallenge => '登录需要完成人机验证';
-
-  @override
-  String get moocLoginFailed => '登录失败，请重试';
 
   @override
   String get openMoocFailed => '无法打开 MOOC';
