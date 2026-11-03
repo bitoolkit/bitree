@@ -170,15 +170,18 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Short cards ellipsize without overflowing', (tester) async {
+  testWidgets('Short cards keep the full room before the course name', (
+    tester,
+  ) async {
     await showCard(tester, width: 52, height: 48);
-    final title = tester.renderObject<RenderParagraph>(find.text(course.name));
-    expect(title.didExceedMaxLines, isTrue);
+    final room = tester.renderObject<RenderParagraph>(find.text(course.room));
+    expect(room.didExceedMaxLines, isFalse);
     final card = tester.getRect(find.byType(CourseTile));
     expect(
       tester.getRect(find.text(course.room)).bottom,
-      lessThanOrEqualTo(card.bottom - 6),
+      lessThanOrEqualTo(card.bottom),
     );
+    expect(find.text(course.name), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

@@ -75,10 +75,15 @@ class CourseTile extends StatelessWidget {
                       final narrow = constraints.maxWidth < 100;
                       final fontSize = narrow ? 12.0 : 14.0;
                       final media = MediaQuery.of(context);
-                      final compact = constraints.maxHeight <
+                      final compact =
+                          constraints.maxHeight <
                           40 * media.textScaler.scale(1);
-                      final horizontalPadding = compact ? 1.0 : (narrow ? 3.0 : 10.0);
-                      final verticalPadding = compact ? 0.0 : (narrow ? 4.0 : 6.0);
+                      final horizontalPadding = compact
+                          ? 1.0
+                          : (narrow ? 3.0 : 10.0);
+                      final verticalPadding = compact
+                          ? 0.0
+                          : (narrow ? 4.0 : 6.0);
                       final spacing = narrow ? 3.0 : 4.0;
                       final width =
                           constraints.maxWidth - horizontalPadding * 2;
@@ -135,29 +140,22 @@ class CourseTile extends StatelessWidget {
                       if (title.height +
                               (roomLines > 0 ? room.height + spacing : 0) >
                           available) {
-                        title.maxLines = 1;
-                        title.layout(maxWidth: width);
-                        room.maxLines = 1;
-                        room.layout(maxWidth: width);
-                        final reserveRoom =
-                            roomLines > 0 &&
-                            title.height + room.height + spacing <= available;
-                        titleLines = _fittingLines(
-                          title,
-                          width,
-                          available - (reserveRoom ? room.height + spacing : 0),
-                        );
-                        roomLines = reserveRoom
-                            ? _fittingLines(
-                                room,
-                                width,
-                                available - title.height - spacing,
-                              )
-                            : 0;
+                        // Keep the location intact; the title uses leftover space.
+                        if (roomLines > 0) {
+                          roomLines = _fittingLines(room, width, available);
+                          final titleSpace = available - room.height - spacing;
+                          titleLines = titleSpace > 0
+                              ? _fittingLines(title, width, titleSpace)
+                              : 0;
+                        } else {
+                          titleLines = _fittingLines(title, width, available);
+                        }
                       }
                       title.dispose();
                       room.dispose();
-                      if (titleLines <= 0) return const SizedBox.shrink();
+                      if (titleLines <= 0 && roomLines <= 0) {
+                        return const SizedBox.shrink();
+                      }
                       return Padding(
                         padding: EdgeInsets.symmetric(
                           horizontal: horizontalPadding,
@@ -166,18 +164,20 @@ class CourseTile extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Flexible(
-                              child: Text(
-                                course.name,
-                                textAlign: TextAlign.start,
-                                softWrap: true,
-                                maxLines: titleLines,
-                                overflow: TextOverflow.ellipsis,
-                                style: titleStyle,
+                            if (titleLines > 0)
+                              Flexible(
+                                child: Text(
+                                  course.name,
+                                  textAlign: TextAlign.start,
+                                  softWrap: true,
+                                  maxLines: titleLines,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: titleStyle,
+                                ),
                               ),
-                            ),
-                            if (roomLines > 0) ...[
+                            if (titleLines > 0 && roomLines > 0)
                               SizedBox(height: spacing),
+                            if (roomLines > 0)
                               Text(
                                 course.room,
                                 textAlign: TextAlign.start,
@@ -186,7 +186,6 @@ class CourseTile extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                                 style: roomStyle,
                               ),
-                            ],
                           ],
                         ),
                       );
