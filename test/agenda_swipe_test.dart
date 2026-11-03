@@ -55,6 +55,17 @@ void main() {
     return app;
   }
 
+  Future<void> openAgendaMenu(WidgetTester tester) async {
+    await tester.tap(find.byTooltip('更多'));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> openDeletedDeadlines(WidgetTester tester) async {
+    await openAgendaMenu(tester);
+    await tester.tap(find.text('已删除的 DDL'));
+    await tester.pumpAndSettle();
+  }
+
   testWidgets('A full left swipe deletes and undo restores the entry', (
     tester,
   ) async {
@@ -108,16 +119,14 @@ void main() {
     tester,
   ) async {
     final app = await showAgenda(tester, deleted: true);
-    final restoreButton = find.byTooltip('已删除的 DDL');
-    expect(restoreButton, findsOneWidget);
-    await tester.tap(restoreButton);
-    await tester.pumpAndSettle();
+    await openDeletedDeadlines(tester);
     expect(find.text('已删除的 DDL'), findsOneWidget);
     await tester.tap(find.byTooltip('恢复'));
     await tester.pumpAndSettle();
     expect(app.agenda.entries.single.id, 'task');
     expect(app.agenda.deletedDeadlines, isEmpty);
-    expect(restoreButton, findsNothing);
+    await openAgendaMenu(tester);
+    expect(find.text('已删除的 DDL'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -130,10 +139,8 @@ void main() {
         viewSize: const Size(320, 640),
         textScale: 1.8,
       );
-      final restoreButton = find.byTooltip('已删除的 DDL');
-      expect(restoreButton.hitTestable(), findsOneWidget);
-      await tester.tap(restoreButton);
-      await tester.pumpAndSettle();
+      expect(find.byTooltip('更多').hitTestable(), findsOneWidget);
+      await openDeletedDeadlines(tester);
       expect(find.text('已删除的 DDL'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
@@ -143,8 +150,7 @@ void main() {
     'Deleted DDL recovery supports select all, clear, and partial restore',
     (tester) async {
       final app = await showAgenda(tester, count: 3, deleted: true);
-      await tester.tap(find.byTooltip('已删除的 DDL'));
-      await tester.pumpAndSettle();
+      await openDeletedDeadlines(tester);
 
       await tester.tap(find.byType(Checkbox).first);
       await tester.pump();
@@ -174,8 +180,7 @@ void main() {
     'Emptying the recycle bin requires confirmation and permanently deletes DDLs',
     (tester) async {
       final app = await showAgenda(tester, count: 3, deleted: true);
-      await tester.tap(find.byTooltip('已删除的 DDL'));
-      await tester.pumpAndSettle();
+      await openDeletedDeadlines(tester);
 
       await tester.tap(find.text('清空回收站'));
       await tester.pumpAndSettle();
@@ -192,7 +197,8 @@ void main() {
 
       expect(app.agenda.deletedDeadlines, isEmpty);
       expect(find.text('已清空 3 条 DDL'), findsOneWidget);
-      expect(find.byTooltip('已删除的 DDL'), findsNothing);
+      await openAgendaMenu(tester);
+      expect(find.text('已删除的 DDL'), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );

@@ -68,7 +68,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final l10n = context.l10n;
     final controller = widget.controller;
     final now = widget.now;
-    final scheme = Theme.of(context).colorScheme;
     final schedules = controller.timetable.schedules.toList();
     final allEntries = controller.agenda.entries;
     final terms = <String>{
@@ -111,7 +110,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ],
     );
 
-    Widget statusHeader() => Column(
+    Widget listHeader() => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
@@ -148,76 +147,41 @@ class _CalendarScreenState extends State<CalendarScreen> {
           Text(l10n.agendaTitle),
           const SizedBox(width: 8),
           Flexible(
-            child: terms.isEmpty
-                ? _AgendaKindFilter(
-                    value: _kind,
-                    onChanged: (kind) => setState(() => _kind = kind),
-                  )
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Flexible(
-                        flex: 3,
-                        child: SemesterDropdown(
-                          label: l10n.agendaPeriod,
-                          terms: orderedTerms,
-                          currentTerm: currentTerm,
-                          value: selectedTerm,
-                          includeAll: true,
-                          compact: true,
-                          onChanged: _setTerm,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        flex: 2,
-                        child: _AgendaKindFilter(
-                          value: _kind,
-                          onChanged: (kind) => setState(() => _kind = kind),
-                        ),
-                      ),
-                    ],
-                  ),
+            child: _AgendaKindFilter(
+              value: _kind,
+              onChanged: (kind) => setState(() => _kind = kind),
+            ),
           ),
         ],
       ),
       actions: [
         AddButton(controller: controller),
         SyncButton(controller: controller),
-        if (deletedDeadlineCount > 0)
-          IconButton(
-            tooltip: l10n.deletedDeadlinesTitle,
-            onPressed: controller.agenda.busy
-                ? null
-                : () => showDeletedDeadlines(context, controller.agenda),
-            icon: Badge.count(
-              count: deletedDeadlineCount,
-              backgroundColor: scheme.primary,
-              textColor: scheme.onPrimary,
-              child: const Icon(Icons.restore_from_trash_outlined),
-            ),
-          ),
-        IconButton(
-          tooltip: timeline
-              ? l10n.agendaSwitchToList
-              : l10n.agendaSwitchToTimeline,
-          icon: Icon(
-            timeline ? Icons.view_list_outlined : Icons.view_timeline_outlined,
-          ),
-          onPressed: () => controller.settings.setAgendaViewMode(
+        _AgendaOverflowMenu(
+          terms: orderedTerms,
+          currentTerm: currentTerm,
+          selectedTerm: selectedTerm,
+          onTermChanged: _setTerm,
+          timeline: timeline,
+          deletedDeadlineCount: deletedDeadlineCount,
+          deletedDeadlinesEnabled:
+              !controller.agenda.busy && controller.agenda.ready,
+          onViewModeChanged: () => controller.settings.setAgendaViewMode(
             timeline ? AgendaViewMode.list : AgendaViewMode.timeline,
           ),
+          onOpenDeletedDeadlines: () =>
+              showDeletedDeadlines(context, controller.agenda),
         ),
       ],
-      // Keep browsing positions while changing presentation or completion
-      // filter. Horizontal gestures belong to rows or timeline navigation.
+      // Keep browsing positions while changing presentation. Horizontal
+      // gestures belong to rows or timeline navigation.
       child: IndexedStack(
         index: timeline ? 1 : 0,
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              statusHeader(),
+              listHeader(),
               Expanded(
                 child: IndexedStack(
                   index: _status,
@@ -238,7 +202,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              statusHeader(),
+              loadStatus(),
               Expanded(
                 child: AgendaTimeline(
                   controller: controller,
@@ -251,6 +215,77 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AgendaOverflowMenu extends StatelessWidget {
+  const _AgendaOverflowMenu({
+    required this.terms,
+    required this.currentTerm,
+    required this.selectedTerm,
+    required this.onTermChanged,
+    required this.timeline,
+    required this.deletedDeadlineCount,
+    required this.deletedDeadlinesEnabled,
+    required this.onViewModeChanged,
+    required this.onOpenDeletedDeadlines,
+  });
+
+  final List<String> terms;
+  final String? currentTerm;
+  final String? selectedTerm;
+  final ValueChanged<String?> onTermChanged;
+  final bool timeline;
+  final int deletedDeadlineCount;
+  final bool deletedDeadlinesEnabled;
+  final VoidCallback onViewModeChanged;
+  final VoidCallback onOpenDeletedDeadlines;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final orderedTerms = orderedSemesterTerms(terms, currentTerm: currentTerm);
+    final values = <String?>[...orderedTerms, null];
+
+    return AppMenuAnchor(
+      menuChildren: [
+        AppMenuItemButton(
+          leadingIcon: Icon(
+            timeline ? Icons.view_list_outlined : Icons.view_timeline_outlined,
+          ),
+          onPressed: onViewModeChanged,
+          child: Text(
+            timeline ? l10n.agendaSwitchToList : l10n.agendaSwitchToTimeline,
+          ),
+        ),
+        if (deletedDeadlineCount > 0)
+          AppMenuItemButton(
+            leadingIcon: const Icon(Icons.restore_from_trash_outlined),
+            trailingIcon: Text('$deletedDeadlineCount'),
+            onPressed: deletedDeadlinesEnabled ? onOpenDeletedDeadlines : null,
+            child: Text(l10n.deletedDeadlinesTitle),
+          ),
+        const Divider(height: 9),
+        for (final term in values)
+          Semantics(
+            selected: selectedTerm == term,
+            child: AppMenuItemButton(
+              onPressed: () => onTermChanged(term),
+              trailingIcon: selectedTerm == term
+                  ? const Icon(Icons.check_rounded, size: 18)
+                  : const SizedBox(width: 18),
+              child: Text(
+                term == null ? l10n.allSemesters : localizedTerm(l10n, term),
+              ),
+            ),
+          ),
+      ],
+      builder: (context, menu, isOpen) => IconButton(
+        tooltip: l10n.more,
+        onPressed: () => isOpen ? menu.close() : menu.open(),
+        icon: const Icon(Icons.more_horiz_rounded),
       ),
     );
   }

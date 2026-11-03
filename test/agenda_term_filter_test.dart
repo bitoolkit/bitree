@@ -5,7 +5,6 @@ import 'package:bitree/agenda/view_mode.dart';
 import 'package:bitree/l10n/app_localizations_zh.dart';
 import 'package:bitree/l10n/schedule.dart';
 import 'package:bitree/schedule/model.dart';
-import 'package:bitree/ui/semester_dropdown.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -47,6 +46,7 @@ Future<void> _pumpAgenda(
   List<AgendaEntry> entries, {
   Size size = const Size(390, 844),
   double scale = 1,
+  AgendaViewMode viewMode = AgendaViewMode.list,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -59,7 +59,7 @@ Future<void> _pumpAgenda(
     entries: entries,
   );
   await controller.initialize();
-  await controller.settings.setAgendaViewMode(AgendaViewMode.list);
+  await controller.settings.setAgendaViewMode(viewMode);
 
   await tester.pumpWidget(
     MaterialApp(
@@ -74,6 +74,11 @@ Future<void> _pumpAgenda(
       ),
     ),
   );
+  await tester.pumpAndSettle();
+}
+
+Future<void> _openAgendaMenu(WidgetTester tester) async {
+  await tester.tap(find.byTooltip(AppLocalizationsZh().more));
   await tester.pumpAndSettle();
 }
 
@@ -123,19 +128,14 @@ void main() {
     );
     await _pumpAgenda(tester, [current, past, allOnly]);
 
-    final titleRect = tester.getRect(find.text(l10n.agendaTitle));
-    final termRect = tester.getRect(find.byType(SemesterDropdown));
-    final statusRect = tester.getRect(find.byType(SegmentedButton<int>));
-    expect(termRect.center.dy, closeTo(titleRect.center.dy, 8));
-    expect(termRect.bottom, lessThan(statusRect.top));
+    expect(find.byTooltip(l10n.more), findsOneWidget);
     expect(find.text(l10n.agendaPendingTab(1)), findsOneWidget);
     expect(find.text(current.title), findsWidgets);
     expect(find.text(past.title), findsNothing);
     expect(find.text(allOnly.title), findsNothing);
 
     final pastTerm = find.text(localizedTerm(l10n, _pastSchedule.term));
-    await tester.tap(find.byType(SemesterDropdown));
-    await tester.pumpAndSettle();
+    await _openAgendaMenu(tester);
     await tester.tap(pastTerm.last);
     await tester.pumpAndSettle();
     expect(find.text(current.title), findsNothing);
@@ -143,8 +143,7 @@ void main() {
     expect(find.text(allOnly.title), findsNothing);
 
     final allTerms = find.text(l10n.allSemesters);
-    await tester.tap(find.byType(SemesterDropdown));
-    await tester.pumpAndSettle();
+    await _openAgendaMenu(tester);
     await tester.tap(allTerms.last);
     await tester.pumpAndSettle();
     expect(find.text(current.title), findsWidgets);
@@ -156,6 +155,7 @@ void main() {
   testWidgets(
     'The period dropdown remains usable on a narrow large-text layout',
     (tester) async {
+      final l10n = AppLocalizationsZh();
       await _pumpAgenda(
         tester,
         [
@@ -170,12 +170,30 @@ void main() {
         scale: 1.8,
       );
 
+      expect(find.byTooltip(l10n.more).hitTestable(), findsOneWidget);
+      await _openAgendaMenu(tester);
       expect(
-        find.bySemanticsLabel(AppLocalizationsZh().agendaPeriod),
+        find.text(localizedTerm(l10n, _pastSchedule.term)),
         findsOneWidget,
       );
       expect(find.text('本学期活动'), findsWidgets);
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('Completion status is only shown in list mode', (tester) async {
+    await _pumpAgenda(tester, [
+      _event(
+        id: 'current',
+        title: '本学期活动',
+        startsAt: DateTime.utc(2026, 11, 5, 10),
+        term: _currentSchedule.term,
+      ),
+    ], viewMode: AgendaViewMode.timeline);
+
+    expect(find.byType(SegmentedButton<int>), findsNothing);
+    await _openAgendaMenu(tester);
+    expect(find.text(AppLocalizationsZh().agendaSwitchToList), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
