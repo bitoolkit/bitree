@@ -1349,6 +1349,12 @@ abstract class AppLocalizations {
   /// **'Agenda type'**
   String get agendaType;
 
+  /// No description provided for @agendaPeriod.
+  ///
+  /// In en, this message translates to:
+  /// **'Agenda period'**
+  String get agendaPeriod;
+
   /// No description provided for @agendaCount.
   ///
   /// In en, this message translates to:
@@ -1871,6 +1877,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Custom sync'**
   String get customSync;
+
+  /// No description provided for @syncTerm.
+  ///
+  /// In en, this message translates to:
+  /// **'Semester to sync'**
+  String get syncTerm;
 
   /// No description provided for @syncSchoolData.
   ///

@@ -5,12 +5,15 @@ import '../../app/ui/add_menu.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
+import '../../schedule/model.dart';
 import '../../sync/ui/sync_button.dart';
 import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_menu_trigger.dart';
 import '../../ui/app_page.dart';
 import '../../ui/pull_to_reveal_list.dart';
+import '../../ui/semester_dropdown.dart';
 import '../model.dart';
+import '../period.dart';
 import '../view_mode.dart';
 import 'agenda_list_tile.dart';
 import 'agenda_timeline.dart';
@@ -35,9 +38,19 @@ class CalendarScreen extends StatefulWidget {
 class _CalendarScreenState extends State<CalendarScreen> {
   AgendaKind? _kind;
   int _status = 0;
+  String? _term;
+  bool _termInitialized = false;
 
   void _setStatus(int index) {
     if (_status != index) setState(() => _status = index);
+  }
+
+  void _setTerm(String? term) {
+    if (_termInitialized && _term == term) return;
+    setState(() {
+      _termInitialized = true;
+      _term = term;
+    });
   }
 
   @override
@@ -55,10 +68,29 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final l10n = context.l10n;
     final controller = widget.controller;
     final now = widget.now;
-    final scheme = Theme.of(context).colorScheme;
-    final entries = controller.agenda.entries
-        .where((entry) => _kind == null || entry.kind == _kind)
-        .toList();
+    final schedules = controller.timetable.schedules.toList();
+    final allEntries = controller.agenda.entries;
+    final terms = <String>{
+      for (final schedule in schedules) schedule.term,
+      for (final entry in allEntries)
+        if (entry.term?.trim() case final term? when term.isNotEmpty) term,
+    }.toList();
+    final currentTerm = semesterAt(schedules, now)?.term;
+    final orderedTerms = orderedSemesterTerms(terms, currentTerm: currentTerm);
+    final defaultTerm =
+        currentTerm ??
+        controller.timetable.schedule?.term ??
+        orderedTerms.firstOrNull;
+    final selectedTerm = !_termInitialized
+        ? defaultTerm
+        : _term == null || terms.contains(_term)
+        ? _term
+        : null;
+    final entries = filterAgendaByTerm(
+      allEntries,
+      selectedTerm,
+      schedules,
+    ).where((entry) => _kind == null || entry.kind == _kind).toList();
     final doneCount = entries.where((entry) => entry.isFinished(now)).length;
     final deletedDeadlineCount = controller.agenda.deletedDeadlines.length;
     final timeline =
@@ -78,7 +110,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ],
     );
 
-    Widget statusHeader() => Column(
+    Widget listHeader() => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
@@ -125,47 +157,38 @@ class _CalendarScreenState extends State<CalendarScreen> {
       actions: [
         AddButton(controller: controller),
         SyncButton(controller: controller),
-        if (deletedDeadlineCount > 0)
-          IconButton(
-            tooltip: l10n.deletedDeadlinesTitle,
-            onPressed: controller.agenda.busy
-                ? null
-                : () => showDeletedDeadlines(context, controller.agenda),
-            icon: Badge.count(
-              count: deletedDeadlineCount,
-              backgroundColor: scheme.primary,
-              textColor: scheme.onPrimary,
-              child: const Icon(Icons.restore_from_trash_outlined),
-            ),
-          ),
-        IconButton(
-          tooltip: timeline
-              ? l10n.agendaSwitchToList
-              : l10n.agendaSwitchToTimeline,
-          icon: Icon(
-            timeline ? Icons.view_list_outlined : Icons.view_timeline_outlined,
-          ),
-          onPressed: () => controller.settings.setAgendaViewMode(
+        _AgendaOverflowMenu(
+          terms: orderedTerms,
+          currentTerm: currentTerm,
+          selectedTerm: selectedTerm,
+          onTermChanged: _setTerm,
+          timeline: timeline,
+          deletedDeadlineCount: deletedDeadlineCount,
+          deletedDeadlinesEnabled:
+              !controller.agenda.busy && controller.agenda.ready,
+          onViewModeChanged: () => controller.settings.setAgendaViewMode(
             timeline ? AgendaViewMode.list : AgendaViewMode.timeline,
           ),
+          onOpenDeletedDeadlines: () =>
+              showDeletedDeadlines(context, controller.agenda),
         ),
       ],
-      // Keep browsing positions while changing presentation or completion
-      // filter. Horizontal gestures belong to rows or timeline navigation.
+      // Keep browsing positions while changing presentation. Horizontal
+      // gestures belong to rows or timeline navigation.
       child: IndexedStack(
         index: timeline ? 1 : 0,
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              statusHeader(),
+              listHeader(),
               Expanded(
                 child: IndexedStack(
                   index: _status,
                   children: [
                     for (var index = 0; index < 2; index++)
                       _AgendaStatusList(
-                        key: ValueKey((_kind, index)),
+                        key: ValueKey((_kind, selectedTerm, index)),
                         controller: controller,
                         entries: entries,
                         completed: index == 1,
@@ -192,6 +215,77 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AgendaOverflowMenu extends StatelessWidget {
+  const _AgendaOverflowMenu({
+    required this.terms,
+    required this.currentTerm,
+    required this.selectedTerm,
+    required this.onTermChanged,
+    required this.timeline,
+    required this.deletedDeadlineCount,
+    required this.deletedDeadlinesEnabled,
+    required this.onViewModeChanged,
+    required this.onOpenDeletedDeadlines,
+  });
+
+  final List<String> terms;
+  final String? currentTerm;
+  final String? selectedTerm;
+  final ValueChanged<String?> onTermChanged;
+  final bool timeline;
+  final int deletedDeadlineCount;
+  final bool deletedDeadlinesEnabled;
+  final VoidCallback onViewModeChanged;
+  final VoidCallback onOpenDeletedDeadlines;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final orderedTerms = orderedSemesterTerms(terms, currentTerm: currentTerm);
+    final values = <String?>[...orderedTerms, null];
+
+    return AppMenuAnchor(
+      menuChildren: [
+        AppMenuItemButton(
+          leadingIcon: Icon(
+            timeline ? Icons.view_list_outlined : Icons.view_timeline_outlined,
+          ),
+          onPressed: onViewModeChanged,
+          child: Text(
+            timeline ? l10n.agendaSwitchToList : l10n.agendaSwitchToTimeline,
+          ),
+        ),
+        if (deletedDeadlineCount > 0)
+          AppMenuItemButton(
+            leadingIcon: const Icon(Icons.restore_from_trash_outlined),
+            trailingIcon: Text('$deletedDeadlineCount'),
+            onPressed: deletedDeadlinesEnabled ? onOpenDeletedDeadlines : null,
+            child: Text(l10n.deletedDeadlinesTitle),
+          ),
+        const Divider(height: 9),
+        for (final term in values)
+          Semantics(
+            selected: selectedTerm == term,
+            child: AppMenuItemButton(
+              onPressed: () => onTermChanged(term),
+              trailingIcon: selectedTerm == term
+                  ? const Icon(Icons.check_rounded, size: 18)
+                  : const SizedBox(width: 18),
+              child: Text(
+                term == null ? l10n.allSemesters : localizedTerm(l10n, term),
+              ),
+            ),
+          ),
+      ],
+      builder: (context, menu, isOpen) => IconButton(
+        tooltip: l10n.more,
+        onPressed: () => isOpen ? menu.close() : menu.open(),
+        icon: const Icon(Icons.more_horiz_rounded),
       ),
     );
   }

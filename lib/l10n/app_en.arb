@@ -548,6 +548,7 @@
   "agendaNoUpcoming": "No upcoming agenda items",
   "agendaNoPending": "No pending agenda items",
   "agendaType": "Agenda type",
+  "agendaPeriod": "Agenda period",
   "agendaCount": "{count, plural, =1{1 agenda item} other{{count} agenda items}}",
   "@agendaCount": {
     "placeholders": {
@@ -861,6 +862,7 @@
   },
   "syncAll": "Sync all",
   "customSync": "Custom sync",
+  "syncTerm": "Semester to sync",
   "syncSchoolData": "School data",
   "syncDeadlineData": "DDL sources",
   "syncTooltip": "Sync",

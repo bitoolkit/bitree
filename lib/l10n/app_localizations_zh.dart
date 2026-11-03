@@ -612,7 +612,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String monthHeader(String month) {
-    return month;
+    return '$month';
   }
 
   @override
@@ -719,6 +719,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get agendaType => '日程类型';
+
+  @override
+  String get agendaPeriod => '日程时段';
 
   @override
   String agendaCount(int count) {
@@ -1042,6 +1045,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get customSync => '自定义同步';
+
+  @override
+  String get syncTerm => '同步学期';
 
   @override
   String get syncSchoolData => '学校数据';
