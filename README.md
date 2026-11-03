@@ -5,7 +5,7 @@
 <h1 align="center">BITree 理枝</h1>
 
 <p align="center">
-  面向【REDACTED】的妙妙小工具
+  面向冰红茶的妙妙小工具
 </p>
 
 <p align="center">
