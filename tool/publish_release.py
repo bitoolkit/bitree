@@ -37,6 +37,28 @@ def main():
     development = args.channel == "dev"
     tag = args.version.split("-dev.")[0] + "-dev" if development else args.version
     endpoint = f"repos/{repository}"
+    existing = github(f"{endpoint}/releases/tags/{tag}")
+
+    if development:
+        stable_tag = tag.removesuffix("-dev")
+        stable = github(f"{endpoint}/releases/tags/{stable_tag}")
+        if (
+            stable is not None
+            and not stable["draft"]
+            and not stable["prerelease"]
+        ):
+            if existing is not None:
+                gh(
+                    "release",
+                    "delete",
+                    tag,
+                    "--repo",
+                    repository,
+                    "--cleanup-tag",
+                    "--yes",
+                )
+            return
+
     assets = sorted(Path("dist").glob("BITree-*"))
     if not assets:
         raise SystemExit("没有成功构建的产物可供发布。")
@@ -48,7 +70,6 @@ def main():
                 digest = hashlib.file_digest(stream, "sha256").hexdigest()
             output.write(f"{digest}  {asset.name}\n")
 
-    existing = github(f"{endpoint}/releases/tags/{tag}")
     if (
         args.channel == "release"
         and existing is not None
@@ -151,6 +172,20 @@ def main():
                     "release", "delete", old_tag, "--repo", repository,
                     "--cleanup-tag", "--yes",
                 )
+    else:
+        # A release build can race the dev build triggered by the same push.
+        # The dev publisher handles the opposite order by seeing this release.
+        dev_tag = f"{tag}-dev"
+        if github(f"{endpoint}/releases/tags/{dev_tag}") is not None:
+            gh(
+                "release",
+                "delete",
+                dev_tag,
+                "--repo",
+                repository,
+                "--cleanup-tag",
+                "--yes",
+            )
 
 
 if __name__ == "__main__":
