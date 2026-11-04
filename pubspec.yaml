@@ -1,7 +1,7 @@
 name: bitree
 description: "面向冰红茶的妙妙小工具"
 publish_to: 'none'
-version: 0.3.0
+version: 0.4.0
 
 environment:
   sdk: '>=3.13.0 <4.0.0'
