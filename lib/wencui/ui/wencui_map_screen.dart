@@ -278,10 +278,17 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
       if (query.isNotEmpty)
         for (final feature in atlas.onFloor(_floor))
           if (feature.kind != WencuiFeatureKind.room &&
-              normalizeCampusLocation('${feature.title}$_floor层')
-                  .contains(query))
+              normalizeCampusLocation(
+                '${feature.title} '
+                '${localizedWencuiFeatureTitle(l10n, feature)} $_floor层',
+              ).contains(query))
             ListTile(
-              leading: Icon(wencuiFeatureIcon(feature.kind)),
+              leading: Icon(
+                wencuiFeatureIcon(
+                  feature.kind,
+                  restroomGender: feature.restroomGender,
+                ),
+              ),
               title: Text(localizedWencuiFeatureLabel(l10n, feature)),
               subtitle: Text(l10n.currentFloor(_floor)),
               onTap: () {
@@ -475,7 +482,13 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
           const SizedBox(height: 8),
           Row(
             children: [
-              Icon(wencuiFeatureIcon(selected.kind), size: 18),
+              Icon(
+                wencuiFeatureIcon(
+                  selected.kind,
+                  restroomGender: selected.restroomGender,
+                ),
+                size: 18,
+              ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(

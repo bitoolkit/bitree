@@ -3978,6 +3978,18 @@ abstract class AppLocalizations {
   /// **'Restroom'**
   String get restroom;
 
+  /// No description provided for @maleRestroom.
+  ///
+  /// In en, this message translates to:
+  /// **'Men's restroom'**
+  String get maleRestroom;
+
+  /// No description provided for @femaleRestroom.
+  ///
+  /// In en, this message translates to:
+  /// **'Women's restroom'**
+  String get femaleRestroom;
+
   /// No description provided for @firstFloorEntrance.
   ///
   /// In en, this message translates to:

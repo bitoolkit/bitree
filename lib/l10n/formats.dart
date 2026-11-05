@@ -351,7 +351,11 @@ String localizedWencuiFeatureLabel(
   WencuiFeatureKind.stairs => l10n.stairs,
   WencuiFeatureKind.lift => l10n.lift,
   WencuiFeatureKind.entrance => l10n.firstFloorEntrance,
-  WencuiFeatureKind.restroom => l10n.restroom,
+  WencuiFeatureKind.restroom => switch (feature.restroomGender) {
+    WencuiRestroomGender.male => l10n.maleRestroom,
+    WencuiRestroomGender.female => l10n.femaleRestroom,
+    WencuiRestroomGender.both || null => l10n.restroom,
+  },
 };
 
 String localizedWencuiFeatureTitle(

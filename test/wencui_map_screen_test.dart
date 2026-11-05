@@ -148,6 +148,59 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Restroom selection and search use the surveyed types', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    addTearDown(semantics.dispose);
+    await _open(tester, room: 'F202');
+    await tester.tap(find.widgetWithText(AppSelectionButton, '卫生间'));
+    await tester.pumpAndSettle();
+    expect(find.bySemanticsLabel('男卫生间，2层'), findsWidgets);
+    expect(find.bySemanticsLabel('女卫生间，2层'), findsWidgets);
+    final atlas = (await tester.runAsync(WencuiAtlas.load))!;
+    for (final (gender, label, icon) in [
+      (WencuiRestroomGender.male, '男卫生间', Icons.man_rounded),
+      (WencuiRestroomGender.female, '女卫生间', Icons.woman_rounded),
+    ]) {
+      final feature = atlas.features.firstWhere(
+        (feature) =>
+            feature.floor == 2 &&
+            feature.wing == WencuiWing.f &&
+            feature.restroomGender == gender,
+      );
+      await _tapFeature(tester, feature);
+      expect(find.text('已选：F栋 $label'), findsOneWidget);
+      expect(find.byIcon(icon), findsOneWidget);
+    }
+    await _search(tester, '女卫生间');
+    final results = tester.widgetList<ListTile>(find.byType(ListTile));
+    expect(results, hasLength(2));
+    for (final result in results) {
+      expect((result.title! as Text).data, '女卫生间');
+      expect((result.leading! as Icon).icon, Icons.woman_rounded);
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('First-floor restrooms show men and women together', (
+    tester,
+  ) async {
+    await _open(tester, room: 'I102');
+    await tester.tap(find.widgetWithText(AppSelectionButton, '卫生间'));
+    await tester.pumpAndSettle();
+    final atlas = (await tester.runAsync(WencuiAtlas.load))!;
+    final feature = atlas.onFloor(1).firstWhere(
+      (feature) =>
+          feature.wing == WencuiWing.i &&
+          feature.restroomGender == WencuiRestroomGender.both,
+    );
+    await _tapFeature(tester, feature);
+    expect(find.text('已选：I栋 卫生间'), findsOneWidget);
+    expect(find.byIcon(Icons.wc_rounded), findsNWidgets(2));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'Entrance, destination and zoom controls operate on the same map',
     (tester) async {

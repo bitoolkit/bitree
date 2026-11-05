@@ -1594,6 +1594,8 @@
   "stairs": "Stairs",
   "lift": "Lift",
   "restroom": "Restroom",
+  "maleRestroom": "Men's restroom",
+  "femaleRestroom": "Women's restroom",
   "firstFloorEntrance": "Ground-floor entrance",
   "backToBuilding": "Back to building",
   "backToRoom": "Back to room",

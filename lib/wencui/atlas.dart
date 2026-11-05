@@ -7,6 +7,8 @@ import 'place.dart';
 
 enum WencuiFeatureKind { room, stairs, lift, entrance, restroom }
 
+enum WencuiRestroomGender { male, female, both }
+
 class WencuiFeature {
   WencuiFeature({
     required this.floor,
@@ -15,6 +17,7 @@ class WencuiFeature {
     required this.wing,
     required this.anchor,
     required this.outline,
+    this.restroomGender,
   });
 
   final int floor;
@@ -23,6 +26,7 @@ class WencuiFeature {
   final WencuiWing? wing;
   final Offset anchor;
   final List<Offset> outline;
+  final WencuiRestroomGender? restroomGender;
 
   String get title => kind == WencuiFeatureKind.room
       ? label
@@ -54,6 +58,11 @@ class WencuiAtlas {
           floor: row['floor'] as int,
           label: row['label'] as String,
           kind: WencuiFeatureKind.values.byName(row['kind'] as String),
+          restroomGender: row['restroomGender'] == null
+              ? null
+              : WencuiRestroomGender.values.byName(
+                  row['restroomGender'] as String,
+                ),
           wing: row['wing'] == null
               ? null
               : WencuiWing.values.firstWhere(

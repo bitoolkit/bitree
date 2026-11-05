@@ -2302,6 +2302,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get restroom => 'Restroom';
 
   @override
+  String get maleRestroom => 'Men\'s restroom';
+
+  @override
+  String get femaleRestroom => 'Women\'s restroom';
+
+  @override
   String get firstFloorEntrance => 'Ground-floor entrance';
 
   @override
