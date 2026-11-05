@@ -21,12 +21,19 @@ class WencuiMapController extends ChangeNotifier {
   }
 }
 
-IconData wencuiFeatureIcon(WencuiFeatureKind kind) => switch (kind) {
+IconData wencuiFeatureIcon(
+  WencuiFeatureKind kind, {
+  WencuiRestroomGender? restroomGender,
+}) => switch (kind) {
   WencuiFeatureKind.room => Icons.meeting_room_outlined,
   WencuiFeatureKind.stairs => Icons.stairs_outlined,
   WencuiFeatureKind.lift => Icons.elevator_outlined,
   WencuiFeatureKind.entrance => Icons.door_front_door_outlined,
-  WencuiFeatureKind.restroom => Icons.wc_rounded,
+  WencuiFeatureKind.restroom => switch (restroomGender) {
+    WencuiRestroomGender.male => Icons.man_rounded,
+    WencuiRestroomGender.female => Icons.woman_rounded,
+    WencuiRestroomGender.both || null => Icons.wc_rounded,
+  },
 };
 
 class WencuiFloorMap extends StatefulWidget {
@@ -530,7 +537,10 @@ class _MapFeatures extends CustomPainter {
             ..style = PaintingStyle.stroke
             ..strokeWidth = 1.5 / scale,
         );
-        final icon = wencuiFeatureIcon(feature.kind);
+        final icon = wencuiFeatureIcon(
+          feature.kind,
+          restroomGender: feature.restroomGender,
+        );
         final text = TextPainter(
           text: TextSpan(
             text: String.fromCharCode(icon.codePoint),

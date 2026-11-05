@@ -643,6 +643,8 @@
   "stairs": "楼梯",
   "lift": "电梯",
   "restroom": "卫生间",
+  "maleRestroom": "男卫生间",
+  "femaleRestroom": "女卫生间",
   "firstFloorEntrance": "一层入口",
   "backToBuilding": "回到楼栋",
   "backToRoom": "回到教室",

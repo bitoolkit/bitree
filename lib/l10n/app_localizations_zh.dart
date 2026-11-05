@@ -2198,6 +2198,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get restroom => '卫生间';
 
   @override
+  String get maleRestroom => '男卫生间';
+
+  @override
+  String get femaleRestroom => '女卫生间';
+
+  @override
   String get firstFloorEntrance => '一层入口';
 
   @override
