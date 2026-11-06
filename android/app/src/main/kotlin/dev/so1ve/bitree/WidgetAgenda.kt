@@ -82,7 +82,10 @@ internal fun readWidgetContent(context: Context): WidgetContent {
     val todayHeading = "今天${weekdays[weekday(today) - 1]}"
 
     try {
-        val entries = readCourseEntries(context, listOf(today, tomorrow)) + readAgendaEntries(context)
+        val data = readWidgetData(context)
+        val entries = readWidgetEntries(
+            data.optJSONObject("schedule"), data.getJSONArray("entries"), listOf(today, tomorrow),
+        )
         fun entriesOn(date: Calendar) = entries.filter { it.occursOn(date) }
             .sortedWith(compareBy({ !it.allDay }, { it.startsAt }, { it.kind }, { it.title }))
 
@@ -114,14 +117,30 @@ internal fun readWidgetContent(context: Context): WidgetContent {
     }
 }
 
-private fun readCourseEntries(context: Context, dates: List<Calendar>): List<WidgetEntry> {
-    val file = File(context.filesDir, "schedule.json")
-    if (!file.exists()) return emptyList()
+private fun readWidgetData(context: Context): JSONObject {
+    val file = File(context.filesDir, "widget.json")
+    if (file.exists()) return JSONObject(file.readText())
 
-    val library = JSONObject(file.readText())
-    if (library.isNull("selectedTerm")) return emptyList()
-    val schedule = library.getJSONObject("semesters")
-        .getJSONObject(library.getString("selectedTerm"))
+    val scheduleFile = File(context.filesDir, "schedule.json")
+    val agendaFile = File(context.filesDir, "agenda.json")
+    val library = if (scheduleFile.exists()) JSONObject(scheduleFile.readText()) else null
+    val schedule = if (library == null || library.isNull("selectedTerm")) null else
+        library.getJSONObject("semesters").getJSONObject(library.getString("selectedTerm"))
+    val agenda = if (agendaFile.exists()) JSONArray(agendaFile.readText()) else JSONArray()
+    return JSONObject().put("schedule", schedule ?: JSONObject.NULL).put("entries", agenda)
+}
+
+internal fun readWidgetEntries(
+    schedule: JSONObject?,
+    agenda: JSONArray,
+    dates: List<Calendar>,
+): List<WidgetEntry> = readCourseEntries(schedule, dates) + readAgendaEntries(agenda)
+
+private fun readCourseEntries(
+    schedule: JSONObject?,
+    dates: List<Calendar>,
+): List<WidgetEntry> {
+    if (schedule == null) return emptyList()
     val firstMonday = dateFormatter("yyyy-MM-dd").parse(schedule.getString("firstMonday"))!!
     val rows = schedule.getJSONArray("courses")
     val courses = (0 until rows.length()).map { rows.getJSONObject(it) }
@@ -152,11 +171,7 @@ private fun readCourseEntries(context: Context, dates: List<Calendar>): List<Wid
     }
 }
 
-private fun readAgendaEntries(context: Context): List<WidgetEntry> {
-    val file = File(context.filesDir, "agenda.json")
-    if (!file.exists()) return emptyList()
-
-    val rows = JSONArray(file.readText())
+private fun readAgendaEntries(rows: JSONArray): List<WidgetEntry> {
     val formatter = dateFormatter("yyyy-MM-dd'T'HH:mm:ss")
     // Dart stores Beijing wall-clock fields with a UTC suffix; do not shift them by eight hours.
     fun timestamp(value: String) = formatter.parse(value.substring(0, 19))!!.time

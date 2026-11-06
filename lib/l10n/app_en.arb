@@ -31,7 +31,7 @@
   "automationHidden": "Applied: {courses} courses and {deadlines} deadlines hidden.",
   "@automationHidden": {"placeholders": {"courses": {"type": "int"}, "deadlines": {"type": "int"}}},
   "automationContractTitle": "Script interface",
-  "automationContract": "Define function filter(data) and return a table containing courses and deadlines. courses contains courses from every saved semester, each with term; deadlines contains non-deleted deadlines. Arrays start at 1.\n\nYou can change course names, teachers, locations, descriptions, weeks and sections; and deadline titles, course names, locations, notes and display times. Remove array elements or set hidden = true to hide items.\n\nKeep identity fields such as id, term, source and completion status unchanged. Dates are ISO 8601 strings using the campus Beijing wall-clock convention. Edit, complete and delete actions always use the original records.\n\nThe runtime is puredartlua, with its existing table, math, pairs and ipairs capabilities; its standard library is incomplete. File access, networking and module loading are unavailable. Scripts are limited to 128 KiB and 2 seconds per run. Rules affect in-app presentation only; desktop widgets use original data.",
+  "automationContract": "Define filter(data) and return a table with courses and deadlines. Remove items or set hidden = true to hide them; keep id, term, source and completion status unchanged.",
   "widgetUsesSystemPalette": "Use system palette for widget",
   "globalSystemPaletteExperimental": "Use system palette throughout app (experimental)",
   "importPalette": "Import palette",

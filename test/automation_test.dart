@@ -2,6 +2,7 @@ import 'package:bitree/agenda/controller.dart';
 import 'package:bitree/agenda/deadline_source.dart';
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/ui/agenda_operations.dart';
+import 'package:bitree/automation/controller.dart';
 import 'package:bitree/automation/projection.dart';
 import 'package:bitree/l10n/app_localizations_zh.dart';
 import 'package:bitree/l10n/formats.dart';
@@ -217,6 +218,94 @@ end
       await controller.agenda.save(newer.copyWith(done: true));
       await controller.automation.settled;
       expect(controller.automation.entries.single.done, isTrue);
+    },
+  );
+
+  test(
+    'widget JSON rebuilds on filtering, host changes, disable and restart',
+    () async {
+      final second = SemesterSchedule(
+        term: '2025-2026-2',
+        firstMonday: DateTime.utc(2026, 3, 2),
+        courses: [course],
+      );
+      final controller = TestAppController(
+        schedule: schedule,
+        schedules: [second],
+        entries: [old, newer],
+      );
+      await controller.initialize();
+      final published = <Map<String, dynamic>>[];
+      final automation = AutomationController(
+        MemoryPreferences(),
+        controller.timetable,
+        controller.agenda,
+        widgetPublisher: (value) async => published.add(value),
+      );
+      addTearDown(automation.dispose);
+      await automation.initialize();
+      expect(published.last['schedule']['courses'].single['name'], '原课程');
+      expect(published.last['entries'], hasLength(2));
+      await automation.saveScript(script);
+      final payload = published.last;
+      expect(payload.keys, unorderedEquals(['schedule', 'entries']));
+      expect(payload['schedule']['courses'].single['name'], '简称');
+      expect(payload['entries'].single['title'], '展示作业');
+      expect(controller.timetable.schedule!.courses.single.name, '原课程');
+      expect(controller.agenda.entries.first.title, '原作业');
+      await controller.timetable.setWeekRange(first: -2, last: 30);
+      await automation.settled;
+      expect(published.last['schedule']['firstWeek'], -2);
+      expect(published.last['schedule']['lastWeek'], 30);
+      expect(published.last['schedule']['courses'].single['name'], '简称');
+      await controller.timetable.selectTerm(
+        second.term,
+        importTerm: (_) async => false,
+      );
+      await automation.settled;
+      expect(published.last['schedule']['term'], second.term);
+      expect(published.last['schedule']['firstMonday'], '2026-03-02');
+      expect(published.last['schedule']['courses'].single['name'], '简称');
+      final event = AgendaEntry(
+        id: 'event',
+        title: '活动',
+        kind: AgendaKind.event,
+        startsAt: old.startsAt,
+        endsAt: old.startsAt.add(const Duration(hours: 1)),
+      );
+      await controller.agenda.save(event);
+      await automation.settled;
+      expect(published.last['entries'].last['title'], '活动');
+      await controller.agenda.save(newer.copyWith(done: true));
+      await automation.settled;
+      expect(
+        (published.last['entries'] as List).singleWhere(
+          (row) => row['id'] == newer.id,
+        )['done'],
+        isTrue,
+      );
+      await automation.setEnabled(false);
+      expect(published.last['schedule']['courses'].single['name'], '原课程');
+      expect(published.last['entries'], hasLength(3));
+      await automation.setEnabled(true);
+      expect(published.last['schedule']['courses'].single['name'], '简称');
+      await automation.saveScript('error("failure")');
+      expect(automation.error, isNotNull);
+      expect(published.last['schedule']['courses'].single['name'], '原课程');
+      expect(published.last['entries'], hasLength(3));
+      await automation.saveScript(script);
+      expect(published.last['schedule']['courses'].single['name'], '简称');
+      final restarted = AutomationController(
+        MemoryPreferences({
+          'automation': '{"source":"function filter(data) data.courses = {} return data end","fileName":"","enabled":true}',
+        }),
+        controller.timetable,
+        controller.agenda,
+        widgetPublisher: (value) async => published.add(value),
+      );
+      addTearDown(restarted.dispose);
+      await restarted.initialize();
+      expect(published.last['schedule']['courses'], isEmpty);
     },
   );
 

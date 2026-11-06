@@ -8,6 +8,7 @@ import '../agenda/controller.dart';
 import '../agenda/model.dart';
 import '../core/async/serial_queue.dart';
 import '../core/diagnostics.dart';
+import '../core/platform/desktop_widget.dart';
 import '../schedule/controller.dart';
 import '../schedule/model.dart';
 import 'lua_filter.dart';
@@ -19,7 +20,9 @@ class AutomationController extends ChangeNotifier {
     this._timetable,
     this._agenda, {
     LuaFilterExecutor? executor,
-  }) : _executor = executor ?? LuaFilterExecutor() {
+    Future<void> Function(Map<String, dynamic>)? widgetPublisher,
+  }) : _executor = executor ?? LuaFilterExecutor(),
+       _widgetPublisher = widgetPublisher ?? publishDesktopWidgetData {
     _timetable.addListener(_refresh);
     _agenda.addListener(_refresh);
   }
@@ -28,6 +31,7 @@ class AutomationController extends ChangeNotifier {
   final TimetableController _timetable;
   final AgendaController _agenda;
   final LuaFilterExecutor _executor;
+  final Future<void> Function(Map<String, dynamic>) _widgetPublisher;
   final _writes = SerialQueue();
   AutomationProjection? _projection;
   String _source = '';
@@ -156,7 +160,10 @@ class AutomationController extends ChangeNotifier {
     final entries = _agenda.entries.toList();
     final data = AutomationProjection.snapshot(schedules, entries);
     final snapshot = jsonEncode(data);
-    if (_snapshot == snapshot) return;
+    if (_snapshot == snapshot) {
+      if (!_running) _pending = _publishWidget();
+      return;
+    }
     _snapshot = snapshot;
     final revision = ++_revision;
     _executor.cancel();
@@ -164,11 +171,20 @@ class AutomationController extends ChangeNotifier {
     _error = null;
     _running = _enabled && _source.trim().isNotEmpty;
     notifyListeners();
+    final published = _publishWidget();
     if (!_running) {
-      _pending = Future.value();
+      _pending = published;
       return;
     }
     _pending = _apply(revision, data, schedules, entries);
+  }
+
+  Future<void> _publishWidget() {
+    final payload = <String, dynamic>{
+      'schedule': schedule?.toJson(),
+      'entries': [for (final entry in entries) entry.toJson()],
+    };
+    return _widgetPublisher(payload);
   }
 
   Future<void> _apply(
@@ -192,6 +208,7 @@ class AutomationController extends ChangeNotifier {
       if (!_disposed && revision == _revision) {
         _running = false;
         notifyListeners();
+        await _publishWidget();
       }
     }
   }

@@ -1,5 +1,4 @@
 import '../core/json.dart';
-import '../core/platform/desktop_widget.dart';
 import '../core/storage/json_file.dart';
 import 'model.dart';
 
@@ -37,11 +36,7 @@ class ScheduleStore {
           entry.key: entry.value.toJson(),
       },
     });
-    refreshDesktopWidget();
   }
 
-  Future<void> clear() async {
-    await _file.delete();
-    refreshDesktopWidget();
-  }
+  Future<void> clear() => _file.delete();
 }

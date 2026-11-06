@@ -3,6 +3,7 @@ import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/ui/agenda_editor.dart';
 import 'package:bitree/agenda/ui/calendar_screen.dart';
 import 'package:bitree/agenda/view_mode.dart';
+import 'package:bitree/app/ui/developer_screen.dart';
 import 'package:bitree/app/ui/settings_screen.dart';
 import 'package:bitree/automation/ui/automation_screen.dart';
 import 'package:bitree/schedule/model.dart';
@@ -54,6 +55,93 @@ void main() {
     expect(editor.controller!.text, contains('function filter(data)'));
     expect(editor.controller!.text, contains('table.insert(deadlines, ddl)'));
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('developer menu follows exam titles within calendar week', (
+    tester,
+  ) async {
+    final controller = TestAppController();
+    await controller.initialize();
+    final monday = DateTime.utc(2026, 9, 7);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: bitreeTheme(Brightness.light),
+        home: DeveloperScreen(
+          controller: controller,
+          now: monday.add(const Duration(days: 6, hours: 23)),
+        ),
+      ),
+    );
+    expect(find.text('自动化'), findsOneWidget);
+    for (final (title, kind, start, end, expected) in [
+      (
+        '自动控制原理考试',
+        AgendaKind.exam,
+        monday,
+        monday.add(const Duration(hours: 2)),
+        true,
+      ),
+      (
+        '自控原理期末考试',
+        AgendaKind.exam,
+        monday.add(const Duration(days: 6, hours: 23)),
+        monday.add(const Duration(days: 7)),
+        true,
+      ),
+      (
+        '自动控制原理',
+        AgendaKind.exam,
+        monday.add(const Duration(days: 7)),
+        monday.add(const Duration(days: 7, hours: 2)),
+        false,
+      ),
+      (
+        '自控原理',
+        AgendaKind.exam,
+        monday.subtract(const Duration(hours: 2)),
+        monday,
+        false,
+      ),
+      (
+        '自动控制原理',
+        AgendaKind.event,
+        monday,
+        monday.add(const Duration(hours: 2)),
+        false,
+      ),
+      (
+        '其他课程',
+        AgendaKind.exam,
+        monday,
+        monday.add(const Duration(hours: 2)),
+        false,
+      ),
+    ]) {
+      await controller.agenda.save(
+        AgendaEntry(
+          id: 'exam',
+          title: title,
+          kind: kind,
+          startsAt: start,
+          endsAt: end,
+        ),
+      );
+      await tester.pump();
+      expect(find.text(expected ? '自动控制原理' : '自动化'), findsOneWidget);
+    }
+    await controller.agenda.save(
+      AgendaEntry(
+        id: 'exam',
+        title: '自动控制原理',
+        kind: AgendaKind.exam,
+        startsAt: monday,
+        endsAt: monday.add(const Duration(hours: 2)),
+        deleted: true,
+      ),
+    );
+    await tester.pump();
+    expect(find.text('自动化'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('home and agenda consume the same presentation projection', (

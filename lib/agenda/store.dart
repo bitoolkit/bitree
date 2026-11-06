@@ -1,5 +1,4 @@
 import '../core/json.dart';
-import '../core/platform/desktop_widget.dart';
 import '../core/storage/json_file.dart';
 import 'model.dart';
 
@@ -17,6 +16,5 @@ class AgendaStore {
 
   Future<void> write(List<AgendaEntry> entries) async {
     await _file.write(entries.map((entry) => entry.toJson()).toList());
-    refreshDesktopWidget();
   }
 }
