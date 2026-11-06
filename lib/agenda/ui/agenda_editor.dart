@@ -68,6 +68,7 @@ class _AgendaEditorState extends State<_AgendaEditor> {
   late final _title = TextEditingController(text: widget.entryTitle);
   late final _location = TextEditingController(text: widget.entry?.location);
   late final _notes = TextEditingController(text: widget.entryNotes);
+  late int _tailDays = widget.entry?.tailDays ?? AgendaEntry.defaultTailDays;
   late AgendaKind _kind = widget.kind;
   late DateTime _start = widget.entry?.startsAt ?? widget.startsAt;
   late DateTime _end =
@@ -175,6 +176,7 @@ class _AgendaEditorState extends State<_AgendaEditor> {
         // Editing turns a generated record into a user-authored snapshot. Its
         // localized presentation must not keep overriding the edited values.
         details: null,
+        tailDays: _tailDays,
       ),
     );
     if (!mounted) return;
@@ -324,6 +326,36 @@ class _AgendaEditorState extends State<_AgendaEditor> {
           ),
           if (_kind != AgendaKind.deadline) _when(l10n.end, _end, false),
           const SizedBox(height: 16),
+          if (_kind == AgendaKind.deadline) ...[
+            Row(
+              children: [
+                Expanded(child: Text(l10n.agendaTailDays)),
+                Text(l10n.agendaTailDaysValue(_tailDays)),
+              ],
+            ),
+            Semantics(
+              label: l10n.agendaTailDays,
+              child: Slider(
+                value: _tailDays.toDouble(),
+                min: 1,
+                max: AgendaEntry.maxTailDays.toDouble(),
+                divisions: AgendaEntry.maxTailDays - 1,
+                label: l10n.agendaTailDaysValue(_tailDays),
+                semanticFormatterCallback: (value) =>
+                    l10n.agendaTailDaysValue(value.round()),
+                onChanged: _saving
+                    ? null
+                    : (value) => setState(() => _tailDays = value.round()),
+              ),
+            ),
+            Text(
+              l10n.agendaTailDaysHint,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           if (_kind != AgendaKind.deadline) ...[
             TextFormField(
               controller: _location,

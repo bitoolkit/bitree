@@ -275,11 +275,14 @@ class _AgendaTimelineState extends State<AgendaTimeline>
               10,
         );
         final laneHeight = barHeight + 12;
+        // Keep the tail a quarter baseline day inside its reservation.
         // Width is set by the MINIMUM zoom, never by the current zoom.
-        final deadlineWidth = cellWidth * 3.75;
-        final deadlineDuration = Duration(
-          microseconds: (deadlineWidth / pixelsPerHour * _microsecondsPerHour)
-              .ceil(),
+        double deadlineWidth(AgendaEntry entry) =>
+            cellWidth * (entry.tailDays - 0.25);
+        Duration deadlineDuration(AgendaEntry entry) => Duration(
+          microseconds:
+              (deadlineWidth(entry) / pixelsPerHour * _microsecondsPerHour)
+                  .ceil(),
         );
         final minimumEventSpan = Duration(
           // The visual floor is fixed and does not scale with accessibility text.
@@ -514,7 +517,9 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                                           placement.layoutEnd.isAfter(left) &&
                                           (placement.entry.isDeadline
                                                   ? placement.end.subtract(
-                                                      deadlineDuration,
+                                                      deadlineDuration(
+                                                        placement.entry,
+                                                      ),
                                                     )
                                                   : placement.start)
                                               .isBefore(right),
@@ -578,7 +583,9 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                                                   width,
                                                   pixelsPerHour,
                                                   laneHeight,
-                                                  deadlineWidth,
+                                                  deadlineWidth(
+                                                    placement.entry,
+                                                  ),
                                                 ),
                                             ],
                                           ),

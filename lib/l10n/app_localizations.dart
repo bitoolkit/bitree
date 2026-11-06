@@ -239,7 +239,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutOpenQQGroup.
   ///
   /// In en, this message translates to:
-  /// **'Join BITree QQ group'**
+  /// **'QQ group'**
   String get aboutOpenQQGroup;
 
   /// No description provided for @language.
@@ -1528,6 +1528,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Notes (optional)'**
   String get agendaNotesOptional;
+
+  /// No description provided for @agendaTailDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Tail length (days)'**
+  String get agendaTailDays;
+
+  /// No description provided for @agendaTailDaysHint.
+  ///
+  /// In en, this message translates to:
+  /// **'1–30 days; default: 4 days'**
+  String get agendaTailDaysHint;
+
+  /// No description provided for @agendaTailDaysValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, =1{1 day} other{{days} days}}'**
+  String agendaTailDaysValue(int days);
 
   /// No description provided for @agendaEndAfterStart.
   ///
@@ -3981,13 +3999,13 @@ abstract class AppLocalizations {
   /// No description provided for @maleRestroom.
   ///
   /// In en, this message translates to:
-  /// **'Men's restroom'**
+  /// **'Men\'s restroom'**
   String get maleRestroom;
 
   /// No description provided for @femaleRestroom.
   ///
   /// In en, this message translates to:
-  /// **'Women's restroom'**
+  /// **'Women\'s restroom'**
   String get femaleRestroom;
 
   /// No description provided for @firstFloorEntrance.

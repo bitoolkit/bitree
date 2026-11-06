@@ -84,7 +84,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get github => 'GitHub';
 
   @override
-  String get aboutOpenQQGroup => 'Join BITree QQ group';
+  String get aboutOpenQQGroup => 'QQ group';
 
   @override
   String get language => 'Language';
@@ -875,6 +875,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get agendaNotesOptional => 'Notes (optional)';
+
+  @override
+  String get agendaTailDays => 'Tail length (days)';
+
+  @override
+  String get agendaTailDaysHint => '1–30 days; default: 4 days';
+
+  @override
+  String agendaTailDaysValue(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days',
+      one: '1 day',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get agendaEndAfterStart => 'The end must be later than the start';
