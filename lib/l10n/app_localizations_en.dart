@@ -84,7 +84,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get github => 'GitHub';
 
   @override
-  String get aboutOpenQQGroup => 'Join BITree QQ group';
+  String get aboutOpenQQGroup => 'QQ group';
 
   @override
   String get language => 'Language';

@@ -81,7 +81,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get github => 'GitHub';
 
   @override
-  String get aboutOpenQQGroup => '加入 BITree 交流群';
+  String get aboutOpenQQGroup => '交流群';
 
   @override
   String get language => '语言';

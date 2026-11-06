@@ -239,7 +239,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutOpenQQGroup.
   ///
   /// In en, this message translates to:
-  /// **'Join BITree QQ group'**
+  /// **'QQ group'**
   String get aboutOpenQQGroup;
 
   /// No description provided for @language.
