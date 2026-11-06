@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../app/controller.dart';
+import '../../automation/presentation.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_dialog.dart';
@@ -236,25 +237,27 @@ class _CourseDetails extends StatelessWidget {
             _NextCourse(course: course, next: next, onTap: () => onNext(next)),
         ],
       ),
-      actions: SheetActionBar.split(
-        leading: OutlinedButton.icon(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: theme.colorScheme.error,
-            side: BorderSide(
-              color: theme.colorScheme.error.withValues(alpha: 0.4),
+      actions: course is ScriptGenerated
+          ? null
+          : SheetActionBar.split(
+              leading: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: theme.colorScheme.error,
+                  side: BorderSide(
+                    color: theme.colorScheme.error.withValues(alpha: 0.4),
+                  ),
+                ),
+                onPressed: controller.timetable.busy
+                    ? null
+                    : () => _deleteCourse(context, controller, course),
+                icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                label: Text(l10n.delete),
+              ),
+              primary: FilledButton(
+                onPressed: controller.timetable.busy ? null : onEdit,
+                child: Text(l10n.courseEditorEditTitle),
+              ),
             ),
-          ),
-          onPressed: controller.timetable.busy
-              ? null
-              : () => _deleteCourse(context, controller, course),
-          icon: const Icon(Icons.delete_outline_rounded, size: 18),
-          label: Text(l10n.delete),
-        ),
-        primary: FilledButton(
-          onPressed: controller.timetable.busy ? null : onEdit,
-          child: Text(l10n.courseEditorEditTitle),
-        ),
-      ),
     );
   }
 }
@@ -398,6 +401,7 @@ Future<void> _deleteCourse(
   AppController controller,
   Course course,
 ) async {
+  if (course is ScriptGenerated) return;
   final l10n = context.l10n;
   final confirmed = await showAppConfirmDialog(
     context,

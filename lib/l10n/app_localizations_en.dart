@@ -61,7 +61,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get automationDescription =>
-      'Customize the home timetable and deadlines with Lua. Original data and synchronization are preserved.';
+      'Customize courses, deadlines, events and exams with Lua without changing original data or synchronization.';
 
   @override
   String get automationEnabled => 'Enable script';
@@ -85,6 +85,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationSaved => 'Script saved and applied.';
 
   @override
+  String automationExecutionTime(String milliseconds) {
+    return 'Execution time: $milliseconds ms';
+  }
+
+  @override
   String get automationResult => 'Result';
 
   @override
@@ -99,16 +104,34 @@ class AppLocalizationsEn extends AppLocalizations {
       'Script disabled. Original data is displayed.';
 
   @override
-  String automationHidden(int courses, int deadlines) {
-    return 'Applied: $courses courses and $deadlines deadlines hidden.';
+  String automationApplied(String milliseconds, String changes) {
+    return '${milliseconds}ms · $changes';
   }
+
+  @override
+  String automationAdded(int count) {
+    return '$count added';
+  }
+
+  @override
+  String automationDeleted(int count) {
+    return '$count deleted';
+  }
+
+  @override
+  String automationModified(int count) {
+    return '$count modified';
+  }
+
+  @override
+  String get automationUnchanged => 'No changes';
 
   @override
   String get automationContractTitle => 'Script interface';
 
   @override
   String get automationContract =>
-      'Define filter(data) and return a table with courses and deadlines. Remove items or set hidden = true to hide them; keep id, term, source and completion status unchanged.';
+      'Define filter(data) and return a table with courses, deadlines, events and exams. Omit id to add a display item; remove items or set hidden = true to hide them. Keep existing identities and status unchanged.';
 
   @override
   String get widgetUsesSystemPalette => 'Use system palette for widget';

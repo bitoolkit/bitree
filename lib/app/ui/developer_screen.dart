@@ -9,21 +9,20 @@ import '../../ui/campus_time_builder.dart';
 import '../controller.dart';
 
 class DeveloperScreen extends StatelessWidget {
-  const DeveloperScreen({super.key, required this.controller, this.now});
+  const DeveloperScreen({super.key, required this.controller});
 
   final AppController controller;
-  final DateTime? now;
 
   @override
   Widget build(BuildContext context) => CampusTimeBuilder(
     active: true,
     builder: (context, currentTime) => ListenableBuilder(
-      listenable: controller.agenda,
+      listenable: controller.automation,
       builder: (context, _) {
-        final start = mondayOf(now ?? currentTime);
+        final start = mondayOf(currentTime);
         final end = start.add(const Duration(days: 7));
         final title =
-            controller.agenda.entries.any(
+            controller.automation.entries.any(
               (entry) =>
                   entry.kind == AgendaKind.exam &&
                   (entry.title.contains('自动控制原理') ||

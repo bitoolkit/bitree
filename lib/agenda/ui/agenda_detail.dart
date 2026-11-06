@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../automation/presentation.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
@@ -97,22 +98,23 @@ Future<void> showAgendaEntry(
             ],
           ),
           actions: [
-            IconButton(
-              tooltip: l10n.delete,
-              onPressed: controller.agenda.busy
-                  ? null
-                  : () async {
-                      if (await deleteAgendaEntry(
-                            context,
-                            controller,
-                            current,
-                          ) &&
-                          sheetContext.mounted) {
-                        Navigator.pop(sheetContext);
-                      }
-                    },
-              icon: const Icon(Icons.delete_outline, size: 20),
-            ),
+            if (current is! ScriptGenerated)
+              IconButton(
+                tooltip: l10n.delete,
+                onPressed: controller.agenda.busy
+                    ? null
+                    : () async {
+                        if (await deleteAgendaEntry(
+                              context,
+                              controller,
+                              current,
+                            ) &&
+                            sheetContext.mounted) {
+                          Navigator.pop(sheetContext);
+                        }
+                      },
+                icon: const Icon(Icons.delete_outline, size: 20),
+              ),
             const SheetCloseButton(),
           ],
         ),
@@ -193,7 +195,9 @@ Future<void> showAgendaEntry(
             ],
           ),
         ),
-        actions: current.isDeadline
+        actions: current is ScriptGenerated
+            ? null
+            : current.isDeadline
             ? SheetActionBar.split(
                 leading: TextButton.icon(
                   onPressed: controller.agenda.busy ? null : edit,

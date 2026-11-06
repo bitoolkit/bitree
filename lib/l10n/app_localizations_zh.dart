@@ -58,7 +58,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get automationTitle => '自动化';
 
   @override
-  String get automationDescription => '用 Lua 自定义首页课表和 DDL 的展示。原始数据和同步不受影响。';
+  String get automationDescription => '用 Lua 自定义课程、DDL、活动和考试的展示，不影响原始数据和同步。';
 
   @override
   String get automationEnabled => '启用脚本';
@@ -82,6 +82,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get automationSaved => '已保存并应用脚本。';
 
   @override
+  String automationExecutionTime(String milliseconds) {
+    return '运行耗时：$milliseconds ms';
+  }
+
+  @override
   String get automationResult => '运行结果';
 
   @override
@@ -94,16 +99,34 @@ class AppLocalizationsZh extends AppLocalizations {
   String get automationDisabled => '脚本已停用，展示原始数据。';
 
   @override
-  String automationHidden(int courses, int deadlines) {
-    return '已应用：隐藏 $courses 门课程、$deadlines 项 DDL。';
+  String automationApplied(String milliseconds, String changes) {
+    return '${milliseconds}ms · $changes';
   }
+
+  @override
+  String automationAdded(int count) {
+    return '增 $count';
+  }
+
+  @override
+  String automationDeleted(int count) {
+    return '删 $count';
+  }
+
+  @override
+  String automationModified(int count) {
+    return '改 $count';
+  }
+
+  @override
+  String get automationUnchanged => '无变更';
 
   @override
   String get automationContractTitle => '脚本接口';
 
   @override
   String get automationContract =>
-      '定义 filter(data)，返回含 courses 和 deadlines 的 table。移除项目或设置 hidden = true 可隐藏；保留 id、term、来源及完成状态。';
+      '定义 filter(data)，返回含 courses、deadlines、events、exams 的 table。省略 id 可新增展示项，移除项目或设置 hidden = true 可隐藏；已有项目保留身份和状态。';
 
   @override
   String get widgetUsesSystemPalette => '小组件使用系统调色板';

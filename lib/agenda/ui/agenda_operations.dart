@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../app/controller.dart';
+import '../../automation/presentation.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_dialog.dart';
@@ -31,6 +32,7 @@ Future<bool> deleteAgendaEntry(
   AgendaEntry entry, {
   bool confirm = true,
 }) async {
+  if (entry is ScriptGenerated) return false;
   final l10n = context.l10n;
   final original =
       controller.agenda.entries

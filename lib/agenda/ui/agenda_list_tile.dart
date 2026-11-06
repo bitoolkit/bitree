@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../automation/presentation.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
@@ -68,7 +69,7 @@ class AgendaListTile extends StatelessWidget {
         border: Border(bottom: BorderSide(color: scheme.outlineVariant)),
       ),
       child: SwipeActionTile(
-        enabled: !controller.agenda.busy,
+        enabled: !controller.agenda.busy && entry is! ScriptGenerated,
         leftAction: TileSwipeAction(
           label: l10n.agendaSwipeDelete,
           releaseLabel: l10n.agendaSwipeDeleteRelease,
@@ -114,7 +115,9 @@ class AgendaListTile extends StatelessWidget {
                             child: Checkbox(
                               value: entry.done,
                               shape: const CircleBorder(),
-                              onChanged: controller.agenda.busy
+                              onChanged:
+                                  controller.agenda.busy ||
+                                      entry is ScriptGenerated
                                   ? null
                                   : (_) => _complete(context, haptic: true),
                             ),

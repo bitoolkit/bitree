@@ -14,6 +14,8 @@ void main() {
         'weeks': [1, 2],
       },
     ],
+    'events': <Map<String, dynamic>>[],
+    'exams': <Map<String, dynamic>>[],
     'deadlines': [
       {'id': 'old', 'course': '某门课程', 'source': 'lexue', 'done': false},
       {'id': 'new', 'course': '某个非常长的课程名称', 'source': 'eclass', 'done': true},
@@ -76,8 +78,40 @@ end
       'function filter(data) return data end',
       {'courses': [], 'deadlines': []},
     );
-    expect(result, {'courses': [], 'deadlines': []});
+    expect(result, {'courses': [], 'deadlines': [], 'events': [], 'exams': []});
   });
+
+  test(
+    'events and exams support transforms and legacy output preserves them',
+    () async {
+      final input = {
+        ...data(),
+        'events': [
+          {'id': 'event', 'title': '活动'},
+        ],
+        'exams': [
+          {'id': 'exam', 'title': '考试'},
+        ],
+      };
+      final executor = LuaFilterExecutor();
+      final changed = await executor.run('''
+function filter(data)
+    data.events[1].title = tostring(12) .. type("x")
+    data.exams[1].hidden = true
+    return data
+end
+''', input);
+      expect(changed['events'][0]['title'], '12string');
+      expect(changed['exams'][0]['hidden'], isTrue);
+      final legacy = await executor.run('''
+function filter(data)
+    return {courses = data.courses, deadlines = data.deadlines}
+end
+''', input);
+      expect(legacy['events'], input['events']);
+      expect(legacy['exams'], input['exams']);
+    },
+  );
 
   for (final script in [
     'function filter(data)',
@@ -87,6 +121,7 @@ end
     'function filter(data) data.courses[3] = data.courses[1] return data end',
     'function filter(data) data.courses[1].name = data return data end',
     'function filter(data) return missing(data) end',
+    'function filter(data) string.gsub("x", "x", "y") return data end',
     'function filter(data) require("/etc/passwd") return data end',
     'function filter(data) io.open("/etc/passwd") return data end',
   ]) {

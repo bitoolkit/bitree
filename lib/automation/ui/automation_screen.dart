@@ -101,7 +101,16 @@ class _AutomationScreenState extends State<AutomationScreen> {
       final l10n = context.l10n;
       final controller = widget.controller;
       final error = _error ?? controller.error;
+      final duration = controller.executionDuration;
+      final milliseconds = ((duration?.inMicroseconds ?? 0) / 1000)
+          .toStringAsFixed(1);
       final busy = _saving || controller.running;
+      final changes = controller.changes;
+      final summary = [
+        if (changes.added > 0) l10n.automationAdded(changes.added),
+        if (changes.deleted > 0) l10n.automationDeleted(changes.deleted),
+        if (changes.modified > 0) l10n.automationModified(changes.modified),
+      ].join(' ');
       return AppRoutePage(
         title: l10n.automationTitle,
         showProgress: busy,
@@ -193,12 +202,19 @@ class _AutomationScreenState extends State<AutomationScreen> {
                 controller.running
                     ? l10n.automationRunning
                     : controller.enabled
-                    ? l10n.automationHidden(
-                        controller.hiddenCourses,
-                        controller.hiddenDeadlines,
+                    ? l10n.automationApplied(
+                        milliseconds,
+                        summary.isEmpty ? l10n.automationUnchanged : summary,
                       )
                     : l10n.automationDisabled,
               ),
+            if (error != null && duration != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                l10n.automationExecutionTime(milliseconds),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
             const SizedBox(height: 20),
             AppSectionHeader(l10n.automationContractTitle),
             SelectableText(l10n.automationContract),

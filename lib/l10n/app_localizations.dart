@@ -197,7 +197,7 @@ abstract class AppLocalizations {
   /// No description provided for @automationDescription.
   ///
   /// In en, this message translates to:
-  /// **'Customize the home timetable and deadlines with Lua. Original data and synchronization are preserved.'**
+  /// **'Customize courses, deadlines, events and exams with Lua without changing original data or synchronization.'**
   String get automationDescription;
 
   /// No description provided for @automationEnabled.
@@ -242,6 +242,12 @@ abstract class AppLocalizations {
   /// **'Script saved and applied.'**
   String get automationSaved;
 
+  /// No description provided for @automationExecutionTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Execution time: {milliseconds} ms'**
+  String automationExecutionTime(String milliseconds);
+
   /// No description provided for @automationResult.
   ///
   /// In en, this message translates to:
@@ -266,11 +272,35 @@ abstract class AppLocalizations {
   /// **'Script disabled. Original data is displayed.'**
   String get automationDisabled;
 
-  /// No description provided for @automationHidden.
+  /// No description provided for @automationApplied.
   ///
   /// In en, this message translates to:
-  /// **'Applied: {courses} courses and {deadlines} deadlines hidden.'**
-  String automationHidden(int courses, int deadlines);
+  /// **'{milliseconds}ms · {changes}'**
+  String automationApplied(String milliseconds, String changes);
+
+  /// No description provided for @automationAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} added'**
+  String automationAdded(int count);
+
+  /// No description provided for @automationDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} deleted'**
+  String automationDeleted(int count);
+
+  /// No description provided for @automationModified.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} modified'**
+  String automationModified(int count);
+
+  /// No description provided for @automationUnchanged.
+  ///
+  /// In en, this message translates to:
+  /// **'No changes'**
+  String get automationUnchanged;
 
   /// No description provided for @automationContractTitle.
   ///
@@ -281,7 +311,7 @@ abstract class AppLocalizations {
   /// No description provided for @automationContract.
   ///
   /// In en, this message translates to:
-  /// **'Define filter(data) and return a table with courses and deadlines. Remove items or set hidden = true to hide them; keep id, term, source and completion status unchanged.'**
+  /// **'Define filter(data) and return a table with courses, deadlines, events and exams. Omit id to add a display item; remove items or set hidden = true to hide them. Keep existing identities and status unchanged.'**
   String get automationContract;
 
   /// No description provided for @widgetUsesSystemPalette.

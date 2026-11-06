@@ -116,10 +116,15 @@ void _runFilter((SendPort, String, Map<String, dynamic>) message) {
     }
     final output = values.single;
     final reader = _ResultReader();
-    final result = <String, dynamic>{
-      for (final name in ['courses', 'deadlines'])
-        name: reader.list(output.readField(name) as lua.LuaObject?, name),
-    };
+    final result = <String, dynamic>{};
+    for (final name in ['courses', 'deadlines', 'events', 'exams']) {
+      final value = output.readField(name) as lua.LuaObject?;
+      result[name] =
+          (name == 'events' || name == 'exams') &&
+              (value == null || value.isNil)
+          ? data[name] ?? <dynamic>[]
+          : reader.list(value, name);
+    }
     if (utf8.encode(jsonEncode(result)).length > 2 * 1024 * 1024) {
       throw const FormatException('Lua result exceeds 2 MiB.');
     }
@@ -225,10 +230,15 @@ class _ResultReader {
     if (value == null || value.isNil) return null;
     if (!value.isTable && !value.isFunc && !value.isThread) {
       final raw = value.value;
-      if (raw is String && raw.length <= 128 * 1024 ||
-          raw is bool ||
-          raw is num && raw.isFinite) {
+      if (raw is String && raw.length <= 128 * 1024 || raw is bool) {
         return raw;
+      }
+      if (raw is num && raw.isFinite) {
+        return raw is double &&
+                raw == raw.truncateToDouble() &&
+                raw.abs() <= 9007199254740991
+            ? raw.toInt()
+            : raw;
       }
     }
     throw const FormatException(

@@ -1,14 +1,55 @@
+import 'dart:convert';
+
 import '../agenda/model.dart';
 import '../agenda/presentation.dart';
 import '../schedule/model.dart';
+import 'presentation.dart';
 
-/// Validated presentation copies. Every output row retains a host identity;
-/// synchronization, persistence and user actions continue using the originals.
+class AutomationChanges {
+  const AutomationChanges({
+    this.added = 0,
+    this.deleted = 0,
+    this.modified = 0,
+  });
+
+  final int added;
+  final int deleted;
+  final int modified;
+
+  factory AutomationChanges.between(
+    Map<Object, Map<String, dynamic>> before,
+    Map<Object, Map<String, dynamic>> after,
+  ) => AutomationChanges(
+    added: after.keys.where((key) => !before.containsKey(key)).length,
+    deleted: before.keys.where((key) => !after.containsKey(key)).length,
+    modified: before.keys
+        .where(
+          (key) =>
+              after.containsKey(key) &&
+              jsonEncode(before[key]) != jsonEncode(after[key]),
+        )
+        .length,
+  );
+}
+
+/// Presentation copies retain original identities; new rows are display-only.
 class AutomationProjection {
-  AutomationProjection._(this.schedules, this.deadlines);
+  AutomationProjection._(this.schedules, this.entries, this.changes);
 
   final Map<String, SemesterSchedule> schedules;
-  final Map<String, AgendaEntry> deadlines;
+  final Map<String, AgendaEntry> entries;
+  final AutomationChanges changes;
+
+  Map<String, AgendaEntry> get deadlines => {
+    for (final entry in entries.values)
+      if (entry.isDeadline) entry.id: entry,
+  };
+
+  static const _agendaKeys = {
+    AgendaKind.deadline: 'deadlines',
+    AgendaKind.event: 'events',
+    AgendaKind.exam: 'exams',
+  };
 
   static Map<String, dynamic> snapshot(
     Iterable<SemesterSchedule> schedules,
@@ -19,10 +60,11 @@ class AutomationProjection {
         for (final course in schedule.courses)
           {...course.toJson(), 'term': schedule.term},
     ],
-    'deadlines': [
-      for (final entry in entries)
-        if (entry.isDeadline) entry.toJson(),
-    ],
+    for (final kind in _agendaKeys.entries)
+      kind.value: [
+        for (final entry in entries)
+          if (!entry.deleted && entry.kind == kind.key) entry.toJson(),
+      ],
   };
 
   factory AutomationProjection.fromResult(
@@ -32,28 +74,59 @@ class AutomationProjection {
   ) {
     final originals = {
       for (final schedule in schedules)
-        (schedule.term): {
+        schedule.term: {
           for (final course in schedule.courses) course.id: course,
         },
     };
     final courses = <String, List<Course>>{
       for (final schedule in schedules) schedule.term: [],
     };
+    final courseIds = {
+      for (final schedule in schedules)
+        for (final course in schedule.courses) course.id,
+    };
     final seenCourses = <(String, String)>{};
+    var courseIndex = 0;
     for (final row in _rows(result, 'courses')) {
-      final id = row['id'];
       final term = row['term'];
-      final original = originals[term]?[id];
-      if (id is! String ||
-          term is! String ||
-          original == null ||
-          !seenCourses.add((term, id))) {
+      final savedId = row['id'];
+      if (term is! String || !originals.containsKey(term)) {
+        throw const FormatException('Keep courses in a saved term.');
+      }
+      final original = originals[term]?[savedId];
+      if (savedId != null && (savedId is! String || original == null)) {
         throw const FormatException(
-          'Unknown or duplicate course identity. Keep id and term unchanged.',
+          'Unknown course identity. Keep id and term unchanged.',
         );
       }
-      final json = original.toJson();
-      _checkIdentity(row, {...json, 'term': term}, ['id', 'term', 'local']);
+      final id = original?.id ?? _newId('course', courseIndex++, courseIds);
+      if (!seenCourses.add((term, id))) {
+        throw const FormatException('Duplicate course identity.');
+      }
+      final json =
+          original?.toJson() ??
+          {
+            'id': id,
+            'name': '',
+            'teacher': '',
+            'room': '',
+            'campus': '',
+            'number': '',
+            'description': '',
+            'weekday': null,
+            'startSection': null,
+            'endSection': null,
+            'weeks': <int>[],
+            'local': false,
+          };
+      _checkIdentity(
+        row,
+        {...json, 'term': term},
+        [
+          if (original != null) ...['id', 'term'],
+          'local',
+        ],
+      );
       _checkHidden(row);
       final projected = Course.fromJson({
         ...json,
@@ -71,74 +144,145 @@ class AutomationProjection {
         ])
           if (row.containsKey(key)) key: row[key],
       });
-      if (row['hidden'] != true) courses[term]!.add(projected);
+      if (row['hidden'] != true) {
+        courses[term]!.add(
+          original == null ? ScriptCourse(projected) : projected,
+        );
+      }
     }
 
-    final savedDeadlines = {
+    final savedEntries = {
       for (final entry in entries)
-        if (entry.isDeadline) entry.id: entry,
+        if (!entry.deleted) entry.id: entry,
     };
-    final deadlines = <String, AgendaEntry>{};
-    final seenDeadlines = <String>{};
-    for (final row in _rows(result, 'deadlines')) {
-      final id = row['id'];
-      final original = savedDeadlines[id];
-      if (id is! String || original == null || !seenDeadlines.add(id)) {
-        throw const FormatException(
-          'Unknown or duplicate deadline identity. Keep id unchanged.',
-        );
-      }
-      final json = original.toJson();
-      _checkIdentity(row, json, [
-        'id',
-        'kind',
-        'done',
-        'deleted',
-        'term',
-        'local',
-        'source',
-        'url',
-      ]);
-      _checkHidden(row);
-      final projected = AgendaEntry.fromJson({
-        ...json,
-        for (final key in [
-          'title',
-          'course',
-          'location',
-          'notes',
-          'startsAt',
-          'endsAt',
-          'allDay',
-        ])
-          if (row.containsKey(key)) key: row[key],
-      });
-      if (row['hidden'] != true) {
-        deadlines[id] = AgendaPresentation(
-          projected,
-          titleOverride: projected.title != original.title
-              ? projected.title
-              : null,
-          notesOverride: projected.notes != original.notes
-              ? projected.notes
-              : null,
-        );
+    final entryIds = savedEntries.keys.toSet();
+    final projectedEntries = <String, AgendaEntry>{};
+    final seenEntries = <String>{};
+    var entryIndex = 0;
+    for (final kind in _agendaKeys.entries) {
+      final fallback = kind.key == AgendaKind.deadline
+          ? null
+          : [
+              for (final entry in savedEntries.values)
+                if (entry.kind == kind.key) entry.toJson(),
+            ];
+      for (final row in _rows(result, kind.value, fallback: fallback)) {
+        final savedId = row['id'];
+        final original = savedEntries[savedId];
+        if (savedId != null &&
+            (savedId is! String ||
+                original == null ||
+                original.kind != kind.key)) {
+          throw const FormatException(
+            'Unknown agenda identity. Keep id and kind unchanged.',
+          );
+        }
+        final id = original?.id ?? _newId(kind.value, entryIndex++, entryIds);
+        if (!seenEntries.add(id)) {
+          throw const FormatException('Duplicate agenda identity.');
+        }
+        final json =
+            original?.toJson() ??
+            {
+              'id': id,
+              'title': '',
+              'kind': kind.key.name,
+              'startsAt': null,
+              'endsAt': null,
+              'allDay': false,
+              'location': '',
+              'notes': '',
+              'done': false,
+              'deleted': false,
+              'term': null,
+              'local': true,
+              'source': null,
+              'course': '',
+              'url': null,
+              'details': null,
+            };
+        _checkIdentity(row, json, [
+          if (original != null) ...['id', 'term'],
+          'kind',
+          'done',
+          'deleted',
+          'local',
+          'source',
+          'url',
+        ]);
+        _checkHidden(row);
+        final projected = AgendaEntry.fromJson({
+          ...json,
+          for (final key in [
+            'title',
+            'course',
+            'location',
+            'notes',
+            'startsAt',
+            'endsAt',
+            'allDay',
+            if (original == null) 'term',
+          ])
+            if (row.containsKey(key)) key: row[key],
+        });
+        if (row['hidden'] == true) continue;
+        projectedEntries[id] = original == null
+            ? ScriptAgendaEntry(projected)
+            : jsonEncode(projected.toJson()) == jsonEncode(json)
+            ? original
+            : AgendaPresentation(
+                projected,
+                titleOverride: projected.title != original.title
+                    ? projected.title
+                    : null,
+                notesOverride: projected.notes != original.notes
+                    ? projected.notes
+                    : null,
+              );
       }
     }
+    final orderedEntries = <String, AgendaEntry>{
+      for (final entry in savedEntries.values)
+        if (projectedEntries.containsKey(entry.id))
+          entry.id: projectedEntries[entry.id]!,
+      for (final entry in projectedEntries.values)
+        if (!savedEntries.containsKey(entry.id)) entry.id: entry,
+    };
+    final before = <Object, Map<String, dynamic>>{
+      for (final schedule in schedules)
+        for (final course in schedule.courses)
+          (schedule.term, course.id): course.toJson(),
+      for (final entry in savedEntries.values) entry.id: entry.toJson(),
+    };
+    final after = <Object, Map<String, dynamic>>{
+      for (final term in courses.entries)
+        for (final course in term.value) (term.key, course.id): course.toJson(),
+      for (final entry in orderedEntries.values) entry.id: entry.toJson(),
+    };
     return AutomationProjection._(
       Map.unmodifiable({
         for (final schedule in schedules)
           schedule.term: schedule.copyWith(courses: courses[schedule.term]!),
       }),
-      Map.unmodifiable(deadlines),
+      Map.unmodifiable(orderedEntries),
+      AutomationChanges.between(before, after),
     );
+  }
+
+  static String _newId(String kind, int index, Set<String> ids) {
+    var id = 'automation:$kind:$index';
+    while (!ids.add(id)) {
+      id = 'automation:$kind:${++index}';
+    }
+    return id;
   }
 
   static Iterable<Map<String, dynamic>> _rows(
     Map<String, dynamic> result,
-    String key,
-  ) sync* {
-    final rows = result[key];
+    String key, {
+    List<Map<String, dynamic>>? fallback,
+  }) sync* {
+    final rows = result.containsKey(key) ? result[key] : fallback;
     if (rows is! List) throw FormatException('$key must be an array table.');
     for (final row in rows) {
       if (row is! Map<String, dynamic>) {

@@ -1,14 +1,16 @@
 import 'package:bitree/agenda/deadline_source.dart';
 import 'package:bitree/agenda/model.dart';
+import 'package:bitree/agenda/ui/agenda_detail.dart';
 import 'package:bitree/agenda/ui/agenda_editor.dart';
+import 'package:bitree/agenda/ui/agenda_operations.dart';
 import 'package:bitree/agenda/ui/calendar_screen.dart';
 import 'package:bitree/agenda/view_mode.dart';
-import 'package:bitree/app/ui/developer_screen.dart';
 import 'package:bitree/app/ui/settings_screen.dart';
 import 'package:bitree/automation/ui/automation_screen.dart';
 import 'package:bitree/schedule/model.dart';
 import 'package:bitree/schedule/ui/course_editor.dart';
 import 'package:bitree/schedule/ui/home_screen.dart';
+import 'package:bitree/ui/sheet_layout.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -54,95 +56,98 @@ void main() {
     );
     expect(editor.controller!.text, contains('function filter(data)'));
     expect(editor.controller!.text, contains('table.insert(deadlines, ddl)'));
+    expect(find.textContaining('运行耗时：'), findsNothing);
+    await tester.runAsync(
+      () => controller.automation.saveScript(editor.controller!.text),
+    );
+    expect(controller.automation.executionDuration, isNotNull);
+    await tester.pumpAndSettle();
+    final executionTime = find.textContaining(RegExp(r'\d+\.\dms · 无变更'));
+    final scrollable = tester.state<ScrollableState>(
+      find
+          .descendant(
+            of: find.byType(AutomationScreen),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    scrollable.position.jumpTo(scrollable.position.maxScrollExtent);
+    await tester.pumpAndSettle();
+    expect(executionTime, findsOneWidget);
+    expect(find.textContaining('运行耗时：'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('developer menu follows exam titles within calendar week', (
-    tester,
-  ) async {
-    final controller = TestAppController();
-    await controller.initialize();
-    final monday = DateTime.utc(2026, 9, 7);
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: bitreeTheme(Brightness.light),
-        home: DeveloperScreen(
-          controller: controller,
-          now: monday.add(const Duration(days: 6, hours: 23)),
-        ),
-      ),
-    );
-    expect(find.text('自动化'), findsOneWidget);
-    for (final (title, kind, start, end, expected) in [
-      (
-        '自动控制原理考试',
-        AgendaKind.exam,
-        monday,
-        monday.add(const Duration(hours: 2)),
-        true,
-      ),
-      (
-        '自控原理期末考试',
-        AgendaKind.exam,
-        monday.add(const Duration(days: 6, hours: 23)),
-        monday.add(const Duration(days: 7)),
-        true,
-      ),
-      (
-        '自动控制原理',
-        AgendaKind.exam,
-        monday.add(const Duration(days: 7)),
-        monday.add(const Duration(days: 7, hours: 2)),
-        false,
-      ),
-      (
-        '自控原理',
-        AgendaKind.exam,
-        monday.subtract(const Duration(hours: 2)),
-        monday,
-        false,
-      ),
-      (
-        '自动控制原理',
-        AgendaKind.event,
-        monday,
-        monday.add(const Duration(hours: 2)),
-        false,
-      ),
-      (
-        '其他课程',
-        AgendaKind.exam,
-        monday,
-        monday.add(const Duration(hours: 2)),
-        false,
-      ),
-    ]) {
-      await controller.agenda.save(
-        AgendaEntry(
-          id: 'exam',
-          title: title,
-          kind: kind,
-          startsAt: start,
-          endsAt: end,
+  testWidgets(
+    'change summary is compact and generated entries stay read-only',
+    (tester) async {
+      tester.view.physicalSize = const Size(900, 1600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final start = DateTime.utc(2026, 9, 7, 12);
+      final controller = TestAppController(
+        entries: [
+          for (final kind in [AgendaKind.event, AgendaKind.exam])
+            AgendaEntry(
+              id: kind.name,
+              title: kind.name,
+              kind: kind,
+              startsAt: start,
+              endsAt: start.add(const Duration(hours: 1)),
+            ),
+        ],
+      );
+      await controller.initialize();
+      await tester.runAsync(
+        () => controller.automation.saveScript('''
+function filter(data)
+    data.events[1].title = "展示活动"
+    data.exams = {}
+    table.insert(data.deadlines, {title = "脚本作业", startsAt = "2026-09-07T12:00:00.000Z"})
+    return data
+end
+'''),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: bitreeTheme(Brightness.light),
+          home: AutomationScreen(controller: controller.automation),
         ),
       );
-      await tester.pump();
-      expect(find.text(expected ? '自动控制原理' : '自动化'), findsOneWidget);
-    }
-    await controller.agenda.save(
-      AgendaEntry(
-        id: 'exam',
-        title: '自动控制原理',
-        kind: AgendaKind.exam,
-        startsAt: monday,
-        endsAt: monday.add(const Duration(hours: 2)),
-        deleted: true,
-      ),
-    );
-    await tester.pump();
-    expect(find.text('自动化'), findsOneWidget);
-    await tester.pumpWidget(const SizedBox.shrink());
-  });
+      expect(
+        find.textContaining(RegExp(r'\d+\.\dms · 增 1 删 1 改 1')),
+        findsOneWidget,
+      );
+      final entry = controller.automation.entries.firstWhere(
+        (entry) => entry.isDeadline,
+      );
+      final context = tester.element(find.byType(AutomationScreen));
+      final sheet = showAgendaEntry(context, controller, entry);
+      await tester.pumpAndSettle();
+      expect(find.text('脚本作业'), findsWidgets);
+      expect(find.byTooltip('删除'), findsNothing);
+      expect(find.byType(SheetActionBar), findsNothing);
+      expect(
+        await deleteAgendaEntry(context, controller, entry, confirm: false),
+        isFalse,
+      );
+      expect(controller.agenda.entries, hasLength(2));
+      Navigator.of(tester.element(find.text('脚本作业').first)).pop();
+      await tester.pumpAndSettle();
+      await sheet;
+      await tester.runAsync(
+        () => controller.automation.saveScript('''
+function filter(data)
+    data.exams = {}
+    return data
+end
+'''),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining(RegExp(r'\d+\.\dms · 删 1')), findsOneWidget);
+    },
+  );
 
   testWidgets('home and agenda consume the same presentation projection', (
     tester,

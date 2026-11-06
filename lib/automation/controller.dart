@@ -41,6 +41,7 @@ class AutomationController extends ChangeNotifier {
   bool _running = false;
   bool _disposed = false;
   String? _error;
+  Duration? _executionDuration;
   String? _snapshot;
   int _revision = 0;
   Future<void> _pending = Future.value();
@@ -50,6 +51,7 @@ class AutomationController extends ChangeNotifier {
   bool get enabled => _enabled;
   bool get running => _running;
   String? get error => _error;
+  Duration? get executionDuration => _executionDuration;
   Future<void> get settled => _pending;
 
   SemesterSchedule? get schedule {
@@ -61,13 +63,11 @@ class AutomationController extends ChangeNotifier {
     return projected == null ? raw : raw.copyWith(courses: projected.courses);
   }
 
-  List<AgendaEntry> get entries => [
-    for (final entry in _agenda.entries)
-      if (!entry.isDeadline || _projection == null)
-        entry
-      else
-        ?_projection!.deadlines[entry.id],
-  ];
+  List<AgendaEntry> get entries =>
+      (_projection?.entries.values ?? _agenda.entries).toList();
+
+  AutomationChanges get changes =>
+      _projection?.changes ?? const AutomationChanges();
 
   List<AgendaEntry> pendingOn(DateTime date, {required DateTime now}) =>
       entries
@@ -77,18 +77,24 @@ class AutomationController extends ChangeNotifier {
 
   int get hiddenCourses => _projection == null
       ? 0
-      : _timetable.schedules.fold(
-              0,
-              (count, schedule) => count + schedule.courses.length,
-            ) -
-            _projection!.schedules.values.fold(
-              0,
-              (count, schedule) => count + schedule.courses.length,
-            );
+      : _timetable.schedules.fold(0, (count, schedule) {
+          final visible = _projection!.schedules[schedule.term]!.courses
+              .map((course) => course.id)
+              .toSet();
+          return count +
+              schedule.courses
+                  .where((course) => !visible.contains(course.id))
+                  .length;
+        });
   int get hiddenDeadlines => _projection == null
       ? 0
-      : _agenda.entries.where((entry) => entry.isDeadline).length -
-            _projection!.deadlines.length;
+      : _agenda.entries
+            .where(
+              (entry) =>
+                  entry.isDeadline &&
+                  !_projection!.entries.containsKey(entry.id),
+            )
+            .length;
 
   Future<void> initialize() async {
     try {
@@ -169,6 +175,7 @@ class AutomationController extends ChangeNotifier {
     _executor.cancel();
     _projection = null;
     _error = null;
+    _executionDuration = null;
     _running = _enabled && _source.trim().isNotEmpty;
     notifyListeners();
     final published = _publishWidget();
@@ -193,6 +200,7 @@ class AutomationController extends ChangeNotifier {
     List<SemesterSchedule> schedules,
     List<AgendaEntry> entries,
   ) async {
+    final stopwatch = Stopwatch()..start();
     try {
       final result = await _executor.run(_source, data);
       if (_disposed || revision != _revision) return;
@@ -205,7 +213,9 @@ class AutomationController extends ChangeNotifier {
           ? 'Lua filter timed out (2 s).'
           : failure.toString();
     } finally {
+      stopwatch.stop();
       if (!_disposed && revision == _revision) {
+        _executionDuration = stopwatch.elapsed;
         _running = false;
         notifyListeners();
         await _publishWidget();

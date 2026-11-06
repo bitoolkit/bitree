@@ -22,6 +22,12 @@ function filter(data)
     end
 
     data.deadlines = deadlines
+    for _, entries in ipairs({data.events, data.exams}) do
+        for _, entry in ipairs(entries) do
+            entry.title = aliases[entry.title] or entry.title
+            entry.course = aliases[entry.course] or entry.course
+        end
+    end
     return data
 end
 ''';

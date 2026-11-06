@@ -126,8 +126,10 @@ end
         preferences: preferences,
       );
       await controller.initialize();
+      expect(controller.automation.executionDuration, isNull);
       await controller.automation.saveScript(script, fileName: 'rules.lua');
       expect(controller.automation.error, isNull);
+      expect(controller.automation.executionDuration, isNotNull);
       expect(controller.automation.schedule!.courses.single.name, '简称');
       expect(controller.automation.entries.single.title, '展示作业');
       expect(controller.automation.hiddenDeadlines, 1);
@@ -163,6 +165,7 @@ end
       expect(restarted.automation.fileName, 'rules.lua');
       expect(restarted.automation.entries.single.title, '展示作业');
       await restarted.automation.setEnabled(false);
+      expect(restarted.automation.executionDuration, isNull);
       expect(restarted.automation.schedule!.courses.single.name, '原课程');
       expect(restarted.automation.entries, hasLength(2));
     },
@@ -210,6 +213,7 @@ function filter(data)
 end
 ''');
       expect(controller.automation.error, isNotNull);
+      expect(controller.automation.executionDuration, isNotNull);
       expect(controller.automation.schedule!.courses.single.name, '原课程');
       expect(controller.automation.entries, hasLength(2));
       await controller.automation.saveScript(script);
@@ -306,6 +310,99 @@ end
       addTearDown(restarted.dispose);
       await restarted.initialize();
       expect(published.last['schedule']['courses'], isEmpty);
+    },
+  );
+
+  test(
+    'all four collections count display changes without changing originals',
+    () async {
+      final event = AgendaEntry(
+        id: 'event',
+        title: '活动',
+        kind: AgendaKind.event,
+        startsAt: old.startsAt,
+        endsAt: old.startsAt.add(const Duration(hours: 1)),
+      );
+      final exam = AgendaEntry(
+        id: 'exam',
+        title: '考试',
+        kind: AgendaKind.exam,
+        startsAt: old.startsAt,
+        endsAt: old.startsAt.add(const Duration(hours: 2)),
+      );
+      final controller = TestAppController(
+        schedule: schedule,
+        entries: [old, event, exam],
+      );
+      await controller.initialize();
+      final original = AutomationProjection.snapshot(
+        controller.timetable.schedules,
+        controller.agenda.entries,
+      );
+      await controller.automation.saveScript('''
+function filter(data)
+    data.courses[1].name = "展示课程"
+    data.courses[1].teacher = "展示教师"
+    data.deadlines[1].title = "隐藏后的名称"
+    data.deadlines[1].hidden = true
+    data.events[1].title = "展示：" .. data.events[1].title
+    data.exams = {}
+    table.insert(data.courses, {term = "2026-2027-1", name = "新课程",
+        weekday = 2, startSection = 3, endSection = 4, weeks = {1}})
+    table.insert(data.deadlines, {title = "新作业", startsAt = "2026-09-08T12:00:00.000Z"})
+    table.insert(data.events, {title = "新活动", startsAt = "2026-09-08T13:00:00.000Z",
+        endsAt = "2026-09-08T14:00:00.000Z"})
+    table.insert(data.exams, {title = "新考试", startsAt = "2026-09-08T15:00:00.000Z",
+        endsAt = "2026-09-08T17:00:00.000Z"})
+    return data
+end
+''');
+      final automation = controller.automation;
+      expect(automation.error, isNull);
+      expect(
+        (
+          automation.changes.added,
+          automation.changes.deleted,
+          automation.changes.modified,
+        ),
+        (4, 2, 2),
+      );
+      expect(automation.schedule!.courses.map((course) => course.name), [
+        '展示课程',
+        '新课程',
+      ]);
+      expect(automation.entries.map((entry) => entry.title), [
+        '展示：活动',
+        '新作业',
+        '新活动',
+        '新考试',
+      ]);
+      expect(
+        await toggleAgendaDone(
+          controller.agenda,
+          automation.entries.firstWhere((entry) => entry.title == '新作业'),
+          haptic: false,
+        ),
+        isFalse,
+      );
+      expect(
+        AutomationProjection.snapshot(
+          controller.timetable.schedules,
+          controller.agenda.entries,
+        ),
+        original,
+      );
+      await controller.agenda.save(
+        AgendaEntry(
+          id: event.id,
+          title: '新标题',
+          kind: event.kind,
+          startsAt: event.startsAt,
+          endsAt: event.endsAt,
+        ),
+      );
+      await automation.settled;
+      expect(automation.entries.first.title, '展示：新标题');
     },
   );
 

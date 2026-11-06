@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../automation/presentation.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
@@ -21,6 +22,7 @@ Future<void> editAgenda(
   DateTime? date,
   String? term,
 }) {
+  if (entry is ScriptGenerated) return Future<void>.value();
   if (entry != null) {
     final id = entry.id;
     entry =

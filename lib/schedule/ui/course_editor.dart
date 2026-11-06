@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
+import '../../automation/presentation.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
@@ -19,19 +20,22 @@ Future<void> editCourse(
   AppController controller, {
   Course? course,
   TimetableSelection? selection,
-}) => showAppSheet<void>(
-  context: context,
-  builder: (_) => _CourseEditor(
-    controller: controller,
-    course: course == null
-        ? null
-        : controller.timetable.schedule?.courses
-                  .where((original) => original.id == course.id)
-                  .firstOrNull ??
-              course,
-    selection: selection,
-  ),
-);
+}) {
+  if (course is ScriptGenerated) return Future<void>.value();
+  return showAppSheet<void>(
+    context: context,
+    builder: (_) => _CourseEditor(
+      controller: controller,
+      course: course == null
+          ? null
+          : controller.timetable.schedule?.courses
+                    .where((original) => original.id == course.id)
+                    .firstOrNull ??
+                course,
+      selection: selection,
+    ),
+  );
+}
 
 class _CourseEditor extends StatefulWidget {
   const _CourseEditor({required this.controller, this.course, this.selection});
