@@ -57,7 +57,7 @@
     }
   },
   "github": "GitHub",
-  "aboutOpenQQGroup": "Join BITree QQ group",
+  "aboutOpenQQGroup": "QQ group",
   "language": "Language",
   "languageChinese": "简体中文",
   "languageEnglish": "English",
@@ -661,6 +661,16 @@
   "agendaAllDay": "All day",
   "agendaLocationOptional": "Location (optional)",
   "agendaNotesOptional": "Notes (optional)",
+  "agendaTailDays": "Tail length (days)",
+  "agendaTailDaysHint": "1–30 days; default: 4 days",
+  "agendaTailDaysValue": "{days, plural, =1{1 day} other{{days} days}}",
+  "@agendaTailDaysValue": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
   "agendaEndAfterStart": "The end must be later than the start",
   "agendaReminderOverdue": "{time} · overdue",
   "@agendaReminderOverdue": {

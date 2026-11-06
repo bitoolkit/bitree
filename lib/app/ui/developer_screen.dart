@@ -30,7 +30,7 @@ class DeveloperScreen extends StatelessWidget {
                   entry.startsAt.isBefore(end) &&
                   entry.endsAt!.isAfter(start),
             )
-            ? '自动控制原理'
+            ? '被动控制原理'
             : context.l10n.automationTitle;
         return AppRoutePage(
           title: context.l10n.developerMode,
@@ -39,7 +39,7 @@ class DeveloperScreen extends StatelessWidget {
             children: [
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.auto_fix_high_outlined),
+                leading: const Icon(Icons.settings_outlined),
                 title: Text(title),
                 subtitle: Text(context.l10n.automationDescription),
                 trailing: const Icon(Icons.chevron_right_rounded),

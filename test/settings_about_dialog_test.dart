@@ -64,12 +64,22 @@ void main() {
     expect(find.byType(AlertDialog), findsOneWidget);
     expect(find.byType(BottomSheet), findsNothing);
     expect(find.text('面向冰红茶的妙妙小工具'), findsOneWidget);
+    expect(find.text('关闭'), findsNothing);
 
-    await tester.tap(find.text('加入 BITree 交流群'));
+    for (final width in [390.0, 320.0]) {
+      tester.view.physicalSize = Size(width, 844);
+      await tester.pumpAndSettle();
+      final licensesY = tester.getCenter(find.text('查看许可')).dy;
+      expect(tester.getCenter(find.text('GitHub')).dy, licensesY);
+      expect(tester.getCenter(find.text('交流群')).dy, licensesY);
+      expect(tester.takeException(), isNull);
+    }
+
+    await tester.tap(find.text('交流群'));
     await tester.pumpAndSettle();
     expect(launchedUrls, ['https://qm.qq.com/q/84t3ZHKMpO']);
 
-    await tester.tap(find.text('关闭'));
+    await tester.tapAt(const Offset(8, 8));
     await tester.pumpAndSettle();
     expect(find.byType(AlertDialog), findsNothing);
     expect(tester.takeException(), isNull);

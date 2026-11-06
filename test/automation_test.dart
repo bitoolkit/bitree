@@ -87,6 +87,7 @@ end
     final generated = AgendaEntry(
       id: 'physics',
       title: '原生成标题',
+      tailDays: 10,
       kind: AgendaKind.deadline,
       startsAt: old.startsAt,
       term: schedule.term,
@@ -108,6 +109,7 @@ end
     expect(localizedAgendaTitle(AppLocalizationsZh(), projected), '预习');
     expect(localizedAgendaNotes(AppLocalizationsZh(), projected), '自定义备注');
     expect(projected.details, isA<PhysicsLabDeadlineDetails>());
+    expect(projected.tailDays, 10);
   });
 
   test(

@@ -24,6 +24,7 @@ class AgendaPresentation extends AgendaEntry {
          course: entry.course,
          url: entry.url,
          details: entry.details,
+         tailDays: entry.tailDays,
        );
 
   final String? titleOverride;

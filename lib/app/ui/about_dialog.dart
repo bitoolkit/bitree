@@ -35,6 +35,7 @@ Future<void> showBitreeAboutDialog(
         versionLabel += '\n${l10n.settingsBuiltAt(date, time)}';
       }
       return AlertDialog(
+        constraints: const BoxConstraints.tightFor(width: 300),
         titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
         contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
         scrollable: true,
@@ -117,43 +118,59 @@ Future<void> showBitreeAboutDialog(
             Text(l10n.aboutLicenseSummary, style: theme.textTheme.bodySmall),
           ],
         ),
+        // Include the 8dp button padding in the 24dp content alignment.
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              showLicensePage(
-                context: context,
-                applicationName: l10n.aboutLicenseName,
-                applicationVersion: version,
-                applicationIcon: Image.asset(
-                  'assets/brand/bitree.png',
-                  width: 40,
-                  height: 40,
+          TextButtonTheme(
+            data: TextButtonThemeData(
+              style: theme.textButtonTheme.style?.copyWith(
+                padding: const WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                 ),
-              );
-            },
-            child: Text(l10n.settingsLicenses),
-          ),
-          TextButton(
-            onPressed: () => openExternalLink(
-              dialogContext,
-              Uri.https('github.com', '/bitoolkit/bitree'),
-              failureTitle: l10n.aboutOpenGitHubFailed,
+              ),
             ),
-            child: Text(l10n.github),
-          ),
-          TextButton(
-            key: const ValueKey('about-qq-group'),
-            onPressed: () => openExternalLink(
-              dialogContext,
-              Uri.https('qm.qq.com', '/q/84t3ZHKMpO'),
-              failureTitle: l10n.aboutOpenQQGroupFailed,
+            child: SizedBox(
+              width: double.infinity,
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                spacing: 4,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(dialogContext);
+                      showLicensePage(
+                        context: context,
+                        applicationName: l10n.aboutLicenseName,
+                        applicationVersion: version,
+                        applicationIcon: Image.asset(
+                          'assets/brand/bitree.png',
+                          width: 40,
+                          height: 40,
+                        ),
+                      );
+                    },
+                    child: Text(l10n.settingsLicenses),
+                  ),
+                  TextButton(
+                    onPressed: () => openExternalLink(
+                      dialogContext,
+                      Uri.https('github.com', '/bitoolkit/bitree'),
+                      failureTitle: l10n.aboutOpenGitHubFailed,
+                    ),
+                    child: Text(l10n.github),
+                  ),
+                  TextButton(
+                    key: const ValueKey('about-qq-group'),
+                    onPressed: () => openExternalLink(
+                      dialogContext,
+                      Uri.https('qm.qq.com', '/q/84t3ZHKMpO'),
+                      failureTitle: l10n.aboutOpenQQGroupFailed,
+                    ),
+                    child: Text(l10n.aboutOpenQQGroup),
+                  ),
+                ],
+              ),
             ),
-            child: Text(l10n.aboutOpenQQGroup),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(l10n.close),
           ),
         ],
       );
