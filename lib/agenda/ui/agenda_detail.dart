@@ -19,11 +19,14 @@ Future<void> showAgendaEntry(
 ) => showAppSheet<void>(
   context: pageContext,
   builder: (sheetContext) => ListenableBuilder(
-    listenable: controller.agenda,
+    listenable: Listenable.merge([controller.agenda, controller.automation]),
     builder: (context, _) {
       final l10n = context.l10n;
       // Keep the closing sheet readable after its entry has been deleted.
       final current =
+          controller.automation.entries
+              .where((value) => value.id == entry.id)
+              .firstOrNull ??
           controller.agenda.entries
               .where((value) => value.id == entry.id)
               .firstOrNull ??

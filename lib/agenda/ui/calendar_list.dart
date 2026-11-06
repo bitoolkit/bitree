@@ -31,11 +31,14 @@ Future<void> showAgendaDay(
     builder: (context) => CampusTimeBuilder(
       active: true,
       builder: (context, now) => ListenableBuilder(
-        listenable: controller.agenda,
+        listenable: Listenable.merge([
+          controller.agenda,
+          controller.automation,
+        ]),
         builder: (context, _) {
-          final pending = controller.agenda.pendingOn(date, now: now);
+          final pending = controller.automation.pendingOn(date, now: now);
           final completed =
-              controller.agenda.entries
+              controller.automation.entries
                   .where((entry) => entry.done && entry.occursOn(date))
                   .toList()
                 ..sort((a, b) => a.startsAt.compareTo(b.startsAt));

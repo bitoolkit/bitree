@@ -14,7 +14,11 @@ Future<bool> toggleAgendaDone(
   AgendaEntry entry, {
   bool haptic = true,
 }) async {
-  final saved = await controller.save(entry.copyWith(done: !entry.done));
+  final original = controller.entries
+      .where((saved) => saved.id == entry.id)
+      .firstOrNull;
+  if (original == null) return false;
+  final saved = await controller.save(original.copyWith(done: !original.done));
   if (saved && haptic) {
     HapticFeedback.selectionClick();
   }
@@ -28,6 +32,11 @@ Future<bool> deleteAgendaEntry(
   bool confirm = true,
 }) async {
   final l10n = context.l10n;
+  final original =
+      controller.agenda.entries
+          .where((saved) => saved.id == entry.id)
+          .firstOrNull ??
+      entry;
   final title = localizedAgendaTitle(l10n, entry);
   // The originating sheet can close while the undo action remains visible.
   final overlay = Overlay.of(context, rootOverlay: true);
@@ -49,7 +58,7 @@ Future<bool> deleteAgendaEntry(
   }
 
   Future<void> restore() async {
-    final restored = await controller.agenda.restore(entry);
+    final restored = await controller.agenda.restore(original);
     if (!overlay.mounted) return;
     if (restored) {
       showOverlayNotice(overlay, l10n.agendaRestored(title));

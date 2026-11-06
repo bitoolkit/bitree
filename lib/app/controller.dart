@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../academics/controller.dart';
 import '../agenda/controller.dart';
+import '../automation/controller.dart';
 import '../classrooms/repository.dart';
 import '../core/platform/system_palette.dart';
 import '../mooc/controller.dart';
@@ -35,6 +36,7 @@ class AppController extends ChangeNotifier {
          coursePaletteLoader: coursePaletteLoader,
        ),
        timetable = TimetableController(store) {
+    automation = AutomationController(preferences, timetable, agenda);
     this.school = SchoolController(
       service: school,
       storage: schoolStorage,
@@ -57,6 +59,7 @@ class AppController extends ChangeNotifier {
 
   final AppSettingsController settings;
   final TimetableController timetable;
+  late final AutomationController automation;
   late final SchoolController school;
   late final ClassroomRepository classrooms;
   final AgendaController agenda;
@@ -72,6 +75,7 @@ class AppController extends ChangeNotifier {
     await settings.initialize();
     await school.loadAccount();
     await agenda.load();
+    await automation.initialize();
     await mooc.load();
     await academics.load(school.username);
     _ready = true;
@@ -80,6 +84,7 @@ class AppController extends ChangeNotifier {
 
   @override
   void dispose() {
+    automation.dispose();
     settings.dispose();
     sync.dispose();
     classrooms.dispose();

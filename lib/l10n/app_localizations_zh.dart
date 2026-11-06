@@ -52,6 +52,60 @@ class AppLocalizationsZh extends AppLocalizations {
   String get developerModeEnabled => '已开启开发者模式';
 
   @override
+  String get developerMode => '开发者模式';
+
+  @override
+  String get automationTitle => '自动化';
+
+  @override
+  String get automationDescription => '用 Lua 自定义首页课表和 DDL 的展示。原始数据和同步不受影响。';
+
+  @override
+  String get automationEnabled => '启用脚本';
+
+  @override
+  String get automationLocalScript => '本地 Lua 脚本';
+
+  @override
+  String get automationImport => '加载 Lua 文件';
+
+  @override
+  String get automationExample => '填入示例';
+
+  @override
+  String get automationScript => 'Lua 脚本';
+
+  @override
+  String get automationApply => '保存并应用';
+
+  @override
+  String get automationSaved => '已保存并应用脚本。';
+
+  @override
+  String get automationResult => '运行结果';
+
+  @override
+  String get automationFallback => '脚本未能应用，当前展示原始数据。';
+
+  @override
+  String get automationRunning => '正在运行脚本…';
+
+  @override
+  String get automationDisabled => '脚本已停用，展示原始数据。';
+
+  @override
+  String automationHidden(int courses, int deadlines) {
+    return '已应用：隐藏 $courses 门课程、$deadlines 项 DDL。';
+  }
+
+  @override
+  String get automationContractTitle => '脚本接口';
+
+  @override
+  String get automationContract =>
+      '定义 function filter(data)，返回包含 courses、deadlines 的 table。courses 包含所有已保存学期的课程，每门课程带 term；deadlines 包含未删除的 DDL。数组从 1 开始。\n\n可改课程名称、教师、地点、描述、周次和节次；可改 DDL 标题、课程名、地点、备注和展示时间。移除数组元素或设置 hidden = true 可隐藏项目。\n\n保留 id、term、来源和完成状态等身份字段。日期使用 ISO 8601 字符串，沿用校园北京时间。编辑、完成和删除始终操作原始记录。\n\n运行库为 puredartlua，提供其已有的 table、math、pairs、ipairs 等能力，标准库并不完整。不开放文件、网络和模块加载；脚本最多 128 KiB，执行限时 2 秒。规则仅作用于应用内展示，桌面小组件仍使用原始数据。';
+
+  @override
   String get widgetUsesSystemPalette => '小组件使用系统调色板';
 
   @override

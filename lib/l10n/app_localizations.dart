@@ -182,6 +182,108 @@ abstract class AppLocalizations {
   /// **'Developer mode enabled'**
   String get developerModeEnabled;
 
+  /// No description provided for @developerMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Developer mode'**
+  String get developerMode;
+
+  /// No description provided for @automationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Automation'**
+  String get automationTitle;
+
+  /// No description provided for @automationDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Customize the home timetable and deadlines with Lua. Original data and synchronization are preserved.'**
+  String get automationDescription;
+
+  /// No description provided for @automationEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable script'**
+  String get automationEnabled;
+
+  /// No description provided for @automationLocalScript.
+  ///
+  /// In en, this message translates to:
+  /// **'Local Lua script'**
+  String get automationLocalScript;
+
+  /// No description provided for @automationImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Load Lua file'**
+  String get automationImport;
+
+  /// No description provided for @automationExample.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert example'**
+  String get automationExample;
+
+  /// No description provided for @automationScript.
+  ///
+  /// In en, this message translates to:
+  /// **'Lua script'**
+  String get automationScript;
+
+  /// No description provided for @automationApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Save and apply'**
+  String get automationApply;
+
+  /// No description provided for @automationSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Script saved and applied.'**
+  String get automationSaved;
+
+  /// No description provided for @automationResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Result'**
+  String get automationResult;
+
+  /// No description provided for @automationFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'The script could not be applied. Original data is being displayed.'**
+  String get automationFallback;
+
+  /// No description provided for @automationRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running script…'**
+  String get automationRunning;
+
+  /// No description provided for @automationDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Script disabled. Original data is displayed.'**
+  String get automationDisabled;
+
+  /// No description provided for @automationHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Applied: {courses} courses and {deadlines} deadlines hidden.'**
+  String automationHidden(int courses, int deadlines);
+
+  /// No description provided for @automationContractTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Script interface'**
+  String get automationContractTitle;
+
+  /// No description provided for @automationContract.
+  ///
+  /// In en, this message translates to:
+  /// **'Define function filter(data) and return a table containing courses and deadlines. courses contains courses from every saved semester, each with term; deadlines contains non-deleted deadlines. Arrays start at 1.\n\nYou can change course names, teachers, locations, descriptions, weeks and sections; and deadline titles, course names, locations, notes and display times. Remove array elements or set hidden = true to hide items.\n\nKeep identity fields such as id, term, source and completion status unchanged. Dates are ISO 8601 strings using the campus Beijing wall-clock convention. Edit, complete and delete actions always use the original records.\n\nThe runtime is puredartlua, with its existing table, math, pairs and ipairs capabilities; its standard library is incomplete. File access, networking and module loading are unavailable. Scripts are limited to 128 KiB and 2 seconds per run. Rules affect in-app presentation only; desktop widgets use original data.'**
+  String get automationContract;
+
   /// No description provided for @widgetUsesSystemPalette.
   ///
   /// In en, this message translates to:
@@ -3981,13 +4083,13 @@ abstract class AppLocalizations {
   /// No description provided for @maleRestroom.
   ///
   /// In en, this message translates to:
-  /// **'Men's restroom'**
+  /// **'Men\'s restroom'**
   String get maleRestroom;
 
   /// No description provided for @femaleRestroom.
   ///
   /// In en, this message translates to:
-  /// **'Women's restroom'**
+  /// **'Women\'s restroom'**
   String get femaleRestroom;
 
   /// No description provided for @firstFloorEntrance.

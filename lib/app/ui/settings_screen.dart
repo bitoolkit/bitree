@@ -19,6 +19,7 @@ import '../controller.dart';
 import '../settings_controller.dart';
 import 'about_dialog.dart';
 import 'appearance_screen.dart';
+import 'developer_screen.dart';
 import 'logs_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -227,6 +228,21 @@ class SettingsScreen extends StatelessWidget {
                   : () => showClearDeadlines(context, controller.agenda),
             ),
           ]),
+          if (controller.settings.developerMode)
+            Padding(
+              padding: const EdgeInsets.only(top: 24),
+              child: ListTile(
+                contentPadding: tilePadding,
+                leading: const Icon(Icons.code_rounded),
+                title: Text(l10n.developerMode),
+                trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+                onTap: () => Navigator.of(context).push<void>(
+                  MaterialPageRoute(
+                    builder: (_) => DeveloperScreen(controller: controller),
+                  ),
+                ),
+              ),
+            ),
           section(l10n.settingsApplication, [
             ListTile(
               contentPadding: tilePadding,

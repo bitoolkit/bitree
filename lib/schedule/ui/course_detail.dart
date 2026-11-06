@@ -26,7 +26,7 @@ Future<void> showCourse(
   DateTime? date,
 }) {
   var selected = course;
-  final schedule = controller.timetable.schedule;
+  final schedule = controller.automation.schedule;
   final occurrence =
       date ??
       (schedule != null && course.weekday != null
@@ -40,10 +40,17 @@ Future<void> showCourse(
       builder: (_, selectCourse) => CampusTimeBuilder(
         active: true,
         builder: (_, now) => ListenableBuilder(
-          listenable: controller.timetable,
+          listenable: Listenable.merge([
+            controller.timetable,
+            controller.automation,
+          ]),
           builder: (_, _) => _CourseDetails(
             controller: controller,
-            course: selected,
+            course:
+                controller.automation.schedule?.courses
+                    .where((current) => current.id == selected.id)
+                    .firstOrNull ??
+                selected,
             date: occurrence,
             now: now,
             onNext: (next) => selectCourse(() => selected = next),
@@ -111,7 +118,7 @@ class _CourseDetails extends StatelessWidget {
         : occurrence != null && !now.isBefore(occurrence.endsAt)
         ? l10n.ended
         : l10n.course;
-    final schedule = controller.timetable.schedule;
+    final schedule = controller.automation.schedule;
     final next = date == null || course.endSection == null || schedule == null
         ? null
         : schedule

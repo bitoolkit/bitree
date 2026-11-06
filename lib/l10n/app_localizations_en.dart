@@ -54,6 +54,63 @@ class AppLocalizationsEn extends AppLocalizations {
   String get developerModeEnabled => 'Developer mode enabled';
 
   @override
+  String get developerMode => 'Developer mode';
+
+  @override
+  String get automationTitle => 'Automation';
+
+  @override
+  String get automationDescription =>
+      'Customize the home timetable and deadlines with Lua. Original data and synchronization are preserved.';
+
+  @override
+  String get automationEnabled => 'Enable script';
+
+  @override
+  String get automationLocalScript => 'Local Lua script';
+
+  @override
+  String get automationImport => 'Load Lua file';
+
+  @override
+  String get automationExample => 'Insert example';
+
+  @override
+  String get automationScript => 'Lua script';
+
+  @override
+  String get automationApply => 'Save and apply';
+
+  @override
+  String get automationSaved => 'Script saved and applied.';
+
+  @override
+  String get automationResult => 'Result';
+
+  @override
+  String get automationFallback =>
+      'The script could not be applied. Original data is being displayed.';
+
+  @override
+  String get automationRunning => 'Running script…';
+
+  @override
+  String get automationDisabled =>
+      'Script disabled. Original data is displayed.';
+
+  @override
+  String automationHidden(int courses, int deadlines) {
+    return 'Applied: $courses courses and $deadlines deadlines hidden.';
+  }
+
+  @override
+  String get automationContractTitle => 'Script interface';
+
+  @override
+  String get automationContract =>
+      'Define function filter(data) and return a table containing courses and deadlines. courses contains courses from every saved semester, each with term; deadlines contains non-deleted deadlines. Arrays start at 1.\n\nYou can change course names, teachers, locations, descriptions, weeks and sections; and deadline titles, course names, locations, notes and display times. Remove array elements or set hidden = true to hide items.\n\nKeep identity fields such as id, term, source and completion status unchanged. Dates are ISO 8601 strings using the campus Beijing wall-clock convention. Edit, complete and delete actions always use the original records.\n\nThe runtime is puredartlua, with its existing table, math, pairs and ipairs capabilities; its standard library is incomplete. File access, networking and module loading are unavailable. Scripts are limited to 128 KiB and 2 seconds per run. Rules affect in-app presentation only; desktop widgets use original data.';
+
+  @override
   String get widgetUsesSystemPalette => 'Use system palette for widget';
 
   @override

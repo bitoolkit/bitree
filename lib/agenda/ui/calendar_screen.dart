@@ -57,6 +57,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: Listenable.merge([
       widget.controller.agenda,
+      widget.controller.automation,
       widget.controller.school,
       widget.controller.timetable,
       widget.controller.settings.agendaViewMode,
@@ -69,7 +70,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final controller = widget.controller;
     final now = widget.now;
     final schedules = controller.timetable.schedules.toList();
-    final allEntries = controller.agenda.entries;
+    final allEntries = controller.automation.entries;
     final terms = <String>{
       for (final schedule in schedules) schedule.term,
       for (final entry in allEntries)

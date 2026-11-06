@@ -20,23 +20,34 @@ Future<void> editAgenda(
   TimetableSelection? selection,
   DateTime? date,
   String? term,
-}) => showAppSheet<void>(
-  context: context,
-  builder: (sheetContext) => _AgendaEditor(
-    controller: controller,
-    entry: entry,
-    entryTitle: entry == null
-        ? null
-        : localizedAgendaTitle(sheetContext.l10n, entry),
-    entryNotes: entry == null
-        ? null
-        : localizedAgendaNotes(sheetContext.l10n, entry),
-    kind: entry?.kind ?? kind,
-    startsAt: selection?.startsAt ?? date ?? campusNow(),
-    endsAt: selection?.endsAt,
-    term: term,
-  ),
-);
+}) {
+  if (entry != null) {
+    final id = entry.id;
+    entry =
+        controller.agenda.entries
+            .where((original) => original.id == id)
+            .firstOrNull ??
+        entry;
+  }
+  final original = entry;
+  return showAppSheet<void>(
+    context: context,
+    builder: (sheetContext) => _AgendaEditor(
+      controller: controller,
+      entry: original,
+      entryTitle: original == null
+          ? null
+          : localizedAgendaTitle(sheetContext.l10n, original),
+      entryNotes: original == null
+          ? null
+          : localizedAgendaNotes(sheetContext.l10n, original),
+      kind: original?.kind ?? kind,
+      startsAt: selection?.startsAt ?? date ?? campusNow(),
+      endsAt: selection?.endsAt,
+      term: term,
+    ),
+  );
+}
 
 class _AgendaEditor extends StatefulWidget {
   const _AgendaEditor({

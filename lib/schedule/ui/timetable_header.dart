@@ -32,7 +32,7 @@ class TimetableHeader extends StatelessWidget {
       for (var day = 0; day < 7; day++)
         (
           date: monday.add(Duration(days: day)),
-          count: controller.agenda
+          count: controller.automation
               .pendingOn(monday.add(Duration(days: day)), now: now)
               .length,
         ),

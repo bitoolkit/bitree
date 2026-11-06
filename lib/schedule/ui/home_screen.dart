@@ -33,6 +33,7 @@ class HomeScreen extends StatelessWidget {
       controller,
       controller.timetable,
       controller.agenda,
+      controller.automation,
       controller.school,
     ]),
     builder: (context, _) => _build(context),
@@ -40,7 +41,7 @@ class HomeScreen extends StatelessWidget {
 
   Widget _build(BuildContext context) {
     final l10n = context.l10n;
-    final schedule = controller.timetable.schedule;
+    final schedule = controller.automation.schedule;
     final currentSemester = semesterAt(controller.timetable.schedules, now);
     final currentWeek = currentSemester?.term == schedule?.term
         ? currentSemester?.weekAt(now)
@@ -156,7 +157,7 @@ class HomeScreen extends StatelessWidget {
                 child: AgendaReminder(
                   controller: controller,
                   entries: controller.agenda.ready
-                      ? controller.agenda.pendingOn(now, now: now)
+                      ? controller.automation.pendingOn(now, now: now)
                       : const [],
                   now: now,
                   active: active,
@@ -174,7 +175,7 @@ class HomeScreen extends StatelessWidget {
     builder: (dialogContext) => SimpleDialog(
       title: Text(context.l10n.timedCourses),
       children: [
-        for (final course in controller.timetable.schedule!.courses.where(
+        for (final course in controller.automation.schedule!.courses.where(
           (course) => !course.isScheduled,
         ))
           SimpleDialogOption(

@@ -4,6 +4,7 @@ import '../agenda/calendar.dart';
 import '../agenda/deadline_clear_scope.dart';
 import '../agenda/deadline_source.dart';
 import '../agenda/model.dart';
+import '../agenda/presentation.dart';
 import '../classrooms/model.dart';
 import '../core/time.dart';
 import '../mooc/controller.dart';
@@ -169,57 +170,62 @@ String localizedAgendaTime(AppLocalizations l10n, AgendaEntry entry) {
 String localizedAgendaDateTime(AppLocalizations l10n, DateTime date) =>
     '${localizedAgendaDate(l10n, date)} ${clockText(date)}';
 
-String localizedAgendaTitle(
-  AppLocalizations l10n,
-  AgendaEntry entry,
-) => switch (entry.details) {
-  PhysicsLabDeadlineDetails(:final kind, :final courseLabel) => switch (kind) {
-    PhysicsLabDeadlineKind.preview => l10n.physicsLabPreviewReport(courseLabel),
-    PhysicsLabDeadlineKind.report => l10n.physicsLabReport(courseLabel),
-  },
-  MoocDeadlineDetails(kind: MoocDeadlineKind.peerReview) =>
-    l10n.moocPeerReviewTitle(entry.title),
-  _ => entry.title,
-};
+String localizedAgendaTitle(AppLocalizations l10n, AgendaEntry entry) =>
+    entry is AgendaPresentation && entry.titleOverride != null
+    ? entry.titleOverride!
+    : switch (entry.details) {
+        PhysicsLabDeadlineDetails(:final kind, :final courseLabel) =>
+          switch (kind) {
+            PhysicsLabDeadlineKind.preview => l10n.physicsLabPreviewReport(
+              courseLabel,
+            ),
+            PhysicsLabDeadlineKind.report => l10n.physicsLabReport(courseLabel),
+          },
+        MoocDeadlineDetails(kind: MoocDeadlineKind.peerReview) =>
+          l10n.moocPeerReviewTitle(entry.title),
+        _ => entry.title,
+      };
 
 String localizedAgendaNotes(AppLocalizations l10n, AgendaEntry entry) =>
-    switch (entry.details) {
-      null => entry.notes,
-      PhysicsLabDeadlineDetails(:final classStartsAt, :final classEndsAt) =>
-        l10n.physicsLabGeneratedNotes(
-          localizedTerm(l10n, entry.term!),
-          dateText(classStartsAt),
-          '${clockText(classStartsAt)}–${clockText(classEndsAt)}',
-        ),
-      MoocDeadlineDetails(
-        :final kind,
-        :final spoc,
-        :final releaseAt,
-        :final submissionDueAt,
-      ) =>
-        [
-          spoc ? l10n.moocCourseTypeSpoc : l10n.moocCourseTypeMooc,
-          switch (kind) {
-            MoocDeadlineKind.homework => l10n.moocTaskHomework,
-            MoocDeadlineKind.quiz => l10n.moocTaskQuiz,
-            MoocDeadlineKind.exam => l10n.moocTaskExam,
-            MoocDeadlineKind.peerReview => l10n.moocTaskPeerReview,
-          },
-          if (releaseAt != null)
-            kind == MoocDeadlineKind.peerReview
-                ? l10n.moocStartedAt(localizedAgendaDateTime(l10n, releaseAt))
-                : l10n.moocOpenedAt(localizedAgendaDateTime(l10n, releaseAt)),
-          if (submissionDueAt != null)
-            l10n.moocSubmissionDueAt(
-              localizedAgendaDateTime(l10n, submissionDueAt),
-            ),
-        ].join(l10n.listSeparator),
-      ExamAgendaDetails(:final seat, :final mode, :final teacher) => [
-        if (seat.isNotEmpty) l10n.examSeat(seat),
-        if (mode.isNotEmpty) mode,
-        if (teacher.isNotEmpty) l10n.examTeacher(teacher),
-      ].join('\n'),
-    };
+    entry is AgendaPresentation && entry.notesOverride != null
+    ? entry.notesOverride!
+    : switch (entry.details) {
+        null => entry.notes,
+        PhysicsLabDeadlineDetails(:final classStartsAt, :final classEndsAt) =>
+          l10n.physicsLabGeneratedNotes(
+            localizedTerm(l10n, entry.term!),
+            dateText(classStartsAt),
+            '${clockText(classStartsAt)}–${clockText(classEndsAt)}',
+          ),
+        MoocDeadlineDetails(
+          :final kind,
+          :final spoc,
+          :final releaseAt,
+          :final submissionDueAt,
+        ) =>
+          [
+            spoc ? l10n.moocCourseTypeSpoc : l10n.moocCourseTypeMooc,
+            switch (kind) {
+              MoocDeadlineKind.homework => l10n.moocTaskHomework,
+              MoocDeadlineKind.quiz => l10n.moocTaskQuiz,
+              MoocDeadlineKind.exam => l10n.moocTaskExam,
+              MoocDeadlineKind.peerReview => l10n.moocTaskPeerReview,
+            },
+            if (releaseAt != null)
+              kind == MoocDeadlineKind.peerReview
+                  ? l10n.moocStartedAt(localizedAgendaDateTime(l10n, releaseAt))
+                  : l10n.moocOpenedAt(localizedAgendaDateTime(l10n, releaseAt)),
+            if (submissionDueAt != null)
+              l10n.moocSubmissionDueAt(
+                localizedAgendaDateTime(l10n, submissionDueAt),
+              ),
+          ].join(l10n.listSeparator),
+        ExamAgendaDetails(:final seat, :final mode, :final teacher) => [
+          if (seat.isNotEmpty) l10n.examSeat(seat),
+          if (mode.isNotEmpty) mode,
+          if (teacher.isNotEmpty) l10n.examTeacher(teacher),
+        ].join('\n'),
+      };
 
 String localizedReleaseNotes(
   AppLocalizations l10n,

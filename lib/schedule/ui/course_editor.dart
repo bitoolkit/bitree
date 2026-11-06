@@ -23,7 +23,12 @@ Future<void> editCourse(
   context: context,
   builder: (_) => _CourseEditor(
     controller: controller,
-    course: course,
+    course: course == null
+        ? null
+        : controller.timetable.schedule?.courses
+                  .where((original) => original.id == course.id)
+                  .firstOrNull ??
+              course,
     selection: selection,
   ),
 );
