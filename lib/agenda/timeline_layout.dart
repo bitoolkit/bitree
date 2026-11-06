@@ -1,7 +1,7 @@
 import 'model.dart';
 
 /// Event end times stay intact; layoutEnd includes their minimum display span.
-/// DDLs reserve four days solely for packing; their painted width is separate.
+/// DDLs reserve their configured tail days; their painted width is separate.
 class AgendaTimelinePlacement {
   const AgendaTimelinePlacement({
     required this.entry,
@@ -18,7 +18,7 @@ class AgendaTimelinePlacement {
   final DateTime layoutEnd;
 }
 
-/// Pack visible event spans and fixed four-day DDL reservations.
+/// Pack visible event spans and configured DDL reservations.
 /// The view converts its minimum card width to campus time at the current zoom.
 List<AgendaTimelinePlacement> layoutAgendaTimeline(
   Iterable<AgendaEntry> entries, {
@@ -30,7 +30,7 @@ List<AgendaTimelinePlacement> layoutAgendaTimeline(
           (
             entry: entry,
             start: entry.isDeadline
-                ? entry.dueAt.subtract(const Duration(days: 4))
+                ? entry.dueAt.subtract(Duration(days: entry.tailDays))
                 : entry.startsAt,
             end: entry.isDeadline ? entry.dueAt : entry.endsAt!,
           ),

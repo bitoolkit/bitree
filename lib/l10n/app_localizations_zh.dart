@@ -827,6 +827,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get agendaNotesOptional => '备注（选填）';
 
   @override
+  String get agendaTailDays => '拖尾长度（天）';
+
+  @override
+  String get agendaTailDaysHint => '1–30 天，默认 4 天';
+
+  @override
+  String agendaTailDaysValue(int days) {
+    return '$days 天';
+  }
+
+  @override
   String get agendaEndAfterStart => '结束时间需要晚于开始时间';
 
   @override

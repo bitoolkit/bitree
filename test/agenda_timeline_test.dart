@@ -121,6 +121,75 @@ void main() {
     expect(deadlinePlacement.layoutEnd, ddl.dueAt);
   });
 
+  for (final days in [1, 7, 14]) {
+    test('DDL lane reservations follow $days tail days', () {
+      final ddl = AgendaEntry(
+        id: 'custom',
+        title: '作业',
+        kind: AgendaKind.deadline,
+        startsAt: _date,
+        allDay: true,
+        tailDays: days,
+      );
+      final overlapping = AgendaEntry(
+        id: 'overlap',
+        title: '日程',
+        kind: AgendaKind.event,
+        startsAt: ddl.dueAt.subtract(Duration(days: days, hours: -1)),
+        endsAt: ddl.dueAt.subtract(Duration(days: days, hours: -2)),
+      );
+      final placements = layoutAgendaTimeline([
+        ddl,
+        overlapping,
+      ], minimumEventSpan: const Duration(minutes: 1));
+      final reservation = placements.singleWhere((p) => p.entry == ddl);
+      expect(reservation.start, ddl.dueAt.subtract(Duration(days: days)));
+      expect(reservation.end, ddl.dueAt);
+      expect(placements.map((p) => p.lane).toSet(), hasLength(2));
+    });
+
+    testWidgets('A $days-day DDL tail keeps its configured width on zoom', (
+      tester,
+    ) async {
+      final ddl = AgendaEntry(
+        id: 'custom',
+        title: '作业',
+        kind: AgendaKind.deadline,
+        startsAt: _date.add(const Duration(hours: 13)),
+        tailDays: days,
+      );
+      await _show(tester, [ddl]);
+      final before = tester.getRect(_paintedBar(ddl));
+      expect(before.width, closeTo(48 * (days - .25), .001));
+      tester.widget<Slider>(find.byType(Slider)).onChanged!(24);
+      await tester.pumpAndSettle();
+      final after = tester.getRect(_paintedBar(ddl));
+      expect(after.width, closeTo(before.width, .001));
+      expect(after.right, closeTo(243, .001));
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
+
+  testWidgets('Long DDL tails stay visible when the deadline is off screen', (
+    tester,
+  ) async {
+    final ddl = AgendaEntry(
+      id: 'future',
+      title: '下周作业',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(days: 7)),
+      tailDays: 14,
+    );
+    await _show(tester, [ddl]);
+    final viewport = tester.getRect(find.byType(AgendaTimeline));
+    final tail = tester.getRect(_paintedBar(ddl));
+    expect(tail.right, greaterThan(viewport.right));
+    expect(tail.left, lessThan(viewport.right));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   for (final (brightness, scale) in [
     (Brightness.light, 1.0),
     (Brightness.dark, 1.6),

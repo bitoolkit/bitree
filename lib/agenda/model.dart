@@ -26,6 +26,7 @@ class AgendaEntry {
     this.course = '',
     this.url,
     this.details,
+    this.tailDays = defaultTailDays,
   }) {
     if (id.isEmpty || title.trim().isEmpty) {
       throw const FormatException('日程标题或编号缺失');
@@ -33,6 +34,9 @@ class AgendaEntry {
     if (kind != AgendaKind.deadline &&
         (endsAt == null || !endsAt!.isAfter(startsAt))) {
       throw const FormatException('结束时间必须晚于开始时间');
+    }
+    if (tailDays < 1 || tailDays > maxTailDays) {
+      throw const FormatException('拖尾长度必须为 1–30 天');
     }
     final entryUrl = url;
     final entrySource = source;
@@ -59,6 +63,9 @@ class AgendaEntry {
     }
   }
 
+  static const defaultTailDays = 4;
+  static const maxTailDays = 30;
+
   final String id;
   final String title;
   final AgendaKind kind;
@@ -75,6 +82,10 @@ class AgendaEntry {
   final String course;
   final Uri? url;
   final AgendaEntryDetails? details;
+
+  /// Timeline reservation in days; the painted tail leaves a quarter-day gap
+  /// at minimum zoom and keeps its screen width as the view zooms in.
+  final int tailDays;
 
   bool get isDeadline => kind == AgendaKind.deadline;
 
@@ -109,6 +120,7 @@ class AgendaEntry {
     course: course,
     url: url,
     details: details,
+    tailDays: tailDays,
   );
 
   Map<String, dynamic> toJson() => {
@@ -128,6 +140,7 @@ class AgendaEntry {
     'course': course,
     'url': url?.toString(),
     'details': details?.toJson(),
+    'tailDays': tailDays,
   };
 
   factory AgendaEntry.fromJson(Map<String, dynamic> json) {
@@ -167,6 +180,7 @@ class AgendaEntry {
       url: rawUrl == null
           ? null
           : Uri.tryParse(rawUrl) ?? (throw FormatException('url 格式不正确')),
+      tailDays: jsonIntFieldOrNull(json, 'tailDays') ?? defaultTailDays,
       details: rawDetails == null
           ? null
           : AgendaEntryDetails.fromJson(jsonObject(rawDetails, 'details')),

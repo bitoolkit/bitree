@@ -139,12 +139,23 @@ void main() {
       startsAt: DateTime.utc(2026, 11, 1),
       done: true,
       deleted: true,
+      tailDays: 14,
     );
     await AgendaStore().write([deadline]);
     final restored = (await AgendaStore().read()).single;
     expect(restored.id, deadline.id);
     expect(restored.done, isTrue);
     expect(restored.deleted, isTrue);
+    expect(restored.tailDays, 14);
+    expect(restored.copyWith(done: false, deleted: false).tailDays, 14);
+    final legacy = deadline.toJson()..remove('tailDays');
+    expect(AgendaEntry.fromJson(legacy).tailDays, AgendaEntry.defaultTailDays);
+    for (final invalid in [0, -1, 31, 1.5, '7']) {
+      expect(
+        () => AgendaEntry.fromJson({...legacy, 'tailDays': invalid}),
+        throwsFormatException,
+      );
+    }
 
     final record = const AcademicRecord().withCreditTargets(
       total: 150,

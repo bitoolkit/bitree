@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bitree/agenda/controller.dart';
 import 'package:bitree/agenda/deadline_source.dart';
 import 'package:bitree/agenda/model.dart';
@@ -219,12 +221,48 @@ void main() {
       (widget) => widget is TextField && widget.decoration?.labelText == '名称',
     );
     expect(tester.widget<TextField>(name).controller!.text, '1');
+    final tailDays = find.byType(Slider);
+    expect(tester.widget<Slider>(tailDays).value, 4);
+    expect(tester.widget<Slider>(tailDays).divisions, 29);
+    expect(find.text('4 天'), findsOneWidget);
+    await tester.ensureVisible(tailDays);
+    final track = tester.getRect(tailDays);
+    await tester.tapAt(Offset(track.right - 1, track.center.dy));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Slider>(tailDays).value, 30);
+    expect(find.text('30 天'), findsOneWidget);
+    await tester.tapAt(Offset(track.left + 1, track.center.dy));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Slider>(tailDays).value, 1);
+    expect(find.text('1 天'), findsOneWidget);
+    await tester.dragFrom(
+      Offset(track.left + 24, track.center.dy),
+      Offset(track.width / 2 - 24, 0),
+    );
+    await tester.pumpAndSettle();
+    final selectedDays = tester.widget<Slider>(tailDays).value;
+    expect(selectedDays, inExclusiveRange(1, 30));
+    expect(selectedDays, selectedDays.roundToDouble());
+    expect(find.text('${selectedDays.round()} 天'), findsOneWidget);
+    expect(controller.agenda.entries.single.tailDays, 4);
     await tester.enterText(name, '第二章习题');
     await tester.tap(find.widgetWithText(FilledButton, '保存'));
     await tester.pumpAndSettle();
     expect(controller.agenda.entries.single.id, 'assignment');
     expect(controller.agenda.entries.single.title, '第二章习题');
+    expect(controller.agenda.entries.single.tailDays, selectedDays.round());
     expect(find.byType(SheetLayout), findsNothing);
+    unawaited(
+      showAgendaEntry(
+        tester.element(find.text('打开详情')),
+        controller,
+        controller.agenda.entries.single,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, '编辑'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Slider>(tailDays).value, selectedDays);
     expect(tester.takeException(), isNull);
   });
 
@@ -246,6 +284,7 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, '编辑'));
     await tester.pumpAndSettle();
     expect(find.text('编辑考试'), findsOneWidget);
+    expect(find.text('拖尾长度（天）'), findsNothing);
     expect(find.byType(SegmentedButton<AgendaKind>), findsNothing);
     final name = find.byWidgetPredicate(
       (widget) => widget is TextField && widget.decoration?.labelText == '名称',
