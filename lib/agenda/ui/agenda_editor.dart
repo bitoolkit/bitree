@@ -177,6 +177,11 @@ class _AgendaEditorState extends State<_AgendaEditor> {
         // localized presentation must not keep overriding the edited values.
         details: null,
         tailDays: _tailDays,
+        // Editing keeps the open-ended flag, but only while the entry stays a
+        // deadline: an event or exam always has an end time.
+        startOnly:
+            _kind == AgendaKind.deadline &&
+            (widget.entry?.startOnly ?? false),
       ),
     );
     if (!mounted) return;
@@ -320,7 +325,11 @@ class _AgendaEditorState extends State<_AgendaEditor> {
             ],
           ),
           _when(
-            _kind == AgendaKind.deadline ? l10n.due : l10n.start,
+            // An imported open-ended deadline records an opening time, so the
+            // field must not be labelled as a due time.
+            _kind == AgendaKind.deadline && widget.entry?.startOnly != true
+                ? l10n.due
+                : l10n.start,
             _start,
             true,
           ),

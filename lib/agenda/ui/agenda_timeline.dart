@@ -284,6 +284,18 @@ class _AgendaTimelineState extends State<AgendaTimeline>
               (deadlineWidth(entry) / pixelsPerHour * _microsecondsPerHour)
                   .ceil(),
         );
+        // An ordinary deadline paints leftwards from its due time; one that
+        // only has an opening time paints rightwards from that time. Both are
+        // `deadlineWidth` wide, so culling follows the painted box rather than
+        // the wider lane reservation, which would keep empty lanes on screen.
+        DateTime paintedStart(AgendaTimelinePlacement placement) =>
+            placement.entry.isDeadline && !placement.entry.startOnly
+            ? placement.end.subtract(deadlineDuration(placement.entry))
+            : placement.start;
+        DateTime paintedEnd(AgendaTimelinePlacement placement) =>
+            placement.entry.isDeadline && placement.entry.startOnly
+            ? placement.start.add(deadlineDuration(placement.entry))
+            : placement.layoutEnd;
         final minimumEventSpan = Duration(
           // The visual floor is fixed and does not scale with accessibility text.
           microseconds:
@@ -514,15 +526,10 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                                 final placementsInTime = placements
                                     .where(
                                       (placement) =>
-                                          placement.layoutEnd.isAfter(left) &&
-                                          (placement.entry.isDeadline
-                                                  ? placement.end.subtract(
-                                                      deadlineDuration(
-                                                        placement.entry,
-                                                      ),
-                                                    )
-                                                  : placement.start)
-                                              .isBefore(right),
+                                          paintedEnd(placement).isAfter(left) &&
+                                          paintedStart(placement).isBefore(
+                                            right,
+                                          ),
                                     )
                                     .toList(growable: false);
                                 final displayedLaneCount = placementsInTime
@@ -642,7 +649,11 @@ class _AgendaTimelineState extends State<AgendaTimeline>
         time.difference(_center).inMicroseconds /
             _microsecondsPerHour *
             pixelsPerHour;
-    final actualRight = x(placement.layoutEnd);
+    // A start-only deadline keeps the usual painted width but grows rightwards
+    // from its opening time, so its right edge is derived instead of its left.
+    final actualRight = entry.isDeadline && entry.startOnly
+        ? x(placement.start) + deadlineWidth
+        : x(placement.layoutEnd);
     final actualLeft = entry.isDeadline
         ? actualRight - deadlineWidth
         : x(placement.start);

@@ -251,11 +251,18 @@ class _EntryTime extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final color = entry.overdue(now) ? scheme.error : scheme.onSurface;
-    final time = entry.isDeadline
-        ? entry.allDay
-              ? l10n.agendaDueBeforeEndOfDay
-              : clockText(entry.startsAt)
-        : localizedAgendaTime(l10n, entry);
+    // An open-ended deadline has no due date: it reads like a timed entry and
+    // is labelled as opening rather than as due.
+    final String time;
+    if (!entry.isDeadline) {
+      time = localizedAgendaTime(l10n, entry);
+    } else if (entry.startOnly) {
+      time = entry.allDay ? l10n.allDay : clockText(entry.startsAt);
+    } else {
+      time = entry.allDay
+          ? l10n.agendaDueBeforeEndOfDay
+          : clockText(entry.startsAt);
+    }
     final lastDay = entry.allDay && !entry.isDeadline
         ? entry.endsAt!.subtract(const Duration(days: 1))
         : entry.startsAt;
@@ -291,7 +298,7 @@ class _EntryTime extends StatelessWidget {
                   TextSpan(text: time),
                   if (entry.isDeadline && !entry.allDay)
                     TextSpan(
-                      text: '  ${l10n.due}',
+                      text: '  ${entry.startOnly ? l10n.start : l10n.due}',
                       style: theme.textTheme.bodyMedium?.copyWith(color: color),
                     ),
                 ],

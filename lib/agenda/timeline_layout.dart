@@ -24,15 +24,25 @@ List<AgendaTimelinePlacement> layoutAgendaTimeline(
   Iterable<AgendaEntry> entries, {
   required Duration minimumEventSpan,
 }) {
+  // An ordinary deadline hangs `tailDays` to the left of its due time. One
+  // that only records an opening time reserves the same span forwards from
+  // that opening time, so both reserve `tailDays` of lane space.
+  DateTime reservationStart(AgendaEntry entry) =>
+      entry.isDeadline && !entry.startOnly
+      ? entry.dueAt.subtract(Duration(days: entry.tailDays))
+      : entry.startsAt;
+  DateTime reservationEnd(AgendaEntry entry) => entry.isDeadline
+      ? entry.startOnly
+            ? entry.startsAt.add(Duration(days: entry.tailDays))
+            : entry.dueAt
+      : entry.endsAt!;
   final intervals =
       [
         for (final entry in entries.where((entry) => !entry.deleted))
           (
             entry: entry,
-            start: entry.isDeadline
-                ? entry.dueAt.subtract(Duration(days: entry.tailDays))
-                : entry.startsAt,
-            end: entry.isDeadline ? entry.dueAt : entry.endsAt!,
+            start: reservationStart(entry),
+            end: reservationEnd(entry),
           ),
       ]..sort((a, b) {
         final byStart = a.start.compareTo(b.start);

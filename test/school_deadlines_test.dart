@@ -5,6 +5,8 @@ import 'dart:typed_data';
 import 'package:bitree/agenda/controller.dart';
 import 'package:bitree/agenda/deadline_source.dart';
 import 'package:bitree/agenda/model.dart';
+import 'package:bitree/core/async/cancelable_request.dart';
+import 'package:bitree/school/errors.dart';
 import 'package:bitree/school/learning/eclass_deadlines.dart';
 import 'package:bitree/school/learning/lexue_deadlines.dart';
 import 'package:bitree/school/network.dart';
@@ -70,6 +72,18 @@ void main() {
         case '/zy-eclass.bit.edu.cn/api/activities/9060':
           request.response.headers.contentType = ContentType.json;
           request.response.write(jsonEncode({'user_submit_count': 1}));
+        case '/zy-eclass.bit.edu.cn/api/courses/1/exam-list':
+        case '/zy-eclass.bit.edu.cn/api/courses/20759/exam-list':
+          request.response.headers.contentType = ContentType.json;
+          request.response.write(
+            jsonEncode({
+              'exams': <Map<String, Object?>>[],
+              'page': 1,
+              'page_size': 100,
+              'pages': 1,
+              'total': 0,
+            }),
+          );
         default:
           request.response.statusCode = HttpStatus.notFound;
           request.response.write('unexpected request');
@@ -104,12 +118,21 @@ void main() {
     );
     expect(paths, isNot(contains('/zy-eclass.bit.edu.cn/api/activities/9058')));
     expect(paths, contains('/zy-eclass.bit.edu.cn/api/activities/9060'));
+    expect(
+      paths.where((path) => path.endsWith('/exam-list')),
+      unorderedEquals([
+        '/zy-eclass.bit.edu.cn/api/courses/1/exam-list',
+        '/zy-eclass.bit.edu.cn/api/courses/20759/exam-list',
+      ]),
+    );
   });
 
   test('Eclass courses scan concurrently within the request limit', () async {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     addTearDown(() => server.close(force: true));
     final activityCourses = <String>[];
+    final examCourses = <String>[];
+    final examQueries = <Map<String, String>>[];
     final statusCourses = <String>[];
     var active = 0;
     var maxActive = 0;
@@ -167,6 +190,23 @@ void main() {
         return;
       }
 
+      final exams = RegExp(
+        r'^/zy-eclass\.bit\.edu\.cn/api/courses/(\d+)/exam-list$',
+      ).firstMatch(path);
+      if (exams != null) {
+        final courseId = exams[1]!;
+        examCourses.add(courseId);
+        examQueries.add(request.uri.queryParameters);
+        await sendJson(request, {
+          'exams': <Map<String, Object?>>[],
+          'page': 1,
+          'page_size': 100,
+          'pages': 1,
+          'total': 0,
+        });
+        return;
+      }
+
       final status = RegExp(
         r'^/zy-eclass\.bit\.edu\.cn/api/course/(\d+)/homework/submission-status$',
       ).firstMatch(path);
@@ -215,8 +255,362 @@ void main() {
       statusCourses,
       unorderedEquals(['100', '200', '201', '202', '203', '204']),
     );
+    expect(
+      examCourses,
+      unorderedEquals(['100', '200', '201', '202', '203', '204']),
+    );
+    expect(examQueries, hasLength(6));
+    for (final query in examQueries) {
+      expect(query['page_size'], '100');
+      expect(query['page'], '1');
+    }
     expect(detailRequests, 0);
     expect(maxActive, inInclusiveRange(2, 4));
+  });
+
+  test('Eclass exams become deadlines under their own id namespace', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => server.close(force: true));
+    final scan = await scanEclass(
+      server,
+      eclassFixture(
+        exams: (_, __) => [
+          eclassExam(id: 1212, title: '第三章测试', submissions: 1),
+          eclassExam(id: 1211, title: '第四章测试'),
+        ],
+      ),
+    );
+
+    expect(scan.error, isNull);
+    expect(scan.unexpected, isEmpty);
+    expect(scan.entries.map((entry) => entry.id).toList(), [
+      'eclass-exam-1212',
+      'eclass-exam-1211',
+    ]);
+    final exam = scan.entryFor('eclass-exam-1212');
+    expect(exam.title, '第三章测试');
+    expect(exam.course, '数字电子技术基础');
+    expect(exam.kind, AgendaKind.deadline);
+    expect(exam.source, DeadlineSource.eclass);
+    // 2026-11-08T14:30:00Z is 22:30 in Beijing wall clock.
+    expect(exam.startsAt, DateTime.utc(2026, 11, 8, 22, 30));
+    expect(exam.startOnly, isFalse);
+    expect(exam.done, isTrue);
+    expect(scan.entryFor('eclass-exam-1211').done, isFalse);
+    expect(exam.url?.host, 'zy-eclass.bit.edu.cn');
+    expect(exam.url?.path, '/course/7/exam');
+    expect(exam.url?.fragment ?? '', isEmpty);
+    expect(
+      scan.examRequests.map((uri) => uri.queryParameters['page_size']),
+      everyElement('100'),
+    );
+  });
+
+  test('Exam ids stay separate from activity ids and their completion',
+      () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => server.close(force: true));
+    final scan = await scanEclass(
+      server,
+      eclassFixture(
+        activities: (_) => [
+          {
+            'id': 1211,
+            'type': 'homework',
+            'title': '第五次作业',
+            'end_time': '2026-11-05T15:59:00Z',
+            'visible_end_at': null,
+          },
+        ],
+        exams: (_, __) => [
+          eclassExam(
+            id: 1211,
+            title: '第五章测试',
+            submissions: 1,
+          ),
+        ],
+      ),
+    );
+
+    expect(scan.error, isNull);
+    expect(scan.unexpected, isEmpty);
+    expect(scan.entries, hasLength(2));
+    // The homework id is untouched, so stored deadlines keep their identity.
+    final homework = scan.entryFor('eclass-1211');
+    expect(homework.title, '第五次作业');
+    expect(homework.done, isFalse);
+    final exam = scan.entryFor('eclass-exam-1211');
+    expect(exam.title, '第五章测试');
+    expect(exam.done, isTrue);
+  });
+
+  test('Exam completion follows submission_count alone', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => server.close(force: true));
+    final scan = await scanEclass(
+      server,
+      eclassFixture(
+        exams: (_, __) => [
+          eclassExam(
+            id: 1,
+            title: '已交但未结束',
+            submissions: 1,
+            submitTimes: 0,
+            closed: false,
+          ),
+          eclassExam(
+            id: 2,
+            title: '未交但已关闭',
+            submissions: 0,
+            submitTimes: 1,
+            closed: true,
+          ),
+          eclassExam(
+            id: 3,
+            title: '只有补交记录',
+            submissions: 0,
+            makeupSubmissions: 3,
+          ),
+        ],
+      ),
+    );
+
+    expect(scan.error, isNull);
+    expect(scan.entryFor('eclass-exam-1').done, isTrue);
+    expect(scan.entryFor('eclass-exam-2').done, isFalse);
+    expect(scan.entryFor('eclass-exam-3').done, isFalse);
+  });
+
+  test('Exams without an end time keep their start as a start-only entry',
+      () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => server.close(force: true));
+    final scan = await scanEclass(
+      server,
+      eclassFixture(
+        exams: (_, __) => [
+          eclassExam(
+            id: 4,
+            title: '开放式测试',
+            endTime: null,
+            startTime: '2026-11-20T16:00:00Z',
+          ),
+          eclassExam(
+            id: 5,
+            title: '空截止时间的测试',
+            endTime: '',
+            startTime: '2026-11-21T00:00:00Z',
+          ),
+        ],
+      ),
+    );
+
+    expect(scan.error, isNull);
+    expect(scan.unexpected, isEmpty);
+    expect(scan.entries.map((entry) => entry.id).toList(), [
+      'eclass-exam-4',
+      'eclass-exam-5',
+    ]);
+    final open = scan.entryFor('eclass-exam-4');
+    // 2026-11-20T16:00:00Z is 2026-11-21 00:00 in Beijing wall clock.
+    expect(open.startsAt, DateTime.utc(2026, 11, 21, 0, 0));
+    expect(open.startOnly, isTrue);
+    // A start-only entry never counts as overdue, however late the clock runs.
+    expect(open.overdue(DateTime.utc(2027, 1, 1)), isFalse);
+    expect(scan.entryFor('eclass-exam-5').startOnly, isTrue);
+  });
+
+  test('Exams with neither an end nor a start time are skipped', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => server.close(force: true));
+    final scan = await scanEclass(
+      server,
+      eclassFixture(
+        exams: (_, __) => [
+          eclassExam(
+            id: 6,
+            title: '未开放的测试',
+            endTime: null,
+            startTime: null,
+          ),
+          eclassExam(id: 7, title: '空时间的测试', endTime: '', startTime: ''),
+          eclassExam(id: 8, title: '有截止时间的测试'),
+        ],
+      ),
+    );
+
+    expect(scan.error, isNull);
+    expect(scan.entries.map((entry) => entry.id).toList(), ['eclass-exam-8']);
+    expect(scan.entryFor('eclass-exam-8').startOnly, isFalse);
+  });
+
+  test('An empty exam list leaves activity deadlines untouched', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => server.close(force: true));
+    final scan = await scanEclass(
+      server,
+      eclassFixture(
+        activities: (_) => [
+          {
+            'id': 31,
+            'type': 'homework',
+            'title': '第一次作业',
+            'end_time': '2026-11-04T15:59:00Z',
+            'visible_end_at': null,
+          },
+        ],
+      ),
+    );
+
+    expect(scan.error, isNull);
+    expect(scan.unexpected, isEmpty);
+    expect(scan.entries, hasLength(1));
+    expect(scan.entries.single.id, 'eclass-31');
+  });
+
+  test('Exam pages are followed until the reported page count', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => server.close(force: true));
+    final scan = await scanEclass(
+      server,
+      eclassFixture(
+        examPageCount: 3,
+        exams: (_, page) => [
+          eclassExam(id: 9000 + page, title: '测试第$page 页'),
+        ],
+      ),
+    );
+
+    expect(scan.error, isNull);
+    expect(
+      scan.examRequests.map((uri) => uri.queryParameters['page']).toList(),
+      ['1', '2', '3'],
+    );
+    expect(scan.entries, hasLength(3));
+    expect(scan.entryFor('eclass-exam-9003').title, '测试第3 页');
+  });
+
+  test('Exam paging falls back to the row count without a page count',
+      () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => server.close(force: true));
+    final scan = await scanEclass(
+      server,
+      eclassFixture(
+        reportPageCount: false,
+        exams: (_, page) => page == 1
+            ? [
+                for (var index = 0; index < 100; index++)
+                  eclassExam(id: 1000 + index, title: '测试${1000 + index}'),
+              ]
+            : [
+                for (var index = 0; index < 3; index++)
+                  eclassExam(id: 2000 + index, title: '测试${2000 + index}'),
+              ],
+      ),
+    );
+
+    expect(scan.error, isNull);
+    expect(
+      scan.examRequests.map((uri) => uri.queryParameters['page']).toList(),
+      ['1', '2'],
+    );
+    expect(scan.entries, hasLength(103));
+  });
+
+  test('A failing exam list does not remove the activity deadlines', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => server.close(force: true));
+    final scan = await scanEclass(
+      server,
+      eclassFixture(
+        activities: (_) => [
+          {
+            'id': 31,
+            'type': 'homework',
+            'title': '第一次作业',
+            'end_time': '2026-11-04T15:59:00Z',
+            'visible_end_at': null,
+          },
+        ],
+        examStatus: (_, __) => HttpStatus.internalServerError,
+      ),
+    );
+
+    expect(scan.error, isNull);
+    expect(scan.entries.map((entry) => entry.id).toList(), ['eclass-31']);
+  });
+
+  test('A failing activity list does not remove the exam deadlines', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => server.close(force: true));
+    final scan = await scanEclass(
+      server,
+      eclassFixture(
+        activities: (_) => [
+          {
+            'id': 31,
+            'type': 'homework',
+            'title': '第一次作业',
+            'end_time': '2026-11-04T15:59:00Z',
+            'visible_end_at': null,
+          },
+        ],
+        exams: (_, __) => [eclassExam(id: 41, title: '第一次测试')],
+        activityStatus: (_) => HttpStatus.serviceUnavailable,
+      ),
+    );
+
+    expect(scan.error, isNull);
+    expect(scan.entries.map((entry) => entry.id).toList(), ['eclass-exam-41']);
+  });
+
+  test('An expired session on the exam list aborts the whole scan', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => server.close(force: true));
+    final scan = await scanEclass(
+      server,
+      eclassFixture(
+        courses: const [
+          {'id': 7, 'name': '数字电子技术基础'},
+          {'id': 8, 'name': '电路分析基础'},
+        ],
+        activities: (_) => [
+          {
+            'id': 31,
+            'type': 'homework',
+            'title': '第一次作业',
+            'end_time': '2026-11-04T15:59:00Z',
+            'visible_end_at': null,
+          },
+        ],
+        examStatus: (courseId, _) => courseId == 7 ? 401 : HttpStatus.ok,
+      ),
+    );
+
+    expect(scan.error, isA<SessionExpired>());
+    expect(scan.entries, isEmpty);
+  });
+
+  test('A closed session reports cancellation instead of an empty scan',
+      () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => server.close(force: true));
+    server.listen((request) async {
+      request.response.statusCode = HttpStatus.notFound;
+      await request.response.close();
+    });
+
+    await HttpOverrides.runWithHttpOverrides(() async {
+      final session = SchoolSession(
+        network: SchoolNetwork.campus,
+        storage: MemorySchoolStorage(),
+      )..close();
+      await expectLater(
+        fetchEclassDeadlines(session),
+        throwsA(isA<RequestCancelled>()),
+      );
+    }, LocalHttpOverrides(server.port));
   });
 
   test(
@@ -518,3 +912,192 @@ void main() {
     expect(agenda.deletedDeadlines.single.id, 'assignment');
   });
 }
+
+/// One eclass scan plus the traffic it produced.
+class EclassScan {
+  EclassScan({
+    required this.entries,
+    required this.error,
+    required this.examRequests,
+    required this.unexpected,
+  });
+
+  final List<AgendaEntry> entries;
+  final Object? error;
+  final List<Uri> examRequests;
+  final List<String> unexpected;
+
+  AgendaEntry entryFor(String id) => entries.singleWhere(
+    (entry) => entry.id == id,
+  );
+}
+
+/// Runs [fetchEclassDeadlines] against [server]. [handle] answers a request
+/// and reports whether it recognised it; unknown requests are recorded.
+Future<EclassScan> scanEclass(
+  HttpServer server,
+  bool Function(HttpRequest request) handle,
+) async {
+  final examRequests = <Uri>[];
+  final unexpected = <String>[];
+  server.listen((request) async {
+    try {
+      if (request.uri.path.endsWith('/exam-list')) {
+        examRequests.add(request.uri);
+      }
+      if (!handle(request)) {
+        unexpected.add('${request.uri.path}?${request.uri.query}');
+        request.response.statusCode = HttpStatus.notFound;
+      }
+    } finally {
+      await request.response.close();
+    }
+  });
+
+  SchoolSession? session;
+  var entries = const <AgendaEntry>[];
+  Object? error;
+  try {
+    entries = await HttpOverrides.runWithHttpOverrides(() {
+      final fresh = SchoolSession(
+        network: SchoolNetwork.campus,
+        storage: MemorySchoolStorage(),
+      );
+      session = fresh;
+      return fetchEclassDeadlines(fresh);
+    }, LocalHttpOverrides(server.port));
+  } catch (failure) {
+    error = failure;
+  }
+  session?.close();
+  return EclassScan(
+    entries: entries,
+    error: error,
+    examRequests: examRequests,
+    unexpected: unexpected,
+  );
+}
+
+List<Map<String, Object?>> _noActivities(int courseId) => const [];
+
+List<Map<String, Object?>> _noExams(int courseId, int page) => const [];
+
+int _requestOk(int courseId, int page) => HttpStatus.ok;
+
+int _activityRequestOk(int courseId) => HttpStatus.ok;
+
+/// Answers the endpoints one eclass scan touches, so each test only states the
+/// payloads that matter to it.
+bool Function(HttpRequest request) eclassFixture({
+  List<Map<String, Object?>> courses = const [
+    {'id': 7, 'name': '数字电子技术基础'},
+  ],
+  List<Map<String, Object?>> Function(int courseId) activities = _noActivities,
+  List<Map<String, Object?>> Function(int courseId, int page) exams = _noExams,
+  int examPageCount = 1,
+  bool reportPageCount = true,
+  int Function(int courseId, int page) examStatus = _requestOk,
+  int Function(int courseId) activityStatus = _activityRequestOk,
+  Set<int> submittedActivities = const {},
+}) {
+  final activityPath = RegExp(
+    r'^/zy-eclass\.bit\.edu\.cn/api/courses/(\d+)/activities$',
+  );
+  final examPath = RegExp(
+    r'^/zy-eclass\.bit\.edu\.cn/api/courses/(\d+)/exam-list$',
+  );
+  final statusPath = RegExp(
+    r'^/zy-eclass\.bit\.edu\.cn/api/course/(\d+)/homework/submission-status$',
+  );
+  return (request) {
+    final path = request.uri.path;
+    if (path == '/zy-eclass.bit.edu.cn/api/my-courses') {
+      respondJson(request, {'courses': courses, 'pages': 1});
+      return true;
+    }
+    final activity = activityPath.firstMatch(path);
+    if (activity != null) {
+      final courseId = int.parse(activity[1]!);
+      final status = activityStatus(courseId);
+      if (status != HttpStatus.ok) {
+        request.response.statusCode = status;
+        request.response.write('activities unavailable');
+        return true;
+      }
+      respondJson(request, {'activities': activities(courseId)});
+      return true;
+    }
+    final exam = examPath.firstMatch(path);
+    if (exam != null) {
+      final courseId = int.parse(exam[1]!);
+      final page = int.parse(request.uri.queryParameters['page'] ?? '1');
+      final status = examStatus(courseId, page);
+      if (status != HttpStatus.ok) {
+        request.response.statusCode = status;
+        request.response.write('exam list unavailable');
+        return true;
+      }
+      final rows = exams(courseId, page);
+      respondJson(request, {
+        'exams': rows,
+        'page': page,
+        'page_size': 100,
+        'start': 0,
+        'end': rows.length,
+        if (reportPageCount) 'pages': examPageCount,
+        'total': rows.length,
+      });
+      return true;
+    }
+    final homework = statusPath.firstMatch(path);
+    if (homework != null) {
+      final courseId = int.parse(homework[1]!);
+      respondJson(request, {
+        'course_id': courseId,
+        'homework_activities': [
+          for (final task in activities(courseId))
+            if (task['type'] == 'homework')
+              {
+                'id': task['id'],
+                'status_code': submittedActivities.contains(task['id'])
+                    ? 'submitted'
+                    : 'absent',
+              },
+        ],
+      });
+      return true;
+    }
+    return false;
+  };
+}
+
+void respondJson(HttpRequest request, Object body) {
+  request.response.headers.contentType = ContentType.json;
+  request.response.write(jsonEncode(body));
+}
+
+/// One row of `exam-list`, shaped like the live response.
+Map<String, Object?> eclassExam({
+  required int id,
+  required String title,
+  Object? endTime = '2026-11-08T14:30:00Z',
+  Object? startTime = '2026-11-01T00:00:00Z',
+  int submissions = 0,
+  int makeupSubmissions = 0,
+  int submitTimes = 0,
+  bool closed = false,
+}) => {
+  'id': id,
+  'title': title,
+  'type': 'exam',
+  'start_time': startTime,
+  'end_time': endTime,
+  'is_closed': closed,
+  'is_in_progress': !closed,
+  'is_started': true,
+  'published': true,
+  'submission_count': submissions,
+  'makeup_exam_submission_count': makeupSubmissions,
+  'submit_times': submitTimes,
+  'referrer_type': 'module',
+};
