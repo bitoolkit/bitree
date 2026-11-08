@@ -10,6 +10,7 @@ import '../../mooc/ui/mooc_sheet.dart';
 import '../../schedule/model.dart';
 import '../../school/ui/school_screen.dart';
 import '../../school/ui/school_verification_dialog.dart';
+import '../../school/verification.dart';
 import '../../ui/app_notice.dart';
 import '../../ui/design.dart';
 import '../../ui/section_label.dart';
@@ -28,6 +29,7 @@ Future<bool> startSync(
   AppController app, {
   Set<SyncTarget>? targets,
   String? term,
+  VerifySchoolLogin? verify,
 }) async {
   if (app.sync.busy) {
     await showSyncProgress(context, app);
@@ -54,7 +56,11 @@ Future<bool> startSync(
   if (!context.mounted) return false;
   final overlay = Overlay.of(context, rootOverlay: true);
   final l10n = context.l10n;
-  final success = await app.sync.synchronize(selected, term: term);
+  final success = await app.sync.synchronize(
+    selected,
+    term: term,
+    verify: verify,
+  );
   if (!overlay.mounted ||
       app.sync.cancelled ||
       _progressSheets.containsKey(app.sync)) {
@@ -270,15 +276,14 @@ class _SyncProgressSheetState extends State<_SyncProgressSheet> {
     final term = app.sync.term;
     setState(() => _authenticating = true);
     try {
-      if (selected.any((target) => target.usesSchoolSession) &&
-          app.school.verificationRequired) {
-        final verified = await app.school.restoreAccount(
-          verify: (request) => verifySchoolLogin(context, request),
-        );
-        if (!verified || !mounted) return;
-      }
       if (!mounted) return;
-      await startSync(context, app, targets: selected, term: term);
+      await startSync(
+        context,
+        app,
+        targets: selected,
+        term: term,
+        verify: (request) => verifySchoolLogin(context, request),
+      );
     } finally {
       if (mounted) setState(() => _authenticating = false);
     }

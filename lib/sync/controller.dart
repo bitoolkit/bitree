@@ -9,6 +9,7 @@ import '../mooc/controller.dart';
 import '../mooc/progress.dart';
 import '../schedule/controller.dart';
 import '../school/controller.dart';
+import '../school/verification.dart';
 
 enum SyncTarget {
   schedule,
@@ -77,6 +78,7 @@ class SyncController extends ChangeNotifier {
   bool _disposed = false;
   bool _cancelled = false;
   String? _term;
+  VerifySchoolLogin? _verify;
   List<SyncTarget> _targets = const [];
   final _results = <SyncTarget, SyncResult>{};
   final _running = <SyncTarget>{};
@@ -102,7 +104,11 @@ class SyncController extends ChangeNotifier {
   };
   bool isRunning(SyncTarget target) => _running.contains(target);
 
-  Future<bool> synchronize(Set<SyncTarget> selected, {String? term}) {
+  Future<bool> synchronize(
+    Set<SyncTarget> selected, {
+    String? term,
+    VerifySchoolLogin? verify,
+  }) {
     if (_operation case final current?) return current;
     assert(!_disposed && selected.isNotEmpty);
     final finished = Completer<bool>();
@@ -110,6 +116,7 @@ class SyncController extends ChangeNotifier {
     _cancelledSignal = Completer<void>();
     _cancelled = false;
     _term = term;
+    _verify = verify;
     _targets = List.unmodifiable(SyncTarget.values.where(selected.contains));
     _results.clear();
     _notify();
@@ -135,19 +142,21 @@ class SyncController extends ChangeNotifier {
       }
       _operation = null;
       _cancelledSignal = null;
+      _verify = null;
       _notify();
     }
   }
 
   Future<void> _syncSchoolAndLab(String? term) async {
+    final verify = _verify;
     for (final target in _targets.where((target) => target.usesSchoolSession)) {
       while (_school.busy && !_cancelled) {
         await Future.any([_school.idle, _cancelledSignal!.future]);
       }
       if (_cancelled) break;
-      if (_school.verificationRequired ||
-          _school.loginExpired ||
-          _school.username == null) {
+      if (_school.loginExpired ||
+          _school.username == null ||
+          (_school.verificationRequired && verify == null)) {
         _results[target] = SyncResult(
           _school.verificationRequired
               ? SyncOutcome.needsVerification
@@ -160,15 +169,20 @@ class SyncController extends ChangeNotifier {
       _notify();
       try {
         final success = await switch (target) {
-          SyncTarget.schedule => _school.synchronize(term: term),
-          SyncTarget.exams => _school.importExams(term: term),
-          SyncTarget.grades => _school.importGrades(),
-          SyncTarget.studyPlan => _school.importStudyPlan(),
+          SyncTarget.schedule => _school.synchronize(
+            term: term,
+            verify: verify,
+          ),
+          SyncTarget.exams => _school.importExams(term: term, verify: verify),
+          SyncTarget.grades => _school.importGrades(verify: verify),
+          SyncTarget.studyPlan => _school.importStudyPlan(verify: verify),
           SyncTarget.lexue => _school.importDeadlines(
             source: DeadlineSource.lexue,
+            verify: verify,
           ),
           SyncTarget.eclass => _school.importDeadlines(
             source: DeadlineSource.eclass,
+            verify: verify,
           ),
           _ => throw StateError('不是学校同步内容'),
         };

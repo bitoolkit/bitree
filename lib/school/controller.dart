@@ -197,15 +197,18 @@ class SchoolController extends ChangeNotifier {
     bool notifyErrors = true,
   }) async {
     if (_username == null) return false;
-    return _run('恢复学校登录', () async {
-      await _access.read(
-        verify == null ? null : _verification(verify),
-        (session) => session.checkLogin(),
-        // A manual check must reach SSO even if a service cookie still works.
-        service: verify == null ? null : SchoolNetwork.campus.accountPage,
-      );
-      return true;
-    }, notifyErrors: notifyErrors);
+    return _run(
+      '恢复学校登录',
+      () async {
+        if (verify == null) {
+          await _access.read(null, (session) => session.checkLogin());
+        } else {
+          await _access.restoreAccount(_requiredVerification(verify));
+        }
+        return true;
+      },
+      notifyErrors: notifyErrors,
+    );
   }
 
   Future<bool> synchronize({String? term, VerifySchoolLogin? verify}) => _run(

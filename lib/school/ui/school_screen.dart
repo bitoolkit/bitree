@@ -57,7 +57,6 @@ class _SchoolScreenState extends State<_SchoolScreen> {
       );
       if (!mounted) return;
       if (!signedIn) return;
-      _password.clear();
       _running = false;
       Navigator.of(context).pop(true);
     } finally {
