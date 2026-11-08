@@ -274,7 +274,7 @@ void main() {
     final scan = await scanEclass(
       server,
       eclassFixture(
-        exams: (_, __) => [
+        exams: (_, _) => [
           eclassExam(id: 1212, title: '第三章测试', submissions: 1),
           eclassExam(id: 1211, title: '第四章测试'),
         ],
@@ -322,7 +322,7 @@ void main() {
             'visible_end_at': null,
           },
         ],
-        exams: (_, __) => [
+        exams: (_, _) => [
           eclassExam(
             id: 1211,
             title: '第五章测试',
@@ -350,7 +350,7 @@ void main() {
     final scan = await scanEclass(
       server,
       eclassFixture(
-        exams: (_, __) => [
+        exams: (_, _) => [
           eclassExam(
             id: 1,
             title: '已交但未结束',
@@ -388,7 +388,7 @@ void main() {
     final scan = await scanEclass(
       server,
       eclassFixture(
-        exams: (_, __) => [
+        exams: (_, _) => [
           eclassExam(
             id: 4,
             title: '开放式测试',
@@ -426,7 +426,7 @@ void main() {
     final scan = await scanEclass(
       server,
       eclassFixture(
-        exams: (_, __) => [
+        exams: (_, _) => [
           eclassExam(
             id: 6,
             title: '未开放的测试',
@@ -533,7 +533,7 @@ void main() {
             'visible_end_at': null,
           },
         ],
-        examStatus: (_, __) => HttpStatus.internalServerError,
+        examStatus: (_, _) => HttpStatus.internalServerError,
       ),
     );
 
@@ -556,7 +556,7 @@ void main() {
             'visible_end_at': null,
           },
         ],
-        exams: (_, __) => [eclassExam(id: 41, title: '第一次测试')],
+        exams: (_, _) => [eclassExam(id: 41, title: '第一次测试')],
         activityStatus: (_) => HttpStatus.serviceUnavailable,
       ),
     );
