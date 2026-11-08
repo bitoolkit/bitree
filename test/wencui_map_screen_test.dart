@@ -156,8 +156,10 @@ void main() {
     await _open(tester, room: 'F202');
     await tester.tap(find.widgetWithText(AppSelectionButton, '卫生间'));
     await tester.pumpAndSettle();
-    expect(find.bySemanticsLabel('男卫生间，2层'), findsWidgets);
-    expect(find.bySemanticsLabel('女卫生间，2层'), findsWidgets);
+    // CustomPainterSemantics creates nodes without their own widget elements.
+    // Search the semantics tree, not the widget tree, for these map markers.
+    expect(find.semantics.byLabel('男卫生间，2层').evaluate(), isNotEmpty);
+    expect(find.semantics.byLabel('女卫生间，2层').evaluate(), isNotEmpty);
     final atlas = (await tester.runAsync(WencuiAtlas.load))!;
     for (final (gender, label, icon) in [
       (WencuiRestroomGender.male, '男卫生间', Icons.man_rounded),
