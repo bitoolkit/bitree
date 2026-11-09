@@ -24,6 +24,7 @@ class AgendaTimeline extends StatefulWidget {
     required this.controller,
     required this.entries,
     required this.now,
+    this.filter = (kind: null, term: null),
     this.active = true,
     this.visible = true,
   });
@@ -31,6 +32,9 @@ class AgendaTimeline extends StatefulWidget {
   final AppController controller;
   final List<AgendaEntry> entries;
   final DateTime now;
+
+  /// Changing filters resets the vertical range, without changing the date.
+  final ({AgendaKind? kind, String? term}) filter;
 
   /// Reset the date on page re-entry, not when changing list/timeline mode.
   final bool active;
@@ -209,7 +213,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   @override
   void didUpdateWidget(covariant AgendaTimeline oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.entries, widget.entries)) {
+    if (oldWidget.filter != widget.filter) {
       _retainedLaneExtent = null;
     }
     if (oldWidget.visible != widget.visible) {
@@ -655,7 +659,9 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                                         behavior: ScrollConfiguration.of(
                                           context,
                                         ).copyWith(scrollbars: false),
-                                        child: SingleChildScrollView(
+                                        // Preserve overscroll when horizontal
+                                        // panning changes the content height.
+                                        child: CustomScrollView(
                                           key: const ValueKey(
                                             'agenda-timeline-lanes',
                                           ),
@@ -664,23 +670,28 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                                             parent:
                                                 NeverScrollableScrollPhysics(),
                                           ),
-                                          child: SizedBox(
-                                            height: contentHeight,
-                                            width: width,
-                                            child: Stack(
-                                              clipBehavior: Clip.hardEdge,
-                                              children: [
-                                                for (final placement in visible)
-                                                  _buildEntry(
-                                                    context,
-                                                    placement,
-                                                    width,
-                                                    pixelsPerHour,
-                                                    laneHeight,
-                                                  ),
-                                              ],
+                                          slivers: [
+                                            SliverToBoxAdapter(
+                                              child: SizedBox(
+                                                height: contentHeight,
+                                                width: width,
+                                                child: Stack(
+                                                  clipBehavior: Clip.hardEdge,
+                                                  children: [
+                                                    for (final placement
+                                                        in visible)
+                                                      _buildEntry(
+                                                        context,
+                                                        placement,
+                                                        width,
+                                                        pixelsPerHour,
+                                                        laneHeight,
+                                                      ),
+                                                  ],
+                                                ),
+                                              ),
                                             ),
-                                          ),
+                                          ],
                                         ),
                                       ),
                                       if (widget.entries.isEmpty)

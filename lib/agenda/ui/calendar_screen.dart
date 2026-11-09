@@ -208,6 +208,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   controller: controller,
                   entries: entries,
                   now: now,
+                  filter: (kind: _kind, term: selectedTerm),
                   active: widget.active,
                   visible: timeline,
                 ),

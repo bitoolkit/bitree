@@ -111,6 +111,136 @@ Future<void> _wheel(
 }
 
 void main() {
+  for (final bottom in [false, true]) {
+    testWidgets(
+      'Horizontal panning preserves a held ${bottom ? 'bottom' : 'top'} overscroll',
+      (tester) async {
+        final entries = [
+          ..._stackedDeadlines(),
+          for (var index = 0; index < 25; index++)
+            AgendaEntry(
+              id: 'future-$index',
+              title: '后续作业 $index',
+              kind: AgendaKind.deadline,
+              startsAt: _date.add(const Duration(days: 10, hours: 12)),
+            ),
+        ];
+        await _show(tester, entries);
+        final position = _lanePosition(tester);
+        if (bottom) {
+          position.jumpTo(position.maxScrollExtent);
+          await tester.pumpAndSettle();
+        }
+        final dy = bottom ? -1.0 : 1.0;
+        final gesture = await tester.startGesture(const Offset(330, 500));
+        var released = false;
+        try {
+          await gesture.moveBy(Offset(0, dy * 30));
+          await tester.pump(const Duration(milliseconds: 16));
+          await gesture.moveBy(Offset(0, dy * 180));
+          await tester.pump(const Duration(milliseconds: 16));
+          final heldOffset = position.pixels;
+          final maximum = position.maxScrollExtent;
+          expect(
+            heldOffset,
+            bottom ? greaterThan(maximum + 10) : lessThan(-10),
+          );
+          final tracked = bottom ? entries[23] : entries.first;
+          final heldTop = tester.getRect(_paintedBar(tracked)).top;
+
+          for (var frame = 0; frame < 36; frame++) {
+            await gesture.moveBy(const Offset(-4, 0));
+            await tester.pump(const Duration(milliseconds: 16));
+            expect(
+              position.pixels,
+              closeTo(heldOffset, .01),
+              reason:
+                  'frame=$frame, originalMax=$maximum, currentMax=${position.maxScrollExtent}',
+            );
+            expect(
+              tester.getRect(_paintedBar(tracked)).top,
+              closeTo(heldTop, .01),
+            );
+          }
+          expect(position.maxScrollExtent, greaterThan(maximum));
+          await gesture.up();
+          released = true;
+          await tester.pumpAndSettle();
+          expect(
+            position.pixels,
+            closeTo(bottom ? position.maxScrollExtent : 0, .01),
+          );
+          expect(tester.takeException(), isNull);
+        } finally {
+          if (!released) await gesture.cancel();
+          await tester.pumpAndSettle();
+          await tester.pumpWidget(const SizedBox());
+        }
+      },
+    );
+  }
+
+  testWidgets(
+    'Background refreshes keep vertical position during horizontal drags',
+    (tester) async {
+      final entries = [
+        for (var day = 0; day < 24; day++)
+          for (var index = 0; index < (day == 0 || day == 22 ? 24 : 2); index++)
+            AgendaEntry(
+              id: 'frame-$day-$index',
+              title: '作业 $day $index',
+              kind: AgendaKind.deadline,
+              startsAt: _date.add(Duration(days: day, hours: 12)),
+            ),
+      ];
+      final app = await _show(tester, entries);
+      late StateSetter refresh;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: bitreeTheme(Brightness.light),
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) {
+                refresh = setState;
+                return AgendaTimeline(
+                  controller: app,
+                  entries: entries.toList(),
+                  now: _date.add(const Duration(hours: 12)),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final position = _lanePosition(tester);
+      position.jumpTo(position.maxScrollExtent * .8);
+      await tester.pumpAndSettle();
+      for (var swipe = 0; swipe < 4; swipe++) {
+        final direction = swipe.isEven ? -1.0 : 1.0;
+        final gesture = await tester.startGesture(const Offset(200, 600));
+        await gesture.moveBy(Offset(direction * 24, 0));
+        await tester.pump(const Duration(milliseconds: 16));
+        for (var frame = 0; frame < 36; frame++) {
+          final before = position.pixels;
+          await gesture.moveBy(Offset(direction * 12, 0));
+          refresh(() {});
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(
+            position.pixels,
+            closeTo(before, .01),
+            reason:
+                'swipe=$swipe frame=$frame, offset=$before -> ${position.pixels}, max=${position.maxScrollExtent}',
+          );
+        }
+        await gesture.cancel();
+        await tester.pumpAndSettle();
+      }
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   testWidgets('Panning reuses the visible deadline content', (tester) async {
     final entries = _stackedDeadlines();
     await _show(tester, entries);
@@ -794,9 +924,19 @@ void main() {
   testWidgets('Filtering a deep timeline culls at the newly clamped offset', (
     tester,
   ) async {
-    final entries = _stackedDeadlines();
+    final entries = [
+      for (var index = 0; index < 24; index++)
+        AgendaEntry(
+          id: 'filtered-$index',
+          title: '重叠作业 $index',
+          kind: AgendaKind.deadline,
+          startsAt: _date.add(const Duration(hours: 12)),
+          term: index == 23 ? 'selected' : 'other',
+        ),
+    ];
     final app = await _show(tester, entries);
     var filtered = entries;
+    String? selectedTerm;
     late StateSetter updateEntries;
     // Retain the same timeline State when the filtered data changes.
     await tester.pumpWidget(
@@ -810,6 +950,7 @@ void main() {
                 controller: app,
                 entries: filtered,
                 now: _date.add(const Duration(hours: 12)),
+                filter: (kind: null, term: selectedTerm),
               );
             },
           ),
@@ -824,7 +965,10 @@ void main() {
     expect(position.pixels, greaterThan(0));
     expect(_paintedBar(entries.last), findsOneWidget);
 
-    updateEntries(() => filtered = [entries.last]);
+    updateEntries(() {
+      selectedTerm = 'selected';
+      filtered = entries.where((entry) => entry.term == selectedTerm).toList();
+    });
     // Check the first layout, not pumpAndSettle: a later unrelated rebuild
     // must not be required to recover cards culled using an obsolete offset.
     await tester.pump();
