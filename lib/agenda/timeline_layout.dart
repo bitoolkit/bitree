@@ -1,7 +1,7 @@
 import 'model.dart';
 
+/// Card bounds reserve lanes; paintStart also includes any unobstructed DDL tail.
 /// Event end times stay intact; layoutEnd includes their minimum display span.
-/// DDLs reserve their configured tail days; their painted width is separate.
 class AgendaTimelinePlacement {
   const AgendaTimelinePlacement({
     required this.entry,
@@ -9,6 +9,7 @@ class AgendaTimelinePlacement {
     required this.start,
     required this.end,
     required this.layoutEnd,
+    required this.paintStart,
   });
 
   final AgendaEntry entry;
@@ -16,13 +17,15 @@ class AgendaTimelinePlacement {
   final DateTime start;
   final DateTime end;
   final DateTime layoutEnd;
+  final DateTime paintStart;
 }
 
-/// Pack visible event spans and configured DDL reservations.
-/// The view converts its minimum card width to campus time at the current zoom.
+/// Card widths are converted to campus time by the view at the current zoom.
 List<AgendaTimelinePlacement> layoutAgendaTimeline(
   Iterable<AgendaEntry> entries, {
   required Duration minimumEventSpan,
+  required Duration deadlineCardSpan,
+  required Duration deadlineTailDaySpan,
 }) {
   final intervals =
       [
@@ -30,7 +33,7 @@ List<AgendaTimelinePlacement> layoutAgendaTimeline(
           (
             entry: entry,
             start: entry.isDeadline
-                ? entry.dueAt.subtract(Duration(days: entry.tailDays))
+                ? entry.dueAt.subtract(deadlineCardSpan)
                 : entry.startsAt,
             end: entry.isDeadline ? entry.dueAt : entry.endsAt!,
           ),
@@ -51,6 +54,21 @@ List<AgendaTimelinePlacement> layoutAgendaTimeline(
     var lane = laneEnds.indexWhere((end) => !interval.start.isBefore(end));
     if (lane < 0) {
       lane = laneEnds.length;
+    }
+    final previousEnd = lane < laneEnds.length ? laneEnds[lane] : null;
+    final tailStart = interval.entry.isDeadline
+        ? interval.end.subtract(
+            deadlineTailDaySpan * (interval.entry.tailDays - 0.25),
+          )
+        : interval.start;
+    final unobstructedStart =
+        previousEnd != null && previousEnd.isAfter(tailStart)
+        ? previousEnd
+        : tailStart;
+    final paintStart = unobstructedStart.isBefore(interval.start)
+        ? unobstructedStart
+        : interval.start;
+    if (lane == laneEnds.length) {
       laneEnds.add(layoutEnd);
     } else {
       laneEnds[lane] = layoutEnd;
@@ -62,6 +80,7 @@ List<AgendaTimelinePlacement> layoutAgendaTimeline(
         start: interval.start,
         end: interval.end,
         layoutEnd: layoutEnd,
+        paintStart: paintStart,
       ),
     );
   }

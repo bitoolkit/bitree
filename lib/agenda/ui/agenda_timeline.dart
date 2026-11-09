@@ -46,9 +46,10 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     with TickerProviderStateMixin {
   final ScrollController _lanes = ScrollController();
   late final AnimationController _horizontalFling;
-  late final AnimationController _verticalFling;
+  Drag? _verticalDrag;
+  ScrollHoldController? _verticalHold;
+  double? _retainedLaneExtent;
   double _lastHorizontal = 0;
-  double _lastVertical = 0;
   double _flingPixelsPerHour = 1;
   bool _gestureHadMultiplePointers = false;
   bool _gestureScaled = false;
@@ -62,17 +63,29 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   DateTime? _gestureAnchor;
   List<AgendaEntry>? _cachedEntries;
   Duration? _cachedMinimumEventSpan;
+  Duration? _cachedDeadlineCardSpan;
+  Duration? _cachedDeadlineTailDaySpan;
   List<AgendaTimelinePlacement> _cachedPlacements = const [];
   final Map<String, DateTime> _nextStartById = {};
 
-  List<AgendaTimelinePlacement> _layout(Duration minimumEventSpan) {
+  List<AgendaTimelinePlacement> _layout(
+    Duration minimumEventSpan,
+    Duration deadlineCardSpan,
+    Duration deadlineTailDaySpan,
+  ) {
     if (!identical(_cachedEntries, widget.entries) ||
-        _cachedMinimumEventSpan != minimumEventSpan) {
+        _cachedMinimumEventSpan != minimumEventSpan ||
+        _cachedDeadlineCardSpan != deadlineCardSpan ||
+        _cachedDeadlineTailDaySpan != deadlineTailDaySpan) {
       _cachedEntries = widget.entries;
       _cachedMinimumEventSpan = minimumEventSpan;
+      _cachedDeadlineCardSpan = deadlineCardSpan;
+      _cachedDeadlineTailDaySpan = deadlineTailDaySpan;
       _cachedPlacements = layoutAgendaTimeline(
         widget.entries,
         minimumEventSpan: minimumEventSpan,
+        deadlineCardSpan: deadlineCardSpan,
+        deadlineTailDaySpan: deadlineTailDaySpan,
       );
       _nextStartById.clear();
       final nextByLane = <int, DateTime>{};
@@ -92,13 +105,23 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     _lanes.addListener(_laneChanged);
     _horizontalFling = AnimationController.unbounded(vsync: this)
       ..addListener(_tickHorizontal);
-    _verticalFling = AnimationController.unbounded(vsync: this)
-      ..addListener(_tickVertical);
   }
 
-  void _stopMotion() {
+  void _stopMotion({bool holdVertical = false}) {
     _horizontalFling.stop();
-    _verticalFling.stop();
+    final drag = _verticalDrag;
+    _verticalDrag = null;
+    drag?.cancel();
+    if (_lanes.hasClients && _verticalHold == null) {
+      _verticalHold = _lanes.position.hold(() => _verticalHold = null);
+    }
+    if (!holdVertical) _releaseVerticalHold();
+  }
+
+  void _releaseVerticalHold() {
+    final hold = _verticalHold;
+    _verticalHold = null;
+    hold?.cancel();
   }
 
   void _tickHorizontal() {
@@ -115,39 +138,21 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     });
   }
 
-  void _tickVertical() {
-    final delta = _verticalFling.value - _lastVertical;
-    _lastVertical = _verticalFling.value;
-    if (!_lanes.hasClients || !widget.active || !widget.visible) {
-      _verticalFling.stop();
-      return;
-    }
-    final target = _lanes.offset - delta;
-    _scrollLanes(-delta);
-    if (target <= 0 || target >= _lanes.position.maxScrollExtent) {
-      _verticalFling.stop();
-    }
-  }
+  bool get _canFling =>
+      widget.active &&
+      widget.visible &&
+      !_gestureHadMultiplePointers &&
+      !_gestureScaled &&
+      !_gestureTrackpad;
 
   void _startFling(Offset velocity, double pixelsPerHour) {
-    if (!widget.active ||
-        !widget.visible ||
-        _gestureHadMultiplePointers ||
-        _gestureScaled ||
-        _gestureTrackpad) {
-      return;
-    }
+    if (!_canFling) return;
     _flingPixelsPerHour = pixelsPerHour;
-    // Framework friction supplies both axes; only the viewport/date is moved.
+    // Vertical flings and edge springs belong to the ScrollPosition.
     if (velocity.dx.abs() >= 50) {
       _lastHorizontal = 0;
       _horizontalFling.value = 0;
       _horizontalFling.animateWith(FrictionSimulation(0.135, 0, velocity.dx));
-    }
-    if (velocity.dy.abs() >= 50 && _lanes.hasClients) {
-      _lastVertical = 0;
-      _verticalFling.value = 0;
-      _verticalFling.animateWith(FrictionSimulation(0.135, 0, velocity.dy));
     }
   }
 
@@ -155,13 +160,13 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   void didUpdateWidget(covariant AgendaTimeline oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.visible != widget.visible) {
-      _stopMotion();
+      _stopMotion(holdVertical: true);
       _gestureAnchor = null;
       _downPointers.clear();
       _panZoomPointers.clear();
     }
     if (oldWidget.active != widget.active) {
-      _stopMotion();
+      _stopMotion(holdVertical: true);
       _gestureAnchor = null;
       _downPointers.clear();
       _panZoomPointers.clear();
@@ -169,11 +174,17 @@ class _AgendaTimelineState extends State<AgendaTimeline>
         _center = calendarDate(widget.now).add(const Duration(hours: 12));
       }
     }
+    if (widget.active &&
+        widget.visible &&
+        (oldWidget.active != widget.active ||
+            oldWidget.visible != widget.visible)) {
+      _releaseVerticalHold();
+    }
   }
 
   @override
   void deactivate() {
-    _stopMotion();
+    _stopMotion(holdVertical: true);
     _gestureAnchor = null;
     _downPointers.clear();
     _panZoomPointers.clear();
@@ -186,9 +197,9 @@ class _AgendaTimelineState extends State<AgendaTimeline>
 
   @override
   void dispose() {
-    _stopMotion();
+    _stopMotion(holdVertical: true);
     _horizontalFling.dispose();
-    _verticalFling.dispose();
+    _releaseVerticalHold();
     _lanes.removeListener(_laneChanged);
     _lanes.dispose();
     super.dispose();
@@ -203,11 +214,8 @@ class _AgendaTimelineState extends State<AgendaTimeline>
 
   void _scrollLanes(double delta) {
     if (!_lanes.hasClients) return;
-    _lanes.jumpTo(
-      (_lanes.offset + delta)
-          .clamp(0.0, _lanes.position.maxScrollExtent)
-          .toDouble(),
-    );
+    _releaseVerticalHold();
+    _lanes.position.pointerScroll(delta);
   }
 
   void _zoomAt(double zoom, double x, double width, double baseline) {
@@ -275,14 +283,13 @@ class _AgendaTimelineState extends State<AgendaTimeline>
               10,
         );
         final laneHeight = barHeight + 12;
-        // Keep the tail a quarter baseline day inside its reservation.
-        // Width is set by the MINIMUM zoom, never by the current zoom.
-        double deadlineWidth(AgendaEntry entry) =>
-            cellWidth * (entry.tailDays - 0.25);
-        Duration deadlineDuration(AgendaEntry entry) => Duration(
+        final deadlineCardWidth = 144.0 * fontScale;
+        final deadlineCardSpan = Duration(
           microseconds:
-              (deadlineWidth(entry) / pixelsPerHour * _microsecondsPerHour)
-                  .ceil(),
+              (deadlineCardWidth / pixelsPerHour * _microsecondsPerHour).ceil(),
+        );
+        final deadlineTailDaySpan = Duration(
+          microseconds: (Duration.microsecondsPerDay / _zoom).round(),
         );
         final minimumEventSpan = Duration(
           // The visual floor is fixed and does not scale with accessibility text.
@@ -290,7 +297,11 @@ class _AgendaTimelineState extends State<AgendaTimeline>
               (_minimumEventWidth / pixelsPerHour * _microsecondsPerHour)
                   .ceil(),
         );
-        final placements = _layout(minimumEventSpan);
+        final placements = _layout(
+          minimumEventSpan,
+          deadlineCardSpan,
+          deadlineTailDaySpan,
+        );
         final left = _timeAt(0, width, pixelsPerHour);
         final right = _timeAt(width, width, pixelsPerHour);
         final painter = _TimelineGridPainter(
@@ -306,7 +317,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
         );
 
         return Listener(
-          onPointerDown: (_) => _stopMotion(),
+          onPointerDown: (_) => _stopMotion(holdVertical: true),
           onPointerSignal: (event) {
             if (event is PointerScrollEvent) _stopMotion();
           },
@@ -348,7 +359,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
               Expanded(
                 child: Listener(
                   onPointerDown: (event) {
-                    _stopMotion();
+                    _stopMotion(holdVertical: true);
                     if (_downPointers.isEmpty) {
                       _gestureHadMultiplePointers = false;
                     }
@@ -357,7 +368,10 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                       _gestureHadMultiplePointers = true;
                     }
                   },
-                  onPointerUp: (event) => _downPointers.remove(event.pointer),
+                  onPointerUp: (event) {
+                    _downPointers.remove(event.pointer);
+                    if (_downPointers.isEmpty) _releaseVerticalHold();
+                  },
                   onPointerCancel: (event) {
                     _downPointers.remove(event.pointer);
                     _panZoomPointers.remove(event.pointer);
@@ -365,14 +379,16 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                     _stopMotion();
                   },
                   onPointerPanZoomStart: (event) {
-                    _stopMotion();
+                    _stopMotion(holdVertical: true);
                     if (_panZoomPointers.isEmpty && _downPointers.isEmpty) {
                       _gestureHadMultiplePointers = false;
                     }
                     _panZoomPointers.add(event.pointer);
                   },
-                  onPointerPanZoomEnd: (event) =>
-                      _panZoomPointers.remove(event.pointer),
+                  onPointerPanZoomEnd: (event) {
+                    _panZoomPointers.remove(event.pointer);
+                    if (_panZoomPointers.isEmpty) _releaseVerticalHold();
+                  },
                   onPointerSignal: (event) {
                     if (event is! PointerScrollEvent) return;
                     _stopMotion();
@@ -420,7 +436,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onScaleStart: (details) {
-                      _stopMotion();
+                      _stopMotion(holdVertical: true);
                       _gestureTrackpad = _panZoomPointers.isNotEmpty;
                       _gestureHadMultiplePointers =
                           _gestureHadMultiplePointers ||
@@ -435,6 +451,15 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                         width,
                         pixelsPerHour,
                       );
+                      if (!_gestureHadMultiplePointers && _lanes.hasClients) {
+                        _verticalDrag = _lanes.position.drag(
+                          DragStartDetails(
+                            globalPosition: details.focalPoint,
+                            localPosition: details.localFocalPoint,
+                          ),
+                          () => _verticalDrag = null,
+                        );
+                      }
                     },
                     onScaleUpdate: (details) {
                       if (!_gestureTrackpad && details.pointerCount > 1) {
@@ -477,12 +502,41 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                       if ((_gestureTrackpad || details.pointerCount <= 1) &&
                           !_gestureHadMultiplePointers &&
                           !_gestureScaled) {
-                        _scrollLanes(-details.focalPointDelta.dy);
+                        _verticalDrag?.update(
+                          DragUpdateDetails(
+                            delta: Offset(0, details.focalPointDelta.dy),
+                            primaryDelta: details.focalPointDelta.dy,
+                            globalPosition: details.focalPoint,
+                            localPosition: details.localFocalPoint,
+                          ),
+                        );
+                      } else {
+                        final drag = _verticalDrag;
+                        _verticalDrag = null;
+                        drag?.cancel();
                       }
                     },
                     onScaleEnd: (details) {
                       final hadAnchor = _gestureAnchor != null;
                       _gestureAnchor = null;
+                      final drag = _verticalDrag;
+                      _verticalDrag = null;
+                      drag?.end(
+                        DragEndDetails(
+                          velocity: Velocity(
+                            pixelsPerSecond: Offset(
+                              0,
+                              _canFling
+                                  ? details.velocity.pixelsPerSecond.dy
+                                  : 0,
+                            ),
+                          ),
+                          primaryVelocity: _canFling
+                              ? details.velocity.pixelsPerSecond.dy
+                              : 0,
+                        ),
+                      );
+                      _releaseVerticalHold();
                       if (hadAnchor) {
                         _startFling(
                           details.velocity.pixelsPerSecond,
@@ -515,14 +569,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                                     .where(
                                       (placement) =>
                                           placement.layoutEnd.isAfter(left) &&
-                                          (placement.entry.isDeadline
-                                                  ? placement.end.subtract(
-                                                      deadlineDuration(
-                                                        placement.entry,
-                                                      ),
-                                                    )
-                                                  : placement.start)
-                                              .isBefore(right),
+                                          placement.paintStart.isBefore(right),
                                     )
                                     .toList(growable: false);
                                 final displayedLaneCount = placementsInTime
@@ -531,10 +578,23 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                                       (count, placement) =>
                                           math.max(count, placement.lane + 1),
                                     );
-                                final contentHeight = math.max(
-                                  height,
-                                  displayedLaneCount * laneHeight + 12,
+                                final contentExtent = math.max(
+                                  0.0,
+                                  (displayedLaneCount + 1) * laneHeight +
+                                      12 -
+                                      height,
                                 );
+                                // Keep an old lower position when the date changes.
+                                // Scrolling up releases it, leaving one spare lane.
+                                _retainedLaneExtent = math.max(
+                                  contentExtent,
+                                  math.min(
+                                    _retainedLaneExtent ?? contentExtent,
+                                    math.max(0.0, offset),
+                                  ),
+                                );
+                                final contentHeight =
+                                    height + _retainedLaneExtent!;
                                 final visible = placementsInTime
                                     .where(
                                       (placement) =>
@@ -568,8 +628,10 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                                           'agenda-timeline-lanes',
                                         ),
                                         controller: _lanes,
-                                        physics:
-                                            const NeverScrollableScrollPhysics(),
+                                        physics: const BouncingScrollPhysics(
+                                          parent:
+                                              NeverScrollableScrollPhysics(),
+                                        ),
                                         child: SizedBox(
                                           height: contentHeight,
                                           width: width,
@@ -583,9 +645,6 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                                                   width,
                                                   pixelsPerHour,
                                                   laneHeight,
-                                                  deadlineWidth(
-                                                    placement.entry,
-                                                  ),
                                                 ),
                                             ],
                                           ),
@@ -634,7 +693,6 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     double width,
     double pixelsPerHour,
     double laneHeight,
-    double deadlineWidth,
   ) {
     final entry = placement.entry;
     double x(DateTime time) =>
@@ -644,7 +702,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
             pixelsPerHour;
     final actualRight = x(placement.layoutEnd);
     final actualLeft = entry.isDeadline
-        ? actualRight - deadlineWidth
+        ? x(placement.paintStart)
         : x(placement.start);
     // Crop long ordinary events before creating widgets; no huge canvas/boxes.
     final left = entry.isDeadline ? actualLeft : math.max(0.0, actualLeft);
@@ -664,7 +722,9 @@ class _AgendaTimelineState extends State<AgendaTimeline>
         entry: entry,
         now: widget.now,
         barWidth: barWidth,
-        deadlineWidth: deadlineWidth,
+        cardWidth: entry.isDeadline
+            ? actualRight - x(placement.start)
+            : barWidth,
         onTap: () => showAgendaEntry(context, widget.controller, entry),
       ),
     );

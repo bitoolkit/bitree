@@ -15,14 +15,14 @@ class AgendaTimelineEntry extends StatelessWidget {
     required this.entry,
     required this.now,
     required this.barWidth,
-    required this.deadlineWidth,
+    required this.cardWidth,
     required this.onTap,
   });
 
   final AgendaEntry entry;
   final DateTime now;
   final double barWidth;
-  final double deadlineWidth;
+  final double cardWidth;
   final VoidCallback onTap;
 
   @override
@@ -77,7 +77,7 @@ class AgendaTimelineEntry extends StatelessWidget {
       ),
     );
 
-    return Semantics(
+    final card = Semantics(
       button: true,
       label: description,
       onTap: onTap,
@@ -91,22 +91,17 @@ class AgendaTimelineEntry extends StatelessWidget {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: SizedBox(
-                  key: ValueKey(('agenda-timeline-bar', entry.id)),
-                  width: barWidth,
+                  key: ValueKey((
+                    entry.isDeadline
+                        ? 'agenda-timeline-card'
+                        : 'agenda-timeline-bar',
+                    entry.id,
+                  )),
+                  width: entry.isDeadline ? cardWidth : barWidth,
                   height: double.infinity,
                   child: Ink(
                     decoration: BoxDecoration(
-                      color: entry.isDeadline ? null : colors.fill,
-                      gradient: entry.isDeadline
-                          ? LinearGradient(
-                              colors: [
-                                deadlineFill.withValues(alpha: 0),
-                                deadlineFill,
-                                deadlineFill,
-                              ],
-                              stops: const [0, 0.18, 1],
-                            )
-                          : null,
+                      color: entry.isDeadline ? deadlineFill : colors.fill,
                       borderRadius: radius,
                     ),
                     // Ink includes border widths in its padding. Paint the
@@ -146,13 +141,12 @@ class AgendaTimelineEntry extends StatelessWidget {
                               ),
                             ),
                           Padding(
-                            padding: EdgeInsets.only(
-                              left: entry.isDeadline ? deadlineWidth * 0.37 : 8,
-                              right: 8,
-                              top: 4,
-                              bottom: 4,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
                             ),
-                            child: barWidth < 48
+                            child:
+                                (entry.isDeadline ? cardWidth : barWidth) < 48
                                 ? const SizedBox.shrink()
                                 : Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -239,6 +233,40 @@ class AgendaTimelineEntry extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+    if (!entry.isDeadline) return card;
+    return SizedBox(
+      key: ValueKey(('agenda-timeline-bar', entry.id)),
+      width: barWidth,
+      height: double.infinity,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (barWidth > cardWidth)
+            Positioned(
+              left: 0,
+              right: cardWidth,
+              top: 0,
+              bottom: 0,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [deadlineFill.withValues(alpha: 0), deadlineFill],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: cardWidth,
+            child: card,
+          ),
+        ],
       ),
     );
   }

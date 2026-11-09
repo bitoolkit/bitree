@@ -83,8 +83,8 @@ class AgendaEntry {
   final Uri? url;
   final AgendaEntryDetails? details;
 
-  /// Timeline reservation in days; the painted tail leaves a quarter-day gap
-  /// at minimum zoom and keeps its screen width as the view zooms in.
+  /// Maximum gradient tail in baseline days. Other cards can shorten the tail;
+  /// its screen width stays fixed as the view zooms in.
   final int tailDays;
 
   bool get isDeadline => kind == AgendaKind.deadline;

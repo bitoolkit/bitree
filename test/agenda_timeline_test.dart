@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/timeline_layout.dart';
 import 'package:bitree/agenda/ui/agenda_timeline.dart';
@@ -6,6 +8,7 @@ import 'package:bitree/l10n/formats.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/test_app.dart';
@@ -34,6 +37,7 @@ Future<TestAppController> _show(
   List<AgendaEntry> entries, {
   double scale = 1,
   Brightness brightness = Brightness.light,
+  ValueNotifier<bool>? visible,
 }) async {
   tester.view.physicalSize = const Size(390, 844);
   tester.view.devicePixelRatio = 1;
@@ -41,6 +45,8 @@ Future<TestAppController> _show(
   addTearDown(tester.view.resetDevicePixelRatio);
   final app = TestAppController(entries: entries);
   await app.initialize();
+  final visibility = visible ?? ValueNotifier(true);
+  if (visible == null) addTearDown(visibility.dispose);
   await tester.pumpWidget(
     MaterialApp(
       theme: bitreeTheme(brightness),
@@ -50,16 +56,47 @@ Future<TestAppController> _show(
         child: child!,
       ),
       home: Scaffold(
-        body: AgendaTimeline(
-          controller: app,
-          entries: entries,
-          now: _date.add(const Duration(hours: 12)),
+        body: ValueListenableBuilder<bool>(
+          valueListenable: visibility,
+          builder: (context, isVisible, _) => AgendaTimeline(
+            controller: app,
+            entries: entries,
+            now: _date.add(const Duration(hours: 12)),
+            visible: isVisible,
+          ),
         ),
       ),
     ),
   );
   await tester.pumpAndSettle();
   return app;
+}
+
+ScrollPosition _lanePosition(WidgetTester tester) => tester
+    .state<ScrollableState>(
+      find.descendant(
+        of: find.byKey(const ValueKey('agenda-timeline-lanes')),
+        matching: find.byType(Scrollable),
+      ),
+    )
+    .position;
+
+Future<void> _wheel(
+  WidgetTester tester,
+  Offset delta, {
+  bool vertical = false,
+}) async {
+  if (vertical) await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+  tester.binding.handlePointerEvent(
+    PointerScrollEvent(
+      position: tester.getCenter(
+        find.byKey(const ValueKey('agenda-timeline-lanes')),
+      ),
+      scrollDelta: delta,
+    ),
+  );
+  await tester.pumpAndSettle();
+  if (vertical) await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
 }
 
 void main() {
@@ -70,6 +107,8 @@ void main() {
     final zoomedOut = layoutAgendaTimeline(
       entries,
       minimumEventSpan: const Duration(hours: 48),
+      deadlineCardSpan: const Duration(days: 2),
+      deadlineTailDaySpan: const Duration(days: 1),
     );
     expect(zoomedOut.map((placement) => placement.lane), [0, 1]);
     expect(zoomedOut.first.start, first.startsAt);
@@ -81,6 +120,8 @@ void main() {
     final zoomedIn = layoutAgendaTimeline(
       entries,
       minimumEventSpan: const Duration(hours: 2),
+      deadlineCardSpan: const Duration(hours: 2),
+      deadlineTailDaySpan: const Duration(hours: 1),
     );
     expect(zoomedIn.map((placement) => placement.lane), [0, 0]);
     expect(zoomedIn.map((placement) => placement.end), [
@@ -89,7 +130,7 @@ void main() {
     ]);
   });
 
-  test('Long events and DDL reservations retain their full intervals', () {
+  test('Long events and DDL endpoints retain their real times', () {
     final long = AgendaEntry(
       id: 'long',
       title: '多日日程',
@@ -103,10 +144,12 @@ void main() {
       kind: AgendaKind.deadline,
       startsAt: _date.add(const Duration(hours: 13)),
     );
-    final placements = layoutAgendaTimeline([
-      long,
-      ddl,
-    ], minimumEventSpan: const Duration(days: 2));
+    final placements = layoutAgendaTimeline(
+      [long, ddl],
+      minimumEventSpan: const Duration(days: 2),
+      deadlineCardSpan: const Duration(days: 2),
+      deadlineTailDaySpan: const Duration(days: 1),
+    );
     final eventPlacement = placements.singleWhere(
       (placement) => placement.entry == long,
     );
@@ -116,13 +159,17 @@ void main() {
     expect(eventPlacement.layoutEnd, long.endsAt);
     expect(
       deadlinePlacement.start,
-      ddl.dueAt.subtract(const Duration(days: 4)),
+      ddl.dueAt.subtract(const Duration(days: 2)),
+    );
+    expect(
+      deadlinePlacement.paintStart,
+      ddl.dueAt.subtract(const Duration(days: 3, hours: 18)),
     );
     expect(deadlinePlacement.layoutEnd, ddl.dueAt);
   });
 
   for (final days in [1, 7, 14]) {
-    test('DDL lane reservations follow $days tail days', () {
+    test('A $days-day DDL tail yields to another card in the same lane', () {
       final ddl = AgendaEntry(
         id: 'custom',
         title: '作业',
@@ -135,17 +182,20 @@ void main() {
         id: 'overlap',
         title: '日程',
         kind: AgendaKind.event,
-        startsAt: ddl.dueAt.subtract(Duration(days: days, hours: -1)),
-        endsAt: ddl.dueAt.subtract(Duration(days: days, hours: -2)),
+        startsAt: ddl.dueAt.subtract(const Duration(hours: 12)),
+        endsAt: ddl.dueAt.subtract(const Duration(hours: 10)),
       );
-      final placements = layoutAgendaTimeline([
-        ddl,
-        overlapping,
-      ], minimumEventSpan: const Duration(minutes: 1));
+      final placements = layoutAgendaTimeline(
+        [ddl, overlapping],
+        minimumEventSpan: const Duration(minutes: 1),
+        deadlineCardSpan: const Duration(hours: 6),
+        deadlineTailDaySpan: const Duration(days: 1),
+      );
       final reservation = placements.singleWhere((p) => p.entry == ddl);
-      expect(reservation.start, ddl.dueAt.subtract(Duration(days: days)));
+      expect(reservation.start, ddl.dueAt.subtract(const Duration(hours: 6)));
+      expect(reservation.paintStart, overlapping.endsAt);
       expect(reservation.end, ddl.dueAt);
-      expect(placements.map((p) => p.lane).toSet(), hasLength(2));
+      expect(placements.map((p) => p.lane).toSet(), hasLength(1));
     });
 
     testWidgets('A $days-day DDL tail keeps its configured width on zoom', (
@@ -160,7 +210,7 @@ void main() {
       );
       await _show(tester, [ddl]);
       final before = tester.getRect(_paintedBar(ddl));
-      expect(before.width, closeTo(48 * (days - .25), .001));
+      expect(before.width, closeTo(math.max(144, 48 * (days - .25)), .001));
       tester.widget<Slider>(find.byType(Slider)).onChanged!(24);
       await tester.pumpAndSettle();
       final after = tester.getRect(_paintedBar(ddl));
@@ -225,7 +275,10 @@ void main() {
               .001,
             ),
           );
-          expect(rectangles.last.width, closeTo(180, .001));
+          expect(
+            rectangles.last.width,
+            closeTo(math.max(180, 144 * scale), .001),
+          );
           for (var index = 0; index < rectangles.length; index++) {
             expect(
               rectangles[index].height,
@@ -349,6 +402,220 @@ void main() {
     scrollable.position.jumpTo(scrollable.position.maxScrollExtent);
     await tester.pumpAndSettle();
     expect(_paintedBar(entries.last), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
+    'Dense-to-sparse panning holds the vertical position until the user scrolls up',
+    (tester) async {
+      final entries = [
+        for (var index = 0; index < 20; index++)
+          AgendaEntry(
+            id: 'dense-$index',
+            title: '密集日程 $index',
+            kind: AgendaKind.event,
+            startsAt: _date.add(Duration(hours: 11, minutes: index)),
+            endsAt: _date.add(const Duration(hours: 14)),
+          ),
+        AgendaEntry(
+          id: 'sparse',
+          title: '后续日程',
+          kind: AgendaKind.event,
+          startsAt: _date.add(const Duration(days: 12, hours: 11)),
+          endsAt: _date.add(const Duration(days: 12, hours: 14)),
+        ),
+      ];
+      await _show(tester, entries);
+      final position = _lanePosition(tester);
+      final denseMaximum = position.maxScrollExtent;
+      expect(denseMaximum, greaterThan(200));
+      position.jumpTo(denseMaximum * .75);
+      await tester.pumpAndSettle();
+      final before = position.pixels;
+
+      await _wheel(tester, const Offset(48 * 12, 0));
+      expect(_paintedBar(entries.last), findsNothing);
+      expect(position.pixels, closeTo(before, .01));
+      expect(position.maxScrollExtent, closeTo(before, .01));
+
+      await _wheel(tester, const Offset(0, -80), vertical: true);
+      final tightened = position.pixels;
+      expect(tightened, closeTo(before - 80, .01));
+      expect(position.maxScrollExtent, closeTo(tightened, .01));
+      await _wheel(tester, const Offset(0, 250), vertical: true);
+      expect(position.pixels, closeTo(tightened, .01));
+
+      await _wheel(tester, const Offset(0, -2000), vertical: true);
+      expect(position.pixels, 0);
+      expect(position.maxScrollExtent, 0);
+      expect(_paintedBar(entries.last), findsOneWidget);
+
+      await _wheel(tester, const Offset(-48 * 12, 0));
+      expect(position.pixels, 0);
+      expect(position.maxScrollExtent, closeTo(denseMaximum, .01));
+      position.jumpTo(position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      final viewport = tester.getRect(
+        find.byKey(const ValueKey('agenda-timeline-lanes')),
+      );
+      final lastCard = tester.getRect(_paintedBar(entries[19]));
+      final laneHeight = lastCard.height + 12;
+      expect(
+        viewport.bottom - lastCard.bottom,
+        inInclusiveRange(laneHeight, laneHeight + 24),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  for (final cancel in [false, true]) {
+    testWidgets(
+      'Repeated top-edge pulls rebound after ${cancel ? 'cancellation' : 'release'}',
+      (tester) async {
+        await _show(tester, []);
+        final position = _lanePosition(tester);
+        for (var attempt = 0; attempt < 3; attempt++) {
+          final gesture = await tester.startGesture(const Offset(200, 180));
+          await gesture.moveBy(const Offset(0, 30));
+          await tester.pump(const Duration(milliseconds: 40));
+          await gesture.moveBy(const Offset(0, 80));
+          await tester.pump(const Duration(milliseconds: 40));
+          expect(position.pixels, lessThan(0));
+          if (cancel) {
+            await gesture.cancel();
+          } else {
+            await gesture.up();
+          }
+          await tester.pumpAndSettle();
+          expect(position.pixels, closeTo(0, .01));
+          expect(tester.takeException(), isNull);
+        }
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
+
+  testWidgets(
+    'Pulling past the bottom rebounds without growing the blank range',
+    (tester) async {
+      final entries = [
+        for (var index = 0; index < 20; index++)
+          AgendaEntry(
+            id: 'bottom-$index',
+            title: '重叠日程 $index',
+            kind: AgendaKind.event,
+            startsAt: _date.add(const Duration(hours: 11)),
+            endsAt: _date.add(const Duration(hours: 14)),
+          ),
+      ];
+      await _show(tester, entries);
+      final position = _lanePosition(tester);
+      final maximum = position.maxScrollExtent;
+      position.jumpTo(maximum);
+      await tester.pumpAndSettle();
+      for (final cancel in [false, true]) {
+        final gesture = await tester.startGesture(const Offset(200, 600));
+        await gesture.moveBy(const Offset(0, -30));
+        await tester.pump(const Duration(milliseconds: 40));
+        await gesture.moveBy(const Offset(0, -80));
+        await tester.pump(const Duration(milliseconds: 40));
+        expect(position.pixels, greaterThan(maximum));
+        expect(position.maxScrollExtent, closeTo(maximum, .01));
+        if (cancel) {
+          await gesture.cancel();
+        } else {
+          await gesture.up();
+        }
+        await tester.pumpAndSettle();
+        expect(position.pixels, closeTo(maximum, .01));
+        expect(position.maxScrollExtent, closeTo(maximum, .01));
+        expect(tester.takeException(), isNull);
+      }
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'A top-edge pull settles when the timeline is hidden and shown again',
+    (tester) async {
+      final visible = ValueNotifier(true);
+      addTearDown(visible.dispose);
+      await _show(tester, [], visible: visible);
+      final position = _lanePosition(tester);
+      final gesture = await tester.startGesture(const Offset(200, 180));
+      await gesture.moveBy(const Offset(0, 30));
+      await tester.pump(const Duration(milliseconds: 40));
+      await gesture.moveBy(const Offset(0, 80));
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(position.pixels, lessThan(0));
+      visible.value = false;
+      await tester.pump();
+      await gesture.cancel();
+      visible.value = true;
+      await tester.pumpAndSettle();
+      expect(position.pixels, closeTo(0, .01));
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'Wheel and zoom interruptions cannot leave a top-edge pull held',
+    (tester) async {
+      await _show(tester, []);
+      final position = _lanePosition(tester);
+      for (final zoom in [false, true]) {
+        final gesture = await tester.startGesture(const Offset(200, 180));
+        await gesture.moveBy(const Offset(0, 30));
+        await tester.pump(const Duration(milliseconds: 40));
+        await gesture.moveBy(const Offset(0, 80));
+        await tester.pump(const Duration(milliseconds: 40));
+        expect(position.pixels, lessThan(0));
+        if (zoom) await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+        await _wheel(tester, const Offset(48, 0));
+        if (zoom) await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+        expect(position.pixels, closeTo(0, .01));
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(position.pixels, closeTo(0, .01));
+        expect(tester.takeException(), isNull);
+      }
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets('DDL cards share lanes without their tails stealing taps', (
+    tester,
+  ) async {
+    final first = AgendaEntry(
+      id: 'first-ddl',
+      title: '第一份作业',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(hours: 13)),
+    );
+    final second = AgendaEntry(
+      id: 'second-ddl',
+      title: '第二份作业',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(days: 3, hours: 13)),
+    );
+    await _show(tester, [first, second]);
+    final firstCard = tester.getRect(_bar(first));
+    final secondCard = tester.getRect(_bar(second));
+    expect(firstCard.top, secondCard.top);
+    expect(firstCard.overlaps(secondCard), isFalse);
+    final firstTail = tester.getRect(_paintedBar(first));
+    final secondTail = tester.getRect(_paintedBar(second));
+    expect(secondTail.left, greaterThanOrEqualTo(firstCard.right - .01));
+    expect(firstTail.left, lessThan(firstCard.left));
+    await tester.tapAt(Offset(firstCard.left - 10, firstCard.center.dy));
+    await tester.pumpAndSettle();
+    expect(find.byType(BottomSheet), findsNothing);
+    await tester.tapAt(firstCard.center);
+    await tester.pumpAndSettle();
+    expect(find.byType(BottomSheet), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
