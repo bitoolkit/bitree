@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/timeline_layout.dart';
 import 'package:bitree/agenda/ui/agenda_timeline.dart';
+import 'package:bitree/agenda/ui/timeline_entry.dart';
 import 'package:bitree/l10n/app_localizations_zh.dart';
 import 'package:bitree/l10n/formats.dart';
 import 'package:bitree/ui/theme.dart';
@@ -110,6 +111,96 @@ Future<void> _wheel(
 }
 
 void main() {
+  testWidgets('Panning reuses the visible deadline content', (tester) async {
+    final entries = _stackedDeadlines();
+    await _show(tester, entries);
+    final tracked = entries[4];
+    final before = tester.getRect(_paintedBar(tracked));
+    final previousCallback = debugOnRebuildDirtyWidget;
+    var contentBuilds = 0;
+    debugOnRebuildDirtyWidget = (element, builtOnce) {
+      previousCallback?.call(element, builtOnce);
+      if (element.widget case AgendaTimelineEntry(:final entry)
+          when entry.id == tracked.id) {
+        contentBuilds++;
+      }
+    };
+    addTearDown(() => debugOnRebuildDirtyWidget = previousCallback);
+
+    final gesture = await tester.startGesture(const Offset(340, 650));
+    await gesture.moveBy(const Offset(-24, -24));
+    await tester.pump(const Duration(milliseconds: 16));
+    contentBuilds = 0;
+    for (var frame = 0; frame < 12; frame++) {
+      await gesture.moveBy(const Offset(-3, -1));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    final after = tester.getRect(_paintedBar(tracked));
+    expect(after.left, lessThan(before.left));
+    expect(after.top, lessThan(before.top));
+    expect(contentBuilds, 0);
+    await gesture.cancel();
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Retained cards update their time, completion and text scale', (
+    tester,
+  ) async {
+    final entry = _stackedDeadlines().first;
+    final app = await _show(tester, [entry]);
+    var entries = [entry];
+    var now = _date.add(const Duration(hours: 11));
+    var scale = 1.0;
+    var brightness = Brightness.light;
+    late StateSetter update;
+    await tester.pumpWidget(
+      StatefulBuilder(
+        builder: (context, setState) {
+          update = setState;
+          return MaterialApp(
+            theme: bitreeTheme(brightness),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: TextScaler.linear(scale)),
+              child: child!,
+            ),
+            home: Scaffold(
+              body: AgendaTimeline(controller: app, entries: entries, now: now),
+            ),
+          );
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('12:00 已逾期'), findsNothing);
+    update(() => now = _date.add(const Duration(hours: 13)));
+    await tester.pumpAndSettle();
+    expect(find.text('12:00 已逾期'), findsOneWidget);
+
+    update(() {
+      entries = [entry.copyWith(done: true)];
+      brightness = Brightness.dark;
+      scale = 1.6;
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('12:00 已逾期'), findsNothing);
+    expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.text(entry.title)).style!.decoration,
+      TextDecoration.lineThrough,
+    );
+    expect(
+      tester
+          .getSize(find.byKey(ValueKey(('agenda-timeline-card', entry.id))))
+          .width,
+      closeTo(144 * scale, .001),
+    );
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   test('Minimum display spans separate short events without changing their real times', () {
     final first = _event('first', 11);
     final second = _event('second', 14, exam: true);

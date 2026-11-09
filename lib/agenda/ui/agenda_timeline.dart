@@ -68,6 +68,11 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   Duration? _cachedDeadlineTailDaySpan;
   List<AgendaTimelinePlacement> _cachedPlacements = const [];
   final Map<String, DateTime> _nextStartById = {};
+  final Map<String, AgendaTimelineEntry> _cards = {};
+  _TimelineText? _gridText;
+  late double _fontScale;
+  late double _headerHeight;
+  late double _laneHeight;
 
   List<AgendaTimelinePlacement> _layout(
     Duration minimumEventSpan,
@@ -82,6 +87,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
       _cachedMinimumEventSpan = minimumEventSpan;
       _cachedDeadlineCardSpan = deadlineCardSpan;
       _cachedDeadlineTailDaySpan = deadlineTailDaySpan;
+      _cards.clear();
       _cachedPlacements = layoutAgendaTimeline(
         widget.entries,
         minimumEventSpan: minimumEventSpan,
@@ -103,9 +109,52 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   void initState() {
     super.initState();
     _center = calendarDate(widget.now).add(const Duration(hours: 12));
-    _lanes.addListener(_laneChanged);
     _horizontalFling = AnimationController.unbounded(vsync: this)
       ..addListener(_tickHorizontal);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final theme = Theme.of(context);
+    final textScaler = MediaQuery.textScalerOf(context);
+    _fontScale = math.max(1.0, textScaler.scale(14) / 14);
+    final baseStyle =
+        theme.textTheme.labelMedium ?? const TextStyle(fontSize: 12);
+    final headerStyle = baseStyle.copyWith(
+      fontSize: (baseStyle.fontSize ?? 12) * 5 / 6,
+      height: 1,
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    _gridText?.dispose();
+    _gridText = _TimelineText(headerStyle, textScaler);
+
+    double textHeight(double fontSize, double height) {
+      final measure = TextPainter(
+        text: TextSpan(
+          text: '${context.l10n.agendaTitle} Ag',
+          style: TextStyle(fontSize: fontSize, height: height),
+        ),
+        textScaler: textScaler,
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final result = measure.height;
+      measure.dispose();
+      return result;
+    }
+
+    _headerHeight = math.max(
+      24.0 * _fontScale,
+      textHeight(headerStyle.fontSize!, 1) * 2 + 4,
+    );
+    _laneHeight =
+        math.max(
+          56.0 * _fontScale,
+          textHeight(14, 1.2) +
+              math.max(textHeight(12, 1.2) * 2, 13 * _fontScale) +
+              10,
+        ) +
+        12;
   }
 
   void _stopMotion({bool holdVertical = false}) {
@@ -195,17 +244,13 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     super.deactivate();
   }
 
-  void _laneChanged() {
-    if (mounted) setState(() {});
-  }
-
   @override
   void dispose() {
     _stopMotion(holdVertical: true);
     _horizontalFling.dispose();
     _releaseVerticalHold();
-    _lanes.removeListener(_laneChanged);
     _lanes.dispose();
+    _gridText?.dispose();
     super.dispose();
   }
 
@@ -242,8 +287,6 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
-    final textScaler = MediaQuery.textScalerOf(context);
-    final fontScale = math.max(1.0, textScaler.scale(14) / 14);
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
@@ -256,38 +299,8 @@ class _AgendaTimelineState extends State<AgendaTimeline>
             : _zoom == 24
             ? l10n.agendaTimelineOneHour
             : l10n.agendaTimelineHours(hoursPerCell.toStringAsFixed(1));
-        double textHeight(double fontSize, double height) {
-          final measure = TextPainter(
-            text: TextSpan(
-              text: '${l10n.agendaTitle} Ag',
-              style: TextStyle(fontSize: fontSize, height: height),
-            ),
-            textScaler: textScaler,
-            textDirection: TextDirection.ltr,
-          )..layout();
-          final result = measure.height;
-          measure.dispose();
-          return result;
-        }
-
-        final baseHeaderStyle =
-            theme.textTheme.labelMedium ?? const TextStyle(fontSize: 12);
-        final headerStyle = baseHeaderStyle.copyWith(
-          fontSize: (baseHeaderStyle.fontSize ?? 12) * 5 / 6,
-          height: 1,
-        );
-        final headerHeight = math.max(
-          24.0 * fontScale,
-          textHeight(headerStyle.fontSize!, 1) * 2 + 4,
-        );
-        final barHeight = math.max(
-          56.0 * fontScale,
-          textHeight(14, 1.2) +
-              math.max(textHeight(12, 1.2) * 2, 13 * fontScale) +
-              10,
-        );
-        final laneHeight = barHeight + 12;
-        final deadlineCardWidth = 144.0 * fontScale;
+        final laneHeight = _laneHeight;
+        final deadlineCardWidth = 144.0 * _fontScale;
         final deadlineCardSpan = Duration(
           microseconds:
               (deadlineCardWidth / pixelsPerHour * _microsecondsPerHour).ceil(),
@@ -314,8 +327,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
           pixelsPerHour: pixelsPerHour,
           cellWidth: cellWidth,
           scheme: theme.colorScheme,
-          textStyle: headerStyle,
-          textScaler: textScaler,
+          text: _gridText!,
           header: true,
           l10n: l10n,
         );
@@ -491,18 +503,21 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                           .toDouble();
                       final anchor = _gestureAnchor;
                       if (anchor == null) return;
-                      setState(() {
-                        _zoom = next;
-                        _center = anchor.subtract(
-                          Duration(
-                            microseconds:
-                                ((details.localFocalPoint.dx - width / 2) /
-                                        (baseline * next) *
-                                        _microsecondsPerHour)
-                                    .round(),
-                          ),
-                        );
-                      });
+                      final center = anchor.subtract(
+                        Duration(
+                          microseconds:
+                              ((details.localFocalPoint.dx - width / 2) /
+                                      (baseline * next) *
+                                      _microsecondsPerHour)
+                                  .round(),
+                        ),
+                      );
+                      if (next != _zoom || center != _center) {
+                        setState(() {
+                          _zoom = next;
+                          _center = center;
+                        });
+                      }
                       if ((_gestureTrackpad || details.pointerCount <= 1) &&
                           !_gestureHadMultiplePointers &&
                           !_gestureScaled) {
@@ -558,133 +573,138 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                       child: Column(
                         children: [
                           SizedBox(
-                            height: headerHeight,
+                            height: _headerHeight,
                             width: width,
                             child: CustomPaint(painter: painter),
                           ),
                           Expanded(
-                            child: LayoutBuilder(
-                              builder: (context, laneConstraints) {
-                                final height = laneConstraints.maxHeight;
-                                if (_laneViewportHeight != height) {
-                                  _laneViewportHeight = height;
-                                  _retainedLaneExtent = null;
-                                }
-                                final previousOffset = _lanes.hasClients
-                                    ? _lanes.offset
-                                    : 0.0;
-                                final placementsInTime = placements
-                                    .where(
-                                      (placement) =>
-                                          placement.paintEnd.isAfter(left) &&
-                                          placement.paintStart.isBefore(right),
-                                    )
-                                    .toList(growable: false);
-                                final displayedLaneCount = placementsInTime
-                                    .fold<int>(
-                                      0,
-                                      (count, placement) =>
-                                          math.max(count, placement.lane + 1),
-                                    );
-                                final contentExtent = math.max(
-                                  0.0,
-                                  (displayedLaneCount + 1) * laneHeight +
-                                      12 -
-                                      height,
-                                );
-                                // Keep an old lower position when the date changes.
-                                // Scrolling up releases it, leaving one spare lane.
-                                _retainedLaneExtent = math.max(
-                                  contentExtent,
-                                  math.min(
-                                    _retainedLaneExtent ?? contentExtent,
-                                    math.max(0.0, previousOffset),
-                                  ),
-                                );
-                                final contentHeight =
-                                    height + _retainedLaneExtent!;
-                                // Filtering and resizing may clamp the offset
-                                // in this frame. Cull at that new position.
-                                final offset = previousOffset
-                                    .clamp(0.0, _retainedLaneExtent!)
-                                    .toDouble();
-                                final visible = placementsInTime
-                                    .where(
-                                      (placement) =>
-                                          (placement.lane + 1) * laneHeight >=
-                                              offset &&
-                                          placement.lane * laneHeight + 12 <=
-                                              offset + height,
-                                    )
-                                    .toList(growable: false);
-                                return Stack(
-                                  fit: StackFit.expand,
-                                  children: [
-                                    CustomPaint(
-                                      painter: _TimelineGridPainter(
-                                        center: _center,
-                                        now: widget.now,
-                                        pixelsPerHour: pixelsPerHour,
-                                        cellWidth: cellWidth,
-                                        scheme: theme.colorScheme,
-                                        textStyle: headerStyle,
-                                        textScaler: textScaler,
-                                        header: false,
-                                        l10n: l10n,
-                                      ),
+                            child: ListenableBuilder(
+                              listenable: _lanes,
+                              builder: (context, _) => LayoutBuilder(
+                                builder: (context, laneConstraints) {
+                                  final height = laneConstraints.maxHeight;
+                                  if (_laneViewportHeight != height) {
+                                    _laneViewportHeight = height;
+                                    _retainedLaneExtent = null;
+                                  }
+                                  final previousOffset = _lanes.hasClients
+                                      ? _lanes.offset
+                                      : 0.0;
+                                  final placementsInTime = placements
+                                      .where(
+                                        (placement) =>
+                                            placement.paintEnd.isAfter(left) &&
+                                            placement.paintStart.isBefore(
+                                              right,
+                                            ),
+                                      )
+                                      .toList(growable: false);
+                                  final displayedLaneCount = placementsInTime
+                                      .fold<int>(
+                                        0,
+                                        (count, placement) =>
+                                            math.max(count, placement.lane + 1),
+                                      );
+                                  final contentExtent = math.max(
+                                    0.0,
+                                    (displayedLaneCount + 1) * laneHeight +
+                                        12 -
+                                        height,
+                                  );
+                                  // Keep an old lower position when the date changes.
+                                  // Scrolling up releases it, leaving one spare lane.
+                                  _retainedLaneExtent = math.max(
+                                    contentExtent,
+                                    math.min(
+                                      _retainedLaneExtent ?? contentExtent,
+                                      math.max(0.0, previousOffset),
                                     ),
-                                    ScrollConfiguration(
-                                      behavior: ScrollConfiguration.of(context)
-                                          .copyWith(scrollbars: false),
-                                      child: SingleChildScrollView(
-                                        key: const ValueKey(
-                                          'agenda-timeline-lanes',
+                                  );
+                                  final contentHeight =
+                                      height + _retainedLaneExtent!;
+                                  // Filtering and resizing may clamp the offset
+                                  // in this frame. Cull at that new position.
+                                  final offset = previousOffset
+                                      .clamp(0.0, _retainedLaneExtent!)
+                                      .toDouble();
+                                  final visible = placementsInTime
+                                      .where(
+                                        (placement) =>
+                                            (placement.lane + 1) * laneHeight >=
+                                                offset &&
+                                            placement.lane * laneHeight + 12 <=
+                                                offset + height,
+                                      )
+                                      .toList(growable: false);
+                                  return Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      CustomPaint(
+                                        painter: _TimelineGridPainter(
+                                          center: _center,
+                                          now: widget.now,
+                                          pixelsPerHour: pixelsPerHour,
+                                          cellWidth: cellWidth,
+                                          scheme: theme.colorScheme,
+                                          text: _gridText!,
+                                          header: false,
+                                          l10n: l10n,
                                         ),
-                                        controller: _lanes,
-                                        physics: const BouncingScrollPhysics(
-                                          parent:
-                                              NeverScrollableScrollPhysics(),
-                                        ),
-                                        child: SizedBox(
-                                          height: contentHeight,
-                                          width: width,
-                                          child: Stack(
-                                            clipBehavior: Clip.hardEdge,
-                                            children: [
-                                              for (final placement in visible)
-                                                _buildEntry(
-                                                  context,
-                                                  placement,
-                                                  width,
-                                                  pixelsPerHour,
-                                                  laneHeight,
-                                                ),
-                                            ],
+                                      ),
+                                      ScrollConfiguration(
+                                        behavior: ScrollConfiguration.of(
+                                          context,
+                                        ).copyWith(scrollbars: false),
+                                        child: SingleChildScrollView(
+                                          key: const ValueKey(
+                                            'agenda-timeline-lanes',
                                           ),
-                                        ),
-                                      ),
-                                    ),
-                                    if (widget.entries.isEmpty)
-                                      Center(
-                                        child: IgnorePointer(
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(24),
-                                            child: Text(
-                                              l10n.agendaTimelineEmpty,
-                                              textAlign: TextAlign.center,
-                                              style: theme.textTheme.bodyLarge
-                                                  ?.copyWith(
-                                                    color: theme
-                                                        .colorScheme
-                                                        .onSurfaceVariant,
+                                          controller: _lanes,
+                                          physics: const BouncingScrollPhysics(
+                                            parent:
+                                                NeverScrollableScrollPhysics(),
+                                          ),
+                                          child: SizedBox(
+                                            height: contentHeight,
+                                            width: width,
+                                            child: Stack(
+                                              clipBehavior: Clip.hardEdge,
+                                              children: [
+                                                for (final placement in visible)
+                                                  _buildEntry(
+                                                    context,
+                                                    placement,
+                                                    width,
+                                                    pixelsPerHour,
+                                                    laneHeight,
                                                   ),
+                                              ],
                                             ),
                                           ),
                                         ),
                                       ),
-                                  ],
-                                );
-                              },
+                                      if (widget.entries.isEmpty)
+                                        Center(
+                                          child: IgnorePointer(
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(24),
+                                              child: Text(
+                                                l10n.agendaTimelineEmpty,
+                                                textAlign: TextAlign.center,
+                                                style: theme.textTheme.bodyLarge
+                                                    ?.copyWith(
+                                                      color: theme
+                                                          .colorScheme
+                                                          .onSurfaceVariant,
+                                                    ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  );
+                                },
+                              ),
                             ),
                           ),
                         ],
@@ -718,27 +738,100 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     // Crop long ordinary events before creating widgets; no huge canvas/boxes.
     final left = entry.isDeadline ? actualLeft : math.max(0.0, actualLeft);
     final right = entry.isDeadline ? actualRight : math.min(width, actualRight);
-    final barWidth = math.max(0.0, right - left);
+    double spanWidth(DateTime start, DateTime end) =>
+        end.difference(start).inMicroseconds /
+        _microsecondsPerHour *
+        pixelsPerHour;
+    final barWidth = entry.isDeadline
+        ? spanWidth(placement.paintStart, placement.paintEnd)
+        : math.max(0.0, right - left);
+    final cardWidth = entry.isDeadline
+        ? spanWidth(placement.start, placement.layoutEnd)
+        : barWidth;
     final nextStart = _nextStartById[entry.id];
     final availableWidth = nextStart == null
         ? double.infinity
-        : math.max(0.0, x(nextStart) - left);
+        : math.max(
+            0.0,
+            entry.isDeadline
+                ? spanWidth(placement.paintStart, nextStart)
+                : x(nextStart) - left,
+          );
     final tapWidth = math.min(math.max(24.0, barWidth), availableWidth);
+    var card = _cards[entry.id];
+    if (card == null ||
+        card.entry != entry ||
+        card.now != widget.now ||
+        card.barWidth != barWidth ||
+        card.cardWidth != cardWidth) {
+      card = AgendaTimelineEntry(
+        entry: entry,
+        now: widget.now,
+        barWidth: barWidth,
+        cardWidth: cardWidth,
+        onTap: () => showAgendaEntry(context, widget.controller, entry),
+      );
+      _cards[entry.id] = card;
+    }
     return Positioned(
+      key: ValueKey(entry.id),
       left: left,
       top: placement.lane * laneHeight + 12,
       width: tapWidth,
       height: laneHeight - 12,
-      child: AgendaTimelineEntry(
-        entry: entry,
-        now: widget.now,
-        barWidth: barWidth,
-        cardWidth: entry.isDeadline
-            ? x(placement.layoutEnd) - x(placement.start)
-            : barWidth,
-        onTap: () => showAgendaEntry(context, widget.controller, entry),
-      ),
+      child: RepaintBoundary(child: card),
     );
+  }
+}
+
+/// Keep laid-out labels across frames; dates outside the working set are freed.
+class _TimelineText {
+  _TimelineText(this.style, this.scaler);
+
+  final TextStyle style;
+  final TextScaler scaler;
+  final _painters = <(String, bool), TextPainter>{};
+  late final regularDigitWidth = _digitWidth(false);
+  late final boldDigitWidth = _digitWidth(true);
+
+  TextPainter painter(String text, {bool bold = false}) {
+    final key = (text, bold);
+    final cached = _painters.remove(key);
+    if (cached != null) {
+      _painters[key] = cached;
+      return cached;
+    }
+    final result = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: style.copyWith(
+          fontWeight: bold ? FontWeight.w600 : FontWeight.normal,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+      textScaler: scaler,
+      maxLines: 1,
+    )..layout();
+    if (_painters.length == 128) {
+      _painters.remove(_painters.keys.first)!.dispose();
+    }
+    _painters[key] = result;
+    return result;
+  }
+
+  double _digitWidth(bool bold) {
+    var width = 0.0;
+    for (var digit = 0; digit <= 9; digit++) {
+      width = math.max(width, painter('$digit', bold: bold).width);
+    }
+    return width;
+  }
+
+  void dispose() {
+    for (final painter in _painters.values) {
+      painter.dispose();
+    }
+    _painters.clear();
   }
 }
 
@@ -749,8 +842,7 @@ class _TimelineGridPainter extends CustomPainter {
     required this.pixelsPerHour,
     required this.cellWidth,
     required this.scheme,
-    required this.textStyle,
-    required this.textScaler,
+    required this.text,
     required this.header,
     required this.l10n,
   });
@@ -760,29 +852,16 @@ class _TimelineGridPainter extends CustomPainter {
   final double pixelsPerHour;
   final double cellWidth;
   final ColorScheme scheme;
-  final TextStyle textStyle;
-  final TextScaler textScaler;
+  final _TimelineText text;
   final bool header;
   final AppLocalizations l10n;
 
-  TextPainter _text(String text, {bool bold = false}) => TextPainter(
-    text: TextSpan(
-      text: text,
-      style: textStyle.copyWith(
-        color: scheme.onSurfaceVariant,
-        fontWeight: bold ? FontWeight.w600 : FontWeight.normal,
-      ),
-    ),
-    textDirection: TextDirection.ltr,
-    textScaler: textScaler,
-    maxLines: 1,
-  )..layout();
+  TextPainter _text(String label, {bool bold = false}) =>
+      text.painter(label, bold: bold);
 
   double _textWidth(String text, {bool bold = false}) {
     final painter = _text(text, bold: bold);
-    final width = painter.width;
-    painter.dispose();
-    return width;
+    return painter.width;
   }
 
   @override
@@ -821,14 +900,6 @@ class _TimelineGridPainter extends CustomPainter {
       (hours) => hours * pixelsPerHour >= cellWidth - 0.001,
       orElse: () => 24,
     );
-    double maxDigitWidth(bool bold) {
-      var width = 0.0;
-      for (var digit = 0; digit <= 9; digit++) {
-        width = math.max(width, _textWidth('$digit', bold: bold));
-      }
-      return width;
-    }
-
     final showHours = hourStep < 24;
     var weekdayWidth = 0.0;
     if (header) {
@@ -842,7 +913,7 @@ class _TimelineGridPainter extends CustomPainter {
       }
     }
     final dateTextWidth = header
-        ? maxDigitWidth(true) * 4 + _textWidth('/', bold: true)
+        ? text.boldDigitWidth * 4 + _textWidth('/', bold: true)
         : 0.0;
     // Measure the full date/weekday group, or both independent rows, so labels
     // retain stable cell centers and cannot collide when weekday text is added.
@@ -853,7 +924,7 @@ class _TimelineGridPainter extends CustomPainter {
               8
         : 0.0;
     final hourLabelWidth = header
-        ? maxDigitWidth(false) * 4 + _textWidth(':') + 8
+        ? text.regularDigitWidth * 4 + _textWidth(':') + 8
         : 0.0;
     final dayStride = math.max(1, (dateLabelWidth / dayWidth).ceil());
     final hourLabelStride = math.max(
@@ -950,7 +1021,6 @@ class _TimelineGridPainter extends CustomPainter {
     if ((offset & painter.size).overlaps(Offset.zero & viewport)) {
       painter.paint(canvas, offset);
     }
-    painter.dispose();
   }
 
   @override
@@ -960,8 +1030,7 @@ class _TimelineGridPainter extends CustomPainter {
       oldDelegate.pixelsPerHour != pixelsPerHour ||
       oldDelegate.cellWidth != cellWidth ||
       oldDelegate.scheme != scheme ||
-      oldDelegate.textStyle != textStyle ||
-      oldDelegate.textScaler != textScaler ||
+      oldDelegate.text != text ||
       oldDelegate.header != header ||
       oldDelegate.l10n.localeName != l10n.localeName;
 }
