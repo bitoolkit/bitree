@@ -151,8 +151,8 @@ void main() {
   testWidgets('Restroom selection and search use the surveyed types', (
     tester,
   ) async {
-    final semantics = tester.ensureSemantics();
-    addTearDown(semantics.dispose);
+    // testWidgets owns the semantics handle and disposes it before its final
+    // leak checks; a separate handle released in addTearDown is too late.
     await _open(tester, room: 'F202');
     await tester.tap(find.widgetWithText(AppSelectionButton, '卫生间'));
     await tester.pumpAndSettle();
@@ -183,7 +183,7 @@ void main() {
       expect((result.leading! as Icon).icon, Icons.woman_rounded);
     }
     expect(tester.takeException(), isNull);
-  });
+  }, semanticsEnabled: true);
 
   testWidgets('First-floor restrooms show men and women together', (
     tester,
