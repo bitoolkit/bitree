@@ -2,25 +2,9 @@ import 'dart:convert';
 import 'dart:ffi';
 
 import '../core/time.dart';
+import '../sources/runtime.dart';
 import '../sources/source.dart';
 import 'native_lua.dart';
-
-class LuaSourceError implements Exception {
-  const LuaSourceError(this.code, this.message, [this.details]);
-
-  final String code;
-  final String message;
-  final Object? details;
-
-  @override
-  String toString() => '$code: $message';
-}
-
-class LuaSourceCancelled implements Exception {
-  const LuaSourceCancelled();
-}
-
-typedef LuaHttpHandler = Future<Object?> Function(Map<String, Object?> request);
 
 /// Marker for `json.null`. It cannot be represented by Lua nil inside a table.
 class SourceJsonNull {
@@ -29,63 +13,25 @@ class SourceJsonNull {
   static const instance = SourceJsonNull._();
 }
 
-/// Host callbacks available to one source operation. Callbacks are synchronous
-/// so the Lua stack never crosses an async Dart callback boundary.
-class LuaOperationContext {
-  LuaOperationContext({
-    this.config = const {},
-    this.scope = const {},
-    this.source = const {},
-    this.locale = 'zh',
-    this.baseOperations = const {},
-    this.baseSteps = const {},
-    this.data = const {},
-    Map<String, dynamic>? storage,
-    this.isCancelled,
-    this.logSink,
-    this.httpRequest,
-  }) : storage = storage ?? <String, dynamic>{};
+class LuaSourceRuntime implements SourceRuntime {
+  LuaSourceRuntime({required this.source, required this.fileName});
 
-  final Map<String, Object?> config;
-  final Map<String, Object?> scope;
-  final Map<String, Object?> source;
-  final String locale;
+  final String source;
+  final String fileName;
+  LuaSourceModule? _module;
 
-  /// Base operation name to callback. The callback receives the converted
-  /// query table and returns a JSON-compatible Dart value.
-  final Map<String, Object? Function(Object? query)> baseOperations;
-
-  /// Original built-in steps exposed as `ctx.base.steps`.
-  final Map<String, Object? Function(List<Object?> args)> baseSteps;
-
-  /// Data access exposed as `ctx.data.*`.
-  final Map<String, Object? Function(Map<String, Object?> query)> data;
-
-  final Map<String, dynamic> storage;
-  final bool Function()? isCancelled;
-  final void Function(String level, String message)? logSink;
-  final LuaHttpHandler? httpRequest;
-
-  /// Set by [LuaSourceModule.callOperation] so a Dart base operation can call
-  /// the merged (possibly overridden) step.
-  Object? Function(String name, List<Object?> args)? stepDispatcher;
-
-  LuaOperationContext withHttpRequest(LuaHttpHandler? handler) {
-    final context = LuaOperationContext(
-      config: config,
-      scope: scope,
-      source: source,
-      locale: locale,
-      baseOperations: baseOperations,
-      baseSteps: baseSteps,
-      data: data,
-      storage: storage,
-      isCancelled: isCancelled,
-      logSink: logSink,
-      httpRequest: handler,
+  @override
+  Future<Object?> call(
+    SourceDefinition definition,
+    SourceOperation operation,
+    Map<String, Object?> query,
+    SourceOperationContext context,
+  ) {
+    final module = _module ??= LuaSourceModule.parse(
+      source,
+      fileName: fileName,
     );
-    context.stepDispatcher = stepDispatcher;
-    return context;
+    return module.callOperation(operation, context, query);
   }
 }
 
@@ -156,11 +102,11 @@ class LuaSourceModule {
 
   Future<Object?> callOperation(
     SourceOperation operation,
-    LuaOperationContext context, [
+    SourceOperationContext context, [
     Object? query,
   ]) async {
     if (!supports(operation)) {
-      throw LuaSourceError(
+      throw SourceError(
         'unknown_operation',
         'Lua 来源未实现 ${operation.wireName}。',
       );
@@ -189,8 +135,8 @@ class LuaSourceModule {
       );
       return _fromNative(result);
     } on NativeLuaError catch (failure) {
-      if (failure.code == 'cancelled') throw const LuaSourceCancelled();
-      throw LuaSourceError(failure.code, failure.message, failure.details);
+      if (failure.code == 'cancelled') throw const SourceCancelled();
+      throw SourceError(failure.code, failure.message, failure.details);
     } finally {
       context.stepDispatcher = previous;
     }
@@ -198,7 +144,7 @@ class LuaSourceModule {
 
   Object? _dispatchHost(
     Pointer<Void> engine,
-    LuaOperationContext context,
+    SourceOperationContext context,
     String kind,
     String? name,
     List<Object?> args,
@@ -208,10 +154,7 @@ class LuaSourceModule {
         case 'base.call':
           final operation = context.baseOperations[name];
           if (operation == null) {
-            throw LuaSourceError(
-              'unknown_operation',
-              '内置来源没有操作 ${name ?? ''}。',
-            );
+            throw SourceError('unknown_operation', '内置来源没有操作 ${name ?? ''}。');
           }
           context.stepDispatcher = (step, arguments) =>
               _callStep(context, step, arguments, engine: engine);
@@ -219,17 +162,17 @@ class LuaSourceModule {
         case 'step':
           final step = context.baseSteps[name];
           if (step == null) {
-            throw LuaSourceError('unknown_step', '内置来源没有步骤 ${name ?? ''}。');
+            throw SourceError('unknown_step', '内置来源没有步骤 ${name ?? ''}。');
           }
           return _jsonReady(step(args));
         case 'data':
           final access = context.data[name];
           if (access == null) {
-            throw LuaSourceError('unknown_data', '宿主没有数据接口 ${name ?? ''}。');
+            throw SourceError('unknown_data', '宿主没有数据接口 ${name ?? ''}。');
           }
           final raw = args.isEmpty ? const <String, Object?>{} : args.first;
           if (raw is! Map) {
-            throw const LuaSourceError('invalid_argument', 'data 查询必须是对象。');
+            throw const SourceError('invalid_argument', 'data 查询必须是对象。');
           }
           return _jsonReady(access(Map<String, Object?>.from(raw)));
         case 'storage.get':
@@ -239,7 +182,7 @@ class LuaSourceModule {
           final value = args.length > 1 ? _jsonReady(args[1]) : null;
           final encoded = jsonEncode(value);
           if (utf8.encode(encoded).length > 64 * 1024) {
-            throw const LuaSourceError('storage_limit', '来源缓存值超过 64 KiB。');
+            throw const SourceError('storage_limit', '来源缓存值超过 64 KiB。');
           }
           context.storage[key] = value;
           return true;
@@ -248,13 +191,13 @@ class LuaSourceModule {
           return true;
         case 'log':
           if (args.length < 2 || args[0] is! String || args[1] is! String) {
-            throw const LuaSourceError('invalid_argument', '日志参数格式不正确。');
+            throw const SourceError('invalid_argument', '日志参数格式不正确。');
           }
           context.logSink?.call(args[0] as String, args[1] as String);
           return null;
         case 'cancel':
           if (context.isCancelled?.call() ?? false) {
-            throw const LuaSourceCancelled();
+            throw const SourceCancelled();
           }
           return false;
         case 'time.localDateTime':
@@ -264,25 +207,19 @@ class LuaSourceModule {
           if (parsed == null ||
               dateText(parsed) != date ||
               clockText(parsed) != clock) {
-            throw LuaSourceError('invalid_time', '无效的日期或时间：$date $clock');
+            throw SourceError('invalid_time', '无效的日期或时间：$date $clock');
           }
           return '${dateText(parsed)}T${clockText(parsed)}:00+08:00';
         case 'time.addDays':
           final parsed = DateTime.tryParse(_stringValue(args, 0));
           if (parsed == null) {
-            throw LuaSourceError(
-              'invalid_time',
-              '无效的日期：${_stringValue(args, 0)}',
-            );
+            throw SourceError('invalid_time', '无效的日期：${_stringValue(args, 0)}');
           }
           return dateText(parsed.add(Duration(days: _integerValue(args, 1))));
         case 'time.parse':
           final parsed = DateTime.tryParse(_stringValue(args, 0));
           if (parsed == null) {
-            throw LuaSourceError(
-              'invalid_time',
-              '无效的时间：${_stringValue(args, 0)}',
-            );
+            throw SourceError('invalid_time', '无效的时间：${_stringValue(args, 0)}');
           }
           return parsed.toIso8601String();
         case 'url.parse':
@@ -302,7 +239,7 @@ class LuaSourceModule {
         case 'url.encodeQuery':
           final query = args.isEmpty ? null : args.first;
           if (query is! Map) {
-            throw const LuaSourceError('invalid_argument', '查询参数必须是对象。');
+            throw const SourceError('invalid_argument', '查询参数必须是对象。');
           }
           return Uri(
             queryParameters: {
@@ -323,22 +260,22 @@ class LuaSourceModule {
         case 'encoding.utf8Decode':
           final value = args.isEmpty ? null : args.first;
           if (value is! List) {
-            throw const LuaSourceError('invalid_bytes', 'utf8Decode 需要字节数组。');
+            throw const SourceError('invalid_bytes', 'utf8Decode 需要字节数组。');
           }
           return utf8.decode([for (final item in value) _byteValue(item)]);
         default:
-          throw LuaSourceError('unknown_host_call', '未知的宿主调用：$kind');
+          throw SourceError('unknown_host_call', '未知的宿主调用：$kind');
       }
-    } on LuaSourceError catch (failure) {
+    } on SourceError catch (failure) {
       throw NativeLuaError(failure.code, failure.message, failure.details);
-    } on LuaSourceCancelled {
+    } on SourceCancelled {
       throw const NativeLuaError('cancelled', 'Lua 执行已取消');
     }
   }
 
   Future<Object?> _dispatchAsyncHost(
     Pointer<Void> engine,
-    LuaOperationContext context,
+    SourceOperationContext context,
     Map<String, Object?> request,
   ) async {
     if (request['kind'] != 'http.request') {
@@ -355,15 +292,15 @@ class LuaSourceModule {
     }
     try {
       return _jsonReady(await handler(Map<String, Object?>.from(raw)));
-    } on LuaSourceCancelled {
+    } on SourceCancelled {
       throw const NativeLuaError('cancelled', 'Lua 执行已取消');
-    } on LuaSourceError catch (failure) {
+    } on SourceError catch (failure) {
       throw NativeLuaError(failure.code, failure.message, failure.details);
     }
   }
 
   Object? _callStep(
-    LuaOperationContext context,
+    SourceOperationContext context,
     String name,
     List<Object?> args, {
     Pointer<Void>? engine,
@@ -374,7 +311,7 @@ class LuaSourceModule {
     }
     final base = context.baseSteps[name];
     if (base == null) {
-      throw LuaSourceError('unknown_step', '内置来源没有步骤 $name。');
+      throw SourceError('unknown_step', '内置来源没有步骤 $name。');
     }
     return _jsonReady(base(args));
   }
@@ -382,32 +319,32 @@ class LuaSourceModule {
 
 String _stringArg(List<Object?> args) {
   if (args.isEmpty || args.first is! String) {
-    throw const LuaSourceError('invalid_argument', '需要文本参数。');
+    throw const SourceError('invalid_argument', '需要文本参数。');
   }
   return args.first as String;
 }
 
 String _stringValue(List<Object?> args, int index) {
   if (index >= args.length || args[index] is! String) {
-    throw const LuaSourceError('invalid_argument', '需要文本参数。');
+    throw const SourceError('invalid_argument', '需要文本参数。');
   }
   return args[index] as String;
 }
 
 int _integerValue(List<Object?> args, int index) {
   if (index >= args.length || args[index] is! num) {
-    throw const LuaSourceError('invalid_argument', '需要数值参数。');
+    throw const SourceError('invalid_argument', '需要数值参数。');
   }
   final value = args[index] as num;
   if (!value.isFinite) {
-    throw const LuaSourceError('invalid_argument', '数值必须有限。');
+    throw const SourceError('invalid_argument', '数值必须有限。');
   }
   return value.toInt();
 }
 
 int _byteValue(Object? value) {
   if (value is int && value >= 0 && value <= 255) return value;
-  throw const LuaSourceError('invalid_bytes', '字节值必须在 0–255 之间。');
+  throw const SourceError('invalid_bytes', '字节值必须在 0–255 之间。');
 }
 
 String _queryValue(Object? value) => value is List
@@ -439,8 +376,5 @@ Object? _jsonReady(Object? value) => switch (value) {
   final Map value => {
     for (final entry in value.entries) '${entry.key}': _jsonReady(entry.value),
   },
-  _ => throw LuaSourceError(
-    'invalid_result',
-    '不能传给 Lua 的值：${value.runtimeType}',
-  ),
+  _ => throw SourceError('invalid_result', '不能传给 Lua 的值：${value.runtimeType}'),
 };

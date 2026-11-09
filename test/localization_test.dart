@@ -45,14 +45,19 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
-    expect(find.text('语言'), findsOneWidget);
-
     final settingsList = find
         .descendant(
           of: find.byType(SettingsScreen),
           matching: find.byType(Scrollable),
         )
         .first;
+    await tester.scrollUntilVisible(
+      find.text('语言'),
+      200,
+      scrollable: settingsList,
+    );
+    expect(find.text('语言'), findsOneWidget);
+
     await tester.drag(settingsList, const Offset(0, -300));
     await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(find.text('English'));

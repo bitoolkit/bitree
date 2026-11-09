@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 
 import '../../app/controller.dart';
-import '../../extensions/lua_source.dart';
+import '../../extensions/ui/extension_sheet.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../schedule/model.dart';
+import '../../sync/controller.dart';
+import '../../sync/ui/sync.dart';
+import '../../ui/app_dialog.dart';
+import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_notice.dart';
 import '../../ui/app_page.dart';
 import '../../ui/section_label.dart';
+import '../../ui/sheet_layout.dart';
 import '../course_selection.dart';
+import '../runtime.dart';
 import '../source.dart';
 
 class SourceDetailScreen extends StatefulWidget {
@@ -25,30 +31,29 @@ class SourceDetailScreen extends StatefulWidget {
   State<SourceDetailScreen> createState() => _SourceDetailScreenState();
 }
 
+typedef _ImplementationChoice = ({String? id, bool install});
+
 class _SourceDetailScreenState extends State<SourceDetailScreen> {
   final _textFields = <String, TextEditingController>{};
   final _toggles = <String, bool>{};
   final _choices = <String, Object?>{};
+  String? _fieldsDefinitionId;
   bool _discovering = false;
+  bool _syncing = false;
   String? _error;
 
-  SourceInstance? get _instance =>
-      widget.controller.sources.instance(widget.instanceId);
+  AppController get _app => widget.controller;
+
+  SourceInstance? get _instance => _app.sources.instance(widget.instanceId);
 
   SourceDefinition? get _definition {
     final instance = _instance;
     if (instance == null) return null;
     try {
-      return widget.controller.sources.definitionFor(instance);
+      return _app.sources.definitionFor(instance);
     } on FormatException {
       return null;
     }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSettings();
   }
 
   @override
@@ -59,10 +64,22 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
     super.dispose();
   }
 
-  void _loadSettings() {
-    final definition = _definition;
-    final instance = _instance;
-    if (definition == null || instance == null) return;
+  /// Settings fields follow the effective definition, which changes with the
+  /// chosen implementation.
+  void _loadSettings(SourceDefinition definition, SourceInstance instance) {
+    if (_fieldsDefinitionId == definition.id) return;
+    _fieldsDefinitionId = definition.id;
+    final previous = _textFields.values.toList();
+    if (previous.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        for (final controller in previous) {
+          controller.dispose();
+        }
+      });
+    }
+    _textFields.clear();
+    _toggles.clear();
+    _choices.clear();
     for (final field in definition.settings) {
       final value = instance.settings[field.key] ?? field.defaultValue;
       if (field.type == SourceFieldType.toggle) {
@@ -101,7 +118,7 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
           }
         }
       }
-      await widget.controller.sources.setSettings(instance.id, values);
+      await _app.sources.setSettings(instance.id, values);
       if (mounted) {
         showAppNotice(context, context.l10n.settingsSaved);
       }
@@ -120,14 +137,11 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
       _error = null;
     });
     try {
-      final result = await widget.controller.sourceHost.courses(
+      final result = await _app.sourceHost.courses(
         instance,
-        context: LuaOperationContext(config: instance.settings),
+        context: SourceOperationContext(config: instance.settings),
       );
-      await widget.controller.sources.mergeDiscoveredCourses(
-        instance.id,
-        result.items,
-      );
+      await _app.sources.mergeDiscoveredCourses(instance.id, result.items);
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
     } finally {
@@ -135,92 +149,210 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
     }
   }
 
-  Future<void> _addManualCourse() async {
-    final id = TextEditingController();
-    final name = TextEditingController();
-    final added = await showModalBottomSheet<bool>(
+  /// Built-in platforms share the app's sync round, including sign-in and
+  /// progress. Extension sources sync here.
+  Future<void> _syncNow(SourceInstance instance) async {
+    setState(() => _error = null);
+    final target = syncTargetForDefinition(instance.definitionId);
+    if (target != null) {
+      await startSync(context, _app, targets: {target});
+      return;
+    }
+    setState(() => _syncing = true);
+    try {
+      final result = await _app.sourceSync.synchronize(instance);
+      if (!mounted) return;
+      if (result.failures.isEmpty) {
+        showAppNotice(
+          context,
+          context.l10n.syncedDdlCount(result.deadlineCount),
+        );
+      } else {
+        setState(
+          () => _error = [
+            for (final failure in result.failures)
+              '${failure.course}：${failure.error}',
+          ].join('\n'),
+        );
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _syncing = false);
+    }
+  }
+
+  Future<void> _chooseImplementation(SourceInstance instance) async {
+    final l10n = context.l10n;
+    final language = Localizations.localeOf(context).languageCode;
+    final implementations = _app.sources.catalog.definitions
+        .where((definition) => definition.extendsId == instance.definitionId)
+        .toList();
+    Widget option(
+      BuildContext sheetContext,
+      String title,
+      String? id, {
+      String? subtitle,
+    }) {
+      final selected = instance.implementationId == id;
+      return ListTile(
+        selected: selected,
+        title: Text(title),
+        subtitle: subtitle == null ? null : Text(subtitle),
+        trailing: selected ? const Icon(Icons.check_rounded) : null,
+        onTap: () => Navigator.pop(sheetContext, (id: id, install: false)),
+      );
+    }
+
+    final choice = await showAppSheet<_ImplementationChoice>(
       context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (sheetContext) => Padding(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          8,
-          20,
-          20 + MediaQuery.viewInsetsOf(sheetContext).bottom,
+      builder: (sheetContext) => SheetLayout(
+        header: SheetHeader(
+          title: Text(l10n.sourceImplementation),
+          actions: const [SheetCloseButton()],
         ),
-        child: Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppSectionHeader(context.l10n.addManualCourse),
-            TextField(
-              controller: id,
-              autofocus: true,
-              decoration: InputDecoration(
-                labelText: context.l10n.courseInputHint,
+            option(sheetContext, l10n.sourceBuiltinImplementation, null),
+            for (final definition in implementations)
+              option(
+                sheetContext,
+                definition.name.resolve(language),
+                definition.id,
+                subtitle:
+                    '${l10n.extensionPackageVersion} ${definition.version}',
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: name,
-              decoration: InputDecoration(
-                labelText: context.l10n.courseName,
-              ),
-            ),
-            const SizedBox(height: 20),
-            FilledButton(
-              onPressed: () {
-                if (id.text.trim().isEmpty || name.text.trim().isEmpty) return;
-                Navigator.pop(sheetContext, true);
-              },
-              child: Text(context.l10n.add),
+            ListTile(
+              leading: const Icon(Icons.folder_open_outlined),
+              title: Text(l10n.installExtensionFromFolder),
+              onTap: () =>
+                  Navigator.pop(sheetContext, (id: null, install: true)),
             ),
           ],
         ),
       ),
     );
-    if (added != true || !mounted) {
-      id.dispose();
-      name.dispose();
-      return;
+    if (choice == null || !mounted) return;
+    if (choice.install) {
+      await installExtension(context, _app);
+    } else if (choice.id != instance.implementationId) {
+      await _app.sources.setImplementation(instance.id, choice.id);
     }
-    await widget.controller.sources.addManualCourse(
-      widget.instanceId,
-      PlatformCourse(
-        remoteId: id.text.trim(),
-        name: name.text.trim(),
-        manual: true,
+  }
+
+  Future<void> _addManualCourse() async {
+    final instance = _instance;
+    if (instance == null) return;
+    final input = TextEditingController();
+    PlatformCourse? course;
+    var resolving = false;
+    String? error;
+    course = await showAppSheet<PlatformCourse>(
+      context: context,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) => SheetLayout(
+          header: SheetHeader(
+            title: Text(context.l10n.addManualCourse),
+            actions: const [SheetCloseButton()],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: input,
+                autofocus: true,
+                enabled: !resolving,
+                decoration: InputDecoration(
+                  labelText: context.l10n.courseInputHint,
+                ),
+              ),
+              if (error case final error?) ...[
+                const SizedBox(height: 8),
+                Text(
+                  error,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
+            ],
+          ),
+          actions: SheetActionBar.primary(
+            primary: FilledButton(
+              onPressed: resolving
+                  ? null
+                  : () async {
+                      final value = input.text.trim();
+                      if (value.isEmpty) return;
+                      setSheetState(() {
+                        resolving = true;
+                        error = null;
+                      });
+                      try {
+                        final resolved = await _app.sourceHost.resolveCourse(
+                          instance,
+                          query: {'input': value},
+                        );
+                        if (sheetContext.mounted) {
+                          Navigator.pop(sheetContext, resolved);
+                        }
+                      } catch (failure) {
+                        if (sheetContext.mounted) {
+                          setSheetState(() {
+                            resolving = false;
+                            error = failure.toString();
+                          });
+                        }
+                      }
+                    },
+              child: Text(context.l10n.add),
+            ),
+          ),
+        ),
       ),
     );
-    id.dispose();
-    name.dispose();
+    input.dispose();
+    if (course == null || !mounted) return;
+    await _app.sources.addManualCourse(widget.instanceId, course);
+  }
+
+  Future<void> _removeManualCourse(PlatformCourse course) async {
+    final l10n = context.l10n;
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: l10n.removeManualCourseQuestion(course.name),
+      body: l10n.removeManualCourseBody,
+      confirmLabel: l10n.remove,
+      destructive: true,
+    );
+    if (!confirmed) return;
+    await _app.sources.removeManualCourse(widget.instanceId, course.remoteId);
   }
 
   Future<void> _linkLocalCourses(PlatformCourse course) async {
-    final localCourses = widget.controller.timetable.schedule?.courses ?? [];
+    final localCourses = _app.timetable.schedule?.courses ?? [];
     if (localCourses.isEmpty) {
       showAppNotice(context, context.l10n.noLocalCourses);
       return;
     }
-    final selection = widget.controller.sources.selection(widget.instanceId);
+    final selection = _app.sources.selection(widget.instanceId);
     final selected = <String>{};
     for (final local in localCourses) {
       if (selection.remoteIdsForLocal(local.id).contains(course.remoteId)) {
         selected.add(local.id);
       }
     }
-    final result = await showModalBottomSheet<Set<String>>(
+    final result = await showAppSheet<Set<String>>(
       context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
       builder: (sheetContext) => StatefulBuilder(
-        builder: (context, setState) => SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        builder: (context, setState) => SheetLayout(
+          header: SheetHeader(
+            title: Text(context.l10n.linkLocalCourses),
+            actions: const [SheetCloseButton()],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              AppSectionHeader(context.l10n.linkLocalCourses),
               for (final local in localCourses)
                 CheckboxListTile(
                   value: selected.contains(local.id),
@@ -234,12 +366,13 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
                     }
                   }),
                 ),
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: () => Navigator.pop(sheetContext, selected),
-                child: Text(context.l10n.save),
-              ),
             ],
+          ),
+          actions: SheetActionBar.primary(
+            primary: FilledButton(
+              onPressed: () => Navigator.pop(sheetContext, selected),
+              child: Text(context.l10n.save),
+            ),
           ),
         ),
       ),
@@ -247,7 +380,7 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
     if (result == null || !mounted) return;
     for (final local in localCourses) {
       if (result.contains(local.id)) {
-        await widget.controller.sources.linkCourse(
+        await _app.sources.linkCourse(
           widget.instanceId,
           localCourseId: local.id,
           remoteId: course.remoteId,
@@ -255,7 +388,7 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
       } else if (selection
           .remoteIdsForLocal(local.id)
           .contains(course.remoteId)) {
-        await widget.controller.sources.unlinkCourse(
+        await _app.sources.unlinkCourse(
           widget.instanceId,
           localCourseId: local.id,
           remoteId: course.remoteId,
@@ -266,118 +399,136 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: widget.controller.sources,
+    listenable: Listenable.merge([_app.sources, _app.sync, _app.timetable]),
     builder: (context, _) {
       final instance = _instance;
       final definition = _definition;
+      final base = instance == null
+          ? null
+          : _app.sources.catalog[instance.definitionId];
       final l10n = context.l10n;
-      if (instance == null || definition == null) {
+      if (instance == null || definition == null || base == null) {
         return AppRoutePage(
           title: l10n.dataSourcesTitle,
           child: Center(child: Text(l10n.sourceUnavailable)),
         );
       }
-      final selection = widget.controller.sources.selection(instance.id);
+      _loadSettings(definition, instance);
+      final language = Localizations.localeOf(context).languageCode;
+      final theme = Theme.of(context);
+      final target = syncTargetForDefinition(instance.definitionId);
+      final syncing =
+          _syncing || (target != null && _app.sync.isRunning(target));
+      final busy = syncing || _discovering;
+      final selection = _app.sources.selection(instance.id);
+      final implementationId = instance.implementationId;
+      final localNames = {
+        for (final schedule in _app.timetable.schedules)
+          for (final course in schedule.courses) course.id: course.name,
+      };
       return AppRoutePage(
-        title: definition.name.resolve(
-          Localizations.localeOf(context).languageCode,
-        ),
-        actions: [
-          IconButton(
-            tooltip: l10n.refresh,
-            onPressed: _discovering ? null : _discoverCourses,
-            icon: _discovering
-                ? const SizedBox.square(
-                    dimension: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.sync_rounded),
-          ),
-        ],
+        title: base.name.resolve(language),
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
           children: [
             SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
               title: Text(l10n.enabled),
+              subtitle: instance.enabled ? null : Text(l10n.sourceDisabledHint),
               value: instance.enabled,
-              onChanged: (value) =>
-                  widget.controller.sources.setEnabled(instance.id, value),
+              onChanged: (value) => _app.sources.setEnabled(instance.id, value),
             ),
-            _ImplementationField(
-              controller: widget.controller,
-              instance: instance,
-            ),
-            if (definition.operations.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(
-                definition.operations
-                    .map((operation) => operation.wireName)
-                    .join(' · '),
-                style: Theme.of(context).textTheme.bodySmall,
+            if (target != null ||
+                definition.supports(SourceOperation.deadlinesRead))
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: FilledButton.icon(
+                  onPressed: instance.enabled && !busy
+                      ? () => _syncNow(instance)
+                      : null,
+                  icon: syncing
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.sync_rounded),
+                  label: Text(l10n.sourceSyncNow),
+                ),
+              ),
+            if (_error case final error?) ...[
+              const SizedBox(height: 16),
+              SelectableText(
+                error,
+                style: TextStyle(color: theme.colorScheme.error),
+              ),
+            ],
+            if (base.builtin) ...[
+              const SizedBox(height: 8),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(l10n.sourceImplementation),
+                subtitle: Text(
+                  implementationId == null
+                      ? l10n.sourceBuiltinImplementation
+                      : definition.name.resolve(language),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => _chooseImplementation(instance),
               ),
             ],
             if (definition.settings.isNotEmpty) ...[
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               AppSectionHeader(l10n.sourceSettings),
               for (final field in definition.settings) _field(field, context),
+              const SizedBox(height: 12),
               Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton(
+                alignment: AlignmentDirectional.centerEnd,
+                child: FilledButton.tonal(
                   onPressed: _saveSettings,
                   child: Text(l10n.save),
                 ),
               ),
             ],
-            const SizedBox(height: 20),
-            AppSectionHeader(l10n.sourceCourses),
-            if (selection.courses.isEmpty)
-              Text(
-                _discovering ? l10n.discoveringCourses : l10n.noCourses,
-                style: Theme.of(context).textTheme.bodyMedium,
-              )
-            else
-              for (final course in selection.courses)
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(course.name),
-                  subtitle: course.manual
-                      ? Text(l10n.manualCourse)
-                      : course.remoteId == course.name
-                      ? null
-                      : Text(course.remoteId),
-                  value: course.selected,
-                  onChanged: (value) => widget.controller.sources
-                      .setCourseSelected(instance.id, course.remoteId, value),
-                  secondary: IconButton(
-                    tooltip: l10n.linkLocalCourses,
-                    onPressed: () => _linkLocalCourses(course),
-                    icon: const Icon(Icons.link_rounded),
+            if (definition.supports(SourceOperation.coursesList)) ...[
+              const SizedBox(height: 24),
+              AppSectionHeader(
+                l10n.sourceCourses,
+                trailing: IconButton(
+                  tooltip: l10n.discoverCourses,
+                  visualDensity: VisualDensity.compact,
+                  onPressed: instance.enabled && !busy
+                      ? _discoverCourses
+                      : null,
+                  icon: _discovering
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh_rounded),
+                ),
+              ),
+              if (selection.courses.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    _discovering ? l10n.discoveringCourses : l10n.noCourses,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                )
+              else
+                for (final course in selection.courses)
+                  _courseTile(instance, selection, course, localNames),
+              if (definition.supports(SourceOperation.coursesResolve))
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: TextButton.icon(
+                    onPressed: instance.enabled ? _addManualCourse : null,
+                    icon: const Icon(Icons.add_rounded),
+                    label: Text(l10n.addManualCourse),
                   ),
                 ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: _addManualCourse,
-                  icon: const Icon(Icons.add_rounded),
-                  label: Text(l10n.addManualCourse),
-                ),
-                OutlinedButton.icon(
-                  onPressed: _discovering ? null : _discoverCourses,
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: Text(l10n.discoverCourses),
-                ),
-              ],
-            ),
-            if (_error case final error?) ...[
-              const SizedBox(height: 20),
-              SelectableText(
-                error,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
             ],
           ],
         ),
@@ -385,13 +536,69 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
     },
   );
 
-  Widget _field(SourceField field, BuildContext context) {
-    final label = field.label.resolve(
-      Localizations.localeOf(context).languageCode,
+  Widget _courseTile(
+    SourceInstance instance,
+    SourceCourseSelection selection,
+    PlatformCourse course,
+    Map<String, String> localNames,
+  ) {
+    final l10n = context.l10n;
+    final scheme = Theme.of(context).colorScheme;
+    final linked = [
+      for (final id in selection.localIdsForRemote(course.remoteId))
+        ?localNames[id],
+    ];
+    final details = [
+      if (course.manual) l10n.manualCourse,
+      if (linked.isNotEmpty)
+        l10n.courseLinkedTo(linked.join(l10n.listSeparator)),
+    ];
+    void toggle() => _app.sources.setCourseSelected(
+      instance.id,
+      course.remoteId,
+      !course.selected,
     );
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Checkbox(value: course.selected, onChanged: (_) => toggle()),
+      title: Text(course.name),
+      subtitle: details.isEmpty ? null : Text(details.join(' · ')),
+      onTap: toggle,
+      trailing: AppMenuAnchor(
+        menuChildren: [
+          AppMenuItemButton(
+            leadingIcon: const Icon(Icons.link_rounded),
+            onPressed: () => _linkLocalCourses(course),
+            child: Text(l10n.linkLocalCourses),
+          ),
+          if (course.manual && !course.discovered)
+            AppMenuItemButton(
+              leadingIcon: Icon(
+                Icons.remove_circle_outline_rounded,
+                color: scheme.error,
+              ),
+              style: TextButton.styleFrom(foregroundColor: scheme.error),
+              onPressed: () => _removeManualCourse(course),
+              child: Text(l10n.remove),
+            ),
+        ],
+        builder: (context, menu, isOpen) => IconButton(
+          tooltip: l10n.more,
+          onPressed: () => isOpen ? menu.close() : menu.open(),
+          icon: const Icon(Icons.more_horiz_rounded),
+        ),
+      ),
+    );
+  }
+
+  Widget _field(SourceField field, BuildContext context) {
+    final language = Localizations.localeOf(context).languageCode;
+    final label = field.label.resolve(language);
+    final key = ValueKey('$_fieldsDefinitionId/${field.key}');
     switch (field.type) {
       case SourceFieldType.toggle:
         return SwitchListTile.adaptive(
+          key: key,
           contentPadding: EdgeInsets.zero,
           title: Text(label),
           value: _toggles[field.key] ?? false,
@@ -399,6 +606,7 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
         );
       case SourceFieldType.choice:
         return Padding(
+          key: key,
           padding: const EdgeInsets.only(top: 8),
           child: DropdownButtonFormField<Object?>(
             initialValue: _choices[field.key],
@@ -407,11 +615,7 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
               for (final option in field.options)
                 DropdownMenuItem(
                   value: option.value,
-                  child: Text(
-                    option.label.resolve(
-                      Localizations.localeOf(context).languageCode,
-                    ),
-                  ),
+                  child: Text(option.label.resolve(language)),
                 ),
             ],
             onChanged: (value) => setState(() => _choices[field.key] = value),
@@ -419,6 +623,7 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
         );
       default:
         return Padding(
+          key: key,
           padding: const EdgeInsets.only(top: 8),
           child: TextField(
             controller: _textFields[field.key],
@@ -439,52 +644,5 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
     return '${localizedWeekday(l10n, course.weekday ?? 1)} · '
         '${localizedCourseSection(l10n, course)} · '
         '${localizedWeeks(l10n, course.weeks)}';
-  }
-}
-
-class _ImplementationField extends StatelessWidget {
-  const _ImplementationField({
-    required this.controller,
-    required this.instance,
-  });
-
-  final AppController controller;
-  final SourceInstance instance;
-
-  @override
-  Widget build(BuildContext context) {
-    final definitions = controller.sources.catalog.definitions.where(
-      (definition) =>
-          definition.id == instance.definitionId ||
-          definition.extendsId == instance.definitionId,
-    );
-    final values = definitions.toList();
-    if (values.length < 2) return const SizedBox.shrink();
-    return DropdownButtonFormField<String?>(
-      initialValue: instance.implementationId,
-      decoration: InputDecoration(
-        labelText: context.l10n.sourceImplementation,
-      ),
-      items: [
-        DropdownMenuItem(
-          value: null,
-          child: Text(context.l10n.sourceBuiltinImplementation),
-        ),
-        for (final definition in values)
-          if (definition.extendsId != null)
-            DropdownMenuItem(
-              value: definition.id,
-              child: Text(
-                definition.name.resolve(
-                  Localizations.localeOf(context).languageCode,
-                ),
-              ),
-            ),
-      ],
-      onChanged: (value) => controller.sources.setImplementation(
-        instance.id,
-        value,
-      ),
-    );
   }
 }

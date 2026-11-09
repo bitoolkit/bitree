@@ -17,8 +17,10 @@ import '../school/controller.dart';
 import '../school/service.dart';
 import '../school/storage.dart';
 import '../sources/builtin.dart';
+import '../sources/builtin_runtime.dart';
 import '../sources/host.dart';
 import '../sources/registry.dart';
+import '../sources/sync.dart';
 import '../sync/controller.dart';
 import '../ui/course_palette.dart';
 import 'settings_controller.dart';
@@ -59,16 +61,26 @@ class AppController extends ChangeNotifier {
       storage: moocStorage ?? MoocStorage(),
       agenda: agenda,
     );
+    extensions = ExtensionController(sources: sources, store: extensionStore);
+    final builtinRuntime = BuiltinSourceRuntime(
+      school: this.school,
+      mooc: mooc,
+    );
+    sourceHost = SourceHost(
+      registry: sources,
+      runtimeFor: (definition) async {
+        final builtin = builtinRuntime.runtimeFor(definition);
+        return builtin ?? await extensions.runtimeFor(definition);
+      },
+    );
+    sourceSync = SourceSync(sources: sources, host: sourceHost, agenda: agenda);
     sync = SyncController(
       school: this.school,
       mooc: mooc,
       timetable: timetable,
       agenda: agenda,
-    );
-    extensions = ExtensionController(sources: sources, store: extensionStore);
-    sourceHost = SourceHost(
-      registry: sources,
-      loadSource: (definition) => extensions.sourceFor(definition),
+      sources: sources,
+      sourceSync: sourceSync,
     );
   }
 
@@ -77,6 +89,7 @@ class AppController extends ChangeNotifier {
   final SourceRegistry sources;
   late final ExtensionController extensions;
   late final SourceHost sourceHost;
+  late final SourceSync sourceSync;
   late final AutomationController automation;
   late final SchoolController school;
   late final ClassroomRepository classrooms;

@@ -9,6 +9,11 @@ import '../mooc/controller.dart';
 import '../mooc/progress.dart';
 import '../schedule/controller.dart';
 import '../school/controller.dart';
+import '../sources/builtin.dart';
+import '../sources/course_selection.dart';
+import '../sources/registry.dart';
+import '../sources/source.dart';
+import '../sources/sync.dart';
 
 enum SyncTarget {
   schedule,
@@ -18,23 +23,42 @@ enum SyncTarget {
   lexue(DeadlineSource.lexue),
   eclass(DeadlineSource.eclass),
   mooc(DeadlineSource.mooc),
-  physicsLab;
+  physicsLab,
+
+  /// Every enabled course source added by an extension.
+  extensionSources;
 
   const SyncTarget([this.source]);
   final DeadlineSource? source;
 
   bool get usesSchoolSession => switch (this) {
     schedule || exams || grades || studyPlan || lexue || eclass => true,
-    mooc || physicsLab => false,
+    mooc || physicsLab || extensionSources => false,
   };
 
   SyncCategory get category => switch (this) {
     schedule || exams || grades || studyPlan => SyncCategory.schoolData,
-    lexue || eclass || mooc || physicsLab => SyncCategory.deadlineData,
+    lexue ||
+    eclass ||
+    mooc ||
+    physicsLab ||
+    extensionSources => SyncCategory.deadlineData,
   };
 
   bool get isAcademicRecord => this == grades || this == studyPlan;
+
+  /// The data source whose settings decide how this target is read.
+  String? get definitionId => switch (this) {
+    lexue => BuiltinSources.lexue,
+    eclass => BuiltinSources.eclass,
+    mooc => BuiltinSources.mooc,
+    _ => null,
+  };
 }
+
+SyncTarget? syncTargetForDefinition(String definitionId) => SyncTarget.values
+    .where((target) => target.definitionId == definitionId)
+    .firstOrNull;
 
 enum SyncCategory { schoolData, deadlineData }
 
@@ -56,22 +80,38 @@ class SyncResult {
   final Object? detail;
 }
 
+/// An extension source that did not finish; its name is localized on display.
+class SourceSyncIssue {
+  const SourceSyncIssue(this.source, this.message);
+
+  final LocalizedSourceName source;
+  final String message;
+}
+
 /// Owns one synchronization round. School reads share a session and run in
 /// sequence; MOOC runs alongside them. There is no persistent task queue.
+/// Learning platforms follow their data source: disabled sources are left
+/// out, only selected courses are read, and an extension implementation
+/// replaces the built-in reader.
 class SyncController extends ChangeNotifier {
   SyncController({
     required this._school,
     required this._mooc,
     required this._timetable,
     required this._agenda,
+    required this._sources,
+    required this._sourceSync,
   }) {
     _school.addListener(_notify);
     _mooc.addListener(_notify);
+    _sources.addListener(_notify);
   }
   final SchoolController _school;
   final MoocController _mooc;
   final TimetableController _timetable;
   final AgendaController _agenda;
+  final SourceRegistry _sources;
+  final SourceSync _sourceSync;
   Future<bool>? _operation;
   Completer<void>? _cancelledSignal;
   bool _disposed = false;
@@ -90,7 +130,10 @@ class SyncController extends ChangeNotifier {
   Map<SyncTarget, SyncResult> get results => Map.unmodifiable(_results);
   Set<SyncTarget> get bulkTargets => {
     for (final target in SyncTarget.values)
-      if (!target.isAcademicRecord) target,
+      if (target == SyncTarget.extensionSources
+          ? _extensionSources.isNotEmpty
+          : !target.isAcademicRecord && (_instanceFor(target)?.enabled ?? true))
+        target,
   };
   Set<SyncTarget> get defaultTargets => {
     for (final target in bulkTargets)
@@ -101,6 +144,37 @@ class SyncController extends ChangeNotifier {
       if (_results[target]?.outcome != SyncOutcome.synced) target,
   };
   bool isRunning(SyncTarget target) => _running.contains(target);
+
+  SourceInstance? _instanceFor(SyncTarget target) {
+    final definitionId = target.definitionId;
+    if (definitionId == null) return null;
+    final username = _school.username;
+    final bound = target.usesSchoolSession && username != null
+        ? _sources.instanceForAccount(definitionId, 'bit.school:$username')
+        : null;
+    return bound ??
+        _sources.instances
+            .where((instance) => instance.definitionId == definitionId)
+            .firstOrNull;
+  }
+
+  /// Enabled sources an extension added that list courses to read.
+  List<SourceInstance> get _extensionSources => [
+    for (final instance in _sources.instances)
+      if (instance.enabled &&
+          _sources.catalog[instance.definitionId]?.builtin == false &&
+          _sources
+              .definitionFor(instance)
+              .supports(SourceOperation.coursesList))
+        instance,
+  ];
+
+  CourseChooser? _chooserFor(SourceInstance? instance) => instance == null
+      ? null
+      : (discovered) async {
+          await _sources.mergeDiscoveredCourses(instance.id, discovered);
+          return _sources.selection(instance.id).selectedCourses;
+        };
 
   Future<bool> synchronize(Set<SyncTarget> selected, {String? term}) {
     if (_operation case final current?) return current;
@@ -122,6 +196,8 @@ class SyncController extends ChangeNotifier {
       await Future.wait([
         _syncSchoolAndLab(_term),
         if (_targets.contains(SyncTarget.mooc)) _syncMooc(),
+        if (_targets.contains(SyncTarget.extensionSources))
+          _syncExtensionSources(),
       ]);
       return !_cancelled && incompleteTargets.isEmpty;
     } finally {
@@ -159,32 +235,7 @@ class SyncController extends ChangeNotifier {
       _running.add(target);
       _notify();
       try {
-        final success = await switch (target) {
-          SyncTarget.schedule => _school.synchronize(term: term),
-          SyncTarget.exams => _school.importExams(term: term),
-          SyncTarget.grades => _school.importGrades(),
-          SyncTarget.studyPlan => _school.importStudyPlan(),
-          SyncTarget.lexue => _school.importDeadlines(
-            source: DeadlineSource.lexue,
-          ),
-          SyncTarget.eclass => _school.importDeadlines(
-            source: DeadlineSource.eclass,
-          ),
-          _ => throw StateError('不是学校同步内容'),
-        };
-        final outcome = _cancelled
-            ? SyncOutcome.cancelled
-            : success
-            ? SyncOutcome.synced
-            : _school.verificationRequired || _school.loginExpired
-            ? _school.verificationRequired
-                  ? SyncOutcome.needsVerification
-                  : SyncOutcome.needsLogin
-            : SyncOutcome.failed;
-        _results[target] = SyncResult(
-          outcome,
-          detail: success ? null : _school.error,
-        );
+        _results[target] = await _syncSchoolTarget(target, term);
       } finally {
         _running.remove(target);
         _notify();
@@ -218,11 +269,102 @@ class SyncController extends ChangeNotifier {
     }
   }
 
+  Future<SyncResult> _syncSchoolTarget(SyncTarget target, String? term) async {
+    final instance = _instanceFor(target);
+    if (instance != null && instance.implementationId != null) {
+      return _syncWithSource(instance);
+    }
+    final success = await switch (target) {
+      SyncTarget.schedule => _school.synchronize(term: term),
+      SyncTarget.exams => _school.importExams(term: term),
+      SyncTarget.grades => _school.importGrades(),
+      SyncTarget.studyPlan => _school.importStudyPlan(),
+      SyncTarget.lexue || SyncTarget.eclass => _school.importDeadlines(
+        source: target.source!,
+        chooseCourses: _chooserFor(instance),
+      ),
+      _ => throw StateError('不是学校同步内容'),
+    };
+    final outcome = _cancelled
+        ? SyncOutcome.cancelled
+        : success
+        ? SyncOutcome.synced
+        : _school.verificationRequired || _school.loginExpired
+        ? _school.verificationRequired
+              ? SyncOutcome.needsVerification
+              : SyncOutcome.needsLogin
+        : SyncOutcome.failed;
+    return SyncResult(outcome, detail: success ? null : _school.error);
+  }
+
+  Future<SyncResult> _syncWithSource(SourceInstance instance) async {
+    try {
+      final result = await _sourceSync.synchronize(
+        instance,
+        isCancelled: () => _cancelled,
+      );
+      return SyncResult(
+        result.complete ? SyncOutcome.synced : SyncOutcome.failed,
+        count: result.deadlineCount,
+        detail: result.complete
+            ? null
+            : [
+                for (final failure in result.failures)
+                  '${failure.course}：${failure.error}',
+              ].join('\n'),
+      );
+    } on RequestCancelled {
+      return const SyncResult(SyncOutcome.cancelled);
+    } on Exception catch (error) {
+      return SyncResult(SyncOutcome.failed, detail: error);
+    }
+  }
+
+  Future<void> _syncExtensionSources() async {
+    _running.add(SyncTarget.extensionSources);
+    _notify();
+    try {
+      var count = 0;
+      final issues = <SourceSyncIssue>[];
+      for (final instance in _extensionSources) {
+        if (_cancelled) return;
+        final result = await _syncWithSource(instance);
+        count += result.count ?? 0;
+        if (result.outcome == SyncOutcome.failed) {
+          issues.add(
+            SourceSyncIssue(
+              _sources.catalog[instance.definitionId]!.name,
+              '${result.detail}',
+            ),
+          );
+        }
+      }
+      if (!_cancelled) {
+        _results[SyncTarget.extensionSources] = SyncResult(
+          issues.isEmpty ? SyncOutcome.synced : SyncOutcome.failed,
+          count: count,
+          detail: issues.isEmpty ? null : issues,
+        );
+      }
+    } finally {
+      _running.remove(SyncTarget.extensionSources);
+      _notify();
+    }
+  }
+
   Future<void> _syncMooc() async {
     _running.add(SyncTarget.mooc);
     _notify();
     try {
-      final result = await _mooc.synchronize();
+      final instance = _instanceFor(SyncTarget.mooc);
+      if (instance != null && instance.implementationId != null) {
+        final result = await _syncWithSource(instance);
+        if (!_cancelled) _results[SyncTarget.mooc] = result;
+        return;
+      }
+      final result = await _mooc.synchronize(
+        chooseCourses: _chooserFor(instance),
+      );
       if (!_cancelled) {
         _results[SyncTarget.mooc] = SyncResult(
           result == null || result.failures.isNotEmpty
@@ -276,6 +418,7 @@ class SyncController extends ChangeNotifier {
     _disposed = true;
     _school.removeListener(_notify);
     _mooc.removeListener(_notify);
+    _sources.removeListener(_notify);
     cancel();
     super.dispose();
   }

@@ -316,6 +316,7 @@ extension LocalizedSyncTarget on SyncTarget {
     SyncTarget.eclass => l10n.syncTargetEclass,
     SyncTarget.mooc => l10n.syncTargetMooc,
     SyncTarget.physicsLab => l10n.syncTargetPhysicsLab,
+    SyncTarget.extensionSources => l10n.syncTargetExtensionSources,
   };
 
   String localizedAction(AppLocalizations l10n) => switch (this) {
@@ -327,6 +328,7 @@ extension LocalizedSyncTarget on SyncTarget {
     SyncTarget.eclass => l10n.syncActionEclass,
     SyncTarget.mooc => l10n.syncActionMooc,
     SyncTarget.physicsLab => l10n.syncActionPhysicsLab,
+    SyncTarget.extensionSources => l10n.syncActionExtensionSources,
   };
 }
 

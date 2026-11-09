@@ -1,5 +1,9 @@
 import 'dart:convert';
 
+/// Receives one complete platform course list and returns the courses to read.
+typedef CourseChooser =
+    Future<List<PlatformCourse>> Function(List<PlatformCourse> discovered);
+
 /// A course discovered from a platform or added by the user. A manual course
 /// survives later discovery results that no longer contain it.
 class PlatformCourse {

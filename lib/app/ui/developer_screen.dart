@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../agenda/model.dart';
 import '../../automation/ui/automation_screen.dart';
+import '../../automation/ui/status.dart';
 import '../../core/time.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_page.dart';
@@ -41,7 +42,9 @@ class DeveloperScreen extends StatelessWidget {
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.settings_outlined),
                 title: Text(title),
-                subtitle: Text(context.l10n.automationDescription),
+                subtitle: Text(
+                  displayRulesSummary(controller.automation, context.l10n),
+                ),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push<void>(
                   MaterialPageRoute(

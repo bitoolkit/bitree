@@ -39,6 +39,10 @@ String _syncResultText(
   final detail = switch (result.detail) {
     MoocFailure failure => localizedMoocFailure(l10n, failure).trim(),
     final String text => text.trim(),
+    final List<SourceSyncIssue> issues => [
+      for (final issue in issues)
+        '${issue.source.resolve(l10n.localeName)}：${issue.message}',
+    ].join('\n'),
     final Object value => value.toString().trim(),
     null => null,
   };

@@ -1,11 +1,35 @@
 import 'package:bitree/agenda/deadline_source.dart';
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/sources/agenda_merge.dart';
+import 'package:bitree/sources/builtin.dart';
 import 'package:bitree/sources/course_selection.dart';
+import 'package:bitree/sources/registry.dart';
 import 'package:bitree/sources/source.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/test_app.dart';
+
 void main() {
+  test('restarting keeps a source bound to the school account', () async {
+    final store = MemorySourceStore();
+    final first = SourceRegistry(store: store);
+    addTearDown(first.dispose);
+    first.ensureInstance(BuiltinSources.lexue);
+    final bound = first.ensureInstance(
+      BuiltinSources.lexue,
+      accountId: 'bit.school:1120',
+    );
+    await first.setEnabled(bound.id, false);
+
+    final restarted = SourceRegistry(store: store);
+    addTearDown(restarted.dispose);
+    await restarted.load();
+    final instance = restarted.ensureInstance(BuiltinSources.lexue);
+    expect(instance.id, bound.id);
+    expect(instance.accountId, 'bit.school:1120');
+    expect(instance.enabled, isFalse);
+  });
+
   test('manual platform courses survive discovery and keep their links', () {
     final selection = SourceCourseSelection(sourceInstanceId: 'instance:test');
     selection.mergeDiscovered([

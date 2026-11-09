@@ -234,7 +234,6 @@ class ExtensionPackage {
   ExtensionPackage({
     required this.manifest,
     required this.location,
-    this.enabled = false,
     this.installedAt,
   }) {
     if (location.trim().isEmpty) {
@@ -246,7 +245,6 @@ class ExtensionPackage {
       ExtensionPackage(
         manifest: ExtensionManifest.parse(json['manifest']),
         location: _requiredString(json, 'location'),
-        enabled: json['enabled'] == true,
         installedAt: json['installedAt'] is String
             ? DateTime.tryParse(json['installedAt'] as String)
             : null,
@@ -254,21 +252,14 @@ class ExtensionPackage {
 
   final ExtensionManifest manifest;
   final String location;
-  final bool enabled;
   final DateTime? installedAt;
 
-  ExtensionPackage copyWith({bool? enabled, DateTime? installedAt}) =>
-      ExtensionPackage(
-        manifest: manifest,
-        location: location,
-        enabled: enabled ?? this.enabled,
-        installedAt: installedAt ?? this.installedAt,
-      );
+  ExtensionPackage installed(DateTime at) =>
+      ExtensionPackage(manifest: manifest, location: location, installedAt: at);
 
   Map<String, Object?> toJson() => {
     'manifest': manifest.toJson(),
     'location': location,
-    'enabled': enabled,
     if (installedAt != null) 'installedAt': installedAt!.toIso8601String(),
   };
 }

@@ -1,5 +1,6 @@
 import '../agenda/deadline_source.dart';
 import '../agenda/model.dart';
+import '../sources/course_selection.dart';
 
 class MoocCourse {
   const MoocCourse({
@@ -8,6 +9,20 @@ class MoocCourse {
     required this.name,
     required this.spoc,
   });
+
+  factory MoocCourse.fromPlatformCourse(PlatformCourse course) {
+    final termId = course.remoteTermId;
+    if (termId == null) {
+      throw const FormatException('MOOC 课程缺少开课期次。');
+    }
+    return MoocCourse(
+      id: course.remoteId,
+      termId: termId,
+      name: course.name,
+      spoc: course.params['spoc'] == true,
+    );
+  }
+
   final String id;
   final String termId;
   final String name;
@@ -17,6 +32,14 @@ class MoocCourse {
     'www.icourse163.org',
     '${spoc ? '/spoc' : ''}/learn/$id',
     {'tid': termId},
+  );
+
+  PlatformCourse toPlatformCourse() => PlatformCourse(
+    remoteId: id,
+    name: name,
+    url: url,
+    remoteTermId: termId,
+    params: {'spoc': spoc},
   );
 }
 

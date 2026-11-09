@@ -1,32 +1,30 @@
 import '../agenda/model.dart';
-import '../extensions/lua_source.dart';
 import '../schedule/model.dart';
 import 'course_selection.dart';
 import 'registry.dart';
 import 'results.dart';
+import 'runtime.dart';
 import 'source.dart';
 import 'transport.dart';
 
-typedef SourceLoader = Future<String?> Function(SourceDefinition definition);
-
-/// Owns the boundary between a source instance and its Lua implementation.
+/// Owns the boundary between a source instance and its runtime.
 /// Runtime state is created for each call; the host only supplies instance
 /// scope, permissions and result validation.
 class SourceHost {
   SourceHost({
     required this.registry,
-    required this.loadSource,
+    required this.runtimeFor,
     SourceHttpTransport? httpTransport,
   }) : httpTransport = httpTransport ?? SourceHttpTransport();
 
   final SourceRegistry registry;
-  final SourceLoader loadSource;
+  final SourceRuntimeResolver runtimeFor;
   final SourceHttpTransport httpTransport;
 
   Future<SourceReadResult<PlatformCourse>> courses(
     SourceInstance instance, {
     Map<String, Object?> query = const {},
-    LuaOperationContext? context,
+    SourceOperationContext? context,
   }) => _run(
     instance,
     SourceOperation.coursesList,
@@ -38,7 +36,7 @@ class SourceHost {
   Future<PlatformCourse> resolveCourse(
     SourceInstance instance, {
     required Map<String, Object?> query,
-    LuaOperationContext? context,
+    SourceOperationContext? context,
   }) async {
     final output = await _call(
       instance,
@@ -53,7 +51,7 @@ class SourceHost {
   Future<SourceReadResult<AgendaEntry>> deadlines(
     SourceInstance instance, {
     required Map<String, Object?> query,
-    LuaOperationContext? context,
+    SourceOperationContext? context,
   }) => _run(
     instance,
     SourceOperation.deadlinesRead,
@@ -66,7 +64,7 @@ class SourceHost {
   Future<SourceReadResult<AgendaEntry>> accountDeadlines(
     SourceInstance instance, {
     required Map<String, Object?> query,
-    LuaOperationContext? context,
+    SourceOperationContext? context,
   }) => _run(
     instance,
     SourceOperation.deadlinesReadAccount,
@@ -79,7 +77,7 @@ class SourceHost {
   Future<SourceReadResult<AgendaEntry>> agenda(
     SourceInstance instance, {
     Map<String, Object?> query = const {},
-    LuaOperationContext? context,
+    SourceOperationContext? context,
   }) => _run(
     instance,
     SourceOperation.agendaRead,
@@ -92,7 +90,7 @@ class SourceHost {
   Future<SourceReadResult<Course>> timetable(
     SourceInstance instance, {
     required Map<String, Object?> query,
-    LuaOperationContext? context,
+    SourceOperationContext? context,
   }) => _run(
     instance,
     SourceOperation.timetableRead,
@@ -105,7 +103,7 @@ class SourceHost {
     SourceInstance instance,
     SourceOperation operation,
     Map<String, Object?> query,
-    LuaOperationContext? context,
+    SourceOperationContext? context,
     T Function(SourceResultReader reader, Object? value) parse,
   ) async {
     final output = await _call(instance, operation, query, context);
@@ -116,34 +114,35 @@ class SourceHost {
     SourceInstance instance,
     SourceOperation operation,
     Map<String, Object?> query,
-    LuaOperationContext? context,
+    SourceOperationContext? context,
   ) async {
     final definition = registry.definitionFor(instance);
     if (!definition.supports(operation)) {
-      throw LuaSourceError(
+      throw SourceError(
         'unknown_operation',
         '来源 ${definition.id} 未声明 ${operation.wireName}。',
       );
     }
-    final source = await loadSource(definition);
-    if (source == null) {
-      throw LuaSourceError(
-        'unknown_operation',
-        '来源 ${definition.id} 没有 Lua 实现。',
-      );
+    if (!instance.enabled) {
+      throw SourceError('source_disabled', '来源 ${definition.id} 已停用。');
     }
-    final module = LuaSourceModule.parse(
-      source,
-      fileName: definition.entry ?? '<source>',
-      requiredOperations: [operation],
-    );
+    final runtime = await runtimeFor(definition);
+    if (runtime == null) {
+      throw SourceError('unknown_operation', '来源 ${definition.id} 没有可用的运行时。');
+    }
     final baseContext =
-        context ?? LuaOperationContext(config: instance.settings);
+        (context ?? SourceOperationContext(config: instance.settings))
+            .withSource({
+              'id': definition.id,
+              'baseId': instance.definitionId,
+              'instanceId': instance.id,
+              'accountId': ?instance.accountId,
+            });
     final effectiveContext = baseContext.httpRequest != null
         ? baseContext
         : baseContext.withHttpRequest((request) async {
             if (baseContext.isCancelled?.call() ?? false) {
-              throw const LuaSourceCancelled();
+              throw const SourceCancelled();
             }
             try {
               final result = await httpTransport.request(
@@ -153,21 +152,17 @@ class SourceHost {
                 isCancelled: baseContext.isCancelled,
               );
               if (baseContext.isCancelled?.call() ?? false) {
-                throw const LuaSourceCancelled();
+                throw const SourceCancelled();
               }
               return result;
             } on SourceHttpException catch (failure) {
               if (failure.code == 'cancelled') {
-                throw const LuaSourceCancelled();
+                throw const SourceCancelled();
               }
-              throw LuaSourceError(
-                failure.code,
-                failure.message,
-                failure.details,
-              );
+              throw SourceError(failure.code, failure.message, failure.details);
             }
           });
-    return module.callOperation(operation, effectiveContext, query);
+    return runtime.call(definition, operation, query, effectiveContext);
   }
 
   SourceResultReader _reader(
@@ -178,7 +173,7 @@ class SourceHost {
     return SourceResultReader(
       sourceInstanceId: instance.id,
       permissions: definition.permissions,
-      definitionId: definition.id,
+      definitionId: instance.definitionId,
       term: query['termId'] as String? ?? query['term'] as String?,
     );
   }

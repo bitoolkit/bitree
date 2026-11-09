@@ -3,14 +3,17 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../agenda/controller.dart';
+import '../agenda/model.dart';
 import '../core/async/cancelable_request.dart';
 import '../core/async/serial_queue.dart';
 import '../core/diagnostics.dart';
+import '../sources/course_selection.dart';
 import 'api.dart';
 import 'credentials.dart';
 import 'errors.dart';
 import 'progress.dart';
 import 'storage.dart';
+import 'tasks.dart';
 
 enum MoocStatus { connected, signedOut, expired }
 
@@ -59,7 +62,7 @@ class MoocController extends ChangeNotifier {
     }),
   );
 
-  Future<MoocImportResult?> synchronize() async {
+  Future<MoocImportResult?> synchronize({CourseChooser? chooseCourses}) async {
     final account = _account;
     if (account == null) throw const MoocLoginRequired();
     if (busy) throw const MoocFailure.issue(MoocIssue.requestBusy);
@@ -69,17 +72,9 @@ class MoocController extends ChangeNotifier {
         final result = await api.readDeadlines(account.id, (progress) {
           _progress = progress;
           _notify();
-        });
+        }, chooseCourses: chooseCourses);
         token.check();
-        final next = MoocAccount(
-          id: account.id,
-          name: account.name,
-          credentials: await api.credentials(),
-        );
-        token.check();
-        await _storage.write(next);
-        _account = next;
-        _expired = false;
+        await _refreshSession(api, token);
         if (!await _agenda.mergeDeadlines(
           result.entries,
           checkActive: token.check,
@@ -92,6 +87,58 @@ class MoocController extends ChangeNotifier {
         api.close();
       }
     });
+  }
+
+  Future<List<PlatformCourse>> discoverCourses() {
+    final account = _account;
+    if (account == null) throw const MoocLoginRequired();
+    return _run('发现 MOOC 课程', (token) async {
+      final api = MoocApi(account.credentials, token);
+      try {
+        final courses = await api.readCourses(
+          progress: (progress) {
+            _progress = progress;
+            _notify();
+          },
+        );
+        token.check();
+        await _refreshSession(api, token);
+        return [for (final course in courses) course.toPlatformCourse()];
+      } finally {
+        api.close();
+      }
+    });
+  }
+
+  Future<List<AgendaEntry>> readCourseDeadlines(PlatformCourse course) {
+    final account = _account;
+    if (account == null) throw const MoocLoginRequired();
+    final moocCourse = MoocCourse.fromPlatformCourse(course);
+    return _run('读取 MOOC 课程 DDL', (token) async {
+      final api = MoocApi(account.credentials, token);
+      try {
+        final entries = await api.readCourseDeadlines(moocCourse, account.id);
+        token.check();
+        await _refreshSession(api, token);
+        return entries;
+      } finally {
+        api.close();
+      }
+    });
+  }
+
+  Future<void> _refreshSession(MoocApi api, CancellationToken token) async {
+    final account = _account;
+    if (account == null) throw const MoocLoginRequired();
+    final next = MoocAccount(
+      id: account.id,
+      name: account.name,
+      credentials: await api.credentials(),
+    );
+    token.check();
+    await _storage.write(next);
+    _account = next;
+    _expired = false;
   }
 
   Future<T> _run<T>(

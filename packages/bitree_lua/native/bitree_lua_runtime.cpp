@@ -46,6 +46,7 @@ struct Engine {
   int encodeRef = LUA_NOREF;
   int decodeRef = LUA_NOREF;
   int contextRef = LUA_NOREF;
+  int filterRef = LUA_NOREF;
   int threadRef = LUA_NOREF;
   std::string resumeFailure;
   bool active = false;
@@ -224,30 +225,31 @@ std::string arrayJson(const std::vector<std::string>& values) {
   return result;
 }
 
+// Structured errors carry no source position: the code that happened to be
+// running when the budget ran out is not the cause.
+void raiseStructured(lua_State* lua, const char* json) {
+  lua_pushfstring(lua, "%s%s", kErrorPrefix, json);
+  lua_error(lua);
+}
+
 void instructionHook(lua_State* lua, lua_Debug*) {
   Engine* engine = engineFrom(lua);
   if (engine == nullptr) return;
   auto& execution = engine->execution;
   execution.steps += 5'000;
   if (execution.cancel != nullptr && *execution.cancel != 0) {
-    luaL_error(
+    raiseStructured(
         lua,
-        "%s%s",
-        kErrorPrefix,
         R"({"code":"cancelled","message":"Lua 执行已取消","details":null})");
   }
   if (std::chrono::steady_clock::now() >= execution.deadline) {
-    luaL_error(
+    raiseStructured(
         lua,
-        "%s%s",
-        kErrorPrefix,
         R"({"code":"timeout","message":"Lua 执行超时","details":null})");
   }
   if (execution.steps > execution.stepLimit) {
-    luaL_error(
+    raiseStructured(
         lua,
-        "%s%s",
-        kErrorPrefix,
         R"({"code":"timeout","message":"Lua 指令预算已用尽","details":null})");
   }
 }
@@ -390,7 +392,8 @@ bool openEngine(
   }
   if (!captureGlobal(engine, "__bitree_json_encode", engine.encodeRef) ||
       !captureGlobal(engine, "__bitree_json_decode", engine.decodeRef) ||
-      !captureGlobal(engine, "__bitree_make_context", engine.contextRef)) {
+      !captureGlobal(engine, "__bitree_make_context", engine.contextRef) ||
+      !captureGlobal(engine, "__bitree_filter", engine.filterRef)) {
     failure = "Lua 预置环境不完整";
     return false;
   }
@@ -435,6 +438,9 @@ void closeEngine(Engine& engine) {
   }
   if (engine.contextRef != LUA_NOREF) {
     luaL_unref(engine.lua, LUA_REGISTRYINDEX, engine.contextRef);
+  }
+  if (engine.filterRef != LUA_NOREF) {
+    luaL_unref(engine.lua, LUA_REGISTRYINDEX, engine.filterRef);
   }
   if (engine.threadRef != LUA_NOREF) {
     luaL_unref(engine.lua, LUA_REGISTRYINDEX, engine.threadRef);
@@ -825,14 +831,9 @@ BITREE_LUA_API int bitree_lua_filter(
   }
   lua_State* lua = engine.lua;
   engine.active = true;
-  lua_getglobal(lua, "filter");
-  bool ok = lua_isfunction(lua, -1);
-  if (!ok) {
-    failure = "Define function filter(data) and return data.";
-  } else if (!pushDecodedJson(
-                 engine,
-                 lua,
-                 dataJson)) {
+  lua_rawgeti(lua, LUA_REGISTRYINDEX, engine.filterRef);
+  bool ok = true;
+  if (!pushDecodedJson(engine, lua, dataJson)) {
     failure = stackError(lua);
     ok = false;
   } else if (!runProtected(lua, 1, 1)) {

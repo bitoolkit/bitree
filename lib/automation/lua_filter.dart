@@ -7,6 +7,7 @@ import '../extensions/native_lua.dart';
 
 /// A fresh native Lua state and data copy are created for every invocation.
 /// The worker owns no application objects, persistence, or network callbacks.
+/// Quick [rules] run through `bitree.display` before the optional `filter`.
 class LuaFilterExecutor {
   LuaFilterExecutor({this.timeout = const Duration(seconds: 2)});
 
@@ -16,8 +17,9 @@ class LuaFilterExecutor {
 
   Future<Map<String, dynamic>> run(
     String source,
-    Map<String, dynamic> data,
-  ) async {
+    Map<String, dynamic> data, {
+    Map<String, dynamic>? rules,
+  }) async {
     cancel();
     if (utf8.encode(source).length > maxScriptBytes) {
       throw const FormatException('Lua script exceeds 128 KiB.');
@@ -80,6 +82,7 @@ class LuaFilterExecutor {
           port.sendPort,
           source,
           data,
+          rules,
           cancellation.address,
           timeout.inMilliseconds,
         ),
@@ -109,13 +112,17 @@ class LuaFilterCancelled implements Exception {
   const LuaFilterCancelled();
 }
 
-void _runFilter((SendPort, String, Map<String, dynamic>, int, int) message) {
-  final (port, source, data, cancelAddress, timeoutMs) = message;
+void _runFilter(
+  (SendPort, String, Map<String, dynamic>, Map<String, dynamic>?, int, int)
+  message,
+) {
+  final (port, source, data, rules, cancelAddress, timeoutMs) = message;
   try {
     final cancellation = NativeLuaCancellation.fromAddress(cancelAddress);
     final value = NativeLuaLibrary.open().executeFilter(
       source: source,
       data: data,
+      rules: rules,
       cancellation: cancellation,
       timeoutMs: timeoutMs,
     );

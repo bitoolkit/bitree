@@ -10,11 +10,9 @@ import 'store.dart';
 /// Owns source definitions, accounts, instances and course selection. Domain
 /// controllers remain responsible for their own records.
 class SourceRegistry extends ChangeNotifier {
-  SourceRegistry({
-    SourceStore? store,
-    SourceCatalog? catalog,
-  }) : _store = store ?? const SourceStore(),
-       _catalog = catalog ?? SourceCatalog.builtin();
+  SourceRegistry({SourceStore? store, SourceCatalog? catalog})
+    : _store = store ?? const SourceStore(),
+      _catalog = catalog ?? SourceCatalog.builtin();
 
   final SourceStore _store;
   SourceCatalog _catalog;
@@ -56,8 +54,7 @@ class SourceRegistry extends ChangeNotifier {
     _notify();
   });
 
-  SourceAccount? account(String? id) =>
-      id == null ? null : _accounts[id];
+  SourceAccount? account(String? id) => id == null ? null : _accounts[id];
 
   SourceInstance? instance(String id) => _instances[id];
 
@@ -71,37 +68,33 @@ class SourceRegistry extends ChangeNotifier {
     return null;
   }
 
+  /// Returns the instance for [accountId], binding an account-less instance
+  /// when one exists. Without an account, any instance of the definition
+  /// satisfies the request, so a bound instance is never replaced.
   SourceInstance ensureInstance(
     String definitionId, {
     String? accountId,
     Map<String, dynamic> settings = const {},
   }) {
     _catalog.require(definitionId);
-    if (accountId != null) {
-      final existing = instanceForAccount(definitionId, accountId);
-      if (existing != null) return existing;
-      final unbound = _instances.values
-          .where(
-            (instance) =>
-                instance.definitionId == definitionId &&
-                instance.accountId == null,
-          )
+    final existing = _instances.values.where(
+      (instance) => instance.definitionId == definitionId,
+    );
+    if (accountId == null) {
+      if (existing.firstOrNull case final instance?) return instance;
+    } else {
+      final bound = instanceForAccount(definitionId, accountId);
+      if (bound != null) return bound;
+      final unbound = existing
+          .where((instance) => instance.accountId == null)
           .firstOrNull;
       if (unbound != null) {
-        final bound = unbound.copyWith(accountId: accountId);
-        _instances[bound.id] = bound;
+        final rebound = unbound.copyWith(accountId: accountId);
+        _instances[rebound.id] = rebound;
         _notify();
-        return bound;
+        return rebound;
       }
     }
-    final existing = _instances.values
-        .where(
-          (instance) =>
-              instance.definitionId == definitionId &&
-              instance.accountId == accountId,
-        )
-        .firstOrNull;
-    if (existing != null) return existing;
     final id = accountId == null
         ? 'instance:$definitionId'
         : 'instance:$definitionId:$accountId';
@@ -126,10 +119,7 @@ class SourceRegistry extends ChangeNotifier {
     final id = '$service:$identity';
     final existing = _accounts[id];
     final account =
-        existing?.copyWith(
-          displayName: displayName,
-          status: status,
-        ) ??
+        existing?.copyWith(displayName: displayName, status: status) ??
         SourceAccount(
           id: id,
           service: service,
@@ -143,11 +133,12 @@ class SourceRegistry extends ChangeNotifier {
     return account;
   });
 
-  Future<void> updateAccount(SourceAccount account) => _operations.run(() async {
-    _accounts[account.id] = account;
-    await _save();
-    _notify();
-  });
+  Future<void> updateAccount(SourceAccount account) =>
+      _operations.run(() async {
+        _accounts[account.id] = account;
+        await _save();
+        _notify();
+      });
 
   Future<void> removeAccount(String id) => _operations.run(() async {
     _accounts.remove(id);
@@ -171,39 +162,37 @@ class SourceRegistry extends ChangeNotifier {
         _notify();
       });
 
-  Future<void> setImplementation(
-    String instanceId,
-    String? definitionId,
-  ) => _operations.run(() async {
-    final existing = _requireInstance(instanceId);
-    if (definitionId != null) _catalog.require(definitionId);
-    _instances[instanceId] = existing.copyWith(
-      implementationId: definitionId,
-    );
-    await _save();
-    _notify();
-  });
+  Future<void> setImplementation(String instanceId, String? definitionId) =>
+      _operations.run(() async {
+        final existing = _requireInstance(instanceId);
+        if (definitionId != null) _catalog.require(definitionId);
+        _instances[instanceId] = existing.copyWith(
+          implementationId: definitionId,
+        );
+        await _save();
+        _notify();
+      });
 
-  Future<void> setSettings(
-    String instanceId,
-    Map<String, dynamic> settings,
-  ) => _operations.run(() async {
-    final existing = _requireInstance(instanceId);
-    final definition = definitionFor(existing);
-    final validated = <String, dynamic>{};
-    for (final field in definition.settings) {
-      final value = field.validate(settings[field.key] ?? field.defaultValue);
-      if (value != null) validated[field.key] = value;
-    }
-    if (settings.keys.any(
-      (key) => !definition.settings.any((field) => field.key == key),
-    )) {
-      throw const FormatException('来源设置包含未声明字段');
-    }
-    _instances[instanceId] = existing.copyWith(settings: validated);
-    await _save();
-    _notify();
-  });
+  Future<void> setSettings(String instanceId, Map<String, dynamic> settings) =>
+      _operations.run(() async {
+        final existing = _requireInstance(instanceId);
+        final definition = definitionFor(existing);
+        final validated = <String, dynamic>{};
+        for (final field in definition.settings) {
+          final value = field.validate(
+            settings[field.key] ?? field.defaultValue,
+          );
+          if (value != null) validated[field.key] = value;
+        }
+        if (settings.keys.any(
+          (key) => !definition.settings.any((field) => field.key == key),
+        )) {
+          throw const FormatException('来源设置包含未声明字段');
+        }
+        _instances[instanceId] = existing.copyWith(settings: validated);
+        await _save();
+        _notify();
+      });
 
   SourceDefinition definitionFor(SourceInstance instance) =>
       _catalog.require(instance.implementationId ?? instance.definitionId);
@@ -216,6 +205,9 @@ class SourceRegistry extends ChangeNotifier {
     return created;
   }
 
+  SourceCourseSelection? storedSelection(String instanceId) =>
+      _selections[instanceId];
+
   Future<void> mergeDiscoveredCourses(
     String instanceId,
     Iterable<PlatformCourse> courses,
@@ -226,15 +218,13 @@ class SourceRegistry extends ChangeNotifier {
     _notify();
   });
 
-  Future<void> addManualCourse(
-    String instanceId,
-    PlatformCourse course,
-  ) => _operations.run(() async {
-    _requireInstance(instanceId);
-    selection(instanceId).addManual(course);
-    await _save();
-    _notify();
-  });
+  Future<void> addManualCourse(String instanceId, PlatformCourse course) =>
+      _operations.run(() async {
+        _requireInstance(instanceId);
+        selection(instanceId).addManual(course);
+        await _save();
+        _notify();
+      });
 
   Future<void> removeManualCourse(String instanceId, String remoteId) =>
       _operations.run(() async {
@@ -261,9 +251,8 @@ class SourceRegistry extends ChangeNotifier {
     required String remoteId,
   }) => _operations.run(() async {
     _requireInstance(instanceId);
-    selection(
-      instanceId,
-    ).link(localCourseId: localCourseId, remoteId: remoteId);
+    selection(instanceId)
+        .link(localCourseId: localCourseId, remoteId: remoteId);
     await _save();
     _notify();
   });
@@ -274,9 +263,8 @@ class SourceRegistry extends ChangeNotifier {
     required String remoteId,
   }) => _operations.run(() async {
     _requireInstance(instanceId);
-    selection(
-      instanceId,
-    ).unlink(localCourseId: localCourseId, remoteId: remoteId);
+    selection(instanceId)
+        .unlink(localCourseId: localCourseId, remoteId: remoteId);
     await _save();
     _notify();
   });

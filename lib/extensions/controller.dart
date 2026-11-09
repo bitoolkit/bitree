@@ -5,14 +5,16 @@ import 'package:flutter/foundation.dart';
 import '../core/diagnostics.dart';
 import '../sources/builtin.dart';
 import '../sources/registry.dart';
+import '../sources/runtime.dart';
 import '../sources/source.dart';
 import 'lua_source.dart';
 import 'package.dart';
 import 'store.dart';
 
-/// Owns installed extension packages and their source declarations. Source
-/// instances still belong to [SourceRegistry]; this controller only mutates
-/// the catalog and package lifecycle.
+/// Owns installed extension packages and their source declarations. An
+/// installed package is active: installing it adds its new sources and
+/// switches the sources it extends to its implementation. Source instances
+/// still belong to [SourceRegistry].
 class ExtensionController extends ChangeNotifier {
   ExtensionController({
     required this.sources,
@@ -26,6 +28,7 @@ class ExtensionController extends ChangeNotifier {
   final ExtensionPackageLoader _loader;
   final Map<String, ExtensionPackage> _packages = {};
   final Map<String, String> _sourcesByDefinition = {};
+  final Map<String, SourceRuntime> _runtimesByDefinition = {};
   bool _ready = false;
   bool _disposed = false;
 
@@ -37,7 +40,9 @@ class ExtensionController extends ChangeNotifier {
       final library = await _store.read();
       _packages
         ..clear()
-        ..addAll({for (final package in library.packages) package.manifest.id: package});
+        ..addAll({
+          for (final package in library.packages) package.manifest.id: package,
+        });
       _rebuildCatalog();
       _ready = true;
       _notify();
@@ -58,8 +63,7 @@ class ExtensionController extends ChangeNotifier {
     }
   }
 
-  /// Loads and compiles the Lua source for a definition when it is an
-  /// extension source. Built-in Dart definitions return null.
+  /// Loads the Lua source for an extension definition.
   Future<String?> sourceFor(SourceDefinition definition) async {
     final entry = definition.entry;
     if (entry == null) return null;
@@ -79,28 +83,66 @@ class ExtensionController extends ChangeNotifier {
     return _sourcesByDefinition[definition.id];
   }
 
-  Future<ExtensionPackage> installDirectory(String path) async {
-    final package = await _loader.readDirectory(path);
-    final previous = _packages[package.manifest.id];
-    final installed = package.copyWith(
-      enabled: previous?.enabled ?? false,
-      installedAt: DateTime.now(),
+  Future<SourceRuntime?> runtimeFor(SourceDefinition definition) async {
+    final cached = _runtimesByDefinition[definition.id];
+    if (cached != null) return cached;
+    final source = await sourceFor(definition);
+    if (source == null) return null;
+    final runtime = LuaSourceRuntime(
+      source: source,
+      fileName: definition.entry!,
     );
-    _packages[installed.manifest.id] = installed;
-    _rebuildCatalog();
-    await _save();
-    _notify();
-    return installed;
+    _runtimesByDefinition[definition.id] = runtime;
+    return runtime;
   }
 
-  Future<void> setEnabled(String packageId, bool enabled) async {
-    final package = _packages[packageId];
-    if (package == null) throw FormatException('未知扩展：$packageId');
-    if (enabled) {
-      await _validateSources(package);
+  /// Reads and validates a package folder without installing it.
+  Future<ExtensionPackage> inspectDirectory(String path) async {
+    final package = await _loader.readDirectory(path);
+    final catalog = sources.catalog.withDefinitions(
+      package.manifest.definitions,
+    );
+    for (final definition in package.manifest.definitions) {
+      catalog.require(definition.id);
     }
-    _packages[packageId] = package.copyWith(enabled: enabled);
+    await _validateSources(package);
+    return package;
+  }
+
+  /// Fixes that [install] applies to the sources they extend. A reinstall or
+  /// update keeps the implementation each source already uses.
+  List<SourceDefinition> fixesAppliedBy(ExtensionPackage package) {
+    final installed = {
+      for (final definition
+          in _packages[package.manifest.id]?.manifest.definitions ??
+              const <SourceDefinition>[])
+        definition.id,
+    };
+    return [
+      for (final definition in package.manifest.definitions)
+        if (definition.extendsId != null && !installed.contains(definition.id))
+          definition,
+    ];
+  }
+
+  Future<void> install(ExtensionPackage package) async {
+    final fixes = fixesAppliedBy(package);
+    _packages[package.manifest.id] = package.installed(DateTime.now());
+    _sourcesByDefinition.clear();
+    _runtimesByDefinition.clear();
+    _rebuildCatalog();
     await _save();
+    for (final definition in package.manifest.definitions) {
+      if (definition.extendsId == null) sources.ensureInstance(definition.id);
+    }
+    for (final fix in fixes) {
+      for (final instance in sources.instances.toList()) {
+        if (instance.definitionId == fix.extendsId) {
+          await sources.setImplementation(instance.id, fix.id);
+        }
+      }
+    }
+    await sources.persist();
     _notify();
   }
 
@@ -114,6 +156,7 @@ class ExtensionController extends ChangeNotifier {
         }
       }
       _sourcesByDefinition.remove(definition.id);
+      _runtimesByDefinition.remove(definition.id);
     }
     _rebuildCatalog();
     await _save();
@@ -124,8 +167,7 @@ class ExtensionController extends ChangeNotifier {
     sources.replaceCatalog(
       SourceCatalog([
         ...BuiltinSources.all,
-        for (final package in _packages.values)
-          ...package.manifest.definitions,
+        for (final package in _packages.values) ...package.manifest.definitions,
       ]),
     );
   }
@@ -147,9 +189,8 @@ class ExtensionController extends ChangeNotifier {
     }
   }
 
-  Future<void> _save() => _store.write(
-    ExtensionLibrary(packages: _packages.values.toList()),
-  );
+  Future<void> _save() =>
+      _store.write(ExtensionLibrary(packages: _packages.values.toList()));
 
   void _notify() {
     if (!_disposed) notifyListeners();

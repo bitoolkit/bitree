@@ -196,6 +196,65 @@ loaded_modules['bitree.time'] = time
 loaded_modules['bitree.url'] = url
 loaded_modules['bitree.encoding'] = encoding
 
+local display = {}
+
+function display.renameCourses(data, aliases)
+  for _, course in ipairs(data.courses or {}) do
+    course.name = aliases[course.name] or course.name
+  end
+  for _, name in ipairs({ 'deadlines', 'events', 'exams' }) do
+    for _, entry in ipairs(data[name] or {}) do
+      entry.course = aliases[entry.course] or entry.course
+    end
+  end
+  return data
+end
+
+function display.hideDeadlines(data, sources)
+  local hidden = {}
+  for _, source in ipairs(sources) do hidden[source] = true end
+  local kept = json.array()
+  for _, ddl in ipairs(data.deadlines or {}) do
+    if not hidden[ddl.source] then kept[#kept + 1] = ddl end
+  end
+  data.deadlines = kept
+  return data
+end
+
+function display.prefixExams(data, prefix)
+  for _, exam in ipairs(data.exams or {}) do
+    exam.title = prefix .. exam.title
+  end
+  return data
+end
+
+function display.apply(data, rules)
+  if rules.courseAliases then display.renameCourses(data, rules.courseAliases) end
+  if rules.hiddenDeadlineSources then
+    display.hideDeadlines(data, rules.hiddenDeadlineSources)
+  end
+  if rules.examTitlePrefix then display.prefixExams(data, rules.examTitlePrefix) end
+  return data
+end
+
+loaded_modules['bitree.display'] = display
+
+local globals = _G
+
+-- Display rules run first; a user script then receives their result.
+__bitree_filter = function(payload)
+  local data = payload.data
+  if payload.rules ~= nil then data = display.apply(data, payload.rules) end
+  if payload.script then
+    local filter = rawget(globals, 'filter')
+    if type(filter) ~= 'function' then
+      fail('Define function filter(data) and return data.')
+    end
+    data = filter(data)
+  end
+  return data
+end
+
 local function safeRequire(name)
   if type(name) ~= 'string' or string.sub(name, 1, 7) ~= 'bitree.' then
     fail('只能加载宿主提供的 bitree.* 模块')

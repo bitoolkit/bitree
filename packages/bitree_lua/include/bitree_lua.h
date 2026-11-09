@@ -69,7 +69,9 @@ BITREE_LUA_API int bitree_lua_execute_resume(
 
 BITREE_LUA_API void bitree_lua_execution_free(void *execution);
 
-/// Executes a display rule's `filter(data)` entry point.
+/// Runs the display pipeline. `data_json` is `{data, rules?, script}`: the
+/// prelude applies `rules` through `bitree.display`, then the source's
+/// `filter(data)` when `script` is true.
 BITREE_LUA_API int bitree_lua_filter(
     const char *source,
     const char *file_name,

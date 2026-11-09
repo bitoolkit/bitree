@@ -259,13 +259,18 @@ class NativeLuaLibrary {
   Object? executeFilter({
     required String source,
     required Map<String, dynamic> data,
+    Map<String, dynamic>? rules,
     String fileName = '<automation>',
     NativeLuaCancellation? cancellation,
     int timeoutMs = 2000,
   }) {
     final sourcePointer = source.toNativeUtf8(allocator: malloc);
     final fileNamePointer = fileName.toNativeUtf8(allocator: malloc);
-    final dataPointer = jsonEncode(data).toNativeUtf8(allocator: malloc);
+    final dataPointer = jsonEncode({
+      'data': data,
+      'rules': ?rules,
+      'script': source.trim().isNotEmpty,
+    }).toNativeUtf8(allocator: malloc);
     final resultPointer = calloc<Pointer<Utf8>>();
     final errorPointer = calloc<Pointer<Utf8>>();
     try {

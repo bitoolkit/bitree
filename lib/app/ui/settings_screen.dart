@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../agenda/deadline_clear_scope.dart';
 import '../../agenda/ui/clear_deadlines_sheet.dart';
-import '../../extensions/ui/extensions_screen.dart';
+import '../../automation/ui/automation_screen.dart';
+import '../../automation/ui/status.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../mooc/ui/mooc_sheet.dart';
@@ -74,6 +75,8 @@ class SettingsScreen extends StatelessWidget {
       controller.settings,
       controller.timetable,
       controller.agenda,
+      controller.sources,
+      controller.automation,
     ]),
     builder: (context, _) => _build(context),
   );
@@ -94,6 +97,11 @@ class SettingsScreen extends StatelessWidget {
     );
 
     const tilePadding = EdgeInsets.symmetric(vertical: 2);
+    final language = Localizations.localeOf(context).languageCode;
+    final activeSources = {
+      for (final source in listedSources(controller))
+        if (source.instance.enabled) source.definition.name.resolve(language),
+    };
 
     return AppPage(
       title: Text(l10n.navSettings),
@@ -102,30 +110,22 @@ class SettingsScreen extends StatelessWidget {
         children: [
           SchoolAccount(controller: controller),
           MoocAccountTile(controller: controller.mooc),
-          section(l10n.settingsSourcesAndExtensions, [
-            ListTile(
-              contentPadding: tilePadding,
-              leading: const Icon(Icons.hub_outlined),
-              title: Text(l10n.dataSourcesTitle),
-              trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-              onTap: () => Navigator.of(context).push<void>(
-                MaterialPageRoute(
-                  builder: (_) => SourcesScreen(controller: controller),
-                ),
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(vertical: 4),
+            leading: const Icon(Icons.hub_outlined, size: 36),
+            title: Text(l10n.dataSourcesTitle),
+            subtitle: Text(
+              activeSources.isEmpty
+                  ? l10n.dataSourcesNone
+                  : activeSources.join(l10n.listSeparator),
+            ),
+            trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+            onTap: () => Navigator.of(context).push<void>(
+              MaterialPageRoute(
+                builder: (_) => SourcesScreen(controller: controller),
               ),
             ),
-            ListTile(
-              contentPadding: tilePadding,
-              leading: const Icon(Icons.extension_outlined),
-              title: Text(l10n.extensionsTitle),
-              trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-              onTap: () => Navigator.of(context).push<void>(
-                MaterialPageRoute(
-                  builder: (_) => ExtensionsScreen(controller: controller),
-                ),
-              ),
-            ),
-          ]),
+          ),
           Padding(
             padding: const EdgeInsets.only(top: 24),
             child: ListTile(
@@ -141,6 +141,19 @@ class SettingsScreen extends StatelessWidget {
                   builder: (_) =>
                       AppearanceScreen(settings: controller.settings),
                 ),
+              ),
+            ),
+          ),
+          ListTile(
+            contentPadding: tilePadding,
+            leading: const Icon(Icons.tune_rounded),
+            title: Text(l10n.automationTitle),
+            subtitle: Text(displayRulesSummary(controller.automation, l10n)),
+            trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+            onTap: () => Navigator.of(context).push<void>(
+              MaterialPageRoute(
+                builder: (_) =>
+                    AutomationScreen(controller: controller.automation),
               ),
             ),
           ),

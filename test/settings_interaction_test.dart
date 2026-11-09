@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:bitree/app/ui/settings_screen.dart';
-import 'package:bitree/extensions/ui/extensions_screen.dart';
+import 'package:bitree/automation/ui/automation_screen.dart';
+import 'package:bitree/l10n/l10n.dart';
 import 'package:bitree/schedule/model.dart';
 import 'package:bitree/schedule/store.dart';
 import 'package:bitree/school/storage.dart';
@@ -196,7 +197,7 @@ void main() {
   });
 
   testWidgets(
-    'Source and extension management is available without developer mode',
+    'data sources sit with the accounts and display rules with appearance',
     (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
@@ -208,6 +209,9 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: bitreeTheme(Brightness.light),
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: SettingsScreen(
               controller: controller,
@@ -219,16 +223,25 @@ void main() {
       );
 
       expect(find.text('开发者模式'), findsNothing);
-      await tester.scrollUntilVisible(find.text('来源与扩展'), 200);
+      expect(find.text('扩展'), findsNothing);
+      expect(
+        find.widgetWithText(ListTile, '乐学、新延河课堂、中国大学 MOOC'),
+        findsOneWidget,
+      );
       await tester.tap(find.text('数据来源'));
       await tester.pumpAndSettle();
       expect(find.byType(SourcesScreen), findsOneWidget);
+      expect(find.text('从文件夹安装扩展'), findsOneWidget);
 
-      await tester.pageBack();
+      await tester.tap(find.byTooltip('返回'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('扩展'));
+      await tester.scrollUntilVisible(
+        find.widgetWithText(ListTile, '显示规则'),
+        200,
+      );
+      await tester.tap(find.widgetWithText(ListTile, '显示规则'));
       await tester.pumpAndSettle();
-      expect(find.byType(ExtensionsScreen), findsOneWidget);
+      expect(find.byType(AutomationScreen), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );

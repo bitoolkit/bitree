@@ -2,6 +2,7 @@ import '../../agenda/deadline_source.dart';
 import '../../agenda/model.dart';
 import '../../core/async/cancelable_request.dart';
 import '../../core/json.dart';
+import '../../sources/course_selection.dart';
 import '../errors.dart';
 import '../session.dart';
 
@@ -23,29 +24,94 @@ Future<Map<String, dynamic>> _eclassJson(
   return response.json;
 }
 
-Future<List<AgendaEntry>> fetchEclassDeadlines(SchoolSession session) async {
-  final tasks = await _courseTasks(session);
+Future<List<AgendaEntry>> fetchEclassDeadlines(
+  SchoolSession session, {
+  CourseChooser? chooseCourses,
+}) async {
+  final discovered = await fetchEclassCourses(session);
+  final selected = chooseCourses == null
+      ? discovered
+      : await chooseCourses(discovered);
+  return _entries(await _courseTasks(session, selected));
+}
 
+Future<List<PlatformCourse>> fetchEclassCourses(SchoolSession session) async {
+  final courses = await _courseRows(session);
   return [
-    for (final task in tasks)
-      AgendaEntry(
-        id: 'eclass-${task.id}',
-        title: task.title,
-        kind: AgendaKind.deadline,
-        startsAt: _eclassDate(task.deadline),
-        done: task.done,
-        course: task.course,
-        source: DeadlineSource.eclass,
-        local: false,
+    for (final course in courses)
+      PlatformCourse(
+        remoteId: _identifier(course['id'], 'course.id'),
+        name: jsonStringField(course, 'name'),
         url: DeadlineSource.eclass.origin.resolve(
-          '/course/${Uri.encodeComponent(task.courseId)}'
-          '/learning-activity/full-screen#/${task.id}',
+          '/course/${Uri.encodeComponent(_identifier(course['id'], 'course.id'))}',
         ),
       ),
   ];
 }
 
-Future<List<_EclassTask>> _courseTasks(SchoolSession session) async {
+Future<List<AgendaEntry>> fetchEclassCourseDeadlines(
+  SchoolSession session,
+  PlatformCourse course,
+) async {
+  final outcome = await _courseTasksFor(session, {
+    'id': course.remoteId,
+    'name': course.name,
+  });
+  final tasks = outcome.tasks;
+  if (tasks == null) {
+    Error.throwWithStackTrace(outcome.error!, outcome.stack!);
+  }
+  return _entries(tasks);
+}
+
+List<AgendaEntry> _entries(Iterable<_EclassTask> tasks) => [
+  for (final task in tasks)
+    AgendaEntry(
+      id: 'eclass-${task.id}',
+      title: task.title,
+      kind: AgendaKind.deadline,
+      startsAt: _eclassDate(task.deadline),
+      done: task.done,
+      course: task.course,
+      source: DeadlineSource.eclass,
+      local: false,
+      url: DeadlineSource.eclass.origin.resolve(
+        '/course/${Uri.encodeComponent(task.courseId)}'
+        '/learning-activity/full-screen#/${task.id}',
+      ),
+    ),
+];
+
+Future<List<_EclassTask>> _courseTasks(
+  SchoolSession session,
+  List<PlatformCourse> courses,
+) async {
+  final outcomes = await Future.wait([
+    for (final course in courses)
+      _courseTasksFor(session, {'id': course.remoteId, 'name': course.name}),
+  ], eagerError: true);
+
+  final result = <_EclassTask>[];
+  final activityIds = <String>{};
+  Object? firstFailure;
+  StackTrace? firstStack;
+  for (final outcome in outcomes) {
+    if (outcome.tasks == null) {
+      firstFailure ??= outcome.error;
+      firstStack ??= outcome.stack;
+      continue;
+    }
+    for (final task in outcome.tasks!) {
+      if (activityIds.add(task.id)) result.add(task);
+    }
+  }
+  if (result.isEmpty && firstFailure != null) {
+    Error.throwWithStackTrace(firstFailure, firstStack!);
+  }
+  return result;
+}
+
+Future<List<Map<String, dynamic>>> _courseRows(SchoolSession session) async {
   final courses = <Map<String, dynamic>>[];
   var page = 1;
   while (true) {
@@ -73,29 +139,7 @@ Future<List<_EclassTask>> _courseTasks(SchoolSession session) async {
     if (pages != null ? page >= pages : rows.length < 100) break;
     page++;
   }
-
-  final outcomes = await Future.wait([
-    for (final course in courses) _courseTasksFor(session, course),
-  ], eagerError: true);
-
-  final result = <_EclassTask>[];
-  final activityIds = <String>{};
-  Object? firstFailure;
-  StackTrace? firstStack;
-  for (final outcome in outcomes) {
-    if (outcome.tasks == null) {
-      firstFailure ??= outcome.error;
-      firstStack ??= outcome.stack;
-      continue;
-    }
-    for (final task in outcome.tasks!) {
-      if (activityIds.add(task.id)) result.add(task);
-    }
-  }
-  if (result.isEmpty && firstFailure != null) {
-    Error.throwWithStackTrace(firstFailure, firstStack!);
-  }
-  return result;
+  return courses;
 }
 
 Future<_CourseTasks> _courseTasksFor(

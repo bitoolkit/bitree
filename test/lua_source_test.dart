@@ -1,4 +1,5 @@
 import 'package:bitree/extensions/lua_source.dart';
+import 'package:bitree/sources/runtime.dart';
 import 'package:bitree/sources/source.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -21,7 +22,7 @@ return {
 
     final result = await module.callOperation(
       SourceOperation.coursesList,
-      LuaOperationContext(config: {'name': '测试'}),
+      SourceOperationContext(config: {'name': '测试'}),
       {'term': '2026-2'},
     );
 
@@ -49,7 +50,7 @@ return {
 
     final result = await module.callOperation(
       SourceOperation.deadlinesRead,
-      LuaOperationContext(
+      SourceOperationContext(
         baseOperations: {
           'deadlines.read': (query) {
             receivedQuery = query;
@@ -93,7 +94,7 @@ return {
 
       final result = await module.callOperation(
         SourceOperation.deadlinesRead,
-        LuaOperationContext(
+        SourceOperationContext(
           baseSteps: {
             'activityRows': (args) {
               final body = args[1] as Map;
@@ -141,7 +142,7 @@ return {
 
     final result = await module.callOperation(
       SourceOperation.agendaRead,
-      LuaOperationContext(),
+      SourceOperationContext(),
     ) as Map;
     final items = result['items'] as List;
 
@@ -165,7 +166,7 @@ return {
 
     final result = await module.callOperation(
       SourceOperation.agendaRead,
-      LuaOperationContext(),
+      SourceOperationContext(),
     );
     expect(result, {'first': 4, 'last': 4, 'replaced': 'a_b_c', 'count': 2});
   });
@@ -194,7 +195,7 @@ return {
 
     final result = await module.callOperation(
       SourceOperation.agendaRead,
-      LuaOperationContext(),
+      SourceOperationContext(),
     );
 
     expect(result, {
@@ -229,7 +230,7 @@ return {
 
     final result = await module.callOperation(
       SourceOperation.agendaRead,
-      LuaOperationContext(
+      SourceOperationContext(
         httpRequest: (request) async {
           received = request;
           await Future<void>.delayed(const Duration(milliseconds: 5));
@@ -258,7 +259,7 @@ return {
   }
 }
 ''');
-    final context = LuaOperationContext(
+    final context = SourceOperationContext(
       httpRequest: (request) async => {
         'status': 200,
         'headers': {'content-type': 'application/json'},
@@ -295,9 +296,12 @@ return {
 ''');
 
     await expectLater(
-      module.callOperation(SourceOperation.agendaRead, LuaOperationContext()),
+      module.callOperation(
+        SourceOperation.agendaRead,
+        SourceOperationContext(),
+      ),
       throwsA(
-        isA<LuaSourceError>().having(
+        isA<SourceError>().having(
           (error) => error.code,
           'code',
           'invalid_time',

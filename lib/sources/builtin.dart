@@ -13,20 +13,7 @@ abstract final class BuiltinSources {
       id: school,
       packageId: 'builtin',
       sourceId: 'school',
-      name: const LocalizedSourceName({
-        'zh': '教学中心',
-        'en': 'Teaching Center',
-      }),
-      operations: const {
-        SourceOperation.termsList,
-        SourceOperation.termsRead,
-        SourceOperation.timetableRead,
-        SourceOperation.examsRead,
-        SourceOperation.gradesRead,
-        SourceOperation.studyPlanRead,
-        SourceOperation.classroomsDirectory,
-        SourceOperation.classroomsOccupancy,
-      },
+      name: const LocalizedSourceName({'zh': '教学中心', 'en': 'Teaching Center'}),
       permissions: SourcePermissions(
         networkHosts: const {
           'https://jxzxehall.bit.edu.cn',
@@ -42,10 +29,7 @@ abstract final class BuiltinSources {
       id: lexue,
       packageId: 'builtin',
       sourceId: 'lexue',
-      name: const LocalizedSourceName({
-        'zh': '乐学',
-        'en': 'Lexue',
-      }),
+      name: const LocalizedSourceName({'zh': '乐学', 'en': 'Lexue'}),
       operations: const {
         SourceOperation.coursesList,
         SourceOperation.coursesResolve,
@@ -62,10 +46,7 @@ abstract final class BuiltinSources {
       id: eclass,
       packageId: 'builtin',
       sourceId: 'eclass',
-      name: const LocalizedSourceName({
-        'zh': '新延河课堂',
-        'en': 'Eclass',
-      }),
+      name: const LocalizedSourceName({'zh': '新延河课堂', 'en': 'Eclass'}),
       operations: const {
         SourceOperation.coursesList,
         SourceOperation.coursesResolve,
@@ -81,10 +62,7 @@ abstract final class BuiltinSources {
       id: mooc,
       packageId: 'builtin',
       sourceId: 'mooc',
-      name: const LocalizedSourceName({
-        'zh': '中国大学 MOOC',
-        'en': 'ICourse163',
-      }),
+      name: const LocalizedSourceName({'zh': '中国大学 MOOC', 'en': 'ICourse163'}),
       operations: const {
         SourceOperation.coursesList,
         SourceOperation.coursesResolve,
@@ -104,7 +82,6 @@ abstract final class BuiltinSources {
         'zh': '物理实验报告',
         'en': 'Physics lab reports',
       }),
-      operations: const {SourceOperation.agendaRead},
       permissions: SourcePermissions(
         dataRead: const {SourceResource.timetable},
       ),
@@ -134,7 +111,9 @@ abstract final class BuiltinSources {
 
 class SourceCatalog {
   SourceCatalog(Iterable<SourceDefinition> definitions)
-    : _definitions = {for (final definition in definitions) definition.id: definition};
+    : _definitions = {
+        for (final definition in definitions) definition.id: definition,
+      };
 
   factory SourceCatalog.builtin() => SourceCatalog(BuiltinSources.all);
 
