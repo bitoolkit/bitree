@@ -286,8 +286,8 @@ class _AgendaTimelineState extends State<AgendaTimeline>
         );
         // An ordinary deadline paints leftwards from its due time; one that
         // only has an opening time paints rightwards from that time. Both are
-        // `deadlineWidth` wide, so culling follows the painted box rather than
-        // the wider lane reservation, which would keep empty lanes on screen.
+        // `deadlineWidth` wide, so card culling follows the painted box rather
+        // than the wider reservation. This does not change the scroll range.
         DateTime paintedStart(AgendaTimelinePlacement placement) =>
             placement.entry.isDeadline && !placement.entry.startOnly
             ? placement.end.subtract(deadlineDuration(placement.entry))
@@ -303,6 +303,12 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                   .ceil(),
         );
         final placements = _layout(minimumEventSpan);
+        // Panning in time must not resize the vertical scroll range. Reserve
+        // all lanes in the filtered data, even when their cards are off screen.
+        final laneCount = placements.fold<int>(
+          0,
+          (count, placement) => math.max(count, placement.lane + 1),
+        );
         final left = _timeAt(0, width, pixelsPerHour);
         final right = _timeAt(width, width, pixelsPerHour);
         final painter = _TimelineGridPainter(
@@ -520,8 +526,18 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                             child: LayoutBuilder(
                               builder: (context, laneConstraints) {
                                 final height = laneConstraints.maxHeight;
+                                final contentHeight = math.max(
+                                  height,
+                                  laneCount * laneHeight + 12,
+                                );
+                                // Filtering, zooming or resizing can still
+                                // shrink the range. Cull at the offset that the
+                                // viewport will clamp to during this layout,
+                                // not the stale offset from its previous size.
                                 final offset = _lanes.hasClients
                                     ? _lanes.offset
+                                          .clamp(0.0, contentHeight - height)
+                                          .toDouble()
                                     : 0.0;
                                 final placementsInTime = placements
                                     .where(
@@ -532,16 +548,6 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                                           ),
                                     )
                                     .toList(growable: false);
-                                final displayedLaneCount = placementsInTime
-                                    .fold<int>(
-                                      0,
-                                      (count, placement) =>
-                                          math.max(count, placement.lane + 1),
-                                    );
-                                final contentHeight = math.max(
-                                  height,
-                                  displayedLaneCount * laneHeight + 12,
-                                );
                                 final visible = placementsInTime
                                     .where(
                                       (placement) =>
