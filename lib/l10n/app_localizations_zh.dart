@@ -2383,7 +2383,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get deadlineCutoffPreserveHint => '真实截止时间保持不变。关闭后不再伪提前，但会保留已选择的开始和结束时间。';
 
   @override
-  String get agendaAdjustedDeadline => '伪截止时间';
+  String get agendaAdjustedDeadline => '伪截止';
 
   @override
   String get agendaRealDeadline => '真实截止时间';

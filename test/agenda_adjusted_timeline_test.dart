@@ -142,6 +142,22 @@ void main() {
     }
   });
 
+  testWidgets('Adjusted DDL cards use the compact Chinese deadline label', (
+    tester,
+  ) async {
+    await _showTimeline(tester, [_deadline()]);
+    expect(
+      find.descendant(
+        of: find.byType(AgendaTimelineEntry),
+        matching: find.text('10:00 伪截止'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('伪截止时间'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('The fixed body ends at effective due; the extension zooms', (
     tester,
   ) async {

@@ -696,7 +696,7 @@
   "deadlineCutoffInstant": "仅每天 {time} 这一时刻（不是全天）",
   "deadlineCutoffBoundaryHint": "开始和结束时刻均包含在区间内。结束早于开始时表示跨日；两者相同时仅匹配单个时刻。",
   "deadlineCutoffPreserveHint": "真实截止时间保持不变。关闭后不再伪提前，但会保留已选择的开始和结束时间。",
-  "agendaAdjustedDeadline": "伪截止时间",
+  "agendaAdjustedDeadline": "伪截止",
   "agendaRealDeadline": "真实截止时间",
   "agendaCutoffOriginal": "真实截止：{time}",
   "agendaCutoffAdjusted": "伪截止：{time}",

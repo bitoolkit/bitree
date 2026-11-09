@@ -44,12 +44,11 @@ class _DelayedWritePreferences extends MemoryPreferences {
 }
 
 class _FailOncePreferences extends MemoryPreferences {
-  bool failNext = true;
+  final _failedWrites = <String>{};
 
   @override
   Future<void> setString(String key, String value) async {
-    if (key == _key && failNext) {
-      failNext = false;
+    if (key == _key && _failedWrites.add(key)) {
       throw Exception('simulated preference write failure');
     }
     await super.setString(key, value);

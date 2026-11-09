@@ -267,8 +267,10 @@ void main() {
     await tester.tap(find.text('打开详情'));
     await tester.pumpAndSettle();
     final l10n = AppLocalizationsZh();
+    expect(l10n.agendaAdjustedDeadline, '伪截止');
+    expect(find.textContaining('伪截止时间', findRichText: true), findsNothing);
     expect(
-      find.text('22:00  ${l10n.agendaAdjustedDeadline}', findRichText: true),
+      find.text('22:00  伪截止', findRichText: true),
       findsOneWidget,
     );
     final originalLabel = l10n.agendaCutoffOriginal(
