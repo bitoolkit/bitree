@@ -21,21 +21,31 @@ class AgendaController extends ChangeNotifier {
   bool _ready = false;
   bool _busy = false;
   bool _disposed = false;
+  DeadlineCutoffWindow _deadlineCutoffWindow = const DeadlineCutoffWindow();
+
+  void setDeadlineCutoff(DeadlineCutoffWindow window) {
+    if (_deadlineCutoffWindow == window) return;
+    _deadlineCutoffWindow = window;
+    _notify();
+  }
+
+  AgendaEntry _present(AgendaEntry entry) =>
+      entry.withDeadlineCutoff(_deadlineCutoffWindow);
 
   bool get ready => _ready;
   bool get busy => _busy;
 
   Iterable<AgendaEntry> get entries =>
-      _entries.where((entry) => !entry.deleted);
+      _entries.where((entry) => !entry.deleted).map(_present);
 
   Iterable<AgendaEntry> get deletedDeadlines =>
-      _entries.where((entry) => entry.deleted && entry.isDeadline);
+      _entries.where((entry) => entry.deleted && entry.isDeadline).map(_present);
 
   List<AgendaEntry> pendingOn(DateTime date, {required DateTime now}) =>
       entries
           .where((entry) => !entry.isFinished(now) && entry.occursOn(date))
           .toList()
-        ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+        ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
 
   Future<void> load() => _operations.run(() async {
     if (_disposed) return;

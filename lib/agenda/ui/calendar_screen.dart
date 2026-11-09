@@ -311,7 +311,7 @@ class _AgendaStatusList extends StatelessWidget {
     final visible =
         entries.where((entry) => entry.isFinished(now) == completed).toList()
           ..sort((a, b) {
-            final time = a.startsAt.compareTo(b.startsAt);
+            final time = a.scheduledAt.compareTo(b.scheduledAt);
             final order = time == 0 ? a.id.compareTo(b.id) : time;
             return completed ? -order : order;
           });
@@ -319,7 +319,7 @@ class _AgendaStatusList extends StatelessWidget {
     final overdueDays = <DateTime, List<AgendaEntry>>{};
     for (final entry in visible) {
       final group = entry.overdue(now) ? overdueDays : days;
-      group.putIfAbsent(calendarDate(entry.startsAt), () => []).add(entry);
+      group.putIfAbsent(calendarDate(entry.scheduledAt), () => []).add(entry);
     }
 
     List<Widget> dayRows(Map<DateTime, List<AgendaEntry>> groups) => [

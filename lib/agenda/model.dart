@@ -1,8 +1,10 @@
 import '../core/json.dart';
 import '../core/time.dart';
+import 'deadline_cutoff.dart';
 import 'deadline_source.dart';
 import 'details.dart';
 
+export 'deadline_cutoff.dart';
 export 'details.dart';
 
 enum AgendaKind { event, deadline, exam }
@@ -28,6 +30,7 @@ class AgendaEntry {
     this.details,
     this.tailDays = defaultTailDays,
     this.startOnly = false,
+    this.deadlineCutoffWindow = const DeadlineCutoffWindow(),
   }) {
     if (id.isEmpty || title.trim().isEmpty) {
       throw const FormatException('日程标题或编号缺失');
@@ -98,10 +101,36 @@ class AgendaEntry {
   /// as due.
   final bool startOnly;
 
+  /// Presentation-only state. It is deliberately absent from [toJson], so
+  /// changing the window or syncing can never overwrite the original deadline.
+  final DeadlineCutoffWindow deadlineCutoffWindow;
+
   bool get isDeadline => kind == AgendaKind.deadline;
 
-  DateTime get dueAt =>
+  DateTime get realDueAt =>
       allDay ? calendarDate(startsAt).add(const Duration(days: 1)) : startsAt;
+
+  DateTime get dueAt => isDeadline && !startOnly
+      ? deadlineCutoffWindow.apply(realDueAt)
+      : realDueAt;
+
+  /// Includes a deadline exactly at the window start: its two markers still
+  /// overlap and the real marker must paint above the effective one.
+  bool get hasDeadlineCutoff =>
+      isDeadline && !startOnly && deadlineCutoffWindow.contains(realDueAt);
+
+  bool get hasAdjustedDeadline =>
+      hasDeadlineCutoff && dueAt.isBefore(realDueAt);
+
+  /// Day grouping and labels follow the derived deadline only when adjusted.
+  /// Keep unadjusted all-day entries on their original calendar date.
+  DateTime get scheduledAt => hasAdjustedDeadline ? dueAt : startsAt;
+  bool get effectiveAllDay => allDay && !hasAdjustedDeadline;
+
+  AgendaEntry withDeadlineCutoff(DeadlineCutoffWindow window) =>
+      window == deadlineCutoffWindow
+      ? this
+      : copyWith(deadlineCutoffWindow: window);
 
   bool overdue(DateTime now) =>
       isDeadline && !startOnly && !done && dueAt.isBefore(now);
@@ -110,12 +139,16 @@ class AgendaEntry {
 
   bool occursOn(DateTime date) {
     final day = calendarDate(date);
-    if (isDeadline) return calendarDate(startsAt) == day;
+    if (isDeadline) return calendarDate(scheduledAt) == day;
     return startsAt.isBefore(day.add(const Duration(days: 1))) &&
         endsAt!.isAfter(day);
   }
 
-  AgendaEntry copyWith({bool? done, bool? deleted}) => AgendaEntry(
+  AgendaEntry copyWith({
+    bool? done,
+    bool? deleted,
+    DeadlineCutoffWindow? deadlineCutoffWindow,
+  }) => AgendaEntry(
     id: id,
     title: title,
     kind: kind,
@@ -134,6 +167,7 @@ class AgendaEntry {
     details: details,
     tailDays: tailDays,
     startOnly: startOnly,
+    deadlineCutoffWindow: deadlineCutoffWindow ?? this.deadlineCutoffWindow,
   );
 
   Map<String, dynamic> toJson() => {

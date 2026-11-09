@@ -2458,6 +2458,61 @@ class AppLocalizationsEn extends AppLocalizations {
       'Fit to screen shows every period at once. Normal height keeps comfortable rows and vertical scrolling.';
 
   @override
+  String get settingsDeadlineCutoff => 'Deadline cutoff window';
+
+  @override
+  String get deadlineCutoffEnabled => 'Enable daily cutoff window';
+
+  @override
+  String get deadlineCutoffDescription => 'Move DDLs within this window to its start. Events, exams and open-ended quizzes are unaffected.';
+
+  @override
+  String get deadlineCutoffStart => 'Start time';
+
+  @override
+  String get deadlineCutoffEnd => 'End time';
+
+  @override
+  String get deadlineCutoffDisabled => 'Not enabled';
+
+  @override
+  String deadlineCutoffSameDay(String start, String end) {
+    return 'Daily, $start–$end';
+  }
+
+  @override
+  String deadlineCutoffOvernight(String start, String end) {
+    return 'Daily, $start to $end the next day';
+  }
+
+  @override
+  String deadlineCutoffInstant(String time) {
+    return 'Only the instant $time each day (not all day)';
+  }
+
+  @override
+  String get deadlineCutoffBoundaryHint => 'Both endpoints are included. An end before the start crosses midnight; equal times match only one instant.';
+
+  @override
+  String get deadlineCutoffPreserveHint => 'Actual deadlines stay unchanged. Turning this off retains your selected start and end times.';
+
+  @override
+  String get agendaAdjustedDeadline => 'Adjusted deadline';
+
+  @override
+  String get agendaRealDeadline => 'Actual deadline';
+
+  @override
+  String agendaCutoffOriginal(String time) {
+    return 'Actual deadline: $time';
+  }
+
+  @override
+  String agendaCutoffAdjusted(String time) {
+    return 'Adjusted deadline: $time';
+  }
+
+  @override
   String releaseVersion(String channel, String version) {
     return '$channel $version';
   }

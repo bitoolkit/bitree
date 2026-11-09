@@ -6,6 +6,7 @@ import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../model.dart';
+import 'adjusted_deadline_painter.dart';
 import 'timeline_colors.dart';
 
 /// Renders entry content independently of timeline coordinates and lane packing.
@@ -17,6 +18,7 @@ class AgendaTimelineEntry extends StatelessWidget {
     required this.barWidth,
     required this.deadlineWidth,
     required this.onTap,
+    this.adjustedGeometry,
   });
 
   final AgendaEntry entry;
@@ -24,9 +26,29 @@ class AgendaTimelineEntry extends StatelessWidget {
   final double barWidth;
   final double deadlineWidth;
   final VoidCallback onTap;
+  final AdjustedDeadlineGeometry? adjustedGeometry;
 
   @override
   Widget build(BuildContext context) {
+    final body = _buildBody(context);
+    final geometry = adjustedGeometry;
+    if (geometry == null) return body;
+    final colors = agendaTimelineColors(context, entry, now);
+    return AdjustedDeadlineSurface(
+      key: ValueKey(('agenda-timeline-adjusted', entry.id)),
+      geometry: geometry,
+      bodyWidth: deadlineWidth,
+      fill: colors.fill,
+      // colors.accent already includes the ordinary completed alpha. Applying
+      // another half gives 0.5 when pending and 0.25 when completed.
+      realMarkerColor: colors.accent.withValues(alpha: colors.accent.a * 0.5),
+      body: body,
+      onTap: onTap,
+      semanticsLabel: _preview(context.l10n, entry, now),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final colors = agendaTimelineColors(context, entry, now);
@@ -35,10 +57,10 @@ class AgendaTimelineEntry extends StatelessWidget {
       1.0,
       MediaQuery.textScalerOf(context).scale(14) / 14,
     );
-    final date = entry.startsAt;
+    final date = entry.scheduledAt;
     final caption = _caption(l10n, entry);
     final overdueCaption = l10n.agendaReminderOverdue(
-      entry.allDay ? l10n.allDay : clockText(entry.dueAt),
+      entry.effectiveAllDay ? l10n.allDay : clockText(entry.dueAt),
     );
     final warningBackground = scheme.errorContainer;
     final warningForeground = scheme.onErrorContainer;
@@ -312,7 +334,12 @@ String _caption(AppLocalizations l10n, AgendaEntry entry) {
     if (entry.startOnly) {
       return l10n.agendaTimelineStarts(clockText(entry.startsAt));
     }
-    return entry.allDay ? l10n.allDayUntil : l10n.dueAt(clockText(entry.dueAt));
+    if (entry.hasAdjustedDeadline) {
+      return '${clockText(entry.dueAt)} ${l10n.agendaAdjustedDeadline}';
+    }
+    return entry.effectiveAllDay
+        ? l10n.allDayUntil
+        : l10n.dueAt(clockText(entry.dueAt));
   }
   final end = entry.endsAt!;
   if (entry.allDay) {
@@ -336,6 +363,12 @@ String _fullTime(AppLocalizations l10n, DateTime date) =>
 /// The date line of a deadline preview. Open-ended deadlines never claim a
 /// time is due; they state when the task opened instead.
 String _previewDeadlineLine(AppLocalizations l10n, AgendaEntry entry) {
+  if (entry.hasDeadlineCutoff) {
+    return [
+      l10n.agendaCutoffAdjusted(_fullTime(l10n, entry.dueAt)),
+      l10n.agendaCutoffOriginal(_fullTime(l10n, entry.realDueAt)),
+    ].join('\n');
+  }
   if (entry.startOnly) {
     return l10n.agendaTimelineStarts(
       entry.allDay

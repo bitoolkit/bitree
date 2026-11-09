@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../agenda/deadline_cutoff.dart';
 import '../agenda/view_mode.dart';
 import '../core/async/serial_queue.dart';
 import '../core/diagnostics.dart';
@@ -45,6 +46,7 @@ class AppSettingsController extends ChangeNotifier {
   final SystemPaletteSource _systemPaletteSource;
   final agendaViewMode = ValueNotifier(AgendaViewMode.timeline);
   final timetableHeightMode = ValueNotifier(TimetableHeightMode.normal);
+  final deadlineCutoff = ValueNotifier(const DeadlineCutoffWindow());
 
   Future<void>? _paletteSettingsLoad;
   SystemPalette? _systemPalette;
@@ -53,6 +55,7 @@ class AppSettingsController extends ChangeNotifier {
   bool _themeChosen = false;
   bool _agendaViewChosen = false;
   bool _timetableHeightChosen = false;
+  bool _deadlineCutoffChosen = false;
   bool _developerMode = false;
   bool _widgetUseSystemPalette = false;
   bool _globalUseSystemPalette = false;
@@ -144,6 +147,19 @@ class AppSettingsController extends ChangeNotifier {
       }
     } on Exception catch (failure, stack) {
       AppDiagnostics.instance.error('读取课表高度设置', failure, stack);
+    }
+    try {
+      final savedCutoff = await _preferences.getString('deadlineCutoff');
+      if (!_deadlineCutoffChosen && !_disposed && savedCutoff != null) {
+        final decoded = jsonDecode(savedCutoff);
+        if (decoded is! Map<String, dynamic>) {
+          throw const FormatException('DDL 伪提前设置格式不正确');
+        }
+        deadlineCutoff.value = DeadlineCutoffWindow.fromJson(decoded);
+        _notify();
+      }
+    } catch (failure, stack) {
+      AppDiagnostics.instance.report('读取 DDL 伪提前设置', failure, stack);
     }
   }
 
@@ -344,6 +360,18 @@ class AppSettingsController extends ChangeNotifier {
     return _writePreference('timetableHeightMode', value.name, '保存课表高度设置');
   }
 
+  Future<void> setDeadlineCutoff(DeadlineCutoffWindow value) {
+    if (_disposed) return Future<void>.value();
+    _deadlineCutoffChosen = true;
+    deadlineCutoff.value = value;
+    _notify();
+    return _writePreference(
+      'deadlineCutoff',
+      jsonEncode(value.toJson()),
+      '保存 DDL 伪提前设置',
+    );
+  }
+
   Future<void> _writePreference(String key, String value, String operation) {
     final previous = _preferenceWrites[key] ?? Future<void>.value();
     final write = previous.then((_) async {
@@ -368,6 +396,7 @@ class AppSettingsController extends ChangeNotifier {
     _systemPaletteSource.dispose();
     agendaViewMode.dispose();
     timetableHeightMode.dispose();
+    deadlineCutoff.dispose();
     super.dispose();
   }
 }

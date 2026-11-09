@@ -251,24 +251,31 @@ class _EntryTime extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final color = entry.overdue(now) ? scheme.error : scheme.onSurface;
+    final displayedAt = entry.scheduledAt;
+    final allDay = entry.effectiveAllDay;
     // An open-ended deadline has no due date: it reads like a timed entry and
     // is labelled as opening rather than as due.
     final String time;
     if (!entry.isDeadline) {
       time = localizedAgendaTime(l10n, entry);
     } else if (entry.startOnly) {
-      time = entry.allDay ? l10n.allDay : clockText(entry.startsAt);
+      time = allDay ? l10n.allDay : clockText(displayedAt);
     } else {
-      time = entry.allDay
+      time = allDay
           ? l10n.agendaDueBeforeEndOfDay
-          : clockText(entry.startsAt);
+          : clockText(displayedAt);
     }
-    final lastDay = entry.allDay && !entry.isDeadline
+    final timeLabel = entry.hasAdjustedDeadline
+        ? l10n.agendaAdjustedDeadline
+        : entry.startOnly
+        ? l10n.start
+        : l10n.due;
+    final lastDay = allDay && !entry.isDeadline
         ? entry.endsAt!.subtract(const Duration(days: 1))
-        : entry.startsAt;
-    final date = calendarDate(lastDay) == calendarDate(entry.startsAt)
-        ? localizedAgendaDate(l10n, entry.startsAt)
-        : '${localizedAgendaDate(l10n, entry.startsAt)} – '
+        : displayedAt;
+    final date = calendarDate(lastDay) == calendarDate(displayedAt)
+        ? localizedAgendaDate(l10n, displayedAt)
+        : '${localizedAgendaDate(l10n, displayedAt)} – '
               '${localizedAgendaDate(l10n, lastDay)}';
 
     return DecoratedBox(
@@ -296,21 +303,32 @@ class _EntryTime extends StatelessWidget {
               TextSpan(
                 children: [
                   TextSpan(text: time),
-                  if (entry.isDeadline && !entry.allDay)
+                  if (entry.isDeadline && !allDay)
                     TextSpan(
-                      text: '  ${entry.startOnly ? l10n.start : l10n.due}',
+                      text: '  $timeLabel',
                       style: theme.textTheme.bodyMedium?.copyWith(color: color),
                     ),
                 ],
               ),
               style: theme.textTheme.headlineSmall?.copyWith(
-                fontSize: entry.isDeadline && !entry.allDay ? 30 : 22,
+                fontSize: entry.isDeadline && !allDay ? 30 : 22,
                 height: 1.25,
                 fontWeight: FontWeight.w500,
                 color: color,
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
+            if (entry.hasAdjustedDeadline) ...[
+              const SizedBox(height: 12),
+              Text(
+                l10n.agendaCutoffOriginal(
+                  localizedAgendaDateTime(l10n, entry.realDueAt),
+                ),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ],
         ),
       ),

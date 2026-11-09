@@ -11,6 +11,7 @@ import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../model.dart';
 import '../timeline_layout.dart';
+import 'adjusted_deadline_painter.dart';
 import 'agenda_detail.dart';
 import 'timeline_entry.dart';
 
@@ -61,17 +62,21 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   int _gesturePointers = 0;
   DateTime? _gestureAnchor;
   List<AgendaEntry>? _cachedEntries;
+  DeadlineCutoffWindow? _cachedCutoff;
   Duration? _cachedMinimumEventSpan;
   List<AgendaTimelinePlacement> _cachedPlacements = const [];
   final Map<String, DateTime> _nextStartById = {};
 
   List<AgendaTimelinePlacement> _layout(Duration minimumEventSpan) {
+    final cutoff = widget.controller.settings.deadlineCutoff.value;
     if (!identical(_cachedEntries, widget.entries) ||
+        _cachedCutoff != cutoff ||
         _cachedMinimumEventSpan != minimumEventSpan) {
       _cachedEntries = widget.entries;
+      _cachedCutoff = cutoff;
       _cachedMinimumEventSpan = minimumEventSpan;
       _cachedPlacements = layoutAgendaTimeline(
-        widget.entries,
+        widget.entries.map((entry) => entry.withDeadlineCutoff(cutoff)),
         minimumEventSpan: minimumEventSpan,
       );
       _nextStartById.clear();
@@ -90,6 +95,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     super.initState();
     _center = calendarDate(widget.now).add(const Duration(hours: 12));
     _lanes.addListener(_laneChanged);
+    widget.controller.settings.deadlineCutoff.addListener(_laneChanged);
     _horizontalFling = AnimationController.unbounded(vsync: this)
       ..addListener(_tickHorizontal);
     _verticalFling = AnimationController.unbounded(vsync: this)
@@ -154,6 +160,11 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   @override
   void didUpdateWidget(covariant AgendaTimeline oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.settings.deadlineCutoff.removeListener(_laneChanged);
+      widget.controller.settings.deadlineCutoff.addListener(_laneChanged);
+      _cachedEntries = null;
+    }
     if (oldWidget.visible != widget.visible) {
       _stopMotion();
       _gestureAnchor = null;
@@ -190,6 +201,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     _horizontalFling.dispose();
     _verticalFling.dispose();
     _lanes.removeListener(_laneChanged);
+    widget.controller.settings.deadlineCutoff.removeListener(_laneChanged);
     _lanes.dispose();
     super.dispose();
   }
@@ -278,7 +290,11 @@ class _AgendaTimelineState extends State<AgendaTimeline>
         // Keep the tail a quarter baseline day inside its reservation.
         // Width is set by the MINIMUM zoom, never by the current zoom.
         double deadlineWidth(AgendaEntry entry) =>
-            cellWidth * (entry.tailDays - 0.25);
+            cellWidth *
+            ((entry.hasDeadlineCutoff
+                    ? AgendaEntry.defaultTailDays
+                    : entry.tailDays) -
+                0.25);
         Duration deadlineDuration(AgendaEntry entry) => Duration(
           microseconds:
               (deadlineWidth(entry) / pixelsPerHour * _microsecondsPerHour)
@@ -290,7 +306,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
         // than the wider reservation. This does not change the scroll range.
         DateTime paintedStart(AgendaTimelinePlacement placement) =>
             placement.entry.isDeadline && !placement.entry.startOnly
-            ? placement.end.subtract(deadlineDuration(placement.entry))
+            ? placement.entry.dueAt.subtract(deadlineDuration(placement.entry))
             : placement.start;
         DateTime paintedEnd(AgendaTimelinePlacement placement) =>
             placement.entry.isDeadline && placement.entry.startOnly
@@ -655,6 +671,34 @@ class _AgendaTimelineState extends State<AgendaTimeline>
         time.difference(_center).inMicroseconds /
             _microsecondsPerHour *
             pixelsPerHour;
+    if (entry.hasDeadlineCutoff) {
+      final effective = x(entry.dueAt);
+      final real = x(entry.realDueAt);
+      final bodyLeft = effective - deadlineWidth;
+      // The extension may be enormous in time coordinates. Only allocate its
+      // intersection with this viewport, while retaining the body's true origin.
+      final left = math.max(0.0, bodyLeft);
+      final right = math.min(width, real);
+      return Positioned(
+        key: ValueKey(('agenda-timeline-entry', entry.id)),
+        left: left,
+        top: placement.lane * laneHeight + 12,
+        width: math.max(0.0, right - left),
+        height: laneHeight - 12,
+        child: AgendaTimelineEntry(
+          entry: entry,
+          now: widget.now,
+          barWidth: deadlineWidth,
+          deadlineWidth: deadlineWidth,
+          adjustedGeometry: AdjustedDeadlineGeometry(
+            bodyLeft: bodyLeft - left,
+            effectiveX: effective - left,
+            realX: real - left,
+          ),
+          onTap: () => showAgendaEntry(context, widget.controller, entry),
+        ),
+      );
+    }
     // A start-only deadline keeps the usual painted width but grows rightwards
     // from its opening time, so its right edge is derived instead of its left.
     final actualRight = entry.isDeadline && entry.startOnly
@@ -673,6 +717,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
         : math.max(0.0, x(nextStart) - left);
     final tapWidth = math.min(math.max(24.0, barWidth), availableWidth);
     return Positioned(
+      key: ValueKey(('agenda-timeline-entry', entry.id)),
       left: left,
       top: placement.lane * laneHeight + 12,
       width: tapWidth,

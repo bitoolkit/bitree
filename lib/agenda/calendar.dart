@@ -25,7 +25,7 @@ class CalendarItem {
         course: null,
         entry: value,
         location: value.location,
-        startsAt: value.startsAt,
+        startsAt: value.scheduledAt,
         endsAt: value.endsAt,
       );
 

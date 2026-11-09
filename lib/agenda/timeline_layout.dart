@@ -29,12 +29,18 @@ List<AgendaTimelinePlacement> layoutAgendaTimeline(
   // that opening time, so both reserve `tailDays` of lane space.
   DateTime reservationStart(AgendaEntry entry) =>
       entry.isDeadline && !entry.startOnly
-      ? entry.dueAt.subtract(Duration(days: entry.tailDays))
+      ? entry.dueAt.subtract(
+          Duration(
+            days: entry.hasDeadlineCutoff
+                ? AgendaEntry.defaultTailDays
+                : entry.tailDays,
+          ),
+        )
       : entry.startsAt;
   DateTime reservationEnd(AgendaEntry entry) => entry.isDeadline
       ? entry.startOnly
             ? entry.startsAt.add(Duration(days: entry.tailDays))
-            : entry.dueAt
+            : entry.realDueAt
       : entry.endsAt!;
   final intervals =
       [

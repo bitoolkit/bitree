@@ -49,13 +49,17 @@ class AgendaListTile extends StatelessWidget {
       else if (entry.source != null)
         entry.source!.localizedLabel(l10n),
       if (entry.location.isNotEmpty) entry.location,
+      if (entry.hasAdjustedDeadline)
+        l10n.agendaCutoffOriginal(
+          localizedAgendaDateTime(l10n, entry.realDueAt),
+        ),
     ].join('  ');
     final description = localizedAgendaNotes(l10n, entry).trim();
     final hasDetails = description.isNotEmpty || subtitle.isNotEmpty;
     final dueToday =
         entry.isDeadline &&
         !entry.done &&
-        calendarDate(entry.startsAt) == calendarDate(now);
+        calendarDate(entry.scheduledAt) == calendarDate(now);
     final timeColor = entry.overdue(now)
         ? scheme.error
         : dueToday

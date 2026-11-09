@@ -53,7 +53,12 @@ class AppController extends ChangeNotifier {
       timetable: timetable,
       agenda: agenda,
     );
+    settings.deadlineCutoff.addListener(_updateDeadlineCutoff);
+    _updateDeadlineCutoff();
   }
+
+  void _updateDeadlineCutoff() =>
+      agenda.setDeadlineCutoff(settings.deadlineCutoff.value);
 
   final AppSettingsController settings;
   final TimetableController timetable;
@@ -80,6 +85,7 @@ class AppController extends ChangeNotifier {
 
   @override
   void dispose() {
+    settings.deadlineCutoff.removeListener(_updateDeadlineCutoff);
     settings.dispose();
     sync.dispose();
     classrooms.dispose();
