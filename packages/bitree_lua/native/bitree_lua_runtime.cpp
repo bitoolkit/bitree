@@ -1,21 +1,26 @@
-#include "../include/bitree_lua.h"
+#include "bitree_lua.h"
 
-#include <lua.hpp>
+#include "lauxlib.h"
+#include "lua.h"
+#include "lualib.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <string>
 #include <vector>
 
+extern const char kPrelude[];
+extern const size_t kPreludeLength;
+
 namespace {
 
 constexpr size_t kDefaultMemoryLimit = 32 * 1024 * 1024;
 constexpr size_t kInstructionLimit = 50'000'000;
-constexpr int kDefaultTimeoutMs = 5'000;
-constexpr int kMaximumTimeoutMs = 10 * 60 * 1000;
 constexpr const char* kErrorPrefix = "__bitree_error__";
 
 struct MemoryState {
@@ -46,8 +51,6 @@ struct Engine {
   bool active = false;
   int stepDepth = 0;
 };
-
-#include "prelude.inc"
 
 void* allocate(void* user, void* pointer, size_t oldSize, size_t newSize) {
   auto* memory = static_cast<MemoryState*>(user);
@@ -135,8 +138,7 @@ std::string normalizeFailure(const std::string& raw) {
     const std::string encoded = raw.substr(prefixLength);
     if (!encoded.empty() && encoded.front() == '{') return encoded;
   }
-  if (raw.find("not enough memory") != std::string::npos ||
-      raw.find("内存不足") != std::string::npos) {
+  if (raw.find("not enough memory") != std::string::npos) {
     return errorJson("memory_limit", raw);
   }
   return errorJson("script_error", raw);
@@ -156,7 +158,7 @@ bool pushDecodedJson(Engine& engine, lua_State* lua, const char* text) {
     return false;
   }
   lua_rawgeti(lua, LUA_REGISTRYINDEX, engine.decodeRef);
-  lua_pushstring(lua, text == nullptr ? "null" : text);
+  lua_pushstring(lua, text);
   return runProtected(lua, 1, 1);
 }
 
@@ -187,10 +189,6 @@ bool decodeArray(
     std::string& failure) {
   lua_State* lua = engine.lua;
   const int top = lua_gettop(lua);
-  if (json == nullptr || *json == '\0') {
-    lua_settop(lua, top);
-    return true;
-  }
   if (!pushDecodedJson(engine, lua, json)) {
     failure = stackError(lua);
     lua_settop(lua, top);
@@ -224,12 +222,6 @@ std::string arrayJson(const std::vector<std::string>& values) {
   }
   result.push_back(']');
   return result;
-}
-
-int normalizedTimeout(int timeoutMs) {
-  if (timeoutMs <= 0) return kDefaultTimeoutMs;
-  if (timeoutMs > kMaximumTimeoutMs) return kMaximumTimeoutMs;
-  return timeoutMs;
 }
 
 void instructionHook(lua_State* lua, lua_Debug*) {
@@ -372,7 +364,7 @@ bool openEngine(
   }
   engine.execution.cancel = cancel;
   engine.execution.deadline = std::chrono::steady_clock::now() +
-                              std::chrono::milliseconds(normalizedTimeout(timeoutMs));
+                              std::chrono::milliseconds(timeoutMs);
   engine.lua = lua_newstate(allocate, &engine.memory, 0);
   if (engine.lua == nullptr) {
     failure = "无法创建 Lua state";
@@ -387,7 +379,7 @@ bool openEngine(
   lua_sethook(lua, instructionHook, LUA_MASKCOUNT, 5'000);
 
   if (luaL_loadbufferx(
-          lua, kPrelude, sizeof(kPrelude) - 1, "@bitree-prelude.lua", "t") !=
+          lua, kPrelude, kPreludeLength, "@bitree-prelude.lua", "t") !=
       LUA_OK) {
     failure = stackError(lua);
     return false;
@@ -403,8 +395,7 @@ bool openEngine(
     return false;
   }
 
-  const std::string chunkName =
-      std::string("@") + (fileName == nullptr ? "source.lua" : fileName);
+  const std::string chunkName = std::string("@") + fileName;
   if (luaL_loadbufferx(
           lua, source, std::strlen(source), chunkName.c_str(), "t") !=
       LUA_OK) {
@@ -492,53 +483,17 @@ bool collectFunctions(
   return true;
 }
 
-bool moduleHasFunction(
-    Engine& engine,
-    const char* field,
-    const std::string& name) {
-  lua_State* lua = engine.lua;
-  const int top = lua_gettop(lua);
-  lua_rawgeti(lua, LUA_REGISTRYINDEX, engine.moduleRef);
-  lua_getfield(lua, -1, field);
-  if (!lua_istable(lua, -1)) {
-    lua_settop(lua, top);
-    return false;
-  }
-  lua_getfield(lua, -1, name.c_str());
-  const bool result = lua_isfunction(lua, -1);
-  lua_settop(lua, top);
-  return result;
-}
-
 bool verifyFunctions(
-    Engine& engine,
+    const std::vector<std::string>& available,
     const char* field,
     const std::vector<std::string>& required,
     std::string& failure) {
   for (const auto& name : required) {
-    if (!moduleHasFunction(engine, field, name)) {
+    if (std::find(available.begin(), available.end(), name) ==
+        available.end()) {
       failure = std::string("Lua 来源未实现 ") + field + " " + name;
       return false;
     }
-  }
-  return true;
-}
-
-bool pushOperation(Engine& engine, const char* operation, std::string& failure) {
-  lua_State* lua = engine.lua;
-  const int top = lua_gettop(lua);
-  lua_rawgeti(lua, LUA_REGISTRYINDEX, engine.moduleRef);
-  lua_getfield(lua, -1, "operations");
-  if (!lua_istable(lua, -1)) {
-    failure = "Lua 来源缺少 operations table";
-    lua_settop(lua, top);
-    return false;
-  }
-  lua_getfield(lua, -1, operation == nullptr ? "" : operation);
-  if (!lua_isfunction(lua, -1)) {
-    failure = std::string("Lua 来源未实现 ") + (operation == nullptr ? "" : operation);
-    lua_settop(lua, top);
-    return false;
   }
   return true;
 }
@@ -623,7 +578,7 @@ bool beginOperation(
   lua_State* lua = engine.lua;
   lua_settop(lua, 0);
   lua_rawgeti(lua, LUA_REGISTRYINDEX, engine.contextRef);
-  lua_pushstring(lua, contextJson == nullptr ? "{}" : contextJson);
+  lua_pushstring(lua, contextJson);
   if (!runProtected(lua, 1, 1)) {
     failure = stackError(lua);
     return false;
@@ -637,13 +592,9 @@ bool beginOperation(
 
   lua_rawgeti(engine.thread, LUA_REGISTRYINDEX, engine.moduleRef);
   lua_getfield(engine.thread, -1, "operations");
-  lua_getfield(
-      engine.thread,
-      -1,
-      operation == nullptr ? "" : operation);
+  lua_getfield(engine.thread, -1, operation);
   if (!lua_isfunction(engine.thread, -1)) {
-    failure =
-        std::string("Lua 来源未实现 ") + (operation == nullptr ? "" : operation);
+    failure = std::string("Lua 来源未实现 ") + operation;
     return false;
   }
   lua_remove(engine.thread, -2);
@@ -652,7 +603,7 @@ bool beginOperation(
   if (!pushDecodedJson(
           engine,
           engine.thread,
-          queryJson == nullptr ? "{}" : queryJson)) {
+          queryJson)) {
     failure = stackError(engine.thread);
     return false;
   }
@@ -695,8 +646,12 @@ BITREE_LUA_API int bitree_lua_inspect(
             decodeArray(engine, baseStepsJson, baseSteps, failure) &&
             collectFunctions(engine, "operations", true, operations, failure) &&
             collectFunctions(engine, "steps", false, steps, failure) &&
-            verifyFunctions(engine, "operations", requiredOperations, failure) &&
-            verifyFunctions(engine, "steps", baseSteps, failure);
+            verifyFunctions(
+                operations,
+                "operations",
+                requiredOperations,
+                failure) &&
+            verifyFunctions(steps, "steps", baseSteps, failure);
   if (ok) {
     const std::string info =
         "{\"operations\":" + arrayJson(operations) + ",\"steps\":" +
@@ -708,80 +663,6 @@ BITREE_LUA_API int bitree_lua_inspect(
   closeEngine(engine);
   if (!ok) {
     setError(errorJsonOut, normalizeFailure(failure));
-    return -1;
-  }
-  return 0;
-}
-
-BITREE_LUA_API int bitree_lua_execute(
-    const char* source,
-    const char* fileName,
-    const char* operation,
-    const char* queryJson,
-    const char* contextJson,
-    BitreeLuaHostCallback host,
-    const volatile int* cancelFlag,
-    int timeoutMs,
-    char** resultJson,
-    char** errorJsonOut) {
-  if (resultJson == nullptr || errorJsonOut == nullptr) return -1;
-  *resultJson = nullptr;
-  *errorJsonOut = nullptr;
-
-  Engine engine;
-  engine.host = host;
-  std::string failure;
-  if (!openEngine(
-          engine,
-          source,
-          fileName,
-          cancelFlag,
-          timeoutMs,
-          true,
-          failure)) {
-    setError(errorJsonOut, normalizeFailure(failure));
-    closeEngine(engine);
-    return -1;
-  }
-  lua_State* lua = engine.lua;
-  engine.active = true;
-
-  bool ok = pushOperation(engine, operation, failure);
-  if (ok) {
-    const int function = lua_gettop(lua);
-    lua_rawgeti(lua, LUA_REGISTRYINDEX, engine.contextRef);
-    lua_pushstring(lua, contextJson == nullptr ? "{}" : contextJson);
-    if (!runProtected(lua, 1, 1)) {
-      failure = stackError(lua);
-      ok = false;
-    } else {
-      lua_pushvalue(lua, function);
-      lua_insert(lua, -2);
-      if (!pushDecodedJson(
-              engine,
-              lua,
-              queryJson == nullptr ? "{}" : queryJson)) {
-        failure = stackError(lua);
-        ok = false;
-      } else if (!runProtected(lua, 2, 1)) {
-        failure = stackError(lua);
-        ok = false;
-      }
-    }
-  }
-
-  std::string output;
-  if (ok) ok = encodeValue(engine, lua, -1, output);
-  if (!ok && failure.empty()) failure = stackError(lua);
-  engine.active = false;
-  closeEngine(engine);
-  if (!ok) {
-    setError(errorJsonOut, normalizeFailure(failure));
-    return -1;
-  }
-  *resultJson = duplicate(output);
-  if (*resultJson == nullptr) {
-    setError(errorJsonOut, errorJson("script_error", "无法分配 Lua 结果"));
     return -1;
   }
   return 0;
@@ -888,7 +769,7 @@ BITREE_LUA_API int bitree_lua_execute_resume(
     if (!pushDecodedJson(
             *engine,
             engine->lua,
-            valueJson == nullptr ? "null" : valueJson)) {
+            valueJson)) {
       failure = stackError(engine->lua);
       setError(errorJsonOut, normalizeFailure(failure));
       closeEngine(*engine);
@@ -951,7 +832,7 @@ BITREE_LUA_API int bitree_lua_filter(
   } else if (!pushDecodedJson(
                  engine,
                  lua,
-                 dataJson == nullptr ? "{}" : dataJson)) {
+                 dataJson)) {
     failure = stackError(lua);
     ok = false;
   } else if (!runProtected(lua, 1, 1)) {
@@ -1004,7 +885,7 @@ BITREE_LUA_API int bitree_lua_call_step(
     lua_settop(lua, top);
     return 2;
   }
-  lua_getfield(lua, -1, name == nullptr ? "" : name);
+  lua_getfield(lua, -1, name);
   if (!lua_isfunction(lua, -1)) {
     lua_settop(lua, top);
     return 2;
@@ -1013,7 +894,7 @@ BITREE_LUA_API int bitree_lua_call_step(
   if (!pushDecodedJson(
           *engine,
           lua,
-          argsJson == nullptr ? "[]" : argsJson)) {
+          argsJson)) {
     const std::string failure = stackError(lua);
     lua_settop(lua, top);
     setError(errorJsonOut, normalizeFailure(failure));

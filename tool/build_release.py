@@ -10,11 +10,7 @@ from pathlib import Path
 
 
 def run(program, *arguments):
-    executable = shutil.which(program)
-    if executable is None:
-        raise FileNotFoundError(f"Executable not found on PATH: {program}")
-
-    subprocess.run([executable, *arguments], check=True)
+    subprocess.run([program, *arguments], check=True)
 
 
 def build_flutter(target, flags, *arguments):

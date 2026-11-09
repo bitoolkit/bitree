@@ -82,7 +82,7 @@ class LuaOperationContext {
       storage: storage,
       isCancelled: isCancelled,
       logSink: logSink,
-      httpRequest: handler ?? httpRequest,
+      httpRequest: handler,
     );
     context.stepDispatcher = stepDispatcher;
     return context;
@@ -228,11 +228,10 @@ class LuaSourceModule {
             throw LuaSourceError('unknown_data', '宿主没有数据接口 ${name ?? ''}。');
           }
           final raw = args.isEmpty ? const <String, Object?>{} : args.first;
-          return _jsonReady(
-            access(
-              raw is Map ? Map<String, Object?>.from(raw) : <String, Object?>{},
-            ),
-          );
+          if (raw is! Map) {
+            throw const LuaSourceError('invalid_argument', 'data 查询必须是对象。');
+          }
+          return _jsonReady(access(Map<String, Object?>.from(raw)));
         case 'storage.get':
           return _jsonReady(context.storage[_stringArg(args)]);
         case 'storage.set':
@@ -302,7 +301,9 @@ class LuaSourceModule {
           return base.resolveUri(reference).toString();
         case 'url.encodeQuery':
           final query = args.isEmpty ? null : args.first;
-          if (query is! Map) return '';
+          if (query is! Map) {
+            throw const LuaSourceError('invalid_argument', '查询参数必须是对象。');
+          }
           return Uri(
             queryParameters: {
               for (final entry in query.entries)

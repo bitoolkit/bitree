@@ -12,6 +12,8 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+  bitree_lua:
+    path: packages/bitree_lua
   intl: any
   flutter_secure_storage: ^11.0.0
   cookie_jar: ^4.0.8

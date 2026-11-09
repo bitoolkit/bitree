@@ -1,18 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi';
-import 'dart:io';
 
+import 'package:bitree_lua/native_lua_bindings.dart';
 import 'package:ffi/ffi.dart';
-
-class NativeLuaUnavailable implements Exception {
-  const NativeLuaUnavailable(this.message);
-
-  final String message;
-
-  @override
-  String toString() => message;
-}
 
 class NativeLuaError implements Exception {
   const NativeLuaError(this.code, this.message, [this.details]);
@@ -81,200 +72,14 @@ class NativeLuaCancellation {
   }
 }
 
-typedef _HostNative = Int32 Function(
-  Pointer<Void> engine,
-  Pointer<Utf8> request,
-  Pointer<Pointer<Utf8>> result,
-  Pointer<Pointer<Utf8>> error,
-);
-
-typedef _InspectNative = Int32 Function(
-  Pointer<Utf8> source,
-  Pointer<Utf8> fileName,
-  Pointer<Utf8> requiredOperations,
-  Pointer<Utf8> baseSteps,
-  Int32 timeoutMs,
-  Pointer<Pointer<Utf8>> info,
-  Pointer<Pointer<Utf8>> error,
-);
-typedef _InspectDart = int Function(
-  Pointer<Utf8> source,
-  Pointer<Utf8> fileName,
-  Pointer<Utf8> requiredOperations,
-  Pointer<Utf8> baseSteps,
-  int timeoutMs,
-  Pointer<Pointer<Utf8>> info,
-  Pointer<Pointer<Utf8>> error,
-);
-
-typedef _ExecuteNative = Int32 Function(
-  Pointer<Utf8> source,
-  Pointer<Utf8> fileName,
-  Pointer<Utf8> operation,
-  Pointer<Utf8> query,
-  Pointer<Utf8> context,
-  Pointer<NativeFunction<_HostNative>> host,
-  Pointer<Int32> cancel,
-  Int32 timeoutMs,
-  Pointer<Pointer<Utf8>> result,
-  Pointer<Pointer<Utf8>> error,
-);
-typedef _ExecuteDart = int Function(
-  Pointer<Utf8> source,
-  Pointer<Utf8> fileName,
-  Pointer<Utf8> operation,
-  Pointer<Utf8> query,
-  Pointer<Utf8> context,
-  Pointer<NativeFunction<_HostNative>> host,
-  Pointer<Int32> cancel,
-  int timeoutMs,
-  Pointer<Pointer<Utf8>> result,
-  Pointer<Pointer<Utf8>> error,
-);
-
-typedef _FilterNative = Int32 Function(
-  Pointer<Utf8> source,
-  Pointer<Utf8> fileName,
-  Pointer<Utf8> data,
-  Pointer<Int32> cancel,
-  Int32 timeoutMs,
-  Pointer<Pointer<Utf8>> result,
-  Pointer<Pointer<Utf8>> error,
-);
-typedef _FilterDart = int Function(
-  Pointer<Utf8> source,
-  Pointer<Utf8> fileName,
-  Pointer<Utf8> data,
-  Pointer<Int32> cancel,
-  int timeoutMs,
-  Pointer<Pointer<Utf8>> result,
-  Pointer<Pointer<Utf8>> error,
-);
-
-typedef _CallStepNative = Int32 Function(
-  Pointer<Void> engine,
-  Pointer<Utf8> name,
-  Pointer<Utf8> arguments,
-  Pointer<Pointer<Utf8>> result,
-  Pointer<Pointer<Utf8>> error,
-);
-typedef _CallStepDart = int Function(
-  Pointer<Void> engine,
-  Pointer<Utf8> name,
-  Pointer<Utf8> arguments,
-  Pointer<Pointer<Utf8>> result,
-  Pointer<Pointer<Utf8>> error,
-);
-
-typedef _FreeNative = Void Function(Pointer<Utf8>);
-typedef _FreeDart = void Function(Pointer<Utf8>);
-
-typedef _ExecuteStartNative = Int32 Function(
-  Pointer<Utf8> source,
-  Pointer<Utf8> fileName,
-  Pointer<Utf8> operation,
-  Pointer<Utf8> query,
-  Pointer<Utf8> context,
-  Pointer<NativeFunction<_HostNative>> host,
-  Pointer<Int32> cancel,
-  Int32 timeoutMs,
-  Pointer<Pointer<Void>> execution,
-  Pointer<Pointer<Utf8>> yield,
-  Pointer<Pointer<Utf8>> result,
-  Pointer<Pointer<Utf8>> error,
-);
-typedef _ExecuteStartDart = int Function(
-  Pointer<Utf8> source,
-  Pointer<Utf8> fileName,
-  Pointer<Utf8> operation,
-  Pointer<Utf8> query,
-  Pointer<Utf8> context,
-  Pointer<NativeFunction<_HostNative>> host,
-  Pointer<Int32> cancel,
-  int timeoutMs,
-  Pointer<Pointer<Void>> execution,
-  Pointer<Pointer<Utf8>> yield,
-  Pointer<Pointer<Utf8>> result,
-  Pointer<Pointer<Utf8>> error,
-);
-
-typedef _ExecuteResumeNative = Int32 Function(
-  Pointer<Void> execution,
-  Pointer<Utf8> value,
-  Pointer<Utf8> error,
-  Pointer<Pointer<Utf8>> yield,
-  Pointer<Pointer<Utf8>> result,
-  Pointer<Pointer<Utf8>> errorOut,
-);
-typedef _ExecuteResumeDart = int Function(
-  Pointer<Void> execution,
-  Pointer<Utf8> value,
-  Pointer<Utf8> error,
-  Pointer<Pointer<Utf8>> yield,
-  Pointer<Pointer<Utf8>> result,
-  Pointer<Pointer<Utf8>> errorOut,
-);
-
-typedef _ExecutionFreeNative = Void Function(Pointer<Void>);
-typedef _ExecutionFreeDart = void Function(Pointer<Void>);
-
 /// Thin Dart boundary over C Lua 5.5.1. JSON is the only value protocol; no
 /// Lua object, callback, or state pointer escapes the active native call.
 class NativeLuaLibrary {
-  NativeLuaLibrary._(DynamicLibrary library)
-    : _inspect = library.lookupFunction<_InspectNative, _InspectDart>(
-        'bitree_lua_inspect',
-      ),
-      _execute = library.lookupFunction<_ExecuteNative, _ExecuteDart>(
-        'bitree_lua_execute',
-      ),
-      _filter = library.lookupFunction<_FilterNative, _FilterDart>(
-        'bitree_lua_filter',
-      ),
-      _callStep = library.lookupFunction<_CallStepNative, _CallStepDart>(
-        'bitree_lua_call_step',
-      ),
-      _executeStart = library
-          .lookupFunction<_ExecuteStartNative, _ExecuteStartDart>(
-            'bitree_lua_execute_start',
-          ),
-      _executeResume = library
-          .lookupFunction<_ExecuteResumeNative, _ExecuteResumeDart>(
-            'bitree_lua_execute_resume',
-          ),
-      _executeFree = library
-          .lookupFunction<_ExecutionFreeNative, _ExecutionFreeDart>(
-            'bitree_lua_execution_free',
-          ),
-      _free = library.lookupFunction<_FreeNative, _FreeDart>('bitree_lua_free');
+  NativeLuaLibrary._();
 
-  static NativeLuaLibrary? _shared;
+  static final _shared = NativeLuaLibrary._();
 
-  factory NativeLuaLibrary.open() {
-    if (_shared case final library?) return library;
-    final errors = <String>[];
-    for (final path in _candidateLibraries()) {
-      try {
-        return _shared = NativeLuaLibrary._(DynamicLibrary.open(path));
-      } on ArgumentError catch (error) {
-        errors.add('$path: $error');
-      } on OSError catch (error) {
-        errors.add('$path: $error');
-      }
-    }
-    throw NativeLuaUnavailable(
-      '找不到原生 Lua 5.5.1 桥接库。${errors.isEmpty ? '' : '\n${errors.join('\n')}'}',
-    );
-  }
-
-  final _InspectDart _inspect;
-  final _ExecuteDart _execute;
-  final _FilterDart _filter;
-  final _CallStepDart _callStep;
-  final _ExecuteStartDart _executeStart;
-  final _ExecuteResumeDart _executeResume;
-  final _ExecutionFreeDart _executeFree;
-  final _FreeDart _free;
+  factory NativeLuaLibrary.open() => _shared;
 
   NativeLuaInspection inspect({
     required String source,
@@ -292,7 +97,7 @@ class NativeLuaLibrary {
     final infoPointer = calloc<Pointer<Utf8>>();
     final errorPointer = calloc<Pointer<Utf8>>();
     try {
-      final status = _inspect(
+      final status = bitreeLuaInspect(
         sourcePointer,
         fileNamePointer,
         operationsPointer,
@@ -318,63 +123,6 @@ class NativeLuaLibrary {
       malloc.free(operationsPointer);
       malloc.free(stepsPointer);
       calloc.free(infoPointer);
-      calloc.free(errorPointer);
-    }
-  }
-
-  Object? execute({
-    required String source,
-    required String fileName,
-    required String operation,
-    required Object? query,
-    required Map<String, Object?> context,
-    required NativeLuaHostHandler host,
-    NativeLuaCancellation? cancellation,
-    int timeoutMs = 5000,
-  }) {
-    final sourcePointer = source.toNativeUtf8(allocator: malloc);
-    final fileNamePointer = fileName.toNativeUtf8(allocator: malloc);
-    final operationPointer = operation.toNativeUtf8(allocator: malloc);
-    final queryPointer = jsonEncode(query).toNativeUtf8(allocator: malloc);
-    final contextPointer = jsonEncode(_wireValue(context))
-        .toNativeUtf8(allocator: malloc);
-    final resultPointer = calloc<Pointer<Utf8>>();
-    final errorPointer = calloc<Pointer<Utf8>>();
-    int dispatchHost(
-      Pointer<Void> engine,
-      Pointer<Utf8> request,
-      Pointer<Pointer<Utf8>> result,
-      Pointer<Pointer<Utf8>> error,
-    ) => _dispatchHost(engine, request, result, error, host);
-    final callback = NativeCallable<_HostNative>.isolateLocal(
-      dispatchHost,
-      exceptionalReturn: 1,
-    );
-    try {
-      final status = _execute(
-        sourcePointer,
-        fileNamePointer,
-        operationPointer,
-        queryPointer,
-        contextPointer,
-        callback.nativeFunction,
-        cancellation?.pointer ?? nullptr.cast<Int32>(),
-        timeoutMs,
-        resultPointer,
-        errorPointer,
-      );
-      final result = _readAndFree(resultPointer.value);
-      final error = _readAndFree(errorPointer.value);
-      if (status != 0) _throwError(error);
-      return _decodeJson(result);
-    } finally {
-      callback.close();
-      malloc.free(sourcePointer);
-      malloc.free(fileNamePointer);
-      malloc.free(operationPointer);
-      malloc.free(queryPointer);
-      malloc.free(contextPointer);
-      calloc.free(resultPointer);
       calloc.free(errorPointer);
     }
   }
@@ -406,16 +154,14 @@ class NativeLuaLibrary {
       Pointer<Pointer<Utf8>> result,
       Pointer<Pointer<Utf8>> error,
     ) => _dispatchHost(engine, request, result, error, host);
-    final callback = NativeCallable<_HostNative>.isolateLocal(
+    final callback = NativeCallable<BitreeLuaHostCallbackNative>.isolateLocal(
       dispatchHost,
       exceptionalReturn: 1,
     );
-    final timeout = timeoutMs <= 0
-        ? const Duration(seconds: 5)
-        : Duration(milliseconds: timeoutMs);
+    final timeout = Duration(milliseconds: timeoutMs);
     final deadline = DateTime.now().add(timeout);
     try {
-      var status = _executeStart(
+      var status = bitreeLuaExecuteStart(
         sourcePointer,
         fileNamePointer,
         operationPointer,
@@ -476,7 +222,7 @@ class NativeLuaLibrary {
               ? nullptr.cast<Utf8>()
               : failureJson.toNativeUtf8(allocator: malloc);
           try {
-            status = _executeResume(
+            status = bitreeLuaExecuteResume(
               executionPointer.value,
               valuePointer,
               failurePointer,
@@ -495,7 +241,7 @@ class NativeLuaLibrary {
       }
     } finally {
       if (executionPointer.value != nullptr) {
-        _executeFree(executionPointer.value);
+        bitreeLuaExecutionFree(executionPointer.value);
       }
       callback.close();
       malloc.free(sourcePointer);
@@ -523,7 +269,7 @@ class NativeLuaLibrary {
     final resultPointer = calloc<Pointer<Utf8>>();
     final errorPointer = calloc<Pointer<Utf8>>();
     try {
-      final status = _filter(
+      final status = bitreeLuaFilter(
         sourcePointer,
         fileNamePointer,
         dataPointer,
@@ -556,7 +302,7 @@ class NativeLuaLibrary {
     final resultPointer = calloc<Pointer<Utf8>>();
     final errorPointer = calloc<Pointer<Utf8>>();
     try {
-      final status = _callStep(
+      final status = bitreeLuaCallStep(
         engine,
         namePointer,
         argumentsPointer,
@@ -594,12 +340,13 @@ class NativeLuaLibrary {
       if (kind is! String) {
         throw const NativeLuaError('script_error', '宿主请求缺少类型');
       }
-      final value = handler(
-        engine,
-        kind,
-        name is String ? name : null,
-        arguments is List ? arguments : const [],
-      );
+      if (name != null && name is! String) {
+        throw const NativeLuaError('script_error', '宿主请求名称格式不正确');
+      }
+      if (arguments is! List) {
+        throw const NativeLuaError('script_error', '宿主请求参数格式不正确');
+      }
+      final value = handler(engine, kind, name as String?, arguments);
       _writeCallbackValue(result, jsonEncode(_wireValue(value)));
       return 0;
     } on NativeLuaError catch (failure) {
@@ -630,23 +377,20 @@ class NativeLuaLibrary {
   }
 
   Never _throwError(String? raw) {
-    if (raw != null) {
-      try {
-        final decoded = jsonDecode(raw);
-        if (decoded is Map) {
-          final code = decoded['code'];
-          final message = decoded['message'];
-          throw NativeLuaError(
-            code is String ? code : 'script_error',
-            message is String ? message : raw,
-            decoded['details'],
-          );
-        }
-      } on FormatException {
-        // Fall through to the raw native error.
-      }
+    if (raw == null) {
+      throw const NativeLuaError('script_error', 'Lua 执行失败');
     }
-    throw NativeLuaError('script_error', raw ?? 'Lua 执行失败');
+    final decoded = jsonDecode(raw);
+    if (decoded is! Map ||
+        decoded['code'] is! String ||
+        decoded['message'] is! String) {
+      throw NativeLuaError('script_error', raw);
+    }
+    throw NativeLuaError(
+      decoded['code'] as String,
+      decoded['message'] as String,
+      decoded['details'],
+    );
   }
 
   Object? _decodeJson(String? value) {
@@ -661,7 +405,7 @@ class NativeLuaLibrary {
   String? _readAndFree(Pointer<Utf8> pointer) {
     if (pointer == nullptr) return null;
     final value = pointer.toDartString();
-    _free(pointer);
+    bitreeLuaFree(pointer.cast<Void>());
     return value;
   }
 }
@@ -683,34 +427,5 @@ Object? _wireValue(Object? value) => switch (value) {
 };
 
 Set<String> _strings(Object? value) => {
-  for (final item in value is List ? value : const [])
-    if (item is String) item,
+  for (final item in value as List) item as String,
 };
-
-Iterable<String> _candidateLibraries() sync* {
-  final explicit = Platform.environment['BITREE_LUA_LIBRARY'];
-  if (explicit != null && explicit.trim().isNotEmpty) {
-    yield explicit;
-  }
-  final names = switch (Platform.operatingSystem) {
-    'linux' => const ['libbitree_lua.so'],
-    'macos' => const ['libbitree_lua.dylib'],
-    'windows' => const ['bitree_lua.dll'],
-    _ => const <String>[],
-  };
-  yield* names;
-  final relative = Platform.isWindows
-      ? 'build/native/bitree_lua.dll'
-      : Platform.isMacOS
-      ? 'build/native/libbitree_lua.dylib'
-      : 'build/native/libbitree_lua.so';
-  yield '${Directory.current.path}/$relative';
-  final executableDirectory = File(Platform.resolvedExecutable).parent.path;
-  final executableLibrary = Platform.isWindows
-      ? 'bitree_lua.dll'
-      : Platform.isMacOS
-      ? 'libbitree_lua.dylib'
-      : 'libbitree_lua.so';
-  yield '$executableDirectory/$executableLibrary';
-  yield '$executableDirectory/lib/$executableLibrary';
-}

@@ -22,7 +22,7 @@ local function decodeJson(text)
   local value, position, message = rawDecode(
     text, 1, json.null, json_object_meta, json_array_meta)
   if message ~= nil then fail(message) end
-  if string.match(string.sub(text, position or (#text + 1)), '^%s*$') == nil then
+  if string.match(string.sub(text, position), '^%s*$') == nil then
     fail('JSON 末尾还有内容')
   end
   return value
@@ -51,7 +51,7 @@ local function hostRequest(kind, name, ...)
 end
 
 local function hostCall(request)
-  if raw_host_call == nil or not host_available then
+  if not host_available then
     fail('当前运行不支持宿主能力')
   end
   return raw_host_call(request)
@@ -97,7 +97,7 @@ encoding.utf8Decode = function(value)
 end
 
 local function makeContext(raw)
-  raw = type(raw) == 'table' and raw or decodeJson(raw or '{}')
+  raw = decodeJson(raw)
   local ctx = {
     config = raw.config or {},
     scope = raw.scope or {},
@@ -174,7 +174,6 @@ local function makeContext(raw)
         fail('HTTP 请求必须是 table')
       end
       local raw = hostCall(hostRequest('http.request', nil, request))
-      raw = type(raw) == 'table' and raw or {}
       local body = raw.body or ''
       return {
         status = raw.status,

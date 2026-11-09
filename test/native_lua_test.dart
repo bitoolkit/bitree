@@ -1,21 +1,13 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:bitree/extensions/native_lua.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  final library =
-      File('${Directory.current.path}/build/native/libbitree_lua.so')
-          .existsSync()
-      ? NativeLuaLibrary.open()
-      : null;
+  final library = NativeLuaLibrary.open();
 
-  test('native C Lua executes a source operation', () {
-    if (library == null) {
-      return;
-    }
-    final result = library.execute(
+  test('native C Lua executes a source operation', () async {
+    final result = await library.executeAsync(
       source: '''
 local time = require("bitree.time")
 return {
@@ -38,6 +30,8 @@ return {
       context: const {'locale': 'zh'},
       host: (engine, kind, name, arguments) =>
           kind == 'time.localDateTime' ? '2026-11-09T23:59:00+08:00' : null,
+      onYield: (engine, request) =>
+          throw StateError('unexpected async host call'),
     ) as Map<String, dynamic>;
 
     expect(result['title'], 'a_b_c');
@@ -46,9 +40,6 @@ return {
   });
 
   test('native C Lua suspends and resumes for an async host request', () async {
-    if (library == null) {
-      return;
-    }
     Map<String, Object?>? received;
     final result = await library.executeAsync(
       source: '''
@@ -95,9 +86,6 @@ return {
   });
 
   test('native C Lua can suspend more than once in one operation', () async {
-    if (library == null) {
-      return;
-    }
     final urls = <String>[];
     final result = await library.executeAsync(
       source: '''
@@ -137,9 +125,6 @@ return {
   });
 
   test('native C Lua times out while an async host call is pending', () async {
-    if (library == null) {
-      return;
-    }
     final pending = Completer<Object?>();
 
     await expectLater(
@@ -169,9 +154,6 @@ return {
   });
 
   test('native C Lua stops after an async wait when cancelled', () async {
-    if (library == null) {
-      return;
-    }
     final cancellation = NativeLuaCancellation();
     addTearDown(cancellation.dispose);
     Timer(const Duration(milliseconds: 20), cancellation.cancel);
@@ -214,9 +196,6 @@ return {
   });
 
   test('native C Lua enforces its memory limit', () async {
-    if (library == null) {
-      return;
-    }
     await expectLater(
       library.executeAsync(
         source: '''
@@ -247,9 +226,6 @@ return {
   });
 
   test('native C Lua enforces its instruction budget', () async {
-    if (library == null) {
-      return;
-    }
     await expectLater(
       library.executeAsync(
         source: '''

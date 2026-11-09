@@ -39,20 +39,6 @@ BITREE_LUA_API int bitree_lua_inspect(
     char **info_json,
     char **error_json);
 
-/// Executes one source operation. `cancel_flag` may be null; a non-zero value
-/// asks the instruction hook to stop execution.
-BITREE_LUA_API int bitree_lua_execute(
-    const char *source,
-    const char *file_name,
-    const char *operation,
-    const char *query_json,
-    const char *context_json,
-    BitreeLuaHostCallback host,
-    const volatile int *cancel_flag,
-    int timeout_ms,
-    char **result_json,
-    char **error_json);
-
 /// Starts an execution that may suspend at an async host boundary. The
 /// returned handle remains valid until completion or
 /// bitree_lua_execution_free. Returns 0 when complete, BITREE_LUA_YIELDED

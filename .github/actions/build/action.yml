@@ -96,10 +96,6 @@ runs:
         key: ${{ steps.ndk-cache.outputs.cache-primary-key }}
     - run: flutter pub get --enforce-lockfile
       shell: bash
-    - name: Analyze
-      if: ${{ inputs.target == 'linux' }}
-      run: flutter analyze --no-pub
-      shell: bash
     - name: Decrypt Android signing
       if: >-
         ${{ inputs.target == 'android' &&

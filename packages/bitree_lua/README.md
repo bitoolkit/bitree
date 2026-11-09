@@ -1,13 +1,12 @@
 # bitree_lua
 
 This package is the native boundary for source extensions. It pins Lua 5.5.1
-and exposes one operation call at a time through `bitree_lua_execute`.
+and exposes one operation call at a time through `bitree_lua_execute_start`.
 
 The Lua environment lives in `lua/prelude.lua`; JSON uses the vendored,
-unmodified `dkjson` 2.7 (`lua/vendor/dkjson.lua`, MIT). `tool/embed_lua.dart`
-bundles those files into the generated `native/prelude.inc` before compiling,
-so the Lua sources remain separately maintainable without adding a runtime
-file lookup.
+unmodified `dkjson` 2.7 (`lua/vendor/dkjson.lua`, MIT). `hook/build.dart`
+generates a C++ source containing those Lua files and compiles it together
+with the vendored Lua sources and `native/bitree_lua_runtime.cpp`.
 
 The C++ bridge opens only the standard libraries needed by source scripts and
 removes `io`, `os`, `debug`, `package`, `dofile`, `loadfile`, and `load`.
@@ -23,13 +22,27 @@ the script-visible request and response, limits redirects and response size,
 and keeps cookies per source instance. If the script is cancelled or reaches
 its deadline while waiting, the execution is discarded instead of resumed.
 
-Build the Linux test library from the repository root:
+Flutter's native assets toolchain builds and packages the library automatically
+for Android, Linux, Windows, macOS, and iOS. The build uses the platform C++
+compiler supplied by the Flutter toolchain, so no system Lua installation is
+required.
 
 ```bash
-LUA_PREFIX=/path/to/lua-5.5.1 tool/build_lua_native.sh
+flutter test --no-pub test/native_lua_test.dart
 ```
 
-`dart` must be on `PATH` (or set `DART=/path/to/dart`) to regenerate the
-embedded prelude.
+The test always loads the native asset. A missing or broken build hook fails
+the test instead of skipping the native runtime.
 
-The Dart loader looks at `BITREE_LUA_LIBRARY`, then `build/native/libbitree_lua.so`.
+## Updating Lua
+
+The bundled source is pinned in `third_party/lua/SOURCE.json`. To change
+versions, update `version`, `url`, and `sha256` there, then run:
+
+```bash
+python3 tool/update_lua.py
+```
+
+The updater downloads the pinned official archive, verifies its checksum, and
+replaces `src/`. Build hooks and CI never download Lua; they compile only the
+committed source.
