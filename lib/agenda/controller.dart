@@ -308,5 +308,7 @@ bool _sameDeadlineMetadata(AgendaEntry left, AgendaEntry right) {
   return left.course == right.course &&
       left.title == right.title &&
       left.startsAt == right.startsAt &&
-      left.allDay == right.allDay;
+      left.allDay == right.allDay &&
+      // When IDs differ, an opening time is not equivalent to a due time.
+      left.startOnly == right.startOnly;
 }

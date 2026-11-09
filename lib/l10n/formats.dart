@@ -158,7 +158,14 @@ extension LocalizedDeadlineScope on DeadlineClearScope {
 
 String localizedAgendaTime(AppLocalizations l10n, AgendaEntry entry) {
   if (entry.allDay) return l10n.allDay;
-  if (entry.isDeadline) return l10n.dueAt(clockText(entry.startsAt));
+  if (entry.isDeadline) {
+    // Without a due date there is nothing to be due at; the opening time is
+    // all this entry knows.
+    if (entry.startOnly) {
+      return l10n.agendaTimelineStarts(clockText(entry.startsAt));
+    }
+    return l10n.dueAt(clockText(entry.startsAt));
+  }
   final end = entry.endsAt!;
   final endTime = calendarDate(entry.startsAt) == calendarDate(end)
       ? clockText(end)
@@ -261,6 +268,9 @@ String localizedAgendaTimeCaption(
 ) {
   if (entry.isDeadline) {
     if (entry.done) return l10n.completed;
+    // Overdue is impossible without a due date, and calling the opening time
+    // a due date would be wrong.
+    if (entry.startOnly) return l10n.start;
     return entry.overdue(now) ? l10n.overdue : l10n.due;
   }
   if (entry.isFinished(now)) return l10n.ended;

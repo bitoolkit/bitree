@@ -27,9 +27,13 @@ class AgendaEntry {
     this.url,
     this.details,
     this.tailDays = defaultTailDays,
+    this.startOnly = false,
   }) {
     if (id.isEmpty || title.trim().isEmpty) {
       throw const FormatException('日程标题或编号缺失');
+    }
+    if (startOnly && kind != AgendaKind.deadline) {
+      throw const FormatException('只有截止日期可以只标记开放时间');
     }
     if (kind != AgendaKind.deadline &&
         (endsAt == null || !endsAt!.isAfter(startsAt))) {
@@ -87,12 +91,20 @@ class AgendaEntry {
   /// at minimum zoom and keeps its screen width as the view zooms in.
   final int tailDays;
 
+  /// A deadline that only knows when it opened, with no due date at all —
+  /// an open-ended quiz, for instance. It can never be overdue, and the
+  /// timeline anchors its card at [startsAt] and grows it to the right instead
+  /// of hanging a tail to the left of a due time. Labels must not present it
+  /// as due.
+  final bool startOnly;
+
   bool get isDeadline => kind == AgendaKind.deadline;
 
   DateTime get dueAt =>
       allDay ? calendarDate(startsAt).add(const Duration(days: 1)) : startsAt;
 
-  bool overdue(DateTime now) => isDeadline && !done && dueAt.isBefore(now);
+  bool overdue(DateTime now) =>
+      isDeadline && !startOnly && !done && dueAt.isBefore(now);
 
   bool isFinished(DateTime now) => isDeadline ? done : !endsAt!.isAfter(now);
 
@@ -121,6 +133,7 @@ class AgendaEntry {
     url: url,
     details: details,
     tailDays: tailDays,
+    startOnly: startOnly,
   );
 
   Map<String, dynamic> toJson() => {
@@ -141,6 +154,7 @@ class AgendaEntry {
     'url': url?.toString(),
     'details': details?.toJson(),
     'tailDays': tailDays,
+    'startOnly': startOnly,
   };
 
   factory AgendaEntry.fromJson(Map<String, dynamic> json) {
@@ -181,6 +195,9 @@ class AgendaEntry {
           ? null
           : Uri.tryParse(rawUrl) ?? (throw FormatException('url 格式不正确')),
       tailDays: jsonIntFieldOrNull(json, 'tailDays') ?? defaultTailDays,
+      // Entries written before this flag existed simply had no open-ended
+      // deadlines, so a missing key means an ordinary deadline.
+      startOnly: jsonBoolField(json, 'startOnly', fallback: false),
       details: rawDetails == null
           ? null
           : AgendaEntryDetails.fromJson(jsonObject(rawDetails, 'details')),

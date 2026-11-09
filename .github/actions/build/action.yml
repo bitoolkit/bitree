@@ -100,6 +100,10 @@ runs:
       if: ${{ inputs.target == 'linux' }}
       run: flutter analyze --no-pub
       shell: bash
+    - name: Test
+      if: ${{ inputs.target == 'linux' && runner.arch == 'X64' }}
+      run: flutter test --no-pub
+      shell: bash
     - name: Decrypt Android signing
       if: >-
         ${{ inputs.target == 'android' &&
