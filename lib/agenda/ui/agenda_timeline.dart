@@ -49,6 +49,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   Drag? _verticalDrag;
   ScrollHoldController? _verticalHold;
   double? _retainedLaneExtent;
+  double? _laneViewportHeight;
   double _lastHorizontal = 0;
   double _flingPixelsPerHour = 1;
   bool _gestureHadMultiplePointers = false;
@@ -159,6 +160,9 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   @override
   void didUpdateWidget(covariant AgendaTimeline oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.entries, widget.entries)) {
+      _retainedLaneExtent = null;
+    }
     if (oldWidget.visible != widget.visible) {
       _stopMotion(holdVertical: true);
       _gestureAnchor = null;
@@ -562,13 +566,17 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                             child: LayoutBuilder(
                               builder: (context, laneConstraints) {
                                 final height = laneConstraints.maxHeight;
-                                final offset = _lanes.hasClients
+                                if (_laneViewportHeight != height) {
+                                  _laneViewportHeight = height;
+                                  _retainedLaneExtent = null;
+                                }
+                                final previousOffset = _lanes.hasClients
                                     ? _lanes.offset
                                     : 0.0;
                                 final placementsInTime = placements
                                     .where(
                                       (placement) =>
-                                          placement.layoutEnd.isAfter(left) &&
+                                          placement.paintEnd.isAfter(left) &&
                                           placement.paintStart.isBefore(right),
                                     )
                                     .toList(growable: false);
@@ -590,11 +598,16 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                                   contentExtent,
                                   math.min(
                                     _retainedLaneExtent ?? contentExtent,
-                                    math.max(0.0, offset),
+                                    math.max(0.0, previousOffset),
                                   ),
                                 );
                                 final contentHeight =
                                     height + _retainedLaneExtent!;
+                                // Filtering and resizing may clamp the offset
+                                // in this frame. Cull at that new position.
+                                final offset = previousOffset
+                                    .clamp(0.0, _retainedLaneExtent!)
+                                    .toDouble();
                                 final visible = placementsInTime
                                     .where(
                                       (placement) =>
@@ -700,10 +713,8 @@ class _AgendaTimelineState extends State<AgendaTimeline>
         time.difference(_center).inMicroseconds /
             _microsecondsPerHour *
             pixelsPerHour;
-    final actualRight = x(placement.layoutEnd);
-    final actualLeft = entry.isDeadline
-        ? x(placement.paintStart)
-        : x(placement.start);
+    final actualRight = x(placement.paintEnd);
+    final actualLeft = x(placement.paintStart);
     // Crop long ordinary events before creating widgets; no huge canvas/boxes.
     final left = entry.isDeadline ? actualLeft : math.max(0.0, actualLeft);
     final right = entry.isDeadline ? actualRight : math.min(width, actualRight);
@@ -723,7 +734,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
         now: widget.now,
         barWidth: barWidth,
         cardWidth: entry.isDeadline
-            ? actualRight - x(placement.start)
+            ? x(placement.layoutEnd) - x(placement.start)
             : barWidth,
         onTap: () => showAgendaEntry(context, widget.controller, entry),
       ),

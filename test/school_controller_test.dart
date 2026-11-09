@@ -245,6 +245,16 @@ void main() {
               ],
             }),
           );
+        case '/zy-eclass.bit.edu.cn/api/courses/7/exam-list':
+          request.response.write(
+            jsonEncode({
+              'exams': <Map<String, Object?>>[],
+              'page': 1,
+              'page_size': 100,
+              'pages': 1,
+              'total': 0,
+            }),
+          );
         case final path
             when path.startsWith('/zy-eclass.bit.edu.cn/api/activities/'):
           final id = request.uri.pathSegments.last;
@@ -285,6 +295,98 @@ void main() {
     );
     expect(second.startsAt, DateTime.utc(2026, 12, 2, 23, 59));
     expect(second.done, isTrue);
+  });
+
+  test('Eclass exams are imported as DDLs, open ones as start-only', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => server.close(force: true));
+    final detailRequests = <String>[];
+    server.listen((request) async {
+      request.response.headers.contentType = ContentType.json;
+      switch (request.uri.path) {
+        case '/zy-eclass.bit.edu.cn/user/courses':
+          request.response.write('{}');
+        case '/zy-eclass.bit.edu.cn/api/my-courses':
+          request.response.write(
+            jsonEncode({
+              'courses': [
+                {'id': 7, 'name': '数字电子技术基础'},
+              ],
+              'pages': 1,
+            }),
+          );
+        case '/zy-eclass.bit.edu.cn/api/courses/7/activities':
+          request.response.write(jsonEncode({'activities': []}));
+        case '/zy-eclass.bit.edu.cn/api/courses/7/exam-list':
+          request.response.write(
+            jsonEncode({
+              'exams': [
+                {
+                  'id': 1212,
+                  'title': '第三章测试',
+                  'type': 'exam',
+                  'start_time': '2026-11-01T00:00:00Z',
+                  'end_time': '2026-11-08T14:30:00Z',
+                  'submission_count': 1,
+                },
+                {
+                  'id': 1210,
+                  'title': '期末开放测试',
+                  'type': 'exam',
+                  'start_time': '2026-12-20T16:00:00Z',
+                  'end_time': null,
+                  'submission_count': 0,
+                },
+              ],
+              'page': 1,
+              'page_size': 100,
+              'pages': 1,
+              'total': 2,
+            }),
+          );
+        case '/zy-eclass.bit.edu.cn/api/course/7/homework/submission-status':
+          request.response.write(jsonEncode({'homework_activities': []}));
+        case final path
+            when path.startsWith('/zy-eclass.bit.edu.cn/api/activities/'):
+          detailRequests.add(request.uri.pathSegments.last);
+          request.response.write(jsonEncode({'user_submit_count': 0}));
+        default:
+          throw StateError('Unexpected request: ${request.uri.path}');
+      }
+      await request.response.close();
+    });
+    final app = TestAppController();
+    await app.initialize();
+
+    final success = await HttpOverrides.runWithHttpOverrides(
+      () => app.school.importDeadlines(
+        source: DeadlineSource.eclass,
+        verify: (_) async => null,
+      ),
+      LocalHttpOverrides(server.port),
+    );
+
+    expect(success, isTrue);
+    // Exam rows carry their own completion, so no per-activity lookup runs.
+    expect(detailRequests, isEmpty);
+    expect(app.agenda.entries, hasLength(2));
+    final closed = app.agenda.entries.singleWhere(
+      (entry) => entry.id == 'eclass-exam-1212',
+    );
+    expect(closed.title, '第三章测试');
+    expect(closed.course, '数字电子技术基础');
+    expect(closed.kind, AgendaKind.deadline);
+    expect(closed.source, DeadlineSource.eclass);
+    expect(closed.startsAt, DateTime.utc(2026, 11, 8, 22, 30));
+    expect(closed.startOnly, isFalse);
+    expect(closed.done, isTrue);
+    final open = app.agenda.entries.singleWhere(
+      (entry) => entry.id == 'eclass-exam-1210',
+    );
+    expect(open.startsAt, DateTime.utc(2026, 12, 21, 0, 0));
+    expect(open.startOnly, isTrue);
+    expect(open.overdue(DateTime.utc(2027, 6, 1)), isFalse);
+    expect(open.url?.path, '/course/7/exam');
   });
 
   test('Cancelling a DDL update releases the school controller', () async {

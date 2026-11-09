@@ -1,6 +1,6 @@
 import 'model.dart';
 
-/// Card bounds reserve lanes; paintStart also includes any unobstructed DDL tail.
+/// Card bounds reserve lanes; paint bounds include any unobstructed DDL tail.
 /// Event end times stay intact; layoutEnd includes their minimum display span.
 class AgendaTimelinePlacement {
   const AgendaTimelinePlacement({
@@ -10,6 +10,7 @@ class AgendaTimelinePlacement {
     required this.end,
     required this.layoutEnd,
     required this.paintStart,
+    required this.paintEnd,
   });
 
   final AgendaEntry entry;
@@ -18,6 +19,7 @@ class AgendaTimelinePlacement {
   final DateTime end;
   final DateTime layoutEnd;
   final DateTime paintStart;
+  final DateTime paintEnd;
 }
 
 /// Card widths are converted to campus time by the view at the current zoom.
@@ -32,10 +34,14 @@ List<AgendaTimelinePlacement> layoutAgendaTimeline(
         for (final entry in entries.where((entry) => !entry.deleted))
           (
             entry: entry,
-            start: entry.isDeadline
+            start: entry.isDeadline && !entry.startOnly
                 ? entry.dueAt.subtract(deadlineCardSpan)
                 : entry.startsAt,
-            end: entry.isDeadline ? entry.dueAt : entry.endsAt!,
+            end: entry.isDeadline
+                ? entry.startOnly
+                      ? entry.startsAt.add(deadlineCardSpan)
+                      : entry.dueAt
+                : entry.endsAt!,
           ),
       ]..sort((a, b) {
         final byStart = a.start.compareTo(b.start);
@@ -44,7 +50,17 @@ List<AgendaTimelinePlacement> layoutAgendaTimeline(
         return byEnd != 0 ? byEnd : a.entry.id.compareTo(b.entry.id);
       });
   final laneEnds = <DateTime>[];
-  final result = <AgendaTimelinePlacement>[];
+  final cards =
+      <
+        ({
+          AgendaEntry entry,
+          int lane,
+          DateTime start,
+          DateTime end,
+          DateTime layoutEnd,
+          DateTime paintStart,
+        })
+      >[];
   for (final interval in intervals) {
     final minimumEnd = interval.start.add(minimumEventSpan);
     final layoutEnd =
@@ -56,7 +72,7 @@ List<AgendaTimelinePlacement> layoutAgendaTimeline(
       lane = laneEnds.length;
     }
     final previousEnd = lane < laneEnds.length ? laneEnds[lane] : null;
-    final tailStart = interval.entry.isDeadline
+    final tailStart = interval.entry.isDeadline && !interval.entry.startOnly
         ? interval.end.subtract(
             deadlineTailDaySpan * (interval.entry.tailDays - 0.25),
           )
@@ -73,16 +89,39 @@ List<AgendaTimelinePlacement> layoutAgendaTimeline(
     } else {
       laneEnds[lane] = layoutEnd;
     }
+    cards.add((
+      entry: interval.entry,
+      lane: lane,
+      start: interval.start,
+      end: interval.end,
+      layoutEnd: layoutEnd,
+      paintStart: paintStart,
+    ));
+  }
+  final nextByLane = <int, DateTime>{};
+  final result = <AgendaTimelinePlacement>[];
+  for (final card in cards.reversed) {
+    final tailEnd = card.entry.startOnly
+        ? card.start.add(deadlineTailDaySpan * (card.entry.tailDays - 0.25))
+        : card.layoutEnd;
+    final nextStart = nextByLane[card.lane];
+    final unobstructedEnd = nextStart != null && nextStart.isBefore(tailEnd)
+        ? nextStart
+        : tailEnd;
     result.add(
       AgendaTimelinePlacement(
-        entry: interval.entry,
-        lane: lane,
-        start: interval.start,
-        end: interval.end,
-        layoutEnd: layoutEnd,
-        paintStart: paintStart,
+        entry: card.entry,
+        lane: card.lane,
+        start: card.start,
+        end: card.end,
+        layoutEnd: card.layoutEnd,
+        paintStart: card.paintStart,
+        paintEnd: unobstructedEnd.isAfter(card.layoutEnd)
+            ? unobstructedEnd
+            : card.layoutEnd,
       ),
     );
+    nextByLane[card.lane] = card.start;
   }
-  return result;
+  return result.reversed.toList(growable: false);
 }

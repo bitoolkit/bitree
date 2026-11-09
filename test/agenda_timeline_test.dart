@@ -32,6 +32,16 @@ Finder _bar(AgendaEntry entry) => find.bySemanticsLabel(
 Finder _paintedBar(AgendaEntry entry) =>
     find.byKey(ValueKey(('agenda-timeline-bar', entry.id)));
 
+List<AgendaEntry> _stackedDeadlines() => [
+  for (var index = 0; index < 24; index++)
+    AgendaEntry(
+      id: 'stacked-${index.toString().padLeft(2, '0')}',
+      title: '重叠作业 $index',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(hours: 12)),
+    ),
+];
+
 Future<TestAppController> _show(
   WidgetTester tester,
   List<AgendaEntry> entries, {
@@ -616,6 +626,142 @@ void main() {
     await tester.tapAt(firstCard.center);
     await tester.pumpAndSettle();
     expect(find.byType(BottomSheet), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
+    'Diagonal touch panning preserves direction while releasing blank range',
+    (tester) async {
+      final entries = _stackedDeadlines();
+      await _show(tester, entries);
+      final position = _lanePosition(tester);
+      final maximum = position.maxScrollExtent;
+      expect(maximum, greaterThan(0));
+      position.jumpTo(maximum / 2);
+      await tester.pumpAndSettle();
+      final initialOffset = position.pixels;
+      expect(
+        entries.any((entry) => _paintedBar(entry).evaluate().isNotEmpty),
+        isTrue,
+      );
+
+      final viewport = tester.getRect(
+        find.byKey(const ValueKey('agenda-timeline-lanes')),
+      );
+      // Start in blank space to the right of the DDLs, not on an InkWell.
+      // At 48px/day these steps move every DDL entirely out of the time window.
+      final gesture = await tester.startGesture(
+        Offset(viewport.right - 40, viewport.bottom - 80),
+        kind: PointerDeviceKind.touch,
+      );
+      var previousOffset = initialOffset;
+      for (var step = 1; step <= 16; step++) {
+        await gesture.moveBy(
+          const Offset(-20, -3),
+          timeStamp: Duration(milliseconds: step * 32),
+        );
+        await tester.pump(const Duration(milliseconds: 32));
+        expect(position.maxScrollExtent, lessThanOrEqualTo(maximum + .001));
+        expect(position.pixels, greaterThanOrEqualTo(previousOffset - .001));
+        previousOffset = position.pixels;
+      }
+      expect(position.pixels, greaterThan(initialOffset));
+      for (final entry in entries) {
+        expect(_paintedBar(entry), findsNothing);
+      }
+
+      final offsetBeforeReturn = position.pixels;
+      for (var step = 17; step <= 32; step++) {
+        await gesture.moveBy(
+          const Offset(20, 3),
+          timeStamp: Duration(milliseconds: step * 32),
+        );
+        await tester.pump(const Duration(milliseconds: 32));
+        expect(position.maxScrollExtent, lessThanOrEqualTo(maximum + .001));
+        expect(position.pixels, lessThanOrEqualTo(previousOffset + .001));
+        previousOffset = position.pixels;
+      }
+      expect(position.pixels, lessThan(offsetBeforeReturn));
+      expect(position.pixels, greaterThan(0));
+      expect(
+        entries.any((entry) => _paintedBar(entry).evaluate().isNotEmpty),
+        isTrue,
+      );
+      // Cancel instead of releasing: this isolates drag/range behaviour from
+      // velocity estimation and from how long a simulated fling takes to stop.
+      await gesture.cancel();
+      await tester.pumpAndSettle();
+      position.jumpTo(position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      expect(_paintedBar(entries.last), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets('Filtering a deep timeline culls at the newly clamped offset', (
+    tester,
+  ) async {
+    final entries = _stackedDeadlines();
+    final app = await _show(tester, entries);
+    var filtered = entries;
+    late StateSetter updateEntries;
+    // Retain the same timeline State when the filtered data changes.
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: bitreeTheme(Brightness.light),
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (_, setState) {
+              updateEntries = setState;
+              return AgendaTimeline(
+                controller: app,
+                entries: filtered,
+                now: _date.add(const Duration(hours: 12)),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final timelineState = tester.state(find.byType(AgendaTimeline));
+    final position = _lanePosition(tester);
+    position.jumpTo(position.maxScrollExtent);
+    await tester.pumpAndSettle();
+    expect(position.pixels, greaterThan(0));
+    expect(_paintedBar(entries.last), findsOneWidget);
+
+    updateEntries(() => filtered = [entries.last]);
+    // Check the first layout, not pumpAndSettle: a later unrelated rebuild
+    // must not be required to recover cards culled using an obsolete offset.
+    await tester.pump();
+    expect(tester.state(find.byType(AgendaTimeline)), same(timelineState));
+    expect(position.maxScrollExtent, 0);
+    expect(position.pixels, 0);
+    expect(_paintedBar(entries.last), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Growing the viewport culls at the newly clamped offset', (
+    tester,
+  ) async {
+    final entries = _stackedDeadlines();
+    await _show(tester, entries);
+    final position = _lanePosition(tester);
+    position.jumpTo(position.maxScrollExtent);
+    await tester.pumpAndSettle();
+    expect(position.pixels, greaterThan(0));
+    expect(_paintedBar(entries.first), findsNothing);
+
+    tester.view.physicalSize = const Size(390, 2200);
+    await tester.pump();
+    expect(position.maxScrollExtent, 0);
+    expect(position.pixels, 0);
+    expect(_paintedBar(entries.first), findsOneWidget);
+    expect(_paintedBar(entries.last), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });

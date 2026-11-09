@@ -29,17 +29,20 @@ Future<List<AgendaEntry>> fetchEclassDeadlines(SchoolSession session) async {
   return [
     for (final task in tasks)
       AgendaEntry(
-        id: 'eclass-${task.id}',
+        id: task.isExam ? 'eclass-exam-${task.id}' : 'eclass-${task.id}',
         title: task.title,
         kind: AgendaKind.deadline,
         startsAt: _eclassDate(task.deadline),
+        startOnly: task.startOnly,
         done: task.done,
         course: task.course,
         source: DeadlineSource.eclass,
         local: false,
         url: DeadlineSource.eclass.origin.resolve(
-          '/course/${Uri.encodeComponent(task.courseId)}'
-          '/learning-activity/full-screen#/${task.id}',
+          task.isExam
+              ? '/course/${Uri.encodeComponent(task.courseId)}/exam'
+              : '/course/${Uri.encodeComponent(task.courseId)}'
+                    '/learning-activity/full-screen#/${task.id}',
         ),
       ),
   ];
@@ -75,11 +78,14 @@ Future<List<_EclassTask>> _courseTasks(SchoolSession session) async {
   }
 
   final outcomes = await Future.wait([
-    for (final course in courses) _courseTasksFor(session, course),
+    for (final course in courses) ...[
+      _courseTasksFor(session, course),
+      _courseTasksFor(session, course, exams: true),
+    ],
   ], eagerError: true);
 
   final result = <_EclassTask>[];
-  final activityIds = <String>{};
+  final taskIds = <(bool, String)>{};
   Object? firstFailure;
   StackTrace? firstStack;
   for (final outcome in outcomes) {
@@ -89,7 +95,7 @@ Future<List<_EclassTask>> _courseTasks(SchoolSession session) async {
       continue;
     }
     for (final task in outcome.tasks!) {
-      if (activityIds.add(task.id)) result.add(task);
+      if (taskIds.add((task.isExam, task.id))) result.add(task);
     }
   }
   if (result.isEmpty && firstFailure != null) {
@@ -100,11 +106,21 @@ Future<List<_EclassTask>> _courseTasks(SchoolSession session) async {
 
 Future<_CourseTasks> _courseTasksFor(
   SchoolSession session,
-  Map<String, dynamic> course,
-) async {
+  Map<String, dynamic> course, {
+  bool exams = false,
+}) async {
   try {
     final courseId = _identifier(course['id'], 'course.id');
     final courseName = jsonStringField(course, 'name');
+    // Keep the two endpoints independent: an unavailable exam list must not
+    // discard homework deadlines (or vice versa).
+    if (exams) {
+      return (
+        tasks: await _courseExams(session, courseId, courseName),
+        error: null,
+        stack: null,
+      );
+    }
     final response = await _eclassJson(
       session,
       '/api/courses/${Uri.encodeComponent(courseId)}/activities',
@@ -150,6 +166,8 @@ Future<_CourseTasks> _courseTasksFor(
             course: task.course,
             deadline: task.deadline,
             activityType: task.activityType,
+            isExam: false,
+            startOnly: false,
             done:
                 statuses[task.id] ??
                 (statuses.containsKey(task.id)
@@ -167,6 +185,60 @@ Future<_CourseTasks> _courseTasksFor(
   } on Exception catch (error, stack) {
     return (tasks: null, error: error, stack: stack);
   }
+}
+
+Future<List<_EclassTask>> _courseExams(
+  SchoolSession session,
+  String courseId,
+  String courseName,
+) async {
+  const pageSize = 100;
+  final tasks = <_EclassTask>[];
+  var page = 1;
+  while (true) {
+    final response = await _eclassJson(
+      session,
+      '/api/courses/${Uri.encodeComponent(courseId)}'
+      '/exam-list?page=$page&page_size=$pageSize',
+    );
+    final rows = jsonListField(response, 'exams');
+    for (final value in rows) {
+      final exam = jsonObject(value, 'exams[]');
+      final end = _optionalExamDate(exam['end_time'], 'exam.end_time');
+      final startOnly = end == null;
+      // Preserve open-ended practices as start-only entries rather than
+      // inventing a deadline from their opening time or per-attempt limit.
+      final anchor =
+          end ?? _optionalExamDate(exam['start_time'], 'exam.start_time');
+      if (anchor == null) continue;
+      final submissions =
+          jsonIntOrNull(exam['submission_count'], 'exam.submission_count') ?? 0;
+      tasks.add((
+        id: _identifier(exam['id'], 'exam.id'),
+        title: jsonStringOrNull(exam['title'], 'exam.title') ?? '未命名测试',
+        courseId: courseId,
+        course: courseName,
+        deadline: anchor,
+        activityType: 'exam',
+        isExam: true,
+        startOnly: startOnly,
+        // Neither submit_times nor is_closed reliably describes whether I
+        // submitted. Makeup completion semantics still need separate evidence.
+        done: submissions > 0,
+      ));
+    }
+    final pages = jsonIntOrNull(response['pages'], 'pages');
+    if (rows.isEmpty || (pages != null ? page >= pages : rows.length < pageSize)) {
+      break;
+    }
+    page++;
+  }
+  return tasks;
+}
+
+String? _optionalExamDate(Object? value, String field) {
+  final date = jsonStringOrNull(value, field);
+  return date == null || date.isEmpty || date == 'null' ? null : date;
 }
 
 Future<Map<String, bool>> _homeworkSubmissionStatuses(
@@ -205,6 +277,8 @@ _EclassTask? _taskFromActivity(
     course: courseName,
     deadline: deadline,
     activityType: jsonStringOrNull(task['type'], 'activity.type') ?? '',
+    isExam: false,
+    startOnly: false,
     done: false,
   );
 }
@@ -257,6 +331,8 @@ typedef _EclassTask = ({
   String course,
   String deadline,
   String activityType,
+  bool isExam,
+  bool startOnly,
   bool done,
 });
 
