@@ -76,6 +76,13 @@ class SchoolAccess {
     );
   }
 
+  /// Revalidates the account through the same teaching-service entry as a
+  /// manual login, even when the service cookie still looks valid.
+  Future<void> restoreAccount(VerifySchoolLogin verify) => _run(
+    SchoolNetwork.campus.accountPage,
+    (session) => SchoolLogin(session, verify).signIn(),
+  );
+
   Future<T> _run<T>(
     Uri service,
     Future<T> Function(SchoolSession) operation, {

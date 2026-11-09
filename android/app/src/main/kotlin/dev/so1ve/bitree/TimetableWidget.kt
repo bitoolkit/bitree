@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.appwidget.AppWidgetProviderInfo
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -76,7 +77,26 @@ open class TimetableWidget : AppWidgetProvider() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
             widgets.forEach { (id, columns) ->
-                val views = RemoteViews(context.packageName, R.layout.timetable_widget)
+                val options = manager.getAppWidgetOptions(id)
+                val hostCategory = options.getInt(
+                    AppWidgetManager.OPTION_APPWIDGET_HOST_CATEGORY,
+                    AppWidgetProviderInfo.WIDGET_CATEGORY_HOME_SCREEN,
+                )
+                // The lock-screen host controls the slot width independently of targetCellWidth.
+                val compactKeyguard = columns == 1 &&
+                    (hostCategory and AppWidgetProviderInfo.WIDGET_CATEGORY_KEYGUARD) != 0
+                val hostWidthPx = widgetWidthPx(context, manager, id)
+                val widthPx = if (compactKeyguard) {
+                    hostWidthPx * 0.6f
+                } else {
+                    hostWidthPx
+                }
+                val layout = if (compactKeyguard) {
+                    R.layout.timetable_widget_compact_keyguard
+                } else {
+                    R.layout.timetable_widget
+                }
+                val views = RemoteViews(context.packageName, layout)
                 views.setInt(
                     R.id.widget_content, "setBackgroundColor", WidgetColors.background(context),
                 )
@@ -102,7 +122,6 @@ open class TimetableWidget : AppWidgetProvider() {
                     )
                 }
 
-                val widthPx = widgetWidthPx(context, manager, id)
                 val heightPx = widgetContentMinHeightPx(context, manager, id)
                 val items = entryItems(context, content.entries, widthPx, heightPx, columns)
 
