@@ -57,7 +57,14 @@ void main() {
     );
 
     final about = find.text('关于 BITree');
-    await tester.ensureVisible(about);
+    final settingsList = find
+        .descendant(
+          of: find.byType(SettingsScreen),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    await tester.drag(settingsList, const Offset(0, -300));
+    await tester.pumpAndSettle();
     await tester.tap(about);
     await tester.pumpAndSettle();
 

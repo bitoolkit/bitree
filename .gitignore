@@ -49,6 +49,7 @@ migrate_working_dir/
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
+packages/bitree_lua/native/prelude.inc
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/

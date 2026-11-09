@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../core/time.dart';
 import '../schedule/model.dart';
 import '../schedule/selection.dart';
+import '../sources/source.dart';
 import 'model.dart';
 
 const _physicsLabPrefix = 'physics-lab:';
@@ -71,6 +72,11 @@ List<AgendaEntry> physicsLabDeadlines(SemesterSchedule schedule) {
           term: schedule.term,
           course: course.name,
           local: false,
+          origin: RecordOrigin(
+            sourceInstanceId: 'instance:builtin.bit.physics-lab',
+            resource: SourceResource.deadline,
+            remoteId: id,
+          ),
           details: PhysicsLabDeadlineDetails(
             kind: deadline.kind,
             courseLabel: name,

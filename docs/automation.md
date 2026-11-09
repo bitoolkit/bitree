@@ -88,8 +88,8 @@ end
 
 ## 运行方式
 
-运行库为 [puredartlua](https://pub.dev/packages/puredartlua)。应用注册 `table`、`math`、`pairs`、`ipairs`、`tostring`、`type`、基础类型与元表操作。当前 1.0.16 支持字符串值和 `..` 拼接，但没有 `string` 标准库模块，`string.find`、`string.gsub`、`string.sub` 等函数不可用。`print` 不输出内容，不提供文件、网络、`require`、协程或应用内部对象访问。
+运行库为官方 C Lua 5.5.1，通过 `dart:ffi` 嵌入。Lua 环境和 JSON 适配位于独立脚本与 `dkjson` 2.7，Dart 只通过 JSON 边界提供宿主能力。应用开放标准 `string`、`table`、`math`、`utf8` 和既有基础函数；`string.find`、`string.gsub`、`string.sub` 等使用 Lua 自身语义。`print` 不输出内容，不提供文件、系统命令、任意模块加载、网络或应用内部对象访问。
 
 每次执行都会创建独立的 Dart isolate 和运行时，从原始数据快照重新计算，不保留上次执行的 Lua 全局变量。脚本或原始数据变化时自动重算，单纯切换周次不会重复执行。
 
-脚本限制为 128 KiB，每次执行限时 2 秒，超时会终止工作 isolate。返回数据另有字段类型、大小与深度检查。puredartlua 使用 Dart 内存管理，这些限制不等于独立的 Lua 堆内存配额。运行错误、超时和校验失败会在自动化页面显示，应用回退到原始展示。
+脚本限制为 128 KiB，每次执行限时 2 秒。原生分配器实施单实例内存上限，指令 hook 与取消标记终止失控脚本；工作 isolate 隔离运行错误和结果复制。返回数据另有字段类型、大小与深度检查。运行错误、超时和校验失败会在自动化页面显示，应用回退到原始展示。

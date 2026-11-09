@@ -66,8 +66,19 @@ class TimetableController extends ChangeNotifier {
     SemesterSchedule incoming,
     List<String> availableTerms, {
     void Function()? checkActive,
+    String? sourceInstanceId,
   }) => _operations.run(() {
-    final next = incoming.mergeLocalChanges(_schedules[incoming.term]);
+    var next = incoming.mergeLocalChanges(_schedules[incoming.term]);
+    if (sourceInstanceId != null) {
+      next = next.copyWith(
+        courses: [
+          for (final course in next.courses)
+            course.origin == null
+                ? course
+                : course.rebindOrigin(sourceInstanceId),
+        ],
+      );
+    }
     return _commit(
       next,
       availableTerms: availableTerms,
@@ -112,6 +123,48 @@ class TimetableController extends ChangeNotifier {
         final current = schedule;
         if (current == null) return false;
         return _commit(current.copyWith(firstWeek: first, lastWeek: last));
+      });
+
+  /// Rebinds records imported before a persistent source instance existed.
+  Future<bool> rebindSourceInstance(String from, String to) =>
+      _operations.run(() async {
+        var changed = false;
+        final next = <String, SemesterSchedule>{};
+        for (final schedule in _schedules.values) {
+          var scheduleChanged = false;
+          final courses = <Course>[];
+          for (final course in schedule.courses) {
+            if (course.origin?.sourceInstanceId == from) {
+              scheduleChanged = true;
+              changed = true;
+              courses.add(course.rebindOrigin(to));
+            } else {
+              courses.add(course);
+            }
+          }
+          next[schedule.term] = scheduleChanged
+              ? schedule.copyWith(courses: courses)
+              : schedule;
+        }
+        if (!changed) return true;
+        _busy = true;
+        _notify();
+        try {
+          await _store.write((
+            selectedTerm: _selectedTerm,
+            schedules: next,
+          ));
+          _schedules
+            ..clear()
+            ..addAll(next);
+          return true;
+        } on Exception catch (failure, stack) {
+          AppDiagnostics.instance.report('迁移课表来源', failure, stack);
+          return false;
+        } finally {
+          _busy = false;
+          _notify();
+        }
       });
 
   Future<bool> selectTerm(

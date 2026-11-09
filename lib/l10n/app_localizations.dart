@@ -956,6 +956,12 @@ abstract class AppLocalizations {
   /// **'Local agenda'**
   String get settingsLocalAgenda;
 
+  /// No description provided for @settingsSourcesAndExtensions.
+  ///
+  /// In en, this message translates to:
+  /// **'Sources and extensions'**
+  String get settingsSourcesAndExtensions;
+
   /// No description provided for @settingsApplication.
   ///
   /// In en, this message translates to:
@@ -4367,6 +4373,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{channel} {version}'**
   String releaseVersion(String channel, String version);
+
+  /// No description provided for @dataSourcesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Data sources'**
+  String get dataSourcesTitle;
+
+  /// No description provided for @addSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Add source'**
+  String get addSource;
+
+  /// No description provided for @sourceBuiltinImplementation.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in implementation'**
+  String get sourceBuiltinImplementation;
+
+  /// No description provided for @sourceUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This source is unavailable'**
+  String get sourceUnavailable;
+
+  /// No description provided for @sourceSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Source settings'**
+  String get sourceSettings;
+
+  /// No description provided for @sourceCourses.
+  ///
+  /// In en, this message translates to:
+  /// **'Courses'**
+  String get sourceCourses;
+
+  /// No description provided for @discoveringCourses.
+  ///
+  /// In en, this message translates to:
+  /// **'Discovering courses…'**
+  String get discoveringCourses;
+
+  /// No description provided for @noCourses.
+  ///
+  /// In en, this message translates to:
+  /// **'No courses yet'**
+  String get noCourses;
+
+  /// No description provided for @manualCourse.
+  ///
+  /// In en, this message translates to:
+  /// **'Added manually'**
+  String get manualCourse;
+
+  /// No description provided for @linkLocalCourses.
+  ///
+  /// In en, this message translates to:
+  /// **'Link local courses'**
+  String get linkLocalCourses;
+
+  /// No description provided for @noLocalCourses.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no local courses yet'**
+  String get noLocalCourses;
+
+  /// No description provided for @addManualCourse.
+  ///
+  /// In en, this message translates to:
+  /// **'Add course'**
+  String get addManualCourse;
+
+  /// No description provided for @courseInputHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Course link or ID'**
+  String get courseInputHint;
+
+  /// No description provided for @discoverCourses.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh courses'**
+  String get discoverCourses;
+
+  /// No description provided for @sourceImplementation.
+  ///
+  /// In en, this message translates to:
+  /// **'Implementation'**
+  String get sourceImplementation;
+
+  /// No description provided for @extensionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Extensions'**
+  String get extensionsTitle;
+
+  /// No description provided for @installExtension.
+  ///
+  /// In en, this message translates to:
+  /// **'Install extension'**
+  String get installExtension;
+
+  /// No description provided for @extensionInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Extension installed.'**
+  String get extensionInstalled;
+
+  /// No description provided for @extensionsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No extensions installed.'**
+  String get extensionsEmpty;
+
+  /// No description provided for @extensionPackageVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get extensionPackageVersion;
+
+  /// No description provided for @uninstallExtension.
+  ///
+  /// In en, this message translates to:
+  /// **'Uninstall extension'**
+  String get uninstallExtension;
+
+  /// No description provided for @enabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get enabled;
+
+  /// No description provided for @disabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get disabled;
+
+  /// No description provided for @settingsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved.'**
+  String get settingsSaved;
+
+  /// No description provided for @dataRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Read'**
+  String get dataRead;
 }
 
 class _AppLocalizationsDelegate

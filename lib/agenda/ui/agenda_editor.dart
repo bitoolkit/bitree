@@ -169,29 +169,39 @@ class _AgendaEditorState extends State<_AgendaEditor> {
       _error = null;
     });
     final l10n = context.l10n;
-    final success = await widget.controller.agenda.save(
-      AgendaEntry(
-        id:
-            widget.entry?.id ??
-            'local-${DateTime.now().microsecondsSinceEpoch}',
-        title: _title.text.trim(),
-        kind: _kind,
-        startsAt: start,
-        endsAt: _kind == AgendaKind.deadline ? null : end,
-        allDay: _allDay,
-        location: _location.text.trim(),
-        notes: _notes.text.trim(),
-        done: widget.entry?.done ?? false,
-        term: widget.entry?.term ?? widget.term,
-        source: widget.entry?.source,
-        course: widget.entry?.course ?? '',
-        url: widget.entry?.url,
-        // Editing turns a generated record into a user-authored snapshot. Its
-        // localized presentation must not keep overriding the edited values.
-        details: null,
-        tailDays: _tailDays,
-      ),
-    );
+    final base = widget.entry;
+    final edited = base == null
+        ? AgendaEntry(
+            id: 'local-${DateTime.now().microsecondsSinceEpoch}',
+            title: _title.text.trim(),
+            kind: _kind,
+            startsAt: start,
+            endsAt: _kind == AgendaKind.deadline ? null : end,
+            allDay: _allDay,
+            location: _location.text.trim(),
+            notes: _notes.text.trim(),
+            term: widget.term,
+            tailDays: _tailDays,
+          )
+        : base
+              .withUserEdit(
+                title: _title.text.trim(),
+                startsAt: start,
+                endsAt: _kind == AgendaKind.deadline ? null : end,
+                allDay: _allDay,
+                location: _location.text.trim(),
+                notes: _notes.text.trim(),
+              )
+              .copyWith(
+                kind: _kind,
+                term: base.term ?? widget.term,
+                // Editing turns a generated record into a user-authored
+                // snapshot. Its localized presentation must not keep
+                // overriding the edited values.
+                details: null,
+                tailDays: _tailDays,
+              );
+    final success = await widget.controller.agenda.save(edited);
     if (!mounted) return;
     if (success) {
       Navigator.pop(context);

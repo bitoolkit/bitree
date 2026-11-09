@@ -8,6 +8,8 @@ import '../agenda/deadline_source.dart';
 import '../core/async/cancelable_request.dart';
 import '../core/diagnostics.dart';
 import '../schedule/controller.dart';
+import '../sources/builtin.dart';
+import '../sources/registry.dart';
 import 'academics.dart';
 import 'access.dart';
 import 'error_message.dart';
@@ -37,6 +39,7 @@ class SchoolController extends ChangeNotifier {
     required this._timetable,
     required this._agenda,
     required this._academics,
+    this._sources,
   }) : _storage = storage,
        _access = SchoolAccess(storage);
 
@@ -46,6 +49,7 @@ class SchoolController extends ChangeNotifier {
   final TimetableController _timetable;
   final AgendaController _agenda;
   final AcademicController _academics;
+  final SourceRegistry? _sources;
   AccountStatus _status = AccountStatus.unverified;
   String? _username;
   Future<void>? _finished;
@@ -221,6 +225,7 @@ class SchoolController extends ChangeNotifier {
         result.schedule,
         result.terms,
         checkActive: session.checkActive,
+        sourceInstanceId: _sourceInstanceId(BuiltinSources.school),
       );
     }),
     notifyErrors: false,
@@ -239,6 +244,9 @@ class SchoolController extends ChangeNotifier {
         result.term,
         result.exams,
         checkActive: session.checkActive,
+        sourceInstanceId:
+            _sourceInstanceId(BuiltinSources.school) ??
+            'instance:${BuiltinSources.school}',
       );
     }),
     notifyErrors: false,
@@ -285,6 +293,13 @@ class SchoolController extends ChangeNotifier {
       return _agenda.mergeDeadlines(
         deadlines,
         checkActive: session.checkActive,
+        sourceInstanceId: _sourceInstanceId(
+          switch (source) {
+            DeadlineSource.lexue => BuiltinSources.lexue,
+            DeadlineSource.eclass => BuiltinSources.eclass,
+            DeadlineSource.mooc => BuiltinSources.mooc,
+          },
+        ),
       );
     }),
     notifyErrors: false,
@@ -315,6 +330,15 @@ class SchoolController extends ChangeNotifier {
 
   void _notify() {
     if (!_disposed) notifyListeners();
+  }
+
+  String? _sourceInstanceId(String definitionId) {
+    final username = _username;
+    final sources = _sources;
+    if (username == null || sources == null) return null;
+    return sources
+        .instanceForAccount(definitionId, 'bit.school:$username')
+        ?.id;
   }
 }
 

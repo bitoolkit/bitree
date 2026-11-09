@@ -5,6 +5,7 @@ import 'package:bitree/agenda/controller.dart';
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/store.dart';
 import 'package:bitree/app/controller.dart';
+import 'package:bitree/extensions/store.dart';
 import 'package:bitree/mooc/credentials.dart';
 import 'package:bitree/mooc/storage.dart';
 import 'package:bitree/schedule/model.dart';
@@ -12,6 +13,8 @@ import 'package:bitree/schedule/store.dart';
 import 'package:bitree/school/network.dart';
 import 'package:bitree/school/service.dart';
 import 'package:bitree/school/storage.dart';
+import 'package:bitree/sources/registry.dart';
+import 'package:bitree/sources/store.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -146,6 +149,8 @@ class TestAppController extends AppController {
          moocStorage: moocStorage ?? MemoryMoocStorage(),
          agenda: agenda ?? AgendaController(MemoryAgendaStore(entries)),
          academics: AcademicController(academicStore ?? MemoryAcademicStore()),
+         sourceRegistry: SourceRegistry(store: MemorySourceStore()),
+         extensionStore: MemoryExtensionStore(),
        ) {
     addTearDown(dispose);
   }
@@ -166,4 +171,30 @@ class MemoryMoocStorage extends MoocStorage {
   Future<void> write(MoocAccount value) async => account = value;
   @override
   Future<void> clear() async => account = null;
+}
+
+class MemorySourceStore extends SourceStore {
+  SourceLibrary library = const SourceLibrary();
+
+  @override
+  Future<SourceLibrary> read() async => library;
+
+  @override
+  Future<void> write(SourceLibrary value) async => library = value;
+
+  @override
+  Future<void> clear() async => library = const SourceLibrary();
+}
+
+class MemoryExtensionStore extends ExtensionStore {
+  ExtensionLibrary library = const ExtensionLibrary();
+
+  @override
+  Future<ExtensionLibrary> read() async => library;
+
+  @override
+  Future<void> write(ExtensionLibrary value) async => library = value;
+
+  @override
+  Future<void> clear() async => library = const ExtensionLibrary();
 }

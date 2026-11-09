@@ -502,6 +502,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLocalAgenda => 'Local agenda';
 
   @override
+  String get settingsSourcesAndExtensions => 'Sources and extensions';
+
+  @override
   String get settingsApplication => 'Application';
 
   @override
@@ -2541,4 +2544,79 @@ class AppLocalizationsEn extends AppLocalizations {
   String releaseVersion(String channel, String version) {
     return '$channel $version';
   }
+
+  @override
+  String get dataSourcesTitle => 'Data sources';
+
+  @override
+  String get addSource => 'Add source';
+
+  @override
+  String get sourceBuiltinImplementation => 'Built-in implementation';
+
+  @override
+  String get sourceUnavailable => 'This source is unavailable';
+
+  @override
+  String get sourceSettings => 'Source settings';
+
+  @override
+  String get sourceCourses => 'Courses';
+
+  @override
+  String get discoveringCourses => 'Discovering courses…';
+
+  @override
+  String get noCourses => 'No courses yet';
+
+  @override
+  String get manualCourse => 'Added manually';
+
+  @override
+  String get linkLocalCourses => 'Link local courses';
+
+  @override
+  String get noLocalCourses => 'There are no local courses yet';
+
+  @override
+  String get addManualCourse => 'Add course';
+
+  @override
+  String get courseInputHint => 'Course link or ID';
+
+  @override
+  String get discoverCourses => 'Refresh courses';
+
+  @override
+  String get sourceImplementation => 'Implementation';
+
+  @override
+  String get extensionsTitle => 'Extensions';
+
+  @override
+  String get installExtension => 'Install extension';
+
+  @override
+  String get extensionInstalled => 'Extension installed.';
+
+  @override
+  String get extensionsEmpty => 'No extensions installed.';
+
+  @override
+  String get extensionPackageVersion => 'Version';
+
+  @override
+  String get uninstallExtension => 'Uninstall extension';
+
+  @override
+  String get enabled => 'Enabled';
+
+  @override
+  String get disabled => 'Disabled';
+
+  @override
+  String get settingsSaved => 'Saved.';
+
+  @override
+  String get dataRead => 'Read';
 }

@@ -3,18 +3,16 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:isolate';
 
-import 'package:puredartlua/lua/visitors/bindings/std.dart';
-import 'package:puredartlua/lua/visitors/runtime/base.dart';
-import 'package:puredartlua/runner.dart' as lua;
+import '../extensions/native_lua.dart';
 
-/// A new runtime and data copy are created for every invocation. The worker owns
-/// no application objects, persistence, file loader, or network callbacks.
+/// A fresh native Lua state and data copy are created for every invocation.
+/// The worker owns no application objects, persistence, or network callbacks.
 class LuaFilterExecutor {
   LuaFilterExecutor({this.timeout = const Duration(seconds: 2)});
 
   static const maxScriptBytes = 128 * 1024;
   final Duration timeout;
-  void Function()? _cancel;
+  _FilterRun? _active;
 
   Future<Map<String, dynamic>> run(
     String source,
@@ -24,17 +22,26 @@ class LuaFilterExecutor {
     if (utf8.encode(source).length > maxScriptBytes) {
       throw const FormatException('Lua script exceeds 128 KiB.');
     }
+    final cancellation = NativeLuaCancellation();
+    final run = _FilterRun(cancellation);
+    _active = run;
     final result = Completer<Map<String, dynamic>>();
     final port = ReceivePort();
     Isolate? worker;
     Timer? timer;
+    var timedOut = false;
+    var finished = false;
     late final StreamSubscription<dynamic> subscription;
+
     void finish({Map<String, dynamic>? value, Object? error}) {
-      if (result.isCompleted) return;
+      if (finished) return;
+      finished = true;
       timer?.cancel();
       worker?.kill(priority: Isolate.immediate);
       port.close();
       unawaited(subscription.cancel());
+      cancellation.dispose();
+      if (identical(_active, run)) _active = null;
       if (error != null) {
         result.completeError(error);
       } else {
@@ -42,129 +49,113 @@ class LuaFilterExecutor {
       }
     }
 
-    void cancelRun() => finish(error: const LuaFilterCancelled());
-    _cancel = cancelRun;
     subscription = port.listen((message) {
       if (message is Map && message['result'] is Map) {
-        finish(value: Map<String, dynamic>.from(message['result'] as Map));
+        if (timedOut) {
+          finish(error: TimeoutException('Lua filter timed out.'));
+        } else {
+          finish(value: Map<String, dynamic>.from(message['result'] as Map));
+        }
       } else if (message is Map && message['error'] is String) {
-        finish(error: FormatException(message['error'] as String));
+        final code = message['code'];
+        if (timedOut || code == 'timeout') {
+          finish(error: TimeoutException('Lua filter timed out.'));
+        } else if (code == 'cancelled') {
+          finish(error: const LuaFilterCancelled());
+        } else {
+          finish(error: FormatException(message['error'] as String));
+        }
       } else {
         finish(error: StateError('Lua worker exited unexpectedly: $message'));
       }
     });
-    timer = Timer(
-      timeout,
-      () => finish(error: TimeoutException('Lua filter timed out.')),
-    );
-    // Do not await spawn before listening: parse/runtime errors and very short
-    // scripts may finish before the spawn Future completes.
+    timer = Timer(timeout, () {
+      timedOut = true;
+      cancellation.cancel();
+    });
     unawaited(
       Isolate.spawn(
         _runFilter,
-        (port.sendPort, source, data),
+        (
+          port.sendPort,
+          source,
+          data,
+          cancellation.address,
+          timeout.inMilliseconds,
+        ),
         onError: port.sendPort,
         onExit: port.sendPort,
       ).then((isolate) {
         worker = isolate;
-        if (result.isCompleted) isolate.kill(priority: Isolate.immediate);
+        if (finished) isolate.kill(priority: Isolate.immediate);
       }, onError: (Object error) => finish(error: error)),
     );
-    try {
-      return await result.future;
-    } finally {
-      if (identical(_cancel, cancelRun)) _cancel = null;
-    }
+    return result.future;
   }
 
   void cancel() {
-    _cancel?.call();
-    _cancel = null;
+    _active?.cancellation.cancel();
+    _active = null;
   }
+}
+
+class _FilterRun {
+  const _FilterRun(this.cancellation);
+
+  final NativeLuaCancellation cancellation;
 }
 
 class LuaFilterCancelled implements Exception {
   const LuaFilterCancelled();
 }
 
-void _runFilter((SendPort, String, Map<String, dynamic>) message) {
-  final (port, source, data) = message;
+void _runFilter((SendPort, String, Map<String, dynamic>, int, int) message) {
+  final (port, source, data, cancelAddress, timeoutMs) = message;
   try {
-    final errors = <String>[];
-    final ast = lua.parse(source, onErrors: errors.addAll);
-    if (ast == null) throw FormatException(errors.join('\n'));
-    final runtime = _FilterRuntime();
-    runtime.visitAST(ast);
-    if (runtime.results.errors.isNotEmpty) {
-      throw FormatException(runtime.results.errors.join('\n'));
-    }
-    final filter = runtime.findVar('filter');
-    if (filter == null || !filter.isFunc) {
-      throw const FormatException(
-        'Define function filter(data) and return data.',
-      );
-    }
-    final values = runtime.callLuaFunction(
-      filter,
-      args: [_toLua('data', data)],
+    final cancellation = NativeLuaCancellation.fromAddress(cancelAddress);
+    final value = NativeLuaLibrary.open().executeFilter(
+      source: source,
+      data: data,
+      cancellation: cancellation,
+      timeoutMs: timeoutMs,
     );
-    if (runtime.results.errors.isNotEmpty) {
-      throw FormatException(runtime.results.errors.join('\n'));
-    }
-    if (values.length != 1 || !values.single.isTable) {
+    if (value is! Map) {
       throw const FormatException('filter(data) must return one table.');
     }
-    final output = values.single;
-    final reader = _ResultReader();
-    final result = <String, dynamic>{};
-    for (final name in ['courses', 'deadlines', 'events', 'exams']) {
-      final value = output.readField(name) as lua.LuaObject?;
-      result[name] =
-          (name == 'events' || name == 'exams') &&
-              (value == null || value.isNil)
-          ? data[name] ?? <dynamic>[]
-          : reader.list(value, name);
-    }
-    if (utf8.encode(jsonEncode(result)).length > 2 * 1024 * 1024) {
-      throw const FormatException('Lua result exceeds 2 MiB.');
-    }
-    port.send({'result': result});
-  } catch (error) {
-    final text = error.toString();
-    port.send({'error': text.length > 4096 ? text.substring(0, 4096) : text});
+    port.send({'result': _ResultReader(data).read(value)});
+  } on NativeLuaError catch (failure) {
+    port.send({'error': failure.message, 'code': failure.code});
+  } catch (failure) {
+    final text = '$failure';
+    port.send({
+      'error': text.length > 4096 ? text.substring(0, 4096) : text,
+      'code': 'script_error',
+    });
   }
 }
-
-/// Register data-processing primitives only. In particular, never register
-/// require/include, file APIs, coroutines, or application callbacks.
-class _FilterRuntime extends BaseRuntime with Std, ReturnStmtCallStackUnwind {
-  _FilterRuntime() : super(lua.StdRuntimeResults()) {
-    initStdMetatables();
-    initStdStrings();
-    initStdIPairs();
-    initStdPairs();
-    initStdNext();
-    initStdTable();
-    initStdMath();
-    initMiscRuntime();
-    initStdPrint(impl: (_) {});
-  }
-}
-
-lua.LuaObject _toLua(String name, Object? value) => switch (value) {
-  final Map map => lua.LuaObject.table(name, {
-    for (final entry in map.entries)
-      entry.key as String: _toLua(entry.key as String, entry.value),
-  }),
-  final List list => lua.LuaObject.table(name, {
-    for (var i = 0; i < list.length; i++) i + 1: _toLua('$i', list[i]),
-  }),
-  _ => lua.LuaObject.variable(name, value),
-};
 
 class _ResultReader {
-  final _path = HashSet<lua.LuaObject>.identity();
+  _ResultReader(this.input);
+
+  final Map<String, dynamic> input;
+  final _path = HashSet<Object>.identity();
   var _nodes = 0;
+
+  Map<String, dynamic> read(Map<dynamic, dynamic> value) {
+    final output = <String, dynamic>{};
+    for (final name in ['courses', 'deadlines', 'events', 'exams']) {
+      final present = value.containsKey(name);
+      if (!present && (name == 'events' || name == 'exams')) {
+        output[name] = input[name] ?? <dynamic>[];
+      } else {
+        output[name] = list(value[name], name);
+      }
+    }
+    if (utf8.encode(jsonEncode(output)).length > 2 * 1024 * 1024) {
+      throw const FormatException('Lua result exceeds 2 MiB.');
+    }
+    return output;
+  }
 
   void _visit(int depth) {
     if (++_nodes > 100000 || depth > 20) {
@@ -172,77 +163,71 @@ class _ResultReader {
     }
   }
 
-  List<dynamic> list(lua.LuaObject? value, String name, [int depth = 0]) {
+  List<dynamic> list(Object? value, String name, [int depth = 0]) {
     _visit(depth);
-    if (value == null || !value.isTable) {
+    if (value is! List) {
       throw FormatException('$name must be an array table.');
     }
-    final table = value.deref();
-    if (!_path.add(table)) throw const FormatException('Cyclic Lua result.');
+    if (!_path.add(value)) throw const FormatException('Cyclic Lua result.');
     try {
-      final fields = table.fields!;
-      if (fields.keys.any(
-        (key) => key is! int || key < 1 || key > fields.length,
-      )) {
-        throw FormatException(
-          '$name must use consecutive indices starting at 1.',
-        );
-      }
       return [
-        for (var i = 1; i <= fields.length; i++)
+        for (var index = 0; index < value.length; index++)
           name == 'weeks'
-              ? scalar(fields[i], depth + 1)
-              : record(fields[i], '$name[$i]', depth + 1),
+              ? scalar(value[index], depth + 1)
+              : record(value[index], '$name[$index]', depth + 1),
       ];
     } finally {
-      _path.remove(table);
+      _path.remove(value);
     }
   }
 
-  Map<String, dynamic> record(lua.LuaObject? value, String name, int depth) {
+  Map<String, dynamic> record(Object? value, String name, int depth) {
     _visit(depth);
-    if (value == null || !value.isTable) {
+    if (value is! Map) {
       throw FormatException('$name must be a table.');
     }
-    final table = value.deref();
-    if (!_path.add(table)) throw const FormatException('Cyclic Lua result.');
+    if (!_path.add(value)) throw const FormatException('Cyclic Lua result.');
     try {
       final result = <String, dynamic>{};
-      for (final entry in table.fields!.entries) {
+      for (final entry in value.entries) {
         final key = entry.key;
         if (key is! String) {
           throw FormatException('$name must have string field names.');
         }
-        // Details are immutable host metadata and are not decoded from Lua.
-        if (key == 'details') continue;
+        if (_hostMetadata.contains(key)) continue;
         result[key] = key == 'weeks'
             ? list(entry.value, key, depth + 1)
             : scalar(entry.value, depth + 1);
       }
       return result;
     } finally {
-      _path.remove(table);
+      _path.remove(value);
     }
   }
 
-  Object? scalar(lua.LuaObject? value, int depth) {
+  Object? scalar(Object? value, int depth) {
     _visit(depth);
-    if (value == null || value.isNil) return null;
-    if (!value.isTable && !value.isFunc && !value.isThread) {
-      final raw = value.value;
-      if (raw is String && raw.length <= 128 * 1024 || raw is bool) {
-        return raw;
-      }
-      if (raw is num && raw.isFinite) {
-        return raw is double &&
-                raw == raw.truncateToDouble() &&
-                raw.abs() <= 9007199254740991
-            ? raw.toInt()
-            : raw;
-      }
+    if (value == null || value is bool) return value;
+    if (value is String && value.length <= 128 * 1024) return value;
+    if (value is num && value.isFinite) {
+      return value is double &&
+              value == value.truncateToDouble() &&
+              value.abs() <= 9007199254740991
+          ? value.toInt()
+          : value;
     }
     throw const FormatException(
       'Expected a string, finite number, boolean, or nil.',
     );
   }
 }
+
+const _hostMetadata = {
+  'details',
+  'origin',
+  'overrides',
+  'sourceValues',
+  'completionOverride',
+  'lastSourceCompletion',
+  'sourceRemoved',
+};

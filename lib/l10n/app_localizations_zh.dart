@@ -486,6 +486,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsLocalAgenda => '本地日程';
 
   @override
+  String get settingsSourcesAndExtensions => '来源与扩展';
+
+  @override
   String get settingsApplication => '应用';
 
   @override
@@ -2424,4 +2427,79 @@ class AppLocalizationsZh extends AppLocalizations {
   String releaseVersion(String channel, String version) {
     return '$channel $version';
   }
+
+  @override
+  String get dataSourcesTitle => '数据来源';
+
+  @override
+  String get addSource => '添加来源';
+
+  @override
+  String get sourceBuiltinImplementation => '内置实现';
+
+  @override
+  String get sourceUnavailable => '来源暂时不可用';
+
+  @override
+  String get sourceSettings => '来源设置';
+
+  @override
+  String get sourceCourses => '课程';
+
+  @override
+  String get discoveringCourses => '正在发现课程…';
+
+  @override
+  String get noCourses => '还没有课程';
+
+  @override
+  String get manualCourse => '手动添加';
+
+  @override
+  String get linkLocalCourses => '关联本地课程';
+
+  @override
+  String get noLocalCourses => '本地还没有课程';
+
+  @override
+  String get addManualCourse => '添加课程';
+
+  @override
+  String get courseInputHint => '课程链接或编号';
+
+  @override
+  String get discoverCourses => '刷新课程';
+
+  @override
+  String get sourceImplementation => '当前实现';
+
+  @override
+  String get extensionsTitle => '扩展';
+
+  @override
+  String get installExtension => '安装扩展';
+
+  @override
+  String get extensionInstalled => '扩展已安装。';
+
+  @override
+  String get extensionsEmpty => '还没有安装扩展。';
+
+  @override
+  String get extensionPackageVersion => '版本';
+
+  @override
+  String get uninstallExtension => '卸载扩展';
+
+  @override
+  String get enabled => '启用';
+
+  @override
+  String get disabled => '已停用';
+
+  @override
+  String get settingsSaved => '已保存。';
+
+  @override
+  String get dataRead => '读取';
 }

@@ -21,9 +21,9 @@ dependencies:
   shared_preferences: ^2.5.5
   url_launcher: ^6.3.3
   file_picker: ^13.2.0
+  ffi: ^2.2.0
   package_info_plus: ^10.2.2
   pub_semver: ^2.2.1
-  puredartlua: ^1.0.16
   flutter_markdown_plus: ^1.0.12
   webview_all: ^1.4.7
   webview_all_android: ^1.4.7

@@ -127,25 +127,31 @@ class _CourseEditorState extends State<_CourseEditor> {
       _error = null;
     });
     final error = context.l10n.operationSaveFailed;
-    final course = Course(
-      id:
-          widget.course?.stableId ??
-          'local-${DateTime.now().microsecondsSinceEpoch}',
-      name: _name.text.trim(),
-      teacher: _teacher.text.trim(),
-      room: _room.text.trim(),
-      campus: widget.course?.campus ?? '',
-      number: widget.course?.number ?? '',
-      description: widget.course?.description ?? '',
-      weekday: _day,
-      startSection: _start,
-      endSection: _end,
-      weeks: _weeks.toList(),
-      local: true,
-    );
+    final base = widget.course;
+    final course = base == null
+        ? Course(
+            id: 'local-${DateTime.now().microsecondsSinceEpoch}',
+            name: _name.text.trim(),
+            teacher: _teacher.text.trim(),
+            room: _room.text.trim(),
+            weekday: _day,
+            startSection: _start,
+            endSection: _end,
+            weeks: _weeks.toList(),
+            local: true,
+          )
+        : base.withUserEdit(
+            name: _name.text.trim(),
+            teacher: _teacher.text.trim(),
+            room: _room.text.trim(),
+            weekday: _day,
+            startSection: _start,
+            endSection: _end,
+            weeks: _weeks.toList(),
+          );
     final success = await widget.controller.timetable.saveCourse(
       course,
-      replacing: widget.course,
+      replacing: base,
       semester: widget.controller.timetable.schedule == null
           ? SemesterSchedule(
               term: _term.text.trim(),

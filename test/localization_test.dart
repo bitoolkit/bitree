@@ -1,6 +1,7 @@
 import 'package:bitree/app/controller.dart';
 import 'package:bitree/app/settings_controller.dart';
 import 'package:bitree/app/ui/app_screen.dart';
+import 'package:bitree/app/ui/settings_screen.dart';
 import 'package:bitree/l10n/app_localizations.dart';
 import 'package:bitree/l10n/formats.dart';
 import 'package:bitree/ui/theme.dart';
@@ -46,6 +47,14 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('语言'), findsOneWidget);
 
+    final settingsList = find
+        .descendant(
+          of: find.byType(SettingsScreen),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    await tester.drag(settingsList, const Offset(0, -300));
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(find.text('English'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));

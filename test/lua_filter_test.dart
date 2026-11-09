@@ -121,7 +121,6 @@ end
     'function filter(data) data.courses[3] = data.courses[1] return data end',
     'function filter(data) data.courses[1].name = data return data end',
     'function filter(data) return missing(data) end',
-    'function filter(data) string.gsub("x", "x", "y") return data end',
     'function filter(data) require("/etc/passwd") return data end',
     'function filter(data) io.open("/etc/passwd") return data end',
   ]) {
@@ -132,6 +131,20 @@ end
       );
     });
   }
+
+  test('the standard string library is available to filters', () async {
+    final result = await LuaFilterExecutor().run(
+      '''
+function filter(data)
+    data.courses[1].name = string.gsub(data.courses[1].name, "课程", "课")
+    return data
+end
+''',
+      data(),
+    );
+
+    expect((result['courses'] as List).single['name'], '某个非常长的课名称');
+  });
 
   test('timeout kills a busy worker and the executor can be reused', () async {
     final executor = LuaFilterExecutor(

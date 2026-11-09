@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:bitree/app/ui/settings_screen.dart';
+import 'package:bitree/extensions/ui/extensions_screen.dart';
 import 'package:bitree/schedule/model.dart';
 import 'package:bitree/schedule/store.dart';
 import 'package:bitree/school/storage.dart';
+import 'package:bitree/sources/ui/sources_screen.dart';
 import 'package:bitree/ui/app_page.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
@@ -192,4 +194,42 @@ void main() {
       expect(tester.takeException(), isNull);
     }
   });
+
+  testWidgets(
+    'Source and extension management is available without developer mode',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final controller = TestAppController();
+      await controller.initialize();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: bitreeTheme(Brightness.light),
+          home: Scaffold(
+            body: SettingsScreen(
+              controller: controller,
+              checkingForUpdates: false,
+              onCheckForUpdates: () {},
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('开发者模式'), findsNothing);
+      await tester.scrollUntilVisible(find.text('来源与扩展'), 200);
+      await tester.tap(find.text('数据来源'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SourcesScreen), findsOneWidget);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('扩展'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ExtensionsScreen), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

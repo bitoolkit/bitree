@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../agenda/deadline_clear_scope.dart';
 import '../../agenda/ui/clear_deadlines_sheet.dart';
+import '../../extensions/ui/extensions_screen.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../mooc/ui/mooc_sheet.dart';
 import '../../schedule/ui/week_range_dialog.dart';
 import '../../school/ui/school_account.dart';
+import '../../sources/ui/sources_screen.dart';
 import '../../sync/controller.dart';
 import '../../sync/ui/sync.dart';
 import '../../ui/app_dialog.dart';
@@ -100,6 +102,30 @@ class SettingsScreen extends StatelessWidget {
         children: [
           SchoolAccount(controller: controller),
           MoocAccountTile(controller: controller.mooc),
+          section(l10n.settingsSourcesAndExtensions, [
+            ListTile(
+              contentPadding: tilePadding,
+              leading: const Icon(Icons.hub_outlined),
+              title: Text(l10n.dataSourcesTitle),
+              trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+              onTap: () => Navigator.of(context).push<void>(
+                MaterialPageRoute(
+                  builder: (_) => SourcesScreen(controller: controller),
+                ),
+              ),
+            ),
+            ListTile(
+              contentPadding: tilePadding,
+              leading: const Icon(Icons.extension_outlined),
+              title: Text(l10n.extensionsTitle),
+              trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+              onTap: () => Navigator.of(context).push<void>(
+                MaterialPageRoute(
+                  builder: (_) => ExtensionsScreen(controller: controller),
+                ),
+              ),
+            ),
+          ]),
           Padding(
             padding: const EdgeInsets.only(top: 24),
             child: ListTile(
