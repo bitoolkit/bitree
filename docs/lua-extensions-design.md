@@ -4,7 +4,7 @@
 
 目标是让内置平台和用户 Lua 扩展使用同一条数据接入路径：用户能补充平台漏掉的课程、接入新平台、修正现有接口、生成本地数据，以及调整展示。平台中自行加入的课程和 BITree 本地手动创建的课程都必须覆盖。
 
-当前实现进度：C Lua + FFI、协程异步宿主调用、基础 `ctx.http` 传输已经接通；内置 Dart 与 Lua 来源统一经 `SourceRuntime` 分派，Dart 来源已可发现课程、解析手动补课并按课程读取 DDL。设置首页的“数据来源”与账号同组，扩展在该页安装和卸载，装上即生效；“同步全部”遵循来源的启用状态、课程选择和所选实现。显示规则的快捷设置由预置 Lua 模块 `bitree.display` 执行，并与自定义脚本叠加。内置平台 Lua 包、账号会话复用和五平台打包仍按 §12.2 继续推进。
+当前实现进度：C Lua + FFI、协程异步宿主调用、基础 `bitree.http` 传输已经接通；内置 Dart 与 Lua 来源统一经 `SourceRuntime` 分派，Dart 来源已可发现课程、解析手动补课并按课程读取 DDL。设置首页的“数据来源”与账号同组，扩展在该页安装和卸载，装上即生效；“同步全部”遵循来源的启用状态、课程选择和所选实现。显示规则的快捷设置由预置 Lua 模块 `bitree.display` 执行，并与自定义脚本叠加。内置平台 Lua 包、账号会话复用和五平台打包仍按 §12.2 继续推进。
 
 保留现有 Flutter 界面体系、离线使用方式、学校直连/WebVPN、账号验证、用户编辑与删除恢复能力。平台协议由数据源实现；数据身份、合并保存、账号授权和用户交互由宿主管理。
 
@@ -180,9 +180,9 @@ return {
 
 “关联本地课程”允许一个平台课程关联多条本地排课记录，也允许一条本地排课关联多个平台课程。引用保存内部记录 ID，名称只作展示。后台同步不根据名称建立关系。
 
-关联的用途：本地课程详情列出所关联平台课程的 DDL；DDL 详情显示对应的本地课程并可打开；本地生成来源通过 `ctx.data.courseLinks` 读取。§13 事实 1 解决之前，学校排课 ID 会随平台调整而变化；关联的排课被来源移除时，课程详情提示重新关联，不按名称自动接上。
+关联的用途：本地课程详情列出所关联平台课程的 DDL；DDL 详情显示对应的本地课程并可打开；本地生成来源通过 `require("bitree.data").courseLinks` 读取。§13 事实 1 解决之前，学校排课 ID 会随平台调整而变化；关联的排课被来源移除时，课程详情提示重新关联，不按名称自动接上。
 
-本地手动课程进入 `ctx.data.courses` 和 `ctx.data.courseOccurrences`，与已经应用本地修改的同步课程一起提供给生成来源。读取不经过展示规则，以免隐藏、改名等显示操作影响持久数据生成。
+本地手动课程进入 `require("bitree.data").courses` 和 `require("bitree.data").courseOccurrences`，与已经应用本地修改的同步课程一起提供给生成来源。读取不经过展示规则，以免隐藏、改名等显示操作影响持久数据生成。
 
 取消勾选课程仅停止后续读取。删除其已导入 DDL 是单独的明确操作。移除关联也不删除任一侧课程。
 
@@ -309,7 +309,7 @@ return {
 
 参数或返回字段的小变化覆盖对应步骤；分页策略或整段请求流程改变时覆盖对应业务操作。步骤名称、参数和返回值是该内置包当前版本的契约，写在包的 SDK 文档中；Dart 私有方法不是公共 API。内置包更新后按 §5 的版本检查提示用户。
 
-来源和修复都通过 `ctx.http.request` 发出请求，执行顺序固定为：
+来源和修复都通过 `require("bitree.http").request` 发出请求，执行顺序固定为：
 
 ```text
 构造逻辑请求 → 检查授权与参数
@@ -357,37 +357,37 @@ WebVPN 由宿主把已授权的逻辑站点转换为实际传输地址，同时�
 
 ### 7.1 调用上下文
 
-`ctx` 绑定本次来源实例、当前账号、配置、操作、范围和取消状态。只读属性包含 `ctx.config`、`ctx.scope`、`ctx.locale`、`ctx.source`。脚本无法替换该上下文中的账号或授权。
+`ctx` 只绑定本次来源实例、当前账号、配置、操作、范围和继承入口。只读属性包含 `ctx.config`、`ctx.scope`、`ctx.locale`、`ctx.source`，以及 `ctx.base.call` / `ctx.base.steps`。网络、存储、数据、加密、时间和日志等通用能力通过 `require("bitree.*")` 加载；脚本无法替换该上下文中的账号或授权。
 
 | API | 功能与边界 |
 | --- | --- |
-| `ctx.http.request(request)` | GET/POST 等方法、query、form/JSON/bytes 正文、普通请求头、受限重定向；复用当前服务会话 |
+| `require("bitree.http").request(request)` | GET/POST 等方法、query、form/JSON/bytes 正文、普通请求头、受限重定向；复用当前服务会话 |
 | `response:json()` / `response:text()` / `response:bytes()` | 按调用者需要解析；HTTP 状态与解析错误分开 |
 | `ctx.base.call(name, query)` / `ctx.base.steps` | 调用所继承内置包的原操作和原步骤 |
-| `json.encode/decode/array/object/null` | 结构化转换，保持空数组与 null 语义 |
-| `html.parse(text)` | CSS 选择、文本、属性、子节点；执行期文档句柄不能持久保存 |
-| `url.parse/resolve/encodeQuery` | URL 处理，输出仍须经过网络授权检查 |
-| `encoding.base64Encode/base64Decode/utf8Encode/utf8Decode` | 当前协议需要的编码转换 |
-| `crypto.digest/hmac/encrypt/decrypt/randomBytes` | 复用现有密码库；显式算法与参数，不擅自改变学校协议 |
-| `time.parse/localDateTime/addDays/format` | 区分日期、时刻与校园时间；默认使用当前校园约定 |
-| `ctx.data.courses(query)` | 查询有效排课记录，可按学期、来源、选中项筛选，包含手动记录 |
-| `ctx.data.courseOccurrences(query)` | 根据周次、节次和校历展开实际课程发生时间 |
-| `ctx.data.agenda(query)` | 查询有效 DDL、活动、考试；默认不含删除项 |
-| `ctx.data.grades(query)` / `ctx.data.studyPlan(query)` | 查询获授权的学业数据 |
-| `ctx.data.courseLinks(query)` | 查询当前来源的平台课程与本地课程关联 |
-| `ctx.storage.get/set/remove` | 该扩展在当前来源实例内的小型 JSON 状态/缓存，不能读其他扩展；用户设置由宿主表单管理 |
-| `ctx.secrets.get/set/remove` | 仅本扩展自己管理的敏感值，系统安全存储；不能读取内置学校密码 |
-| `ctx.session.cookie(name, url)` | 仅认证实现声明的服务域和 Cookie 名称；用于平台所需 CSRF 等协议 |
-| `ctx.ui.form/select/confirm` | 用户主动动作和登录过程中的宿主表单；非交互执行返回需要用户操作 |
-| `ctx.ui.openUrl(url)` | 用户动作中打开链接；只直接打开包已声明的网站，其他网址先显示完整地址，由用户确认后打开 |
-| `ctx.progress.update({current,total,message})` | 更新当前操作进度；允许只有 message、总量未知 |
-| `ctx.log.info/warn/error` | 当前运行诊断，使用宿主脱敏和长度限制 |
-| `ctx.checkCancelled()` | 长的脚本循环或批处理主动检查；运行时仍实施执行预算 |
-| `ctx.fail(code, message, details?)` | 抛出稳定错误类型及必要恢复信息 |
+| `require("bitree.json")` | `encode/decode/array/object/null`，保持空数组与 null 语义 |
+| `require("bitree.html").parse(text)` | CSS 选择、文本、属性、子节点；执行期文档句柄不能持久保存 |
+| `require("bitree.url")` | `parse/resolve/encodeQuery`；输出仍须经过网络授权检查 |
+| `require("bitree.encoding")` | `base64Encode/base64Decode/utf8Encode/utf8Decode` |
+| `require("bitree.crypto")` | `digest/hmac/randomBytes`；显式算法与参数，不擅自改变学校协议 |
+| `require("bitree.time")` | `parse/localDateTime/addDays/format`；区分日期、时刻与校园时间 |
+| `require("bitree.data").courses(query)` | 查询有效排课记录，可按学期、来源、选中项筛选，包含手动记录 |
+| `require("bitree.data").courseOccurrences(query)` | 根据周次、节次和校历展开实际课程发生时间 |
+| `require("bitree.data").agenda(query)` | 查询有效 DDL、活动、考试；默认不含删除项 |
+| `require("bitree.data").grades(query)` / `studyPlan(query)` | 查询获授权的学业数据 |
+| `require("bitree.data").courseLinks(query)` | 查询当前来源的平台课程与本地课程关联 |
+| `require("bitree.storage")` | 该扩展在当前来源实例内的小型 JSON 状态/缓存，不能读其他扩展；用户设置由宿主表单管理 |
+| `require("bitree.secrets")` | 仅本扩展自己管理的敏感值，系统安全存储；不能读取内置学校密码 |
+| `require("bitree.session").cookie(name, url)` | 仅认证实现声明的服务域和 Cookie 名称；用于平台所需 CSRF 等协议 |
+| `require("bitree.ui").form/select/confirm` | 用户主动动作和登录过程中的宿主表单；非交互执行返回需要用户操作 |
+| `require("bitree.ui").openUrl(url)` | 用户动作中打开链接；只直接打开包已声明的网站，其他网址先显示完整地址，由用户确认后打开 |
+| `require("bitree.progress").update({current,total,message})` | 更新当前操作进度；允许只有 message、总量未知 |
+| `require("bitree.log")` | `info/warn/error` 使用宿主脱敏和长度限制 |
+| `require("bitree.runtime").checkCancelled()` | 长的脚本循环或批处理主动检查；运行时仍实施执行预算 |
+| `require("bitree.runtime").fail(code, message, details?)` | 抛出稳定错误类型及必要恢复信息 |
 
 URL、JSON、HTML、Crypto 等模块不依赖平台；平台专属的 CSRF、分页规则和字段含义归数据源所有。乐学日历导出的 ICS 解析作为内置乐学包内的 Lua 模块实现；文件导入和通用 CSV/ICS 宿主工具属于后续阶段。
 
-`ctx.storage` 只用于可以重新获取的小型缓存。修改先在本次调用内暂存，读取失败时丢弃，本次结果保存成功后才落盘；测试运行丢弃修改。账号 Token 和 Cookie 轮换由认证系统及时保存，不跟随业务结果回滚。依赖增量同步游标的来源属于后续阶段，届时再定义游标与领域保存、部分成功之间的提交规则。
+`require("bitree.storage")` 只用于可以重新获取的小型缓存。修改先在本次调用内暂存，读取失败时丢弃，本次结果保存成功后才落盘；测试运行丢弃修改。账号 Token 和 Cookie 轮换由认证系统及时保存，不跟随业务结果回滚。依赖增量同步游标的来源属于后续阶段，届时再定义游标与领域保存、部分成功之间的提交规则。
 
 Lua 标准 `string` 使用 Lua 的字符串和模式语义；不把 Dart 正则表达式伪装成 `string.gsub`。中文按字符截取时使用 `utf8` 辅助函数。
 
@@ -398,9 +398,9 @@ Lua 标准 `string` 使用 Lua 的字符串和模式语义；不把 Dart 正则�
 持久修改有两条明确路径：
 
 - 数据源通过标准返回值更新本来源的数据，不直接调用保存方法。
-- 用户主动执行的扩展动作可以使用 `ctx.edit.patch/create/delete`，产生普通领域编辑；提交由宿主完成。
+- 用户主动执行的扩展动作可以使用 `require("bitree.edit").patch/create/delete`，产生普通领域编辑；提交由宿主完成。
 
-`ctx.edit.patch(resource, id, fields)` 只修改声明可写的业务字段；修改同步记录时写入字段覆盖。`create` 创建手动记录，或由数据源接口创建有来源的记录，两者不混用。`delete` 采用现有领域删除/回收站语义。
+`require("bitree.edit").patch(resource, id, fields)` 只修改声明可写的业务字段；修改同步记录时写入字段覆盖。`create` 创建手动记录，或由数据源接口创建有来源的记录，两者不混用。`delete` 采用现有领域删除/回收站语义。
 
 动作运行时编辑暂存在内存，成功返回后展示新增、修改、删除的实际条目及字段差异。用户点击“应用修改”才保存；不会重新执行 Lua。保存时检查涉及记录是否在预览期间发生变化，冲突时保留预览并要求重新生成。这个预览只服务当前用户操作，不落执行凭证或历史流水。
 
@@ -418,11 +418,11 @@ Lua 标准 `string` 使用 Lua 的字符串和模式语义；不把 Dart 正则�
 | --- | --- | --- |
 | 无需账号 | 无登录步骤 | 普通 HTTP |
 | 复用现有学校/平台账号 | 选择已连接账号，接受服务访问 | 宿主给出该服务的会话 |
-| 网页登录（后续阶段） | 在受支持的官方登录窗口完成后返回 | `ctx.auth.browserLogin(options)` 返回指定来源会话 |
+| 网页登录（后续阶段） | 在受支持的官方登录窗口完成后返回 | `require("bitree.auth").browserLogin(options)` 返回指定来源会话 |
 | 账号密码、Token 等表单 | 显式字段、密码输入、保存选择 | `auth.login` 中读取本来源凭据并验证 |
 | Cookie 导入 | 来源详情里的高级登录方式 | 宿主解析并按域、路径、有效期保存 |
 
-首版扩展不能发起验证码。内置学校认证继续处理图形验证码及刷新、短信验证码及发送/重发：短信只在用户点击后发送，宿主控制并发、冷却时间和取消。供扩展使用的 `ctx.auth.challenge(spec)` 和网页登录属于后续阶段，有需要它们的来源时再定义。
+首版扩展不能发起验证码。内置学校认证继续处理图形验证码及刷新、短信验证码及发送/重发：短信只在用户点击后发送，宿主控制并发、冷却时间和取消。供扩展使用的 `require("bitree.auth").challenge(spec)` 和网页登录属于后续阶段，有需要它们的来源时再定义。
 
 非交互同步遇到验证，在获取验证码或发送短信之前停止该账号相关操作，返回 `verification_required`。用户从进度或来源详情选择“完成验证”后，再明确重试未完成项。独立账号来源继续运行。
 
@@ -506,11 +506,11 @@ C 层只负责 Lua 生命周期、加载/调用、值转换、执行控制和错
 
 宿主函数在 C 层返回待处理请求并挂起 Lua；Dart 完成异步操作后将结果送回并恢复执行。运行实例在工作 isolate 中执行；展示规则每次重建状态，来源运行也不依赖上一次 Lua 全局变量。需要持久保存的配置或缓存明确使用实例存储。
 
-会话、Cookie、安全存储和领域控制器都在主 isolate。工作 isolate 中的 Lua 每调用一次 `ctx.*` 异步能力，就向主 isolate 发送一条请求消息并挂起对应协程；主 isolate 完成后回送结果，工作 isolate 再恢复该协程。宿主调用不会回调 Lua，同一 Lua 实例不会被重入。取消由主 isolate 发消息通知，工作 isolate 停止恢复协程并关闭实例。
+会话、Cookie、安全存储和领域控制器都在主 isolate。工作 isolate 中的 Lua 每调用一次 `bitree.*` 异步能力，就向主 isolate 发送一条请求消息并挂起对应协程；主 isolate 完成后回送结果，工作 isolate 再恢复该协程。宿主调用不会回调 Lua，同一 Lua 实例不会被重入。取消由主 isolate 发消息通知，工作 isolate 停止恢复协程并关闭实例。
 
 开放 `string`、`table`、`math`、`utf8` 标准库和数据处理所需的基础函数，以及宿主管理的协程操作。`require` 加载宿主 `bitree.*` 模块或包内文本模块。文件、系统命令、原生动态库、调试修改接口通过宿主能力控制，不直接开放对应标准库入口。
 
-`coroutine` 由宿主包装：宿主挂起与脚本自己的 `coroutine.yield` 使用不同标记。脚本的 `coroutine.resume` 遇到宿主挂起时继续把它传给宿主，等结果回来再恢复，不会截走 `ctx.http` 等调用的结果。不开放 `string.dump`；`load` 只接受文本代码（模式 `"t"`），并使用调用方给定的受限环境；`collectgarbage` 只允许查询内存用量，不能停止回收器或调整参数。
+`coroutine` 由宿主包装：宿主挂起与脚本自己的 `coroutine.yield` 使用不同标记。脚本的 `coroutine.resume` 遇到宿主挂起时继续把它传给宿主，等结果回来再恢复，不会截走 `require("bitree.http")` 等调用的结果。不开放 `string.dump`；`load` 只接受文本代码（模式 `"t"`），并使用调用方给定的受限环境；`collectgarbage` 只允许查询内存用量，不能停止回收器或调整参数。
 
 执行限制分开管理：
 
@@ -654,7 +654,7 @@ return {
     operations = {
         ["agenda.read"] = function(ctx, query)
             local items = {}
-            local occurrences = ctx.data.courseOccurrences({
+            local occurrences = require("bitree.data").courseOccurrences({
                 termId = query.termId,
             })
             for _, occurrence in ipairs(occurrences) do
@@ -721,7 +721,7 @@ packages/bitree_lua/    C Lua、薄 C 封装、构建钩子和 FFI
 | `SyncTarget` 平台枚举与大 switch | 学习平台目标由来源支持的资源生成；教学中心目标随第 5 阶段迁移 | 2、5 |
 | `SchoolController` 同时登录、获取并保存各类数据 | 认证交给账号/会话；获取交给来源；合并仍在领域控制器 | 2（DDL）、5（其余） |
 | `SchoolAccess` / `SchoolConnection` | 保留本校认证与选路协议，通过宿主公开服务会话 | 2 |
-| `SchoolSession` 与 `MoocApi` 自有传输代码 | 提取共同 HTTP、Cookie、取消部分供 `ctx.http` 使用；平台特殊协议移入内置 Lua 包 | 3 |
+| `SchoolSession` 与 `MoocApi` 自有传输代码 | 提取共同 HTTP、Cookie、取消部分供 `bitree.http` 使用；平台特殊协议移入内置 Lua 包 | 3 |
 | `fetchLexueDeadlines` / `_courseTasks` / `MoocApi.readDeadlines` | 先拆出课程发现、课程解析、逐课程读取和乐学账号级读取；再改写为内置 Lua 包并删除 Dart 版本 | 2、3 |
 | `replaceExams(term, ...)` 全学期替换 | 改为按来源实例与学期替换 | 5 |
 | `mergeDeadlines` 平台专属匹配 | 数据源归一 ID，领域按来源身份合并 | 2 |
@@ -774,7 +774,7 @@ packages/bitree_lua/    C Lua、薄 C 封装、构建钩子和 FFI
 以下能力不属于第 1 节的场景，列为后续阶段，有对应的实际需求时再设计：
 
 - 多个学业来源并存时的汇总选择。
-- 扩展使用的网页登录 `ctx.auth.browserLogin` 和验证码 `ctx.auth.challenge`。
+- 扩展使用的网页登录 `require("bitree.auth").browserLogin` 和验证码 `require("bitree.auth").challenge`。
 - 用户选取文件导入，以及通用 CSV/ICS 解析工具。
 - 与领域保存绑定的增量同步游标。
 - 多个自定义展示脚本同时启用及排序。
@@ -798,7 +798,7 @@ packages/bitree_lua/    C Lua、薄 C 封装、构建钩子和 FFI
 - 替换实现和恢复内置实现沿用来源身份，不复制记录。
 - DDL 和活动能由 Lua 来源提供；教学中心各类数据的验收随第 5 阶段确定。
 - 覆盖的步骤确实被内置操作调用，覆盖了不存在的步骤时报告错误；认证凭据不出现在脚本可见的请求头、响应头或日志中。
-- 无权限域名、跨域重定向、错误 WebVPN 目标和跨来源数据写入被阻止；使用账号会话的包不能申请外部网站，`ctx.ui.openUrl` 和记录 `url` 不能指向未声明的网站。
+- 无权限域名、跨域重定向、错误 WebVPN 目标和跨来源数据写入被阻止；使用账号会话的包不能申请外部网站，`require("bitree.ui").openUrl` 和记录 `url` 不能指向未声明的网站。
 - 普通死循环、循环捕获错误、子协程死循环、内存耗尽和巨大结果均有验证；在 `table.sort` 比较函数中调用宿主异步能力得到明确错误；运行时失败后可继续执行其他扩展。
 - 旧课表、日程、学业数据、负周次和旧时间格式完成迁移；迁移后首次同步不产生重复 DDL；降级后旧版本读取原文件正常运行。
 - UI 覆盖窄屏、长课程名、多来源、键盘操作、字体放大、空状态、错误与禁用状态。

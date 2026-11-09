@@ -34,6 +34,16 @@ void main() {
     expect(find.text('教学中心'), findsNothing);
     expect(find.text('物理实验报告'), findsNothing);
     expect(find.text('从文件夹安装扩展'), findsOneWidget);
+    expect(find.text('从链接安装扩展'), findsOneWidget);
+
+    await tester.tap(find.text('从链接安装扩展'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('扩展包链接'), findsOneWidget);
+    expect(find.text('SHA-256'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.close_rounded));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
     await tester.tap(find.text('乐学'));
     await tester.pumpAndSettle();

@@ -4,6 +4,185 @@ import 'package:bitree/sources/source.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('Lua source exposes progress and cryptographic primitives', () async {
+    Map<String, Object?>? progress;
+    final module = LuaSourceModule.parse('''
+local crypto = require("bitree.crypto")
+local progress = require("bitree.progress")
+return {
+  operations = {
+    ["agenda.read"] = function(ctx, query)
+      progress.update({ current = 1, total = 2, message = "读取中" })
+      return {
+        digestLength = #crypto.digest("SHA-256", "hello"),
+        hmacLength = #crypto.hmac("SHA-256", "key", "value"),
+        randomLength = #crypto.randomBytes(4),
+      }
+    end,
+  },
+}
+''');
+
+    final result = await module.callOperation(
+      SourceOperation.agendaRead,
+      SourceOperationContext(progressSink: (value) => progress = value),
+    );
+
+    expect(progress, {'current': 1, 'total': 2, 'message': '读取中'});
+    expect(result, {'digestLength': 32, 'hmacLength': 32, 'randomLength': 4});
+  });
+
+  test('Lua source computes standard HMAC-SHA256', () async {
+    final module = LuaSourceModule.parse('''
+local crypto = require("bitree.crypto")
+return {
+  operations = {
+    ["agenda.read"] = function(ctx, query)
+      local bytes = crypto.hmac(
+        "SHA-256",
+        "key",
+        "The quick brown fox jumps over the lazy dog"
+      )
+      local hex = {}
+      for index = 1, #bytes do
+        hex[index] = string.format("%02x", bytes[index])
+      end
+      return table.concat(hex)
+    end,
+  },
+}
+''');
+
+    final result = await module.callOperation(
+      SourceOperation.agendaRead,
+      SourceOperationContext(),
+    );
+
+    expect(
+      result,
+      'f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8',
+    );
+  });
+
+  test(
+    'generic host capabilities are only available through require',
+    () async {
+      final module = LuaSourceModule.parse('''
+return {
+  operations = {
+    ["agenda.read"] = function(ctx, query)
+      return {
+        http = ctx.http == nil,
+        storage = ctx.storage == nil,
+        data = ctx.data == nil,
+        crypto = ctx.crypto == nil,
+        checkCancelled = ctx.checkCancelled == nil,
+      }
+    end,
+  },
+}
+''');
+
+      final result = await module.callOperation(
+        SourceOperation.agendaRead,
+        SourceOperationContext(),
+      );
+
+      expect(result, {
+        'http': true,
+        'storage': true,
+        'data': true,
+        'crypto': true,
+        'checkCancelled': true,
+      });
+    },
+  );
+
+  test('Lua source reads and removes extension-scoped secrets', () async {
+    final secrets = _MemorySecrets();
+    final module = LuaSourceModule.parse('''
+local secrets = require("bitree.secrets")
+return {
+  operations = {
+    ["agenda.read"] = function(ctx, query)
+      secrets.set("token", "abc")
+      local value = secrets.get("token")
+      secrets.remove("token")
+      return { value = value, after = secrets.get("token") }
+    end,
+  },
+}
+''');
+
+    final result = await module.callOperation(
+      SourceOperation.agendaRead,
+      SourceOperationContext(
+        secrets: secrets,
+        secretNamespace: 'test.package:instance',
+      ),
+    );
+
+    expect(result, {'value': 'abc', 'after': SourceJsonNull.instance});
+    expect(secrets.values, isEmpty);
+  });
+
+  test('Lua source requests a declared session cookie', () async {
+    final module = LuaSourceModule.parse('''
+local session = require("bitree.session")
+return {
+  operations = {
+    ["agenda.read"] = function(ctx, query)
+      return {
+        cookie = session.cookie("csrf", "https://example.com/read"),
+      }
+    end,
+  },
+}
+''');
+    final received = <String>[];
+
+    final result = await module.callOperation(
+      SourceOperation.agendaRead,
+      SourceOperationContext(
+        sessionCookie: (name, url) async {
+          received.add('$name $url');
+          return 'csrf-value';
+        },
+      ),
+    );
+
+    expect(result, {'cookie': 'csrf-value'});
+    expect(received, ['csrf https://example.com/read']);
+  });
+
+  test('Lua source can query host-provided local data', () async {
+    final module = LuaSourceModule.parse('''
+local data = require("bitree.data")
+return {
+  operations = {
+    ["agenda.read"] = function(ctx, query)
+      return data.courses({ termId = "2026-2" })
+    end,
+  },
+}
+''');
+
+    final result = await module.callOperation(
+      SourceOperation.agendaRead,
+      SourceOperationContext(
+        data: {
+          'courses': (query) => [
+            {'name': '本地课程', 'term': query['termId']},
+          ],
+        },
+      ),
+    );
+
+    expect(result, [
+      {'name': '本地课程', 'term': '2026-2'},
+    ]);
+  });
+
   test('Lua source dispatches an operation with query and context', () async {
     final module = LuaSourceModule.parse('''
 return {
@@ -51,15 +230,14 @@ return {
     final result = await module.callOperation(
       SourceOperation.deadlinesRead,
       SourceOperationContext(
-        baseOperations: {
-          'deadlines.read': (query) {
-            receivedQuery = query;
-            return {
-              'items': [
-                {'remoteId': '1', 'title': '作业'},
-              ],
-            };
-          },
+        baseOperationHandler: (name, query) async {
+          expect(name, 'deadlines.read');
+          receivedQuery = query;
+          return {
+            'items': [
+              {'remoteId': '1', 'title': '作业'},
+            ],
+          };
         },
       ),
       {
@@ -214,7 +392,7 @@ return {
 return {
   operations = {
     ["agenda.read"] = function(ctx, query)
-      local response = ctx.http.request({
+      local response = require("bitree.http").request({
         method = "GET",
         url = "https://example.com/data.json"
       })
@@ -252,7 +430,7 @@ return {
 return {
   operations = {
     ["agenda.read"] = function(ctx, query)
-      ctx.http.request({ url = "https://example.com/check" })
+      require("bitree.http").request({ url = "https://example.com/check" })
       local rows = ctx.base.steps.activityRows(ctx, { activity = "quiz" })
       return { title = rows[1].title }
     end
@@ -309,4 +487,22 @@ return {
       ),
     );
   });
+}
+
+class _MemorySecrets implements SourceSecretStore {
+  final values = <String, Object?>{};
+
+  @override
+  Future<Object?> read(String namespace, String key) async =>
+      values['$namespace/$key'];
+
+  @override
+  Future<void> write(String namespace, String key, Object? value) async {
+    values['$namespace/$key'] = value;
+  }
+
+  @override
+  Future<void> remove(String namespace, String key) async {
+    values.remove('$namespace/$key');
+  }
 }

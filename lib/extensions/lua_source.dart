@@ -1,5 +1,13 @@
 import 'dart:convert';
 import 'dart:ffi';
+import 'dart:math';
+import 'dart:typed_data';
+
+import 'package:pointycastle/api.dart';
+import 'package:pointycastle/digests/md5.dart';
+import 'package:pointycastle/digests/sha1.dart';
+import 'package:pointycastle/digests/sha256.dart';
+import 'package:pointycastle/macs/hmac.dart';
 
 import '../core/time.dart';
 import '../sources/runtime.dart';
@@ -125,8 +133,6 @@ class LuaSourceModule {
           'source': _jsonReady(context.source),
           'locale': context.locale,
           'steps': context.baseSteps.keys.toList(),
-          'data': context.data.keys.toList(),
-          'storage': _jsonReady(context.storage),
         },
         host: (engine, kind, name, args) =>
             _dispatchHost(engine, context, kind, name, args),
@@ -151,14 +157,6 @@ class LuaSourceModule {
   ) {
     try {
       switch (kind) {
-        case 'base.call':
-          final operation = context.baseOperations[name];
-          if (operation == null) {
-            throw SourceError('unknown_operation', '内置来源没有操作 ${name ?? ''}。');
-          }
-          context.stepDispatcher = (step, arguments) =>
-              _callStep(context, step, arguments, engine: engine);
-          return _jsonReady(operation(args.isEmpty ? null : args.first));
         case 'step':
           final step = context.baseSteps[name];
           if (step == null) {
@@ -195,6 +193,26 @@ class LuaSourceModule {
           }
           context.logSink?.call(args[0] as String, args[1] as String);
           return null;
+        case 'progress.update':
+          final value = args.isEmpty ? null : args.first;
+          if (value is! Map) {
+            throw const SourceError('invalid_argument', '进度必须是对象。');
+          }
+          context.progressSink?.call(Map<String, Object?>.from(value));
+          return true;
+        case 'crypto.randomBytes':
+          return _randomBytes(_integerValue(args, 0));
+        case 'crypto.digest':
+          return _digest(
+            _stringValue(args, 0),
+            _bytesValue(args.isEmpty ? null : args[1]),
+          );
+        case 'crypto.hmac':
+          return _hmac(
+            _stringValue(args, 0),
+            _bytesValue(args.length > 1 ? args[1] : null),
+            _bytesValue(args.length > 2 ? args[2] : null),
+          );
         case 'cancel':
           if (context.isCancelled?.call() ?? false) {
             throw const SourceCancelled();
@@ -278,20 +296,93 @@ class LuaSourceModule {
     SourceOperationContext context,
     Map<String, Object?> request,
   ) async {
-    if (request['kind'] != 'http.request') {
-      throw const NativeLuaError('script_error', '未知的 Lua 异步宿主调用');
-    }
-    final args = request['args'];
-    final raw = args is List && args.isNotEmpty ? args.first : null;
-    if (raw is! Map) {
-      throw const NativeLuaError('invalid_argument', 'HTTP 请求格式不正确');
-    }
-    final handler = context.httpRequest;
-    if (handler == null) {
-      throw const NativeLuaError('permission_denied', '该来源没有网络访问权限');
-    }
     try {
-      return _jsonReady(await handler(Map<String, Object?>.from(raw)));
+      switch (request['kind']) {
+        case 'http.request':
+          final args = request['args'];
+          final raw = args is List && args.isNotEmpty ? args.first : null;
+          if (raw is! Map) {
+            throw const NativeLuaError('invalid_argument', 'HTTP 请求格式不正确');
+          }
+          final handler = context.httpRequest;
+          if (handler == null) {
+            throw const NativeLuaError('permission_denied', '该来源没有网络访问权限');
+          }
+          return _jsonReady(await handler(Map<String, Object?>.from(raw)));
+        case 'base.call':
+          final args = request['args'];
+          final name = args is List && args.isNotEmpty
+              ? args.first
+              : request['name'];
+          if (name is! String) {
+            throw NativeLuaError(
+              'invalid_argument',
+              '基础操作缺少名称：${jsonEncode(request)}',
+            );
+          }
+          final query = args is List && args.length > 1 ? args[1] : null;
+          final handler = context.baseOperationHandler;
+          if (handler == null) {
+            throw const NativeLuaError('unknown_operation', '当前来源没有基础实现');
+          }
+          return _jsonReady(await handler(name, query));
+        case 'session.cookie':
+          final args = request['args'];
+          final name = args is List && args.isNotEmpty ? args.first : null;
+          final rawUrl = args is List && args.length > 1 ? args[1] : null;
+          if (name is! String || rawUrl is! String) {
+            throw const NativeLuaError('invalid_argument', 'Cookie 请求缺少名称或地址');
+          }
+          final handler = context.sessionCookie;
+          if (handler == null) {
+            throw const NativeLuaError(
+              'permission_denied',
+              '当前来源没有会话 Cookie 访问权限',
+            );
+          }
+          return _jsonReady(await handler(name, rawUrl));
+        case 'secrets.get':
+          final args = request['args'];
+          final key = args is List && args.isNotEmpty ? args.first : null;
+          if (key is! String) {
+            throw const NativeLuaError('invalid_argument', '秘密值缺少键');
+          }
+          final store = context.secrets;
+          final namespace = context.secretNamespace;
+          if (store == null || namespace == null) {
+            throw const NativeLuaError('permission_denied', '当前来源没有秘密存储权限');
+          }
+          return _jsonReady(await store.read(namespace, key));
+        case 'secrets.set':
+          final args = request['args'];
+          final key = args is List && args.isNotEmpty ? args.first : null;
+          final value = args is List && args.length > 1 ? args[1] : null;
+          if (key is! String) {
+            throw const NativeLuaError('invalid_argument', '秘密值缺少键');
+          }
+          final store = context.secrets;
+          final namespace = context.secretNamespace;
+          if (store == null || namespace == null) {
+            throw const NativeLuaError('permission_denied', '当前来源没有秘密存储权限');
+          }
+          await store.write(namespace, key, value);
+          return true;
+        case 'secrets.remove':
+          final args = request['args'];
+          final key = args is List && args.isNotEmpty ? args.first : null;
+          if (key is! String) {
+            throw const NativeLuaError('invalid_argument', '秘密值缺少键');
+          }
+          final store = context.secrets;
+          final namespace = context.secretNamespace;
+          if (store == null || namespace == null) {
+            throw const NativeLuaError('permission_denied', '当前来源没有秘密存储权限');
+          }
+          await store.remove(namespace, key);
+          return true;
+        default:
+          throw const NativeLuaError('script_error', '未知的 Lua 异步宿主调用');
+      }
     } on SourceCancelled {
       throw const NativeLuaError('cancelled', 'Lua 执行已取消');
     } on SourceError catch (failure) {
@@ -345,6 +436,42 @@ int _integerValue(List<Object?> args, int index) {
 int _byteValue(Object? value) {
   if (value is int && value >= 0 && value <= 255) return value;
   throw const SourceError('invalid_bytes', '字节值必须在 0–255 之间。');
+}
+
+List<int> _bytesValue(Object? value) {
+  if (value is String) return utf8.encode(value);
+  if (value is List) return [for (final item in value) _byteValue(item)];
+  throw const SourceError('invalid_bytes', '需要文本或字节数组。');
+}
+
+List<int> _randomBytes(int length) {
+  if (length < 0 || length > 64 * 1024) {
+    throw const SourceError('invalid_argument', '随机字节长度必须在 0–64 KiB。');
+  }
+  final random = Random.secure();
+  return [for (var index = 0; index < length; index++) random.nextInt(256)];
+}
+
+List<int> _digest(String algorithm, List<int> value) {
+  final digest = switch (algorithm.toUpperCase()) {
+    'MD5' => MD5Digest(),
+    'SHA1' || 'SHA-1' => SHA1Digest(),
+    'SHA256' || 'SHA-256' => SHA256Digest(),
+    _ => throw SourceError('unsupported_algorithm', '不支持的摘要算法：$algorithm'),
+  };
+  return digest.process(Uint8List.fromList(value)).toList();
+}
+
+List<int> _hmac(String algorithm, List<int> key, List<int> value) {
+  final digest = switch (algorithm.toUpperCase()) {
+    'MD5' => MD5Digest(),
+    'SHA1' || 'SHA-1' => SHA1Digest(),
+    'SHA256' || 'SHA-256' => SHA256Digest(),
+    _ => throw SourceError('unsupported_algorithm', '不支持的 HMAC 算法：$algorithm'),
+  };
+  final mac = HMac.withDigest(digest)
+    ..init(KeyParameter(Uint8List.fromList(key)));
+  return mac.process(Uint8List.fromList(value)).toList();
 }
 
 String _queryValue(Object? value) => value is List

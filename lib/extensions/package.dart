@@ -15,7 +15,7 @@ class ExtensionManifest {
     required this.apiVersion,
     required this.sources,
   }) {
-    if (id.trim().isEmpty || version.trim().isEmpty) {
+    if (!_packageId.hasMatch(id) || !_version.hasMatch(version)) {
       throw const FormatException('扩展包缺少编号或版本');
     }
     if (apiVersion != supportedExtensionApiVersion) {
@@ -235,6 +235,7 @@ class ExtensionPackage {
     required this.manifest,
     required this.location,
     this.installedAt,
+    this.managed = false,
   }) {
     if (location.trim().isEmpty) {
       throw const FormatException('扩展包缺少安装位置');
@@ -248,19 +249,27 @@ class ExtensionPackage {
         installedAt: json['installedAt'] is String
             ? DateTime.tryParse(json['installedAt'] as String)
             : null,
+        managed: json['managed'] == true,
       );
 
   final ExtensionManifest manifest;
   final String location;
   final DateTime? installedAt;
+  final bool managed;
 
   ExtensionPackage installed(DateTime at) =>
-      ExtensionPackage(manifest: manifest, location: location, installedAt: at);
+      ExtensionPackage(
+        manifest: manifest,
+        location: location,
+        installedAt: at,
+        managed: managed,
+      );
 
   Map<String, Object?> toJson() => {
     'manifest': manifest.toJson(),
     'location': location,
     if (installedAt != null) 'installedAt': installedAt!.toIso8601String(),
+    if (managed) 'managed': true,
   };
 }
 
@@ -326,6 +335,9 @@ String _requiredString(Map<String, dynamic> json, String key) {
   if (value is String && value.trim().isNotEmpty) return value.trim();
   throw FormatException('manifest.json 缺少 $key');
 }
+
+final _packageId = RegExp(r'^[a-z0-9][a-z0-9._-]*$');
+final _version = RegExp(r'^[0-9A-Za-z][0-9A-Za-z._+-]*$');
 
 List<Object?> _list(Object? value, String field) {
   if (value is List) return value;

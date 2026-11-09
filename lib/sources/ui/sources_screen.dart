@@ -49,6 +49,15 @@ class _SourcesScreenState extends State<SourcesScreen> {
     }
   }
 
+  Future<void> _installFromUrl() async {
+    setState(() => _installing = true);
+    try {
+      await installExtensionFromUrl(context, _app);
+    } finally {
+      if (mounted) setState(() => _installing = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: Listenable.merge([_app.sources, _app.extensions]),
@@ -108,23 +117,30 @@ class _SourcesScreenState extends State<SourcesScreen> {
                 leading: const Icon(Icons.extension_outlined),
                 title: Text(package.manifest.name.resolve(language)),
                 subtitle: Text(
-                  extensionProvides(
-                    _app,
-                    package,
-                    l10n,
-                    language,
-                  ).join(l10n.listSeparator),
+                  [
+                    ...extensionProvides(_app, package, l10n, language),
+                    if (_app.extensions.isBundled(package.manifest.id))
+                      l10n.extensionBundled,
+                  ].join(l10n.listSeparator),
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => showExtensionDetails(context, _app, package),
               ),
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: TextButton.icon(
-                onPressed: _installing ? null : _install,
-                icon: const Icon(Icons.folder_open_outlined),
-                label: Text(l10n.installExtensionFromFolder),
-              ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                TextButton.icon(
+                  onPressed: _installing ? null : _install,
+                  icon: const Icon(Icons.folder_open_outlined),
+                  label: Text(l10n.installExtensionFromFolder),
+                ),
+                TextButton.icon(
+                  onPressed: _installing ? null : _installFromUrl,
+                  icon: const Icon(Icons.link_rounded),
+                  label: Text(l10n.installExtensionFromUrl),
+                ),
+              ],
             ),
           ],
         ),

@@ -7,6 +7,8 @@ import '../automation/controller.dart';
 import '../classrooms/repository.dart';
 import '../core/diagnostics.dart';
 import '../core/platform/system_palette.dart';
+import '../core/time.dart';
+import '../extensions/bundled.dart';
 import '../extensions/controller.dart';
 import '../extensions/store.dart';
 import '../mooc/controller.dart';
@@ -20,6 +22,8 @@ import '../sources/builtin.dart';
 import '../sources/builtin_runtime.dart';
 import '../sources/host.dart';
 import '../sources/registry.dart';
+import '../sources/runtime.dart';
+import '../sources/secrets.dart';
 import '../sources/sync.dart';
 import '../sync/controller.dart';
 import '../ui/course_palette.dart';
@@ -40,6 +44,8 @@ class AppController extends ChangeNotifier {
     MoocStorage? moocStorage,
     SourceRegistry? sourceRegistry,
     ExtensionStore? extensionStore,
+    BundledExtensionLoader? bundledExtensionLoader,
+    SourceSecretStore? sourceSecrets,
   }) : settings = AppSettingsController(
          preferences,
          systemPaletteSource: systemPaletteSource,
@@ -61,13 +67,25 @@ class AppController extends ChangeNotifier {
       storage: moocStorage ?? MoocStorage(),
       agenda: agenda,
     );
-    extensions = ExtensionController(sources: sources, store: extensionStore);
+    extensions = ExtensionController(
+      sources: sources,
+      store: extensionStore,
+      bundledLoader: bundledExtensionLoader,
+    );
     final builtinRuntime = BuiltinSourceRuntime(
       school: this.school,
       mooc: mooc,
     );
     sourceHost = SourceHost(
       registry: sources,
+      secrets: sourceSecrets ?? const SecureSourceSecrets(),
+      data: {
+        'courses': _sourceCourses,
+        'courseOccurrences': _sourceCourseOccurrences,
+        'agenda': _sourceAgenda,
+        'grades': (query) => academics.record.toJson(),
+        'studyPlan': (query) => academics.record.plan?.toJson(),
+      },
       runtimeFor: (definition) async {
         final builtin = builtinRuntime.runtimeFor(definition);
         return builtin ?? await extensions.runtimeFor(definition);
@@ -102,12 +120,13 @@ class AppController extends ChangeNotifier {
   bool get ready => _ready;
 
   Future<void> initialize() async {
-    await extensions.load();
     await sources.load();
+    await extensions.load();
     await timetable.load();
     await settings.initialize();
     await school.loadAccount();
     await _connectSourceInstances();
+    await extensions.activateBundledImplementations();
     await agenda.load();
     await automation.initialize();
     await mooc.load();
@@ -154,6 +173,57 @@ class AppController extends ChangeNotifier {
     } catch (failure, stack) {
       AppDiagnostics.instance.report('初始化数据来源', failure, stack);
     }
+  }
+
+  List<Map<String, Object?>> _sourceCourses(Map<String, Object?> query) {
+    final term = query['termId'] ?? query['term'];
+    final schedules = term is String
+        ? timetable.schedules.where((schedule) => schedule.term == term)
+        : [
+            ?timetable.schedule,
+          ];
+    return [
+      for (final schedule in schedules)
+        for (final course in schedule.courses) course.toJson(),
+    ];
+  }
+
+  List<Map<String, Object?>> _sourceCourseOccurrences(
+    Map<String, Object?> query,
+  ) {
+    final term = query['termId'] ?? query['term'];
+    final selected = term is String
+        ? timetable.schedules.where((schedule) => schedule.term == term)
+        : timetable.schedules;
+    return [
+      for (final schedule in selected)
+        for (final course in schedule.courses)
+          if (course.weekday != null)
+            for (final week in course.weeks)
+              {
+                'date': dateText(
+                  schedule.mondayAt(week).add(
+                    Duration(days: course.weekday! - 1),
+                  ),
+                ),
+                'week': week,
+                'course': course.toJson(),
+                if (course.startSection != null)
+                  'startSection': course.startSection,
+                if (course.endSection != null) 'endSection': course.endSection,
+              },
+    ];
+  }
+
+  List<Map<String, Object?>> _sourceAgenda(Map<String, Object?> query) {
+    final term = query['termId'] ?? query['term'];
+    final kind = query['kind'];
+    return [
+      for (final entry in agenda.entries)
+        if ((term is! String || entry.term == term) &&
+            (kind is! String || entry.kind.name == kind))
+          entry.toJson(),
+    ];
   }
 
   @override

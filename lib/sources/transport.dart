@@ -160,6 +160,29 @@ class SourceHttpTransport {
     }
   }
 
+  Future<String?> cookie(
+    String instanceId,
+    SourcePermissions permissions, {
+    required String name,
+    required Uri url,
+    bool Function()? isCancelled,
+  }) async {
+    _checkCancelled(isCancelled);
+    _requireAllowed(permissions, url);
+    if (!permissions.cookies.values.any((names) => names.contains(name))) {
+      throw SourceHttpException(
+        'permission_denied',
+        '来源没有读取 Cookie $name 的权限',
+      );
+    }
+    final cookies = await _jarFor(instanceId).loadForRequest(url);
+    _checkCancelled(isCancelled);
+    for (final cookie in cookies) {
+      if (cookie.name == name) return cookie.value;
+    }
+    return null;
+  }
+
   void _requireAllowed(SourcePermissions permissions, Uri url) {
     if (!permissions.allows(url)) {
       throw SourceHttpException(

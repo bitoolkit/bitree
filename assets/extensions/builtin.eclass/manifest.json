@@ -1,0 +1,15 @@
+{
+  "id": "builtin.eclass",
+  "name": {"zh": "新延河课堂内置包", "en": "Built-in Eclass package"},
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "sources": [
+    {
+      "id": "source",
+      "name": {"zh": "新延河课堂", "en": "Eclass"},
+      "entry": "source.lua",
+      "extends": "builtin.bit.eclass",
+      "baseVersion": "1.0.0"
+    }
+  ]
+}

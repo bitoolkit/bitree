@@ -31,7 +31,9 @@ class SourceDetailScreen extends StatefulWidget {
   State<SourceDetailScreen> createState() => _SourceDetailScreenState();
 }
 
-typedef _ImplementationChoice = ({String? id, bool install});
+enum _InstallSource { folder, url }
+
+typedef _ImplementationChoice = ({String? id, _InstallSource? install});
 
 class _SourceDetailScreenState extends State<SourceDetailScreen> {
   final _textFields = <String, TextEditingController>{};
@@ -185,8 +187,16 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
   Future<void> _chooseImplementation(SourceInstance instance) async {
     final l10n = context.l10n;
     final language = Localizations.localeOf(context).languageCode;
+    final builtInId = _app.extensions.bundledImplementationFor(
+      instance.definitionId,
+    );
     final implementations = _app.sources.catalog.definitions
-        .where((definition) => definition.extendsId == instance.definitionId)
+        .where(
+          (definition) =>
+              definition.extendsId == instance.definitionId ||
+              definition.extendsId == instance.implementationId ||
+              definition.extendsId == builtInId,
+        )
         .toList();
     Widget option(
       BuildContext sheetContext,
@@ -200,7 +210,7 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
         title: Text(title),
         subtitle: subtitle == null ? null : Text(subtitle),
         trailing: selected ? const Icon(Icons.check_rounded) : null,
-        onTap: () => Navigator.pop(sheetContext, (id: id, install: false)),
+        onTap: () => Navigator.pop(sheetContext, (id: id, install: null)),
       );
     }
 
@@ -214,7 +224,13 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            option(sheetContext, l10n.sourceBuiltinImplementation, null),
+            option(
+              sheetContext,
+              builtInId == null
+                  ? l10n.sourceBuiltinImplementation
+                  : l10n.sourceBundledImplementation,
+              builtInId,
+            ),
             for (final definition in implementations)
               option(
                 sheetContext,
@@ -226,16 +242,32 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
             ListTile(
               leading: const Icon(Icons.folder_open_outlined),
               title: Text(l10n.installExtensionFromFolder),
-              onTap: () =>
-                  Navigator.pop(sheetContext, (id: null, install: true)),
+              onTap: () => Navigator.pop(
+                sheetContext,
+                (id: null, install: _InstallSource.folder),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.link_rounded),
+              title: Text(l10n.installExtensionFromUrl),
+              onTap: () => Navigator.pop(
+                sheetContext,
+                (id: null, install: _InstallSource.url),
+              ),
             ),
           ],
         ),
       ),
     );
     if (choice == null || !mounted) return;
-    if (choice.install) {
-      await installExtension(context, _app);
+    if (choice.install case final source?) {
+      switch (source) {
+        case _InstallSource.folder:
+          await installExtension(context, _app);
+        case _InstallSource.url:
+          await installExtensionFromUrl(context, _app);
+      }
+      return;
     } else if (choice.id != instance.implementationId) {
       await _app.sources.setImplementation(instance.id, choice.id);
     }

@@ -5,6 +5,7 @@ import 'package:bitree/agenda/controller.dart';
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/store.dart';
 import 'package:bitree/app/controller.dart';
+import 'package:bitree/extensions/bundled.dart';
 import 'package:bitree/extensions/store.dart';
 import 'package:bitree/mooc/credentials.dart';
 import 'package:bitree/mooc/storage.dart';
@@ -151,6 +152,7 @@ class TestAppController extends AppController {
          academics: AcademicController(academicStore ?? MemoryAcademicStore()),
          sourceRegistry: SourceRegistry(store: MemorySourceStore()),
          extensionStore: MemoryExtensionStore(),
+         bundledExtensionLoader: const NoBundledExtensions(),
        ) {
     addTearDown(dispose);
   }

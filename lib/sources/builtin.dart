@@ -123,24 +123,34 @@ class SourceCatalog {
 
   SourceDefinition? operator [](String id) => _definitions[id];
 
-  /// Resolves a single level of inheritance. An extending source inherits the
-  /// built-in operations and permissions, then adds its own declarations.
+  /// Resolves an inheritance chain from the requested source to its base.
+  /// Built-in packages and user fixes may form one chain, so the catalog
+  /// applies every declaration in order instead of limiting inheritance to a
+  /// single level.
   SourceDefinition require(String id) {
-    final definition = _definitions[id];
+    final chain = <SourceDefinition>[];
+    final seen = <String>{};
+    var definition = _definitions[id];
     if (definition == null) {
       throw FormatException('未知的来源定义：$id');
     }
-    if (definition.extendsId case final baseId?) {
-      final base = _definitions[baseId];
-      if (base == null) {
-        throw FormatException('来源 $id 继承的内置定义不存在：$baseId');
+    while (true) {
+      if (!seen.add(definition!.id)) {
+        throw FormatException('来源继承出现循环：$id');
       }
-      if (base.extendsId != null) {
-        throw FormatException('来源 $id 不支持多层继承');
+      chain.add(definition);
+      final baseId = definition.extendsId;
+      if (baseId == null) break;
+      definition = _definitions[baseId];
+      if (definition == null) {
+        throw FormatException('来源 ${chain.last.id} 继承的定义不存在：$baseId');
       }
-      return definition.effectiveFrom(base);
     }
-    return definition;
+    var effective = chain.removeLast();
+    for (final derived in chain.reversed) {
+      effective = derived.effectiveFrom(effective);
+    }
+    return effective;
   }
 
   SourceCatalog withDefinitions(Iterable<SourceDefinition> definitions) =>

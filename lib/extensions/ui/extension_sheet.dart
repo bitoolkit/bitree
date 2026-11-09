@@ -9,6 +9,7 @@ import '../../ui/app_dialog.dart';
 import '../../ui/app_notice.dart';
 import '../../ui/section_label.dart';
 import '../../ui/sheet_layout.dart';
+import '../download.dart';
 import '../package.dart';
 
 /// Picks a package folder, shows what it provides and can access, then
@@ -46,22 +47,54 @@ Future<void> installExtension(BuildContext context, AppController app) async {
   }
 }
 
+Future<void> installExtensionFromUrl(
+  BuildContext context,
+  AppController app,
+) async {
+  final bundle = await showAppSheet<ExtensionBundle>(
+    context: context,
+    builder: (_) => _UrlExtensionSheet(app: app),
+  );
+  if (bundle == null || !context.mounted) return;
+  final confirmed = await showAppSheet<bool>(
+    context: context,
+    builder: (_) => _ExtensionSheet(
+      app: app,
+      package: ExtensionPackage(
+        manifest: bundle.manifest,
+        location: 'download:${bundle.manifest.id}',
+      ),
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+  try {
+    await app.extensions.installDownload(bundle);
+  } on Exception catch (error) {
+    if (context.mounted) await _showInstallError(context, error);
+  }
+}
+
 /// Shows an installed package and offers to uninstall it.
 Future<void> showExtensionDetails(
   BuildContext context,
   AppController app,
   ExtensionPackage package,
 ) async {
+  final bundled = app.extensions.isBundled(package.manifest.id);
   final l10n = context.l10n;
   final name = package.manifest.name.resolve(
     Localizations.localeOf(context).languageCode,
   );
   final uninstall = await showAppSheet<bool>(
     context: context,
-    builder: (_) =>
-        _ExtensionSheet(app: app, package: package, installed: true),
+    builder: (_) => _ExtensionSheet(
+      app: app,
+      package: package,
+      installed: true,
+      bundled: bundled,
+    ),
   );
-  if (uninstall != true || !context.mounted) return;
+  if (bundled || uninstall != true || !context.mounted) return;
   final confirmed = await showAppConfirmDialog(
     context,
     title: l10n.uninstallExtensionQuestion(name),
@@ -76,6 +109,21 @@ Future<void> showExtensionDetails(
     if (context.mounted) showAppNotice(context, l10n.operationDeleteFailed);
   }
 }
+
+Future<void> _showInstallError(BuildContext context, Exception error) =>
+    showAppDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(dialogContext.l10n.extensionInstallFailed),
+        content: SelectableText('$error'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(dialogContext.l10n.close),
+          ),
+        ],
+      ),
+    );
 
 /// What a package adds to the source list, one line per declared source.
 List<String> extensionProvides(
@@ -103,11 +151,13 @@ class _ExtensionSheet extends StatelessWidget {
     required this.app,
     required this.package,
     this.installed = false,
+    this.bundled = false,
   });
 
   final AppController app;
   final ExtensionPackage package;
   final bool installed;
+  final bool bundled;
 
   @override
   Widget build(BuildContext context) {
@@ -133,7 +183,21 @@ class _ExtensionSheet extends StatelessWidget {
     );
     return SheetLayout(
       header: SheetHeader(
-        title: Text(package.manifest.name.resolve(language)),
+        title: Row(
+          children: [
+            Expanded(child: Text(package.manifest.name.resolve(language))),
+            if (bundled)
+              Padding(
+                padding: const EdgeInsetsDirectional.only(start: 8),
+                child: Text(
+                  l10n.extensionBundled,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+          ],
+        ),
         actions: const [SheetCloseButton()],
       ),
       content: Column(
@@ -164,24 +228,132 @@ class _ExtensionSheet extends StatelessWidget {
         ],
       ),
       actions: installed
-          ? SheetActionBar.actions(
-              children: [
-                TextButton.icon(
-                  style: TextButton.styleFrom(
-                    foregroundColor: theme.colorScheme.error,
-                  ),
-                  onPressed: () => Navigator.pop(context, true),
-                  icon: const Icon(Icons.delete_outline_rounded),
-                  label: Text(l10n.uninstallExtension),
-                ),
-              ],
-            )
+          ? bundled
+                ? null
+                : SheetActionBar.actions(
+                    children: [
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: theme.colorScheme.error,
+                        ),
+                        onPressed: () => Navigator.pop(context, true),
+                        icon: const Icon(Icons.delete_outline_rounded),
+                        label: Text(l10n.uninstallExtension),
+                      ),
+                    ],
+                  )
           : SheetActionBar.primary(
               primary: FilledButton(
                 onPressed: () => Navigator.pop(context, true),
                 child: Text(l10n.install),
               ),
             ),
+    );
+  }
+}
+
+class _UrlExtensionSheet extends StatefulWidget {
+  const _UrlExtensionSheet({required this.app});
+
+  final AppController app;
+
+  @override
+  State<_UrlExtensionSheet> createState() => _UrlExtensionSheetState();
+}
+
+class _UrlExtensionSheetState extends State<_UrlExtensionSheet> {
+  final _url = TextEditingController();
+  final _sha256 = TextEditingController();
+  bool _checking = false;
+  String? _error;
+
+  bool get _canCheck =>
+      _url.text.trim().isNotEmpty && _sha256.text.trim().isNotEmpty;
+
+  @override
+  void dispose() {
+    _url.dispose();
+    _sha256.dispose();
+    super.dispose();
+  }
+
+  Future<void> _check() async {
+    setState(() {
+      _checking = true;
+      _error = null;
+    });
+    try {
+      final bundle = await widget.app.extensions.inspectDownload(
+        url: _url.text,
+        sha256: _sha256.text,
+      );
+      if (mounted) Navigator.pop(context, bundle);
+    } on Exception catch (error) {
+      if (mounted) {
+        setState(() => _error = '$error');
+      }
+    } finally {
+      if (mounted) setState(() => _checking = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    return SheetLayout(
+      header: SheetHeader(
+        title: Text(l10n.installExtensionFromUrl),
+        actions: const [SheetCloseButton()],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: _url,
+            enabled: !_checking,
+            keyboardType: TextInputType.url,
+            autocorrect: false,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(labelText: l10n.extensionDownloadUrl),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _sha256,
+            enabled: !_checking,
+            autocorrect: false,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              labelText: l10n.extensionDownloadSha256,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            l10n.extensionDownloadHint,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          if (_error case final error?) ...[
+            const SizedBox(height: 12),
+            SelectableText(
+              error,
+              style: TextStyle(color: theme.colorScheme.error),
+            ),
+          ],
+        ],
+      ),
+      actions: SheetActionBar.primary(
+        primary: FilledButton(
+          onPressed: _checking || !_canCheck ? null : _check,
+          child: Text(
+            _checking
+                ? l10n.extensionDownloadChecking
+                : l10n.extensionDownloadAction,
+          ),
+        ),
+      ),
     );
   }
 }

@@ -294,7 +294,14 @@ int hostCall(lua_State* lua) {
   if (engine->thread == lua) {
     lua_getfield(lua, 1, "kind");
     const char* kind = lua_tostring(lua, -1);
-    asyncRequest = kind != nullptr && std::strcmp(kind, "http.request") == 0;
+    asyncRequest =
+        kind != nullptr &&
+        (std::strcmp(kind, "http.request") == 0 ||
+         std::strcmp(kind, "base.call") == 0 ||
+         std::strcmp(kind, "session.cookie") == 0 ||
+         std::strcmp(kind, "secrets.get") == 0 ||
+         std::strcmp(kind, "secrets.set") == 0 ||
+         std::strcmp(kind, "secrets.remove") == 0);
     lua_pop(lua, 1);
   }
 

@@ -46,7 +46,7 @@ return {
 return {
   operations = {
     ["agenda.read"] = function(ctx, query)
-      local response = ctx.http.request({
+      local response = require("bitree.http").request({
         method = "GET",
         url = "https://example.com/data.json"
       })
@@ -92,8 +92,9 @@ return {
 return {
   operations = {
     ["agenda.read"] = function(ctx, query)
-      local first = ctx.http.request({ url = "https://example.com/1" })
-      local second = ctx.http.request({ url = "https://example.com/2" })
+      local http = require("bitree.http")
+      local first = http.request({ url = "https://example.com/1" })
+      local second = http.request({ url = "https://example.com/2" })
       return {
         first = first.json().value,
         second = second.json().value
@@ -133,7 +134,7 @@ return {
 return {
   operations = {
     ["agenda.read"] = function(ctx, query)
-      ctx.http.request({ url = "https://example.com/slow" })
+      require("bitree.http").request({ url = "https://example.com/slow" })
       return {}
     end
   }
@@ -164,7 +165,7 @@ return {
 return {
   operations = {
     ["agenda.read"] = function(ctx, query)
-      ctx.http.request({ url = "https://example.com/cancel" })
+      require("bitree.http").request({ url = "https://example.com/cancel" })
       return {}
     end
   }

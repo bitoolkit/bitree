@@ -2606,6 +2606,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sourceBuiltinImplementation => 'Built-in implementation';
 
   @override
+  String get sourceBundledImplementation => 'Built-in package';
+
+  @override
   String get sourceUnavailable => 'This source is unavailable';
 
   @override
@@ -2684,10 +2687,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get installExtensionFromFolder => 'Install from folder';
 
   @override
+  String get installExtensionFromUrl => 'Install from link';
+
+  @override
   String get install => 'Install';
 
   @override
   String get extensionInstallFailed => 'Couldn\'t install extension';
+
+  @override
+  String get extensionBundled => 'Built-in';
+
+  @override
+  String get extensionDownloadUrl => 'Package URL';
+
+  @override
+  String get extensionDownloadSha256 => 'SHA-256';
+
+  @override
+  String get extensionDownloadHint =>
+      'The content must exactly match the SHA-256 published by the author; mismatches are rejected.';
+
+  @override
+  String get extensionDownloadAction => 'Download and check';
+
+  @override
+  String get extensionDownloadChecking => 'Checking…';
 
   @override
   String get extensionPackageVersion => 'Version';

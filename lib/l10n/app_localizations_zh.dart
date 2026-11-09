@@ -2481,6 +2481,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sourceBuiltinImplementation => '内置实现';
 
   @override
+  String get sourceBundledImplementation => '内置包';
+
+  @override
   String get sourceUnavailable => '来源暂时不可用';
 
   @override
@@ -2558,10 +2561,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String get installExtensionFromFolder => '从文件夹安装扩展';
 
   @override
+  String get installExtensionFromUrl => '从链接安装扩展';
+
+  @override
   String get install => '安装';
 
   @override
   String get extensionInstallFailed => '无法安装扩展';
+
+  @override
+  String get extensionBundled => '内置';
+
+  @override
+  String get extensionDownloadUrl => '扩展包链接';
+
+  @override
+  String get extensionDownloadSha256 => 'SHA-256';
+
+  @override
+  String get extensionDownloadHint => '内容必须与发布页给出的 SHA-256 完全一致；不匹配会拒绝安装。';
+
+  @override
+  String get extensionDownloadAction => '下载并检查';
+
+  @override
+  String get extensionDownloadChecking => '正在检查…';
 
   @override
   String get extensionPackageVersion => '版本';

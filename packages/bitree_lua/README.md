@@ -14,7 +14,16 @@ removes `io`, `os`, `debug`, `package`, `dofile`, `loadfile`, and `load`.
 time conversion and all application data access cross the JSON host callback;
 the C layer contains no platform or application logic.
 
-`ctx.http.request` yields the Lua coroutine with a JSON request. Dart performs
+`ctx` carries only the invocation's `config`, `scope`, `source`, `locale` and
+`base` entries. Reusable host capabilities are loaded explicitly, for example:
+
+```lua
+local http = require("bitree.http")
+local json = require("bitree.json")
+local data = require("bitree.data")
+```
+
+`require("bitree.http").request` yields the Lua coroutine with a JSON request. Dart performs
 the HTTP call with `HttpClient`, then resumes the suspended execution through
 `bitree_lua_execute_resume`. Several HTTP calls may suspend in one operation.
 The transport enforces declared HTTPS origins, strips credential headers from

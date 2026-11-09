@@ -1,5 +1,6 @@
 import 'package:bitree/extensions/lua_source.dart';
 import 'package:bitree/sources/builtin.dart';
+import 'package:bitree/sources/course_selection.dart';
 import 'package:bitree/sources/host.dart';
 import 'package:bitree/sources/registry.dart';
 import 'package:bitree/sources/runtime.dart';
@@ -62,7 +63,7 @@ const source = '''
 return {
   operations = {
     ["agenda.read"] = function(ctx, query)
-      local response = ctx.http.request({
+      local response = require("bitree.http").request({
         url = "https://example.com/data.json"
       })
       return {
@@ -70,6 +71,26 @@ return {
           {
             remoteId = "1",
             title = response.json().title,
+            kind = "deadline",
+            dueDate = "2026-11-09"
+          }
+        }
+      }
+    end
+  }
+}
+''';
+
+const linksSource = '''
+return {
+  operations = {
+    ["agenda.read"] = function(ctx, query)
+      local links = require("bitree.data").courseLinks()
+      return {
+        items = {
+          {
+            remoteId = links[1].remoteId,
+            title = links[1].localCourseId,
             kind = "deadline",
             dueDate = "2026-11-09"
           }
@@ -179,5 +200,35 @@ void main() {
 
     expect(result.items.single.title, '来自 HTTP');
     expect(transport.received, {'url': 'https://example.com/data.json'});
+  });
+
+  test('source host exposes course links through bitree.data', () async {
+    final sourceDefinition = SourceDefinition(
+      id: 'test.links',
+      packageId: 'test.package',
+      sourceId: 'links',
+      name: const LocalizedSourceName({'zh': '课程关联'}),
+      entry: 'links.lua',
+      operations: const {SourceOperation.agendaRead},
+      permissions: SourcePermissions(dataRead: const [SourceResource.course]),
+    );
+    final registry = SourceRegistry(catalog: SourceCatalog([sourceDefinition]));
+    final instance = registry.ensureInstance(sourceDefinition.id);
+    registry
+        .selection(instance.id)
+        .addManual(PlatformCourse(remoteId: 'remote-1', name: '平台课程'));
+    registry
+        .selection(instance.id)
+        .link(localCourseId: 'local-1', remoteId: 'remote-1');
+    final host = SourceHost(
+      registry: registry,
+      runtimeFor: (definition) async =>
+          LuaSourceRuntime(source: linksSource, fileName: definition.entry!),
+    );
+
+    final result = await host.agenda(instance);
+
+    expect(result.items.single.title, 'local-1');
+    expect(result.items.single.origin?.remoteId, 'remote-1');
   });
 }

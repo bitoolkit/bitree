@@ -96,6 +96,98 @@ encoding.utf8Decode = function(value)
   return hostCall(hostRequest('encoding.utf8Decode', nil, value))
 end
 
+local crypto = {}
+crypto.randomBytes = function(length)
+  return hostCall(hostRequest('crypto.randomBytes', nil, length))
+end
+crypto.digest = function(algorithm, value)
+  return hostCall(hostRequest('crypto.digest', nil, algorithm, value))
+end
+crypto.hmac = function(algorithm, key, value)
+  return hostCall(hostRequest('crypto.hmac', nil, algorithm, key, value))
+end
+
+local http = {}
+http.request = function(request)
+  if type(request) ~= 'table' then
+    fail('HTTP 请求必须是 table')
+  end
+  local raw = hostCall(hostRequest('http.request', nil, request))
+  local body = raw.body or ''
+  return {
+    status = raw.status,
+    url = raw.url,
+    headers = raw.headers or {},
+    text = function() return body end,
+    bytes = function() return raw.bytes or {} end,
+    json = function() return decodeJson(body) end,
+  }
+end
+
+local storage = {}
+storage.get = function(key)
+  return hostCall(hostRequest('storage.get', nil, key))
+end
+storage.set = function(key, value)
+  return hostCall(hostRequest('storage.set', nil, key, value))
+end
+storage.remove = function(key)
+  return hostCall(hostRequest('storage.remove', nil, key))
+end
+
+local secrets = {}
+secrets.get = function(key)
+  return hostCall(hostRequest('secrets.get', nil, key))
+end
+secrets.set = function(key, value)
+  return hostCall(hostRequest('secrets.set', nil, key, value))
+end
+secrets.remove = function(key)
+  return hostCall(hostRequest('secrets.remove', nil, key))
+end
+
+local session = {}
+session.cookie = function(name, url)
+  return hostCall(hostRequest('session.cookie', nil, name, url))
+end
+
+local progress = {}
+progress.update = function(value)
+  return hostCall(hostRequest('progress.update', nil, value))
+end
+
+local log = {}
+log.info = function(message)
+  return hostCall(hostRequest('log', nil, 'info', tostring(message)))
+end
+log.warn = function(message)
+  return hostCall(hostRequest('log', nil, 'warn', tostring(message)))
+end
+log.error = function(message)
+  return hostCall(hostRequest('log', nil, 'error', tostring(message)))
+end
+
+local runtime = {}
+runtime.checkCancelled = function()
+  return hostCall(hostRequest('cancel', nil))
+end
+runtime.fail = function(code, message, details)
+  error('__bitree_error__' .. encodeJson({
+    code = tostring(code),
+    message = tostring(message),
+    details = details or json.null,
+  }), 0)
+end
+
+local data = setmetatable({}, {
+  __index = function(_, name)
+    if type(name) ~= 'string' then return nil end
+    return function(query)
+      return hostCall(hostRequest('data', name, query or json.object()))
+    end
+  end,
+})
+
 local function makeContext(raw)
   raw = decodeJson(raw)
   local ctx = {
@@ -103,60 +195,17 @@ local function makeContext(raw)
     scope = raw.scope or {},
     source = raw.source or {},
     locale = raw.locale or 'zh',
-    json = json,
-    time = time,
-    url = url,
-    encoding = encoding,
   }
-  ctx.storage = {
-    get = function(key)
-      return hostCall(hostRequest('storage.get', nil, key))
-    end,
-    set = function(key, value)
-      return hostCall(hostRequest('storage.set', nil, key, value))
-    end,
-    remove = function(key)
-      return hostCall(hostRequest('storage.remove', nil, key))
-    end,
-  }
-  ctx.log = {
-    info = function(message)
-      return hostCall(hostRequest('log', nil, 'info', tostring(message)))
-    end,
-    warn = function(message)
-      return hostCall(hostRequest('log', nil, 'warn', tostring(message)))
-    end,
-    error = function(message)
-      return hostCall(hostRequest('log', nil, 'error', tostring(message)))
-    end,
-  }
-  ctx.checkCancelled = function()
-    return hostCall(hostRequest('cancel', nil))
-  end
-  ctx.fail = function(code, message, details)
-    error('__bitree_error__' .. encodeJson({
-      code = tostring(code),
-      message = tostring(message),
-      details = details or json.null,
-    }), 0)
-  end
   local contextView = {
     config = ctx.config,
     scope = ctx.scope,
     source = ctx.source,
     locale = ctx.locale,
   }
-  ctx.data = {}
-  for _, name in ipairs(raw.data or {}) do
-    local dataName = name
-    ctx.data[dataName] = function(query)
-      return hostCall(hostRequest('data', dataName, query or json.object()))
-    end
-  end
   ctx.base = {
     call = function(name, query)
       return hostCall(hostRequest(
-        'base.call', tostring(name), query or json.object()))
+        'base.call', nil, tostring(name), query or json.object()))
     end,
     steps = {},
   }
@@ -168,23 +217,6 @@ local function makeContext(raw)
       return hostCall({ kind = 'step', name = stepName, args = args })
     end
   end
-  ctx.http = {
-    request = function(request)
-      if type(request) ~= 'table' then
-        fail('HTTP 请求必须是 table')
-      end
-      local raw = hostCall(hostRequest('http.request', nil, request))
-      local body = raw.body or ''
-      return {
-        status = raw.status,
-        url = raw.url,
-        headers = raw.headers or {},
-        text = function() return body end,
-        bytes = function() return raw.bytes or {} end,
-        json = function() return decodeJson(body) end,
-      }
-    end,
-  }
   return ctx
 end
 
@@ -195,6 +227,15 @@ loaded_modules['bitree.json'] = json
 loaded_modules['bitree.time'] = time
 loaded_modules['bitree.url'] = url
 loaded_modules['bitree.encoding'] = encoding
+loaded_modules['bitree.crypto'] = crypto
+loaded_modules['bitree.http'] = http
+loaded_modules['bitree.storage'] = storage
+loaded_modules['bitree.secrets'] = secrets
+loaded_modules['bitree.session'] = session
+loaded_modules['bitree.progress'] = progress
+loaded_modules['bitree.log'] = log
+loaded_modules['bitree.runtime'] = runtime
+loaded_modules['bitree.data'] = data
 
 local display = {}
 

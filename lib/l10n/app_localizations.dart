@@ -4470,6 +4470,12 @@ abstract class AppLocalizations {
   /// **'Built-in implementation'**
   String get sourceBuiltinImplementation;
 
+  /// No description provided for @sourceBundledImplementation.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in package'**
+  String get sourceBundledImplementation;
+
   /// No description provided for @sourceUnavailable.
   ///
   /// In en, this message translates to:
@@ -4608,6 +4614,12 @@ abstract class AppLocalizations {
   /// **'Install from folder'**
   String get installExtensionFromFolder;
 
+  /// No description provided for @installExtensionFromUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Install from link'**
+  String get installExtensionFromUrl;
+
   /// No description provided for @install.
   ///
   /// In en, this message translates to:
@@ -4619,6 +4631,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t install extension'**
   String get extensionInstallFailed;
+
+  /// No description provided for @extensionBundled.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in'**
+  String get extensionBundled;
+
+  /// No description provided for @extensionDownloadUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Package URL'**
+  String get extensionDownloadUrl;
+
+  /// No description provided for @extensionDownloadSha256.
+  ///
+  /// In en, this message translates to:
+  /// **'SHA-256'**
+  String get extensionDownloadSha256;
+
+  /// No description provided for @extensionDownloadHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The content must exactly match the SHA-256 published by the author; mismatches are rejected.'**
+  String get extensionDownloadHint;
+
+  /// No description provided for @extensionDownloadAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Download and check'**
+  String get extensionDownloadAction;
+
+  /// No description provided for @extensionDownloadChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get extensionDownloadChecking;
 
   /// No description provided for @extensionPackageVersion.
   ///
