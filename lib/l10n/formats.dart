@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart' show ThemeMode;
 
+import '../agenda/agenda_color.dart';
 import '../agenda/calendar.dart';
 import '../agenda/deadline_clear_scope.dart';
 import '../agenda/deadline_source.dart';
@@ -145,6 +146,23 @@ extension LocalizedDeadlineSource on DeadlineSource {
     DeadlineSource.mooc => l10n.deadlineSourceMooc,
   };
 }
+
+extension LocalizedAgendaColor on AgendaColor {
+  String localizedLabel(AppLocalizations l10n) => switch (id) {
+    'blue' => l10n.agendaColorBlue,
+    'coral' => l10n.agendaColorCoral,
+    'violet' => l10n.agendaColorViolet,
+    'green' => l10n.agendaColorGreen,
+    'amber' => l10n.agendaColorAmber,
+    'teal' => l10n.agendaColorTeal,
+    'rose' => l10n.agendaColorRose,
+    'slate' => l10n.agendaColorSlate,
+    _ => l10n.agendaColorCustom(_colorHex(value)),
+  };
+}
+
+String _colorHex(int value) =>
+    '#${(value & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
 
 extension LocalizedDeadlineScope on DeadlineClearScope {
   String localizedLabel(AppLocalizations l10n) => switch (this) {

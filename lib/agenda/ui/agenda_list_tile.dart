@@ -11,6 +11,7 @@ import 'agenda_detail.dart';
 import 'agenda_operations.dart';
 import 'calendar_list.dart';
 import 'completion_text.dart';
+import 'timeline_colors.dart';
 
 class AgendaListTile extends StatelessWidget {
   const AgendaListTile({
@@ -52,6 +53,9 @@ class AgendaListTile extends StatelessWidget {
     ].join('  ');
     final description = localizedAgendaNotes(l10n, entry).trim();
     final hasDetails = description.isNotEmpty || subtitle.isNotEmpty;
+    final entryColors = entry.kind == AgendaKind.exam
+        ? null
+        : agendaTimelineColors(context, entry, now);
     final dueToday =
         entry.isDeadline &&
         !entry.done &&
@@ -126,6 +130,22 @@ class AgendaListTile extends StatelessWidget {
                           ),
                   ),
                   const SizedBox(width: 4),
+                  if (entryColors != null) ...[
+                    Tooltip(
+                      message: l10n.agendaColor,
+                      child: Container(
+                        key: ValueKey(('agenda-color', entry.id)),
+                        width: 9,
+                        height: 9,
+                        margin: const EdgeInsets.only(top: 8),
+                        decoration: BoxDecoration(
+                          color: entryColors.accent,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

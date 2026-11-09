@@ -632,8 +632,31 @@
   "agendaName": "Name",
   "agendaNameRequired": "Enter a name",
   "agendaAllDay": "All day",
+  "agendaTime": "Time",
+  "agendaMoreOptions": "More options",
   "agendaLocationOptional": "Location (optional)",
   "agendaNotesOptional": "Notes (optional)",
+  "agendaColor": "Agenda color",
+  "agendaColorDefault": "Default",
+  "agendaColorBlue": "Blue",
+  "agendaColorCoral": "Coral",
+  "agendaColorViolet": "Violet",
+  "agendaColorGreen": "Green",
+  "agendaColorAmber": "Amber",
+  "agendaColorTeal": "Teal",
+  "agendaColorRose": "Rose",
+  "agendaColorSlate": "Slate",
+  "agendaColorCustom": "Custom {value}",
+  "@agendaColorCustom": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "agendaColorPickerTitle": "Choose color",
+  "agendaColorPresets": "Quick colors",
+  "agendaColorCustomSection": "Custom color",
   "agendaTailDays": "Tail length (days)",
   "agendaTailDaysHint": "1–30 days; default: 4 days",
   "agendaTailDaysValue": "{days, plural, =1{1 day} other{{days} days}}",

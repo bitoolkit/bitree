@@ -1517,6 +1517,18 @@ abstract class AppLocalizations {
   /// **'All day'**
   String get agendaAllDay;
 
+  /// No description provided for @agendaTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get agendaTime;
+
+  /// No description provided for @agendaMoreOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'More options'**
+  String get agendaMoreOptions;
+
   /// No description provided for @agendaLocationOptional.
   ///
   /// In en, this message translates to:
@@ -1528,6 +1540,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Notes (optional)'**
   String get agendaNotesOptional;
+
+  /// No description provided for @agendaColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Agenda color'**
+  String get agendaColor;
+
+  /// No description provided for @agendaColorDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get agendaColorDefault;
+
+  /// No description provided for @agendaColorBlue.
+  ///
+  /// In en, this message translates to:
+  /// **'Blue'**
+  String get agendaColorBlue;
+
+  /// No description provided for @agendaColorCoral.
+  ///
+  /// In en, this message translates to:
+  /// **'Coral'**
+  String get agendaColorCoral;
+
+  /// No description provided for @agendaColorViolet.
+  ///
+  /// In en, this message translates to:
+  /// **'Violet'**
+  String get agendaColorViolet;
+
+  /// No description provided for @agendaColorGreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Green'**
+  String get agendaColorGreen;
+
+  /// No description provided for @agendaColorAmber.
+  ///
+  /// In en, this message translates to:
+  /// **'Amber'**
+  String get agendaColorAmber;
+
+  /// No description provided for @agendaColorTeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Teal'**
+  String get agendaColorTeal;
+
+  /// No description provided for @agendaColorRose.
+  ///
+  /// In en, this message translates to:
+  /// **'Rose'**
+  String get agendaColorRose;
+
+  /// No description provided for @agendaColorSlate.
+  ///
+  /// In en, this message translates to:
+  /// **'Slate'**
+  String get agendaColorSlate;
+
+  /// No description provided for @agendaColorCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom {value}'**
+  String agendaColorCustom(String value);
+
+  /// No description provided for @agendaColorPickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose color'**
+  String get agendaColorPickerTitle;
+
+  /// No description provided for @agendaColorPresets.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick colors'**
+  String get agendaColorPresets;
+
+  /// No description provided for @agendaColorCustomSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom color'**
+  String get agendaColorCustomSection;
 
   /// No description provided for @agendaTailDays.
   ///

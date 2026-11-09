@@ -26,6 +26,7 @@ dependencies:
   flutter_markdown_plus: ^1.0.12
   webview_all: ^1.4.7
   webview_all_android: ^1.4.7
+  flex_color_picker: ^3.8.0
 
 dev_dependencies:
   flutter_test:

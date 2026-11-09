@@ -11,6 +11,7 @@ import '../model.dart';
 import 'agenda_editor.dart';
 import 'agenda_operations.dart';
 import 'completion_text.dart';
+import 'timeline_colors.dart';
 
 Future<void> showAgendaEntry(
   BuildContext pageContext,
@@ -251,6 +252,9 @@ class _EntryTime extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final color = entry.overdue(now) ? scheme.error : scheme.onSurface;
+    final accent = entry.overdue(now)
+        ? null
+        : agendaTimelineColors(context, entry, now).accent;
     // An open-ended deadline has no due date: it reads like a timed entry and
     // is labelled as opening rather than as due.
     final String time;
@@ -275,7 +279,7 @@ class _EntryTime extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(
           left: BorderSide(
-            color: entry.overdue(now) ? scheme.error : scheme.primary,
+            color: entry.overdue(now) ? scheme.error : accent ?? scheme.primary,
             width: 3,
           ),
         ),

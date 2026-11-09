@@ -9,6 +9,7 @@ import '../../ui/course_palette.dart';
 import '../../ui/design.dart';
 import '../calendar.dart';
 import '../model.dart';
+import 'agenda_color_palette.dart';
 import 'calendar_list.dart';
 
 class CalendarBlockTile extends StatelessWidget {
@@ -47,20 +48,29 @@ class CalendarBlockTile extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final exam = items.any((item) => item.entry?.kind == AgendaKind.exam);
+    final customColors = items.length == 1 && items.single.entry?.color != null
+        ? agendaColorValues(theme.colorScheme, items.single.entry!.color!)
+        : null;
     final palette = agendaPaletteColors(theme);
     // The outline carries contrast for subtle fills in both palette modes.
     final background = exam
         ? scheme.errorContainer
+        : customColors != null
+        ? customColors.fill
         : palette == null
         ? scheme.primaryContainer
         : Color(palette.fill);
     final foreground = exam
         ? scheme.onErrorContainer
+        : customColors != null
+        ? customColors.text
         : palette == null
         ? scheme.onPrimaryContainer
         : Color(palette.text);
     final outline = exam
         ? scheme.error
+        : customColors != null
+        ? customColors.accent
         : palette == null
         ? scheme.primary
         : Color(palette.accent);
@@ -107,12 +117,17 @@ class CalendarBlockTile extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 1),
                     child: Center(
                       child: Text(
-                        items.map((item) => localizedCalendarItemTitle(l10n, item))
+                        items
+                            .map(
+                              (item) => localizedCalendarItemTitle(l10n, item),
+                            )
                             .join(' / '),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 12, height: 1.25, color: foreground,
+                          fontSize: 12,
+                          height: 1.25,
+                          color: foreground,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

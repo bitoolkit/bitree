@@ -821,10 +821,60 @@ class AppLocalizationsZh extends AppLocalizations {
   String get agendaAllDay => '全天';
 
   @override
+  String get agendaTime => '时间';
+
+  @override
+  String get agendaMoreOptions => '更多选项';
+
+  @override
   String get agendaLocationOptional => '地点（选填）';
 
   @override
   String get agendaNotesOptional => '备注（选填）';
+
+  @override
+  String get agendaColor => '日程颜色';
+
+  @override
+  String get agendaColorDefault => '默认';
+
+  @override
+  String get agendaColorBlue => '蓝色';
+
+  @override
+  String get agendaColorCoral => '珊瑚色';
+
+  @override
+  String get agendaColorViolet => '紫色';
+
+  @override
+  String get agendaColorGreen => '绿色';
+
+  @override
+  String get agendaColorAmber => '琥珀色';
+
+  @override
+  String get agendaColorTeal => '青色';
+
+  @override
+  String get agendaColorRose => '玫红';
+
+  @override
+  String get agendaColorSlate => '灰色';
+
+  @override
+  String agendaColorCustom(String value) {
+    return '自定义 $value';
+  }
+
+  @override
+  String get agendaColorPickerTitle => '选择颜色';
+
+  @override
+  String get agendaColorPresets => '快捷颜色';
+
+  @override
+  String get agendaColorCustomSection => '自定义颜色';
 
   @override
   String get agendaTailDays => '拖尾长度（天）';

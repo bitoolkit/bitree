@@ -1,5 +1,7 @@
+import 'package:bitree/agenda/agenda_color.dart';
 import 'package:bitree/agenda/deadline_source.dart';
 import 'package:bitree/agenda/model.dart';
+import 'package:bitree/agenda/ui/agenda_color_palette.dart';
 import 'package:bitree/agenda/ui/timeline_colors.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
@@ -59,6 +61,23 @@ void main() {
           agendaTimelineColors(context, entry, now).fill.toARGB32(),
       ];
       expect(fills.toSet(), hasLength(entries.length));
+
+      for (final color in AgendaColor.presets) {
+        final custom = AgendaEntry(
+          id: color.id!,
+          title: color.id!,
+          kind: AgendaKind.deadline,
+          startsAt: start,
+          source: DeadlineSource.lexue,
+          color: color,
+        );
+        final values = agendaColorValues(Theme.of(context).colorScheme, color);
+        expect(agendaTimelineColors(context, custom, now), (
+          fill: values.fill,
+          text: values.text,
+          accent: values.accent,
+        ));
+      }
     });
 
     testWidgets('Overdue DDLs use error semantic colors in $brightness', (
@@ -85,11 +104,12 @@ void main() {
         expect(colors.accent, scheme.error);
 
         final completed = entry.copyWith(done: true);
-        final finishedColors = agendaTimelineColors(context, completed, pastDue);
-        expect(
-          finishedColors,
-          agendaTimelineColors(context, completed, now),
+        final finishedColors = agendaTimelineColors(
+          context,
+          completed,
+          pastDue,
         );
+        expect(finishedColors, agendaTimelineColors(context, completed, now));
         expect(finishedColors.fill.a, closeTo(0.5, 0.01));
         expect(finishedColors.text.a, closeTo(0.5, 0.01));
         expect(finishedColors.accent.a, closeTo(0.5, 0.01));

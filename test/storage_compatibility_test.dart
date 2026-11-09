@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:bitree/academics/model.dart';
 import 'package:bitree/academics/store.dart';
+import 'package:bitree/agenda/agenda_color.dart';
 import 'package:bitree/agenda/deadline_source.dart';
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/store.dart';
@@ -23,6 +24,7 @@ void main() {
         startsAt: DateTime.utc(2026, 11, 2),
         term: '2026-2027-1',
         local: false,
+        color: AgendaColor.blue,
         details: PhysicsLabDeadlineDetails(
           kind: PhysicsLabDeadlineKind.preview,
           courseLabel: '干涉',
@@ -75,6 +77,23 @@ void main() {
           )
           .having((details) => details.courseLabel, 'courseLabel', '干涉'),
     );
+    expect(restored[0].color, AgendaColor.blue);
+    expect(restored[0].color!.id, 'blue');
+    expect(restored[0].copyWith(done: true).color, AgendaColor.blue);
+    final customColor = AgendaEntry(
+      id: 'custom-color',
+      title: '自定义颜色',
+      kind: AgendaKind.event,
+      startsAt: DateTime.utc(2026, 11, 2, 9),
+      endsAt: DateTime.utc(2026, 11, 2, 10),
+      color: const AgendaColor(0xFF3366CC),
+    );
+    final restoredCustom = AgendaEntry.fromJson(customColor.toJson());
+    expect(restoredCustom.color, const AgendaColor(0xFF3366CC));
+    expect(restoredCustom.color!.id, isNull);
+    final legacyColor = Map<String, dynamic>.from(entries[0].toJson())
+      ..['color'] = 'blue';
+    expect(AgendaEntry.fromJson(legacyColor).color, AgendaColor.blue);
     expect(
       restored[1].details,
       isA<MoocDeadlineDetails>()
