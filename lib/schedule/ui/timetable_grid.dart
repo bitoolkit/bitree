@@ -5,21 +5,25 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../agenda/controller.dart';
 import '../../agenda/ui/calendar_block.dart';
-import '../../app/controller.dart';
 import '../../app/ui/add_menu.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/design.dart';
+import '../controller.dart';
 import '../layout.dart';
 import '../section_times.dart';
 import '../selection.dart';
 import 'course_colors.dart';
 import 'current_time_indicator.dart';
 
+part 'timetable_grid_painting.dart';
+
 class TimetableGrid extends StatefulWidget {
   const TimetableGrid({
     super.key,
-    required this.controller,
+    required this.timetable,
+    required this.agenda,
     required this.monday,
     required this.layouts,
     required this.gutterWidth,
@@ -29,7 +33,8 @@ class TimetableGrid extends StatefulWidget {
     required this.currentTime,
   });
 
-  final AppController controller;
+  final TimetableController timetable;
+  final AgendaController agenda;
   final DateTime monday;
   final List<List<CalendarBlock>> layouts;
   final double gutterWidth;
@@ -77,7 +82,7 @@ class _TimetableGridState extends State<TimetableGrid> {
   }
 
   bool _beginSelection(Offset position) {
-    if (_closedMenuOnPointerDown || widget.controller.timetable.busy) {
+    if (_closedMenuOnPointerDown || widget.timetable.busy) {
       return false;
     }
     final cell = _cellAt(position);
@@ -208,7 +213,8 @@ class _TimetableGridState extends State<TimetableGrid> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final columnWidth = math.max(
-          0.0, (constraints.maxWidth - widget.gutterWidth) / 7,
+          0.0,
+          (constraints.maxWidth - widget.gutterWidth) / 7,
         );
         Rect boundsFor(int day, double start, double end) {
           final height = math.max(0.0, (end - start) * rowHeight);
@@ -221,6 +227,7 @@ class _TimetableGridState extends State<TimetableGrid> {
             math.max(0.0, height - insetY * 2),
           );
         }
+
         final blocks = [
           for (var day = 0; day < 7; day++)
             for (final block in widget.layouts[day])
@@ -267,7 +274,8 @@ class _TimetableGridState extends State<TimetableGrid> {
               ),
               Expanded(
                 child: AddMenu(
-                  controller: widget.controller,
+                  timetable: widget.timetable,
+                  agenda: widget.agenda,
                   menuController: _addMenu,
                   selection: menuSelection,
                   onClose: _menuClosed,
@@ -345,7 +353,8 @@ class _TimetableGridState extends State<TimetableGrid> {
                                     }
                                     return CalendarBlockTile(
                                       items: block.items,
-                                      controller: widget.controller,
+                                      timetable: widget.timetable,
+                                      agenda: widget.agenda,
                                       isToday: layout.day == widget.todayColumn,
                                       courseProgress: progress,
                                     );
@@ -369,9 +378,11 @@ class _TimetableGridState extends State<TimetableGrid> {
                               Positioned.fromRect(
                                 rect: boundsFor(
                                   selection.day,
-                                  (math.min(selection.anchor, selection.end) - 1)
+                                  (math.min(selection.anchor, selection.end) -
+                                          1)
                                       .toDouble(),
-                                  math.max(selection.anchor, selection.end)
+                                  math
+                                      .max(selection.anchor, selection.end)
                                       .toDouble(),
                                 ),
                                 child: IgnorePointer(
@@ -400,127 +411,6 @@ class _TimetableGridState extends State<TimetableGrid> {
           ),
         );
       },
-    );
-  }
-}
-
-class _TimetableBackground extends CustomPainter {
-  const _TimetableBackground({
-    required this.rowHeight,
-    required this.surfaceColor,
-    required this.todayColumn,
-    required this.todayBackground,
-  });
-
-  final double rowHeight;
-  final Color surfaceColor;
-  final int? todayColumn;
-  final Color todayBackground;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final columnWidth = size.width / 7;
-    final paint = Paint();
-    const radius = Radius.circular(6);
-
-    for (var section = 1; section < sectionTimes.length; section += 2) {
-      paint.color = surfaceColor.withValues(alpha: 0.025);
-      final band = Rect.fromLTWH(
-        0,
-        section * rowHeight + 2,
-        size.width,
-        math.max(0.0, rowHeight - 4),
-      );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(band, const Radius.circular(4)),
-        paint,
-      );
-    }
-
-    if (todayColumn != null) {
-      final column = Rect.fromLTWH(
-        todayColumn! * columnWidth + 2,
-        0,
-        math.max(0.0, columnWidth - 4),
-        size.height,
-      );
-      canvas.drawRRect(
-        RRect.fromRectAndCorners(
-          column,
-          bottomLeft: radius,
-          bottomRight: radius,
-        ),
-        paint..color = todayBackground,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_TimetableBackground oldDelegate) =>
-      rowHeight != oldDelegate.rowHeight ||
-      surfaceColor != oldDelegate.surfaceColor ||
-      todayColumn != oldDelegate.todayColumn ||
-      todayBackground != oldDelegate.todayBackground;
-}
-
-class _PeriodLabel extends StatelessWidget {
-  const _PeriodLabel({required this.section});
-
-  final int section;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final scheme = Theme.of(context).colorScheme;
-    final time = sectionTimes[section - 1];
-    return Semantics(
-      label: l10n.sectionSemantics(section, time.$1, time.$2),
-      child: ExcludeSemantics(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final scale = MediaQuery.textScalerOf(context).scale(1);
-            if (constraints.maxHeight < 44 * scale) {
-              return FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  '$section\n${time.$1}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 10, color: scheme.onSurfaceVariant),
-                ),
-              );
-            }
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '$section',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                SizedBox(
-                  width: double.infinity,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      '${time.$1}\n${time.$2}',
-                      softWrap: false,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 10,
-                        height: 1.2,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
     );
   }
 }

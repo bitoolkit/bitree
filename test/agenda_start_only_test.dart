@@ -314,7 +314,7 @@ void main() {
           theme: bitreeTheme(Brightness.light),
           home: Scaffold(
             body: AgendaTimeline(
-              controller: app,
+              controller: app.agenda,
               entries: entries,
               now: _date.add(const Duration(hours: 12)),
             ),

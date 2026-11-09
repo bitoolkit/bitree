@@ -42,7 +42,7 @@ class AppController extends ChangeNotifier {
       agenda: agenda,
       academics: academics,
     );
-    classrooms = ClassroomRepository(this.school);
+    classroomRepository = ClassroomRepository(this.school);
     mooc = MoocController(
       storage: moocStorage ?? MoocStorage(),
       agenda: agenda,
@@ -58,7 +58,7 @@ class AppController extends ChangeNotifier {
   final AppSettingsController settings;
   final TimetableController timetable;
   late final SchoolController school;
-  late final ClassroomRepository classrooms;
+  late final ClassroomRepository classroomRepository;
   final AgendaController agenda;
   final AcademicController academics;
   late final MoocController mooc;
@@ -82,7 +82,7 @@ class AppController extends ChangeNotifier {
   void dispose() {
     settings.dispose();
     sync.dispose();
-    classrooms.dispose();
+    classroomRepository.dispose();
     school.dispose();
     mooc.dispose();
     timetable.dispose();

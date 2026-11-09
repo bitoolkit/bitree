@@ -30,6 +30,10 @@ class TimetableController extends ChangeNotifier {
   List<int> get weeks => schedule?.weeks ?? const [];
 
   Future<void> load() => _operations.run(() async {
+    if (_disposed) return;
+    _busy = true;
+    _ready = false;
+    _notify();
     try {
       final library = await _store.read();
       _schedules
@@ -41,8 +45,10 @@ class TimetableController extends ChangeNotifier {
       _goToCurrentWeek();
     } on Exception catch (failure, stack) {
       AppDiagnostics.instance.report('读取本地课表', failure, stack);
+    } finally {
+      _busy = false;
+      _notify();
     }
-    _notify();
   });
 
   void _goToCurrentWeek() {
@@ -118,10 +124,18 @@ class TimetableController extends ChangeNotifier {
     String term, {
     required Future<bool> Function(String term) importTerm,
   }) {
+    if (!_ready) {
+      _reportNotReady();
+      return Future.value(false);
+    }
     final saved = _schedules[term];
     return saved == null
         ? importTerm(term)
         : _operations.run(() async {
+            if (!_ready) {
+              _reportNotReady();
+              return false;
+            }
             final current = _schedules[term];
             return current != null && await _commit(current);
           });
@@ -133,6 +147,10 @@ class TimetableController extends ChangeNotifier {
     bool resetWeek = false,
     void Function()? checkActive,
   }) async {
+    if (!_ready) {
+      _reportNotReady();
+      return false;
+    }
     checkActive?.call();
     final changingTerm = _selectedTerm != next.term;
     final nextSchedules = {..._schedules, next.term: next};
@@ -170,6 +188,10 @@ class TimetableController extends ChangeNotifier {
   }
 
   Future<bool> clear() => _operations.run(() async {
+    if (!_ready) {
+      _reportNotReady();
+      return false;
+    }
     _busy = true;
     _notify();
     try {
@@ -187,6 +209,12 @@ class TimetableController extends ChangeNotifier {
       _notify();
     }
   });
+
+  void _reportNotReady() {
+    if (!_disposed) {
+      AppDiagnostics.instance.notice('课表尚未加载，请先重新加载课表。');
+    }
+  }
 
   void _notify() {
     if (!_disposed) notifyListeners();

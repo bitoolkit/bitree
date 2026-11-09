@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../app/controller.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/design.dart';
+import '../controller.dart';
 import '../model.dart';
 import 'calendar_list.dart';
 
@@ -19,7 +19,7 @@ class AgendaReminder extends StatefulWidget {
     required this.active,
   });
 
-  final AppController controller;
+  final AgendaController controller;
   final List<AgendaEntry> entries;
   final DateTime now;
   final bool active;

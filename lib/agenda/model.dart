@@ -190,7 +190,8 @@ class AgendaEntry {
     final rawColor = json['color'];
     final color = switch (rawColor) {
       null => null,
-      int value when value >= 0 && value <= 0xFFFFFFFF => AgendaColor(value),
+      int value when value >= 0 && value <= 0xFFFFFFFF =>
+        AgendaColor.presetByValue(value) ?? AgendaColor(value),
       String id =>
         AgendaColor.presetNamed(id) ?? (throw FormatException('color 格式不正确')),
       _ => throw FormatException('color 格式不正确'),

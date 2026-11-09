@@ -70,7 +70,7 @@ Future<TestAppController> _show(
         body: ValueListenableBuilder<bool>(
           valueListenable: visibility,
           builder: (context, isVisible, _) => AgendaTimeline(
-            controller: app,
+            controller: app.agenda,
             entries: entries,
             now: _date.add(const Duration(hours: 12)),
             visible: isVisible,
@@ -203,7 +203,7 @@ void main() {
               builder: (context, setState) {
                 refresh = setState;
                 return AgendaTimeline(
-                  controller: app,
+                  controller: app.agenda,
                   entries: entries.toList(),
                   now: _date.add(const Duration(hours: 12)),
                 );
@@ -297,7 +297,11 @@ void main() {
               child: child!,
             ),
             home: Scaffold(
-              body: AgendaTimeline(controller: app, entries: entries, now: now),
+              body: AgendaTimeline(
+                controller: app.agenda,
+                entries: entries,
+                now: now,
+              ),
             ),
           );
         },
@@ -947,7 +951,7 @@ void main() {
             builder: (_, setState) {
               updateEntries = setState;
               return AgendaTimeline(
-                controller: app,
+                controller: app.agenda,
                 entries: filtered,
                 now: _date.add(const Duration(hours: 12)),
                 filter: (kind: null, term: selectedTerm),

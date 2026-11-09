@@ -66,7 +66,8 @@ void main() {
                   height: 120,
                   child: CalendarBlockTile(
                     items: [CalendarItem.agenda(event)],
-                    controller: controller,
+                    timetable: controller.timetable,
+                    agenda: controller.agenda,
                     isToday: false,
                   ),
                 ),
@@ -155,7 +156,8 @@ void main() {
                         height: 120,
                         child: CalendarBlockTile(
                           items: [CalendarItem.agenda(entry)],
-                          controller: controller,
+                          timetable: controller.timetable,
+                          agenda: controller.agenda,
                           isToday: false,
                         ),
                       ),

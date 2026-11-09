@@ -97,7 +97,7 @@ class SettingsScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          SchoolAccount(controller: controller),
+          SchoolAccount(controller: controller.school),
           MoocAccountTile(controller: controller.mooc),
           Padding(
             padding: const EdgeInsets.only(top: 24),
@@ -193,7 +193,7 @@ class SettingsScreen extends StatelessWidget {
                 trailing: const Icon(Icons.chevron_right_rounded, size: 20),
                 onTap: controller.timetable.busy
                     ? null
-                    : () => manageTermWeeks(context, controller),
+                    : () => manageTermWeeks(context, controller.timetable),
               ),
               ListTile(
                 contentPadding: tilePadding,

@@ -137,7 +137,8 @@ class AppSettingsController extends ChangeNotifier {
     try {
       final savedHeight = await _preferences.getString('timetableHeightMode');
       if (!_timetableHeightChosen && !_disposed) {
-        timetableHeightMode.value = TimetableHeightMode.values
+        timetableHeightMode.value =
+            TimetableHeightMode.values
                 .where((mode) => mode.name == savedHeight)
                 .firstOrNull ??
             TimetableHeightMode.normal;
@@ -182,6 +183,12 @@ class AppSettingsController extends ChangeNotifier {
         final legacy = await _preferences.getString('darkCoursePalette');
         if (_palettes.containsKey(legacy)) {
           _paletteSelections[Brightness.dark] = legacy;
+          try {
+            await _saveCoursePalettes(_palettes, _paletteSelections);
+            await _preferences.remove('darkCoursePalette');
+          } catch (failure, stack) {
+            AppDiagnostics.instance.report('迁移调色板设置', failure, stack);
+          }
         }
       } else {
         final json = jsonDecode(saved) as Map<String, dynamic>;
@@ -199,6 +206,11 @@ class AppSettingsController extends ChangeNotifier {
           if (id is String && _palettes[id]?.brightness == brightness) {
             _paletteSelections[brightness] = id;
           }
+        }
+        try {
+          await _preferences.remove('darkCoursePalette');
+        } catch (failure, stack) {
+          AppDiagnostics.instance.report('清理旧调色板设置', failure, stack);
         }
       }
     } catch (failure, stack) {

@@ -7,6 +7,7 @@ import 'package:bitree/agenda/agenda_color.dart';
 import 'package:bitree/agenda/deadline_source.dart';
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/store.dart';
+import 'package:bitree/core/storage/schema.dart';
 import 'package:bitree/schedule/model.dart';
 import 'package:bitree/schedule/store.dart';
 import 'package:flutter/services.dart';
@@ -91,6 +92,11 @@ void main() {
     final restoredCustom = AgendaEntry.fromJson(customColor.toJson());
     expect(restoredCustom.color, const AgendaColor(0xFF3366CC));
     expect(restoredCustom.color!.id, isNull);
+    final presetValue = AgendaEntry.fromJson(
+      Map<String, dynamic>.from(entries[0].toJson())..['color'] = 0xFF1A5998,
+    );
+    expect(presetValue.color, AgendaColor.blue);
+    expect(presetValue.color!.id, 'blue');
     final legacyColor = Map<String, dynamic>.from(entries[0].toJson())
       ..['color'] = 'blue';
     expect(AgendaEntry.fromJson(legacyColor).color, AgendaColor.blue);
@@ -116,7 +122,7 @@ void main() {
     expect(AgendaEntry.fromJson(legacy).details, isNull);
   });
 
-  test('Feature modules retain existing filenames and JSON formats across restarts', () async {
+  test('Feature modules retain filenames and migrate storage formats across restarts', () async {
     final directory = await Directory.systemTemp.createTemp('bitree-storage-');
     addTearDown(() => directory.delete(recursive: true));
     const channel = MethodChannel('plugins.flutter.io/path_provider');
@@ -149,6 +155,7 @@ void main() {
     final scheduleJson = jsonDecode(
       await File('${directory.path}/schedule.json').readAsString(),
     ) as Map;
+    expect(scheduleJson['schemaVersion'], currentStorageSchemaVersion);
     expect(scheduleJson.keys, containsAll(['selectedTerm', 'semesters']));
 
     final deadline = AgendaEntry(
@@ -161,6 +168,11 @@ void main() {
       tailDays: 14,
     );
     await AgendaStore().write([deadline]);
+    final agendaJson = jsonDecode(
+      await File('${directory.path}/agenda.json').readAsString(),
+    ) as Map;
+    expect(agendaJson['schemaVersion'], currentStorageSchemaVersion);
+    expect(agendaJson['entries'], isA<List>());
     final restored = (await AgendaStore().read()).single;
     expect(restored.id, deadline.id);
     expect(restored.done, isTrue);
@@ -185,6 +197,11 @@ void main() {
       'another-student',
       const AcademicRecord(targetCredits: 120),
     );
+    final academicsJson = jsonDecode(
+      await File('${directory.path}/academics.json').readAsString(),
+    ) as Map;
+    expect(academicsJson['schemaVersion'], currentStorageSchemaVersion);
+    expect(academicsJson['accounts'], isA<Map>());
     final academic = await AcademicStore().read('student');
     expect(academic.targetCredits, 150);
     expect(academic.categoryTargets, {'必修': 90});
@@ -195,5 +212,68 @@ void main() {
           .targetCredits,
       isNull,
     );
+    final plan = StudyPlan(
+      major: '计算机科学与技术',
+      year: '2024',
+      requiredCredits: 150,
+      completedCredits: 30,
+    );
+    final withPlan = academic.copyWith(
+      plan: plan,
+      planUpdatedAt: DateTime.utc(2026, 11, 9),
+    );
+    expect(withPlan.plan, plan);
+    expect(withPlan.copyWith(plan: null).plan, isNull);
+    expect(withPlan.copyWith(planUpdatedAt: null).planUpdatedAt, isNull);
+    expect(withPlan.copyWith(targetCredits: null).targetCredits, isNull);
+
+    await File('${directory.path}/schedule.json').writeAsString(
+      await File('test/fixtures/legacy/v0.2.0/schedule.json').readAsString(),
+    );
+    final legacySchedule = await ScheduleStore().read();
+    expect(legacySchedule.selectedTerm, '2026-2027-1');
+    expect(
+      legacySchedule.schedules['2026-2027-1']!.courses.single.name,
+      '旧版课程',
+    );
+
+    await File('${directory.path}/agenda.json').writeAsString(
+      await File('test/fixtures/legacy/v0.2.0/agenda.json').readAsString(),
+    );
+    final legacyAgenda = await AgendaStore().read();
+    expect(legacyAgenda.single.title, '旧版日程');
+    expect(legacyAgenda.single.color, isNull);
+
+    await File('${directory.path}/academics.json').writeAsString(
+      await File('test/fixtures/legacy/v0.3.0/academics.json').readAsString(),
+    );
+    final legacyAcademic = await AcademicStore().read('student');
+    expect(legacyAcademic.targetCredits, 150);
+    expect(legacyAcademic.categoryTargets, {'必修': 90});
+
+    await File('${directory.path}/schedule.json').writeAsString(
+      jsonEncode({
+        'selectedTerm': semester.term,
+        'semesters': {semester.term: semester.toJson()},
+      }),
+    );
+    expect((await ScheduleStore().read()).selectedTerm, semester.term);
+
+    await File('${directory.path}/agenda.json')
+        .writeAsString(jsonEncode([deadline.toJson()]));
+    expect((await AgendaStore().read()).single.id, deadline.id);
+
+    await File('${directory.path}/academics.json')
+        .writeAsString(jsonEncode({'student': record.toJson()}));
+    expect((await AcademicStore().read('student')).targetCredits, 150);
+
+    await File('${directory.path}/schedule.json').writeAsString(
+      jsonEncode({
+        'schemaVersion': currentStorageSchemaVersion + 1,
+        'selectedTerm': null,
+        'semesters': <String, Object>{},
+      }),
+    );
+    await expectLater(ScheduleStore().read(), throwsFormatException);
   });
 }

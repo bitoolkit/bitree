@@ -62,7 +62,9 @@ void main() {
         ),
         home: Scaffold(
           body: Timetable(
-            controller: controller,
+            timetable: controller.timetable,
+            agenda: controller.agenda,
+            heightMode: controller.settings.timetableHeightMode,
             week: 1,
             initialScrollOffset: 0,
             onScroll: (_) {},
@@ -137,19 +139,24 @@ void main() {
       final grid = tester.widget<TimetableGrid>(find.byType(TimetableGrid));
       expect(position.pixels, 0);
       expect(position.maxScrollExtent, closeTo(0, 0.001));
-      expect(grid.rowHeight * sectionTimes.length,
-          closeTo(position.viewportDimension, 0.001));
+      expect(
+        grid.rowHeight * sectionTimes.length,
+        closeTo(position.viewportDimension, 0.001),
+      );
       expect(tester.takeException(), isNull);
     }
 
     checkFit();
-    final firstHeight = tester.widget<TimetableGrid>(find.byType(TimetableGrid))
+    final firstHeight = tester
+        .widget<TimetableGrid>(find.byType(TimetableGrid))
         .rowHeight;
     tester.view.physicalSize = const Size(390, 280);
     await tester.pumpAndSettle();
     checkFit();
-    expect(tester.widget<TimetableGrid>(find.byType(TimetableGrid)).rowHeight,
-        lessThan(firstHeight));
+    expect(
+      tester.widget<TimetableGrid>(find.byType(TimetableGrid)).rowHeight,
+      lessThan(firstHeight),
+    );
     tester.view.physicalSize = const Size(390, 120);
     await tester.pumpAndSettle();
     checkFit();
@@ -172,10 +179,9 @@ void main() {
     );
     await controller.initialize();
     var remembered = 0.0;
-    await tester.pumpWidget(_fitTestApp(
-      controller,
-      onScroll: (offset) => remembered = offset,
-    ));
+    await tester.pumpWidget(
+      _fitTestApp(controller, onScroll: (offset) => remembered = offset),
+    );
     await tester.pumpAndSettle();
     _timetablePosition(tester).jumpTo(150);
     await tester.pumpAndSettle();
@@ -224,10 +230,19 @@ void main() {
       initialWeek: 2,
     );
     await controller.initialize();
-    await tester.pumpWidget(MaterialApp(
-      theme: bitreeTheme(Brightness.light),
-      home: Scaffold(body: WeekPager(controller: controller, active: false)),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: bitreeTheme(Brightness.light),
+        home: Scaffold(
+          body: WeekPager(
+            timetable: controller.timetable,
+            agenda: controller.agenda,
+            heightMode: controller.settings.timetableHeightMode,
+            active: false,
+          ),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
     final pager = tester.widget<SwipePager>(find.byType(SwipePager));
     final context = tester.element(find.byType(WeekPager));
@@ -267,11 +282,14 @@ void main() {
   });
 }
 
-ScrollPosition _timetablePosition(WidgetTester tester) =>
-    tester.state<ScrollableState>(find.descendant(
-      of: find.byType(Timetable),
-      matching: find.byType(Scrollable),
-    )).position;
+ScrollPosition _timetablePosition(WidgetTester tester) => tester
+    .state<ScrollableState>(
+      find.descendant(
+        of: find.byType(Timetable),
+        matching: find.byType(Scrollable),
+      ),
+    )
+    .position;
 
 Widget _fitTestApp(
   TestAppController controller, {
@@ -280,13 +298,16 @@ Widget _fitTestApp(
   ValueChanged<double>? onScroll,
 }) => MaterialApp(
   theme: bitreeTheme(Brightness.light).copyWith(
-    textTheme: bitreeTheme(Brightness.light).textTheme.apply(fontFamily: 'Roboto'),
+    textTheme: bitreeTheme(Brightness.light).textTheme
+        .apply(fontFamily: 'Roboto'),
   ),
   home: MediaQuery(
     data: MediaQueryData(textScaler: TextScaler.linear(scale)),
     child: Scaffold(
       body: Timetable(
-        controller: controller,
+        timetable: controller.timetable,
+        agenda: controller.agenda,
+        heightMode: controller.settings.timetableHeightMode,
         week: 1,
         initialScrollOffset: initialScrollOffset,
         onScroll: onScroll ?? (_) {},

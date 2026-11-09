@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../app/controller.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_dialog.dart';
@@ -23,7 +22,7 @@ Future<bool> toggleAgendaDone(
 
 Future<bool> deleteAgendaEntry(
   BuildContext context,
-  AppController controller,
+  AgendaController controller,
   AgendaEntry entry, {
   bool confirm = true,
 }) async {
@@ -41,7 +40,7 @@ Future<bool> deleteAgendaEntry(
     );
     if (!confirmed) return false;
   }
-  final deleted = await controller.agenda.delete(entry);
+  final deleted = await controller.delete(entry);
   if (!overlay.mounted) return deleted;
   if (!deleted) {
     showOverlayNotice(overlay, l10n.operationDeleteFailed);
@@ -49,7 +48,7 @@ Future<bool> deleteAgendaEntry(
   }
 
   Future<void> restore() async {
-    final restored = await controller.agenda.restore(entry);
+    final restored = await controller.restore(entry);
     if (!overlay.mounted) return;
     if (restored) {
       showOverlayNotice(overlay, l10n.agendaRestored(title));

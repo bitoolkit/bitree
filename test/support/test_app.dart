@@ -86,6 +86,8 @@ class MemoryPreferences extends Fake implements SharedPreferencesAsync {
   Future<bool?> getBool(String key) async => _values[key] as bool?;
   @override
   Future<void> setBool(String key, bool value) async => _values[key] = value;
+  @override
+  Future<void> remove(String key) async => _values.remove(key);
 }
 
 class MemorySchoolStorage extends SchoolStorage {

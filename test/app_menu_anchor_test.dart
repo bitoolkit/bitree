@@ -79,7 +79,7 @@ Future<TestAppController> _showWeekHeader(
         body: ListenableBuilder(
           listenable: controller.timetable,
           builder: (context, _) => AppPage(
-            title: WeekSelector(controller: controller),
+            title: WeekSelector(controller: controller.timetable),
             actions: [
               for (final (label, icon) in [
                 ('添加', Icons.add_rounded),

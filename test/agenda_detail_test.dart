@@ -65,7 +65,8 @@ void main() {
           body: Builder(
             builder: (context) => Center(
               child: TextButton(
-                onPressed: () => showAgendaEntry(context, controller, entry),
+                onPressed: () =>
+                    showAgendaEntry(context, controller.agenda, entry),
                 child: const Text('打开详情'),
               ),
             ),
@@ -284,7 +285,7 @@ void main() {
     unawaited(
       showAgendaEntry(
         tester.element(find.text('打开详情')),
-        controller,
+        controller.agenda,
         controller.agenda.entries.single,
       ),
     );

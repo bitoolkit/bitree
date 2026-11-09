@@ -74,7 +74,7 @@ void main() {
     await app.initialize();
     await _host(
       tester,
-      (context) => editAgenda(context, app, kind: AgendaKind.deadline),
+      (context) => editAgenda(context, app.agenda, kind: AgendaKind.deadline),
     );
 
     await tester.enterText(find.byType(TextFormField).first, '保留的作业');
@@ -99,7 +99,7 @@ void main() {
       scheduleStore: _FailingScheduleStore(schedule),
     );
     await app.initialize();
-    await _host(tester, (context) => editCourse(context, app));
+    await _host(tester, (context) => editCourse(context, app.timetable));
 
     await tester.enterText(find.byType(TextFormField).first, '保留的课程');
     await tester.tap(find.text('保存课程'));
@@ -109,7 +109,7 @@ void main() {
 
     await tester.tap(find.byTooltip('关闭'));
     await tester.pumpAndSettle();
-    await _host(tester, (context) => manageTermWeeks(context, app));
+    await _host(tester, (context) => manageTermWeeks(context, app.timetable));
     await tester.tap(find.widgetWithText(FilledButton, '确定'));
     await tester.pumpAndSettle();
     expect(find.text('未能保存更改，请重试。'), findsOneWidget);

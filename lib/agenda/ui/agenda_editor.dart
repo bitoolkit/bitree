@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../app/controller.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
@@ -11,14 +10,17 @@ import '../../ui/editor_sheet.dart';
 import '../../ui/external_link.dart';
 import '../../ui/sheet_layout.dart';
 import '../agenda_color.dart';
+import '../controller.dart';
 import '../model.dart';
 import 'agenda_color_palette.dart';
 import 'agenda_color_picker.dart';
 import 'agenda_operations.dart';
 
+part 'agenda_editor_sections.dart';
+
 Future<void> editAgenda(
   BuildContext context,
-  AppController controller, {
+  AgendaController controller, {
   AgendaEntry? entry,
   AgendaKind kind = AgendaKind.event,
   TimetableSelection? selection,
@@ -54,7 +56,7 @@ class _AgendaEditor extends StatefulWidget {
     this.term,
   });
 
-  final AppController controller;
+  final AgendaController controller;
   final AgendaEntry? entry;
   final String? entryTitle;
   final String? entryNotes;
@@ -161,7 +163,7 @@ class _AgendaEditorState extends State<_AgendaEditor> {
       _error = null;
     });
     final l10n = context.l10n;
-    final success = await widget.controller.agenda.save(
+    final success = await widget.controller.save(
       AgendaEntry(
         id:
             widget.entry?.id ??
@@ -186,8 +188,7 @@ class _AgendaEditorState extends State<_AgendaEditor> {
         // Editing keeps the open-ended flag, but only while the entry stays a
         // deadline: an event or exam always has an end time.
         startOnly:
-            _kind == AgendaKind.deadline &&
-            (widget.entry?.startOnly ?? false),
+            _kind == AgendaKind.deadline && (widget.entry?.startOnly ?? false),
       ),
     );
     if (!mounted) return;
@@ -220,194 +221,12 @@ class _AgendaEditorState extends State<_AgendaEditor> {
     }
   }
 
-  Widget _timeRow(String label, DateTime value, bool start) {
-    final enabled = !_saving;
-    final time = _allDay ? '' : clockText(value);
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 44,
-            child: Text(label, style: theme.textTheme.bodyMedium),
-          ),
-          Expanded(
-            child: Semantics(
-              button: true,
-              enabled: enabled,
-              label: '$label ${dateText(value)}',
-              onTap: enabled ? () => _pickDate(start) : null,
-              child: ExcludeSemantics(
-                child: InkWell(
-                  key: ValueKey('agenda-${start ? 'start' : 'end'}-date'),
-                  onTap: enabled ? () => _pickDate(start) : null,
-                  borderRadius: AppCorners.control,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      dateText(value),
-                      style: theme.textTheme.bodyLarge,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          if (time.isNotEmpty)
-            Semantics(
-              button: true,
-              enabled: enabled,
-              label: '$label $time',
-              onTap: enabled ? () => _pickTime(start) : null,
-              child: ExcludeSemantics(
-                child: InkWell(
-                  key: ValueKey('agenda-${start ? 'start' : 'end'}-time'),
-                  onTap: enabled ? () => _pickTime(start) : null,
-                  borderRadius: AppCorners.control,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: AppCorners.control,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 5,
-                      ),
-                      child: Text(
-                        time,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
+  void _updateColor(AgendaColor? color) {
+    setState(() => _color = color);
   }
 
-  Widget _colorSwatch(ThemeData theme, AgendaColor? color, {Key? key}) {
-    final fill = color == null
-        ? theme.colorScheme.surfaceContainerHighest
-        : agendaColorValues(theme.colorScheme, color).fill;
-    final accent = color == null
-        ? theme.colorScheme.outline
-        : agendaColorValues(theme.colorScheme, color).accent;
-    return Container(
-      key: key,
-      width: 18,
-      height: 18,
-      decoration: BoxDecoration(
-        color: fill,
-        shape: BoxShape.circle,
-        border: Border.all(color: accent, width: 1.5),
-      ),
-    );
-  }
-
-  Future<void> _pickColor() async {
-    final result = await showAgendaColorPicker(context, initialColor: _color);
-    if (result == null || !mounted) return;
-    setState(() => _color = result.color);
-  }
-
-  Widget _colorSelector() {
-    final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final selectedLabel =
-        _color?.localizedLabel(l10n) ?? l10n.agendaColorDefault;
-    return ListTile(
-      key: const ValueKey('agenda-color-field'),
-      contentPadding: EdgeInsets.zero,
-      dense: true,
-      leading: _colorSwatch(
-        theme,
-        _color,
-        key: const ValueKey('agenda-color-current-swatch'),
-      ),
-      title: Text(l10n.agendaColor),
-      subtitle: Text(selectedLabel, key: const ValueKey('agenda-color-value')),
-      trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-      onTap: _saving ? null : _pickColor,
-    );
-  }
-
-  Widget _moreOptions(ThemeData theme) {
-    final l10n = context.l10n;
-    final hasLocation = _location.text.trim().isNotEmpty;
-    final hasNotes = _notes.text.trim().isNotEmpty;
-    final hasCustomTail =
-        _kind == AgendaKind.deadline &&
-        _tailDays != AgendaEntry.defaultTailDays;
-    return ExpansionTile(
-      key: const ValueKey('agenda-more-options'),
-      initiallyExpanded:
-          hasNotes ||
-          hasCustomTail ||
-          (_kind != AgendaKind.deadline && hasLocation),
-      tilePadding: EdgeInsets.zero,
-      childrenPadding: const EdgeInsets.only(bottom: 8),
-      shape: const Border(),
-      collapsedShape: const Border(),
-      leading: const Icon(Icons.tune_rounded, size: 20),
-      title: Text(l10n.agendaMoreOptions),
-      children: [
-        if (_kind == AgendaKind.deadline) ...[
-          Row(
-            children: [
-              Expanded(child: Text(l10n.agendaTailDays)),
-              Text(l10n.agendaTailDaysValue(_tailDays)),
-            ],
-          ),
-          Semantics(
-            label: l10n.agendaTailDays,
-            child: Slider(
-              value: _tailDays.toDouble(),
-              min: 1,
-              max: AgendaEntry.maxTailDays.toDouble(),
-              divisions: AgendaEntry.maxTailDays - 1,
-              label: l10n.agendaTailDaysValue(_tailDays),
-              semanticFormatterCallback: (value) =>
-                  l10n.agendaTailDaysValue(value.round()),
-              onChanged: _saving
-                  ? null
-                  : (value) => setState(() => _tailDays = value.round()),
-            ),
-          ),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(
-              l10n.agendaTailDaysHint,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-        ],
-        if (_kind != AgendaKind.deadline) ...[
-          TextFormField(
-            controller: _location,
-            enabled: !_saving,
-            decoration: InputDecoration(labelText: l10n.agendaLocationOptional),
-          ),
-          const SizedBox(height: 12),
-        ],
-        TextFormField(
-          controller: _notes,
-          enabled: !_saving,
-          minLines: 2,
-          maxLines: 4,
-          decoration: InputDecoration(labelText: l10n.agendaNotesOptional),
-        ),
-      ],
-    );
+  void _updateTailDays(int value) {
+    setState(() => _tailDays = value);
   }
 
   @override
@@ -519,7 +338,8 @@ class _AgendaEditorState extends State<_AgendaEditor> {
             child: Column(
               children: [
                 _timeRow(
-                  _kind == AgendaKind.deadline && widget.entry?.startOnly != true
+                  _kind == AgendaKind.deadline &&
+                          widget.entry?.startOnly != true
                       ? l10n.due
                       : l10n.start,
                   _start,

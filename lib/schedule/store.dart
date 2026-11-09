@@ -1,6 +1,7 @@
 import '../core/json.dart';
 import '../core/platform/desktop_widget.dart';
 import '../core/storage/json_file.dart';
+import '../core/storage/schema.dart';
 import 'model.dart';
 
 typedef ScheduleLibrary = ({
@@ -17,6 +18,7 @@ class ScheduleStore {
 
   ScheduleLibrary _decode(Object? value) {
     final library = jsonObject(value, '课表');
+    storageSchemaVersion(library);
     final semesters = jsonObjectField(library, 'semesters');
     return (
       selectedTerm: jsonStringFieldOrNull(library, 'selectedTerm'),
@@ -31,6 +33,7 @@ class ScheduleStore {
 
   Future<void> write(ScheduleLibrary library) async {
     await _file.write({
+      'schemaVersion': currentStorageSchemaVersion,
       'selectedTerm': library.selectedTerm,
       'semesters': {
         for (final entry in library.schedules.entries)

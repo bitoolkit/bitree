@@ -39,6 +39,18 @@ class _SlowScheduleStore extends MemoryScheduleStore {
   }
 }
 
+class _FailingScheduleStore extends MemoryScheduleStore {
+  _FailingScheduleStore({required super.selected});
+
+  bool failReads = true;
+
+  @override
+  Future<ScheduleLibrary> read() {
+    if (failReads) throw const FormatException('damaged schedule');
+    return super.read();
+  }
+}
+
 AgendaEntry deadline(
   String id, {
   String title = '作业',
@@ -216,6 +228,50 @@ void main() {
         controller.schedule!.courses.map((course) => course.id),
         containsAll(['remote', 'local']),
       );
+    },
+  );
+
+  test('Schedule writes and clearing are refused when loading fails', () async {
+    final store = _FailingScheduleStore(selected: semester);
+    final controller = TimetableController(store);
+    addTearDown(controller.dispose);
+
+    await controller.load();
+    expect(controller.ready, isFalse);
+    expect(await controller.importSchedule(semester, [semester.term]), isFalse);
+    expect(await controller.clear(), isFalse);
+    expect(store.schedules[semester.term], same(semester));
+    expect(store.selectedTerm, semester.term);
+  });
+
+  test(
+    'A failed reload blocks later writes even after a successful load',
+    () async {
+      final store = _FailingScheduleStore(selected: semester);
+      final controller = TimetableController(store);
+      addTearDown(controller.dispose);
+      store.failReads = false;
+      await controller.load();
+      expect(controller.ready, isTrue);
+
+      store.failReads = true;
+      await controller.load();
+      expect(controller.ready, isFalse);
+      expect(
+        await controller.saveCourse(
+          Course(
+            id: 'unsafe',
+            name: '不应保存',
+            weekday: 1,
+            startSection: 1,
+            endSection: 2,
+            weeks: [1],
+            local: true,
+          ),
+        ),
+        isFalse,
+      );
+      expect(store.schedules[semester.term], same(semester));
     },
   );
 

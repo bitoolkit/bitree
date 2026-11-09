@@ -5,12 +5,12 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../app/controller.dart';
 import '../../app/ui/widget_guide.dart';
 import '../../core/diagnostics.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_notice.dart';
+import '../controller.dart';
 import '../ics.dart';
 import '../model.dart';
 import 'week_range_dialog.dart';
@@ -18,7 +18,7 @@ import 'week_range_dialog.dart';
 class ScheduleMenu extends StatefulWidget {
   const ScheduleMenu({super.key, required this.controller});
 
-  final AppController controller;
+  final TimetableController controller;
 
   @override
   State<ScheduleMenu> createState() => _ScheduleMenuState();
@@ -70,8 +70,8 @@ class _ScheduleMenuState extends State<ScheduleMenu> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final schedule = widget.controller.timetable.schedule;
-    final enabled = !widget.controller.timetable.busy;
+    final schedule = widget.controller.schedule;
+    final enabled = !widget.controller.busy;
     return AppMenuAnchor(
       menuChildren: [
         AppMenuItemButton(

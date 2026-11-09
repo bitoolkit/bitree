@@ -89,5 +89,7 @@ Future<AgendaColorPickerResult?> showAgendaColorPicker(
   if (value == defaultColor.withValues(alpha: 1).toARGB32()) {
     return const AgendaColorPickerResult(null);
   }
-  return AgendaColorPickerResult(AgendaColor(value));
+  return AgendaColorPickerResult(
+    AgendaColor.presetByValue(value) ?? AgendaColor(value),
+  );
 }

@@ -56,7 +56,7 @@ Future<void> _open(
             .copyWith(textScaler: TextScaler.linear(scale)),
         child: child!,
       ),
-      home: WencuiMapScreen(controller: controller, initialRoom: room),
+      home: WencuiMapScreen(timetable: controller.timetable, initialRoom: room),
     ),
   );
   await tester.runAsync(
@@ -192,11 +192,13 @@ void main() {
     await tester.tap(find.widgetWithText(AppSelectionButton, '卫生间'));
     await tester.pumpAndSettle();
     final atlas = (await tester.runAsync(WencuiAtlas.load))!;
-    final feature = atlas.onFloor(1).firstWhere(
-      (feature) =>
-          feature.wing == WencuiWing.i &&
-          feature.restroomGender == WencuiRestroomGender.both,
-    );
+    final feature = atlas
+        .onFloor(1)
+        .firstWhere(
+          (feature) =>
+              feature.wing == WencuiWing.i &&
+              feature.restroomGender == WencuiRestroomGender.both,
+        );
     await _tapFeature(tester, feature);
     expect(find.text('已选：I栋 卫生间'), findsOneWidget);
     expect(find.byIcon(Icons.wc_rounded), findsNWidgets(2));
@@ -308,7 +310,8 @@ void main() {
         home: Scaffold(
           body: Builder(
             builder: (context) => TextButton(
-              onPressed: () => showCourse(context, controller, course),
+              onPressed: () =>
+                  showCourse(context, controller.timetable, course),
               child: const Text('查看课程'),
             ),
           ),

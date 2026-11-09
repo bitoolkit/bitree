@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../app/controller.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_notice.dart';
 import '../../ui/swipe_action_tile.dart';
+import '../controller.dart';
 import '../model.dart';
 import 'agenda_detail.dart';
 import 'agenda_operations.dart';
@@ -22,17 +22,13 @@ class AgendaListTile extends StatelessWidget {
     this.onTap,
   });
 
-  final AppController controller;
+  final AgendaController controller;
   final AgendaEntry entry;
   final DateTime now;
   final VoidCallback? onTap;
 
   Future<bool> _complete(BuildContext context, {bool haptic = false}) async {
-    final saved = await toggleAgendaDone(
-      controller.agenda,
-      entry,
-      haptic: haptic,
-    );
+    final saved = await toggleAgendaDone(controller, entry, haptic: haptic);
     if (!saved && context.mounted) {
       showAppNotice(context, context.l10n.operationSaveFailed);
     }
@@ -72,7 +68,7 @@ class AgendaListTile extends StatelessWidget {
         border: Border(bottom: BorderSide(color: scheme.outlineVariant)),
       ),
       child: SwipeActionTile(
-        enabled: !controller.agenda.busy,
+        enabled: !controller.busy,
         leftAction: TileSwipeAction(
           label: l10n.agendaSwipeDelete,
           releaseLabel: l10n.agendaSwipeDeleteRelease,
@@ -118,7 +114,7 @@ class AgendaListTile extends StatelessWidget {
                             child: Checkbox(
                               value: entry.done,
                               shape: const CircleBorder(),
-                              onChanged: controller.agenda.busy
+                              onChanged: controller.busy
                                   ? null
                                   : (_) => _complete(context, haptic: true),
                             ),

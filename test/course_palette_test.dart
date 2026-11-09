@@ -201,6 +201,8 @@ void main() {
         await controller.initialize();
         expect(controller.settings.paletteIdFor(Brightness.dark), id);
         expect(controller.settings.paletteFor(Brightness.light), isNull);
+        expect(await preferences.getString('coursePalettes'), isNotNull);
+        expect(await preferences.getString('darkCoursePalette'), isNull);
         await expectLater(
           controller.settings.setCoursePalette(Brightness.light, id),
           throwsFormatException,

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../../app/controller.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_notice.dart';
 import '../../ui/external_link.dart';
 import '../../ui/sheet_layout.dart';
+import '../controller.dart';
 import '../model.dart';
 import 'agenda_editor.dart';
 import 'agenda_operations.dart';
@@ -15,17 +15,17 @@ import 'timeline_colors.dart';
 
 Future<void> showAgendaEntry(
   BuildContext pageContext,
-  AppController controller,
+  AgendaController controller,
   AgendaEntry entry,
 ) => showAppSheet<void>(
   context: pageContext,
   builder: (sheetContext) => ListenableBuilder(
-    listenable: controller.agenda,
+    listenable: controller,
     builder: (context, _) {
       final l10n = context.l10n;
       // Keep the closing sheet readable after its entry has been deleted.
       final current =
-          controller.agenda.entries
+          controller.entries
               .where((value) => value.id == entry.id)
               .firstOrNull ??
           entry;
@@ -97,7 +97,7 @@ Future<void> showAgendaEntry(
           actions: [
             IconButton(
               tooltip: l10n.delete,
-              onPressed: controller.agenda.busy
+              onPressed: controller.busy
                   ? null
                   : () async {
                       if (await deleteAgendaEntry(
@@ -194,7 +194,7 @@ Future<void> showAgendaEntry(
         actions: current.isDeadline
             ? SheetActionBar.split(
                 leading: TextButton.icon(
-                  onPressed: controller.agenda.busy ? null : edit,
+                  onPressed: controller.busy ? null : edit,
                   icon: const Icon(Icons.edit_outlined, size: 18),
                   label: Text(l10n.edit),
                 ),
@@ -205,11 +205,11 @@ Future<void> showAgendaEntry(
                           foregroundColor: scheme.onSecondaryContainer,
                         )
                       : null,
-                  onPressed: controller.agenda.busy
+                  onPressed: controller.busy
                       ? null
                       : () async {
                           final saved = await toggleAgendaDone(
-                            controller.agenda,
+                            controller,
                             current,
                           );
                           if (!saved && context.mounted) {
@@ -230,7 +230,7 @@ Future<void> showAgendaEntry(
               )
             : SheetActionBar.primary(
                 primary: FilledButton.icon(
-                  onPressed: controller.agenda.busy ? null : edit,
+                  onPressed: controller.busy ? null : edit,
                   icon: const Icon(Icons.edit_outlined, size: 18),
                   label: Text(l10n.edit),
                 ),
