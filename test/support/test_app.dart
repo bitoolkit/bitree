@@ -53,7 +53,7 @@ class MemoryAgendaStore extends AgendaStore {
   MemoryAgendaStore([this.entries = const []]);
   List<AgendaEntry> entries;
   @override
-  Future<List<AgendaEntry>> read() async => entries;
+  Future<List<AgendaEntry>> readAndMigrate() async => entries;
   @override
   Future<void> write(List<AgendaEntry> entries) async =>
       this.entries = List.of(entries);

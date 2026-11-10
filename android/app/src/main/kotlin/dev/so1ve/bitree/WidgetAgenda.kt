@@ -2,7 +2,6 @@ package dev.so1ve.bitree
 
 import android.content.Context
 import android.util.Log
-import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.text.SimpleDateFormat
@@ -156,7 +155,7 @@ private fun readAgendaEntries(context: Context): List<WidgetEntry> {
     val file = File(context.filesDir, "agenda.json")
     if (!file.exists()) return emptyList()
 
-    val rows = JSONArray(file.readText())
+    val rows = JSONObject(file.readText()).getJSONArray("entries")
     val formatter = dateFormatter("yyyy-MM-dd'T'HH:mm:ss")
     // Dart stores Beijing wall-clock fields with a UTC suffix; do not shift them by eight hours.
     fun timestamp(value: String) = formatter.parse(value.substring(0, 19))!!.time

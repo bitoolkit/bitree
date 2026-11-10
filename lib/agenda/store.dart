@@ -7,8 +7,14 @@ import 'model.dart';
 class AgendaStore {
   final _file = const JsonFile('agenda.json');
 
-  Future<List<AgendaEntry>> read() async =>
-      await _file.read((value) => _decode(value)) ?? const [];
+  Future<List<AgendaEntry>> readAndMigrate() async {
+    final stored = await _file.read(
+      (value) => (entries: _decode(value), legacy: value is List),
+    );
+    if (stored == null) return const [];
+    if (stored.legacy) await write(stored.entries);
+    return stored.entries;
+  }
 
   List<AgendaEntry> _decode(Object? value) {
     final rows = value is List

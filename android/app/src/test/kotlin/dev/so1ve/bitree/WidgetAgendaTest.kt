@@ -1,0 +1,116 @@
+package dev.so1ve.bitree
+
+import android.content.Context
+import org.json.JSONArray
+import org.json.JSONObject
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
+import org.robolectric.annotation.Config
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+import java.util.TimeZone
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
+class WidgetAgendaTest {
+    private val context: Context get() = RuntimeEnvironment.getApplication()
+    private val agendaFile: File get() = File(context.filesDir, "agenda.json")
+
+    @Before
+    fun setUp() {
+        agendaFile.delete()
+        File(context.filesDir, "schedule.json").delete()
+    }
+
+    @After
+    fun tearDown() {
+        agendaFile.delete()
+    }
+
+    @Test
+    fun readsVersionedAgendaAndExcludesDoneAndDeletedEntries() {
+        val entries = JSONArray()
+            .put(deadline("待完成"))
+            .put(deadline("已完成").put("done", true))
+            .put(deadline("已删除").put("deleted", true))
+        agendaFile.writeText(
+            JSONObject().put("schemaVersion", 2).put("entries", entries).toString(),
+        )
+
+        val content = readWidgetContent(context)
+
+        assertEquals(listOf("待完成"), content.entries.map { it.title })
+        assertEquals(WidgetEntryKind.DEADLINE, content.entries.single().kind)
+        assertEquals(true, content.entries.single().allDay)
+    }
+
+    @Test
+    fun legacyAgendaRequestsOpeningTheAppForMigration() {
+        agendaFile.writeText(JSONArray().put(deadline("旧版日程")).toString())
+
+        assertEquals(
+            context.getString(R.string.widget_read_error),
+            readWidgetContent(context).emptyMessage,
+        )
+    }
+
+    @Test
+    fun emptyVersionedAgendaShowsEmptyStateInsteadOfReadError() {
+        agendaFile.writeText(
+            JSONObject().put("schemaVersion", 2).put("entries", JSONArray()).toString(),
+        )
+
+        val content = readWidgetContent(context)
+
+        assertEquals(emptyList<WidgetEntry>(), content.entries)
+        val today = Calendar.getInstance(TimeZone.getTimeZone("Asia/Shanghai"))
+        val expected = if (today.get(Calendar.HOUR_OF_DAY) >= 21) {
+            R.string.widget_tomorrow_empty
+        } else {
+            R.string.widget_today_empty
+        }
+        assertEquals(context.getString(expected), content.emptyMessage)
+    }
+
+    @Test
+    fun invalidAgendaStillReportsReadError() {
+        agendaFile.writeText("{\"schemaVersion\":2,\"entries\":null}")
+
+        assertEquals(
+            context.getString(R.string.widget_read_error),
+            readWidgetContent(context).emptyMessage,
+        )
+    }
+
+    private fun deadline(title: String): JSONObject {
+        val zone = TimeZone.getTimeZone("Asia/Shanghai")
+        val today = Calendar.getInstance(zone).apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val timestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ROOT)
+            .apply { timeZone = zone }
+            .format(today.time)
+        return JSONObject()
+            .put("id", title)
+            .put("title", title)
+            .put("kind", "deadline")
+            .put("startsAt", timestamp)
+            .put("endsAt", JSONObject.NULL)
+            .put("allDay", true)
+            .put("location", "")
+            .put("notes", "")
+            .put("done", false)
+            .put("deleted", false)
+            .put("local", true)
+    }
+}

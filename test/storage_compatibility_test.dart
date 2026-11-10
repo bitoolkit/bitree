@@ -173,7 +173,7 @@ void main() {
     ) as Map;
     expect(agendaJson['schemaVersion'], currentStorageSchemaVersion);
     expect(agendaJson['entries'], isA<List>());
-    final restored = (await AgendaStore().read()).single;
+    final restored = (await AgendaStore().readAndMigrate()).single;
     expect(restored.id, deadline.id);
     expect(restored.done, isTrue);
     expect(restored.deleted, isTrue);
@@ -240,9 +240,18 @@ void main() {
     await File('${directory.path}/agenda.json').writeAsString(
       await File('test/fixtures/legacy/v0.2.0/agenda.json').readAsString(),
     );
-    final legacyAgenda = await AgendaStore().read();
+    final legacyAgenda = await AgendaStore().readAndMigrate();
     expect(legacyAgenda.single.title, '旧版日程');
     expect(legacyAgenda.single.color, isNull);
+    final migratedAgenda = jsonDecode(
+      await File('${directory.path}/agenda.json').readAsString(),
+    ) as Map;
+    expect(migratedAgenda['schemaVersion'], currentStorageSchemaVersion);
+    expect(migratedAgenda['entries'], [legacyAgenda.single.toJson()]);
+    expect(
+      (await AgendaStore().readAndMigrate()).single.id,
+      legacyAgenda.single.id,
+    );
 
     await File('${directory.path}/academics.json').writeAsString(
       await File('test/fixtures/legacy/v0.3.0/academics.json').readAsString(),
@@ -261,7 +270,14 @@ void main() {
 
     await File('${directory.path}/agenda.json')
         .writeAsString(jsonEncode([deadline.toJson()]));
-    expect((await AgendaStore().read()).single.id, deadline.id);
+    expect((await AgendaStore().readAndMigrate()).single.id, deadline.id);
+    expect(
+      jsonDecode(await File('${directory.path}/agenda.json').readAsString()),
+      {
+        'schemaVersion': currentStorageSchemaVersion,
+        'entries': [deadline.toJson()],
+      },
+    );
 
     await File('${directory.path}/academics.json')
         .writeAsString(jsonEncode({'student': record.toJson()}));

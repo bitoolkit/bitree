@@ -45,7 +45,7 @@ class AgendaController extends ChangeNotifier {
     _ready = false;
     _notify();
     try {
-      _entries = List.unmodifiable(await _store.read());
+      _entries = List.unmodifiable(await _store.readAndMigrate());
       _ready = true;
     } on Exception catch (failure, stack) {
       AppDiagnostics.instance.report('读取日程', failure, stack);
