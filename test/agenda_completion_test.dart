@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:bitree/academics/controller.dart';
 import 'package:bitree/agenda/controller.dart';
@@ -8,12 +9,14 @@ import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/ui/agenda_list_tile.dart';
 import 'package:bitree/agenda/ui/agenda_operations.dart';
 import 'package:bitree/app/controller.dart';
+import 'package:bitree/core/diagnostics.dart';
 import 'package:bitree/l10n/app_localizations_zh.dart';
 import 'package:bitree/l10n/formats.dart';
 import 'package:bitree/school/service.dart';
 import 'package:bitree/ui/swipe_action_tile.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/test_app.dart';
@@ -75,6 +78,24 @@ class _Store extends MemoryAgendaStore {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  const pathProvider = MethodChannel('plugins.flutter.io/path_provider');
+  final messenger =
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  late Directory logDirectory;
+  setUpAll(() async {
+    logDirectory = await Directory.systemTemp.createTemp(
+      'bitree-agenda-completion-logs-',
+    );
+    messenger.setMockMethodCallHandler(pathProvider, (_) async => logDirectory.path);
+    // Prime the shared successful directory future before fault-injection tests.
+    await AppDiagnostics.instance.recentLines();
+  });
+  tearDownAll(() async {
+    await AppDiagnostics.instance.recentLines();
+    messenger.setMockMethodCallHandler(pathProvider, null);
+    expect(logDirectory.absolute.path, contains('bitree-agenda-completion-logs-'));
+    await logDirectory.delete(recursive: true);
+  });
 
   test('Elapsed time and completion are independent for all kinds', () {
     for (final kind in AgendaKind.values) {
@@ -561,7 +582,9 @@ void main() {
       expect(agenda.entries.single.done, isTrue);
       final l10n = AppLocalizationsZh();
       expect(localizedAgendaTimeCaption(l10n, agenda.entries.single, _now), l10n.completed);
-      await tester.tap(find.text(raw.title));
+      // CompletionText paints separate normal/strike-through text layers.
+      // Activate the row rather than ambiguously matching both title widgets.
+      await tester.tap(find.byType(AgendaListTile));
       await tester.pumpAndSettle();
       expect(find.widgetWithText(FilledButton, l10n.agendaMarkUndone), findsOneWidget);
       await tester.tap(find.widgetWithText(FilledButton, l10n.agendaMarkUndone));
