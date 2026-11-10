@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// FakeAsync zone: real disk IO queued there can outlive its retired zone and
 /// strand the shared log queue. Immediate memory futures keep failures visible
 /// without making the state-machine tests depend on native disk/plugin work.
-class MemoryDiagnosticsIo extends IOOverrides {
+final class MemoryDiagnosticsIo extends IOOverrides {
   final _files = <String, List<int>>{};
 
   @override
