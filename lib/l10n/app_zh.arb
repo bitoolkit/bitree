@@ -700,5 +700,9 @@
   "agendaRealDeadline": "真实截止时间",
   "agendaCutoffOriginal": "真实截止：{time}",
   "agendaCutoffAdjusted": "伪截止：{time}",
+  "settingsAgendaLayoutDays": "DDL 排版宽度",
+  "agendaLayoutDaysDescription": "统一控制 DDL、仅开始时间项目及伪提前 DDL 左侧信息区的排版宽度，覆盖原单条拖尾设置；渲染仍保持屏幕定宽。",
+  "agendaLayoutDaysUnit": "天",
+  "agendaLayoutDaysRange": "请输入 1–30 的整数",
   "releaseVersion": "{channel} {version}"
 }

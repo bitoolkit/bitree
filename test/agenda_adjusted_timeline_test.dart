@@ -80,7 +80,7 @@ Future<ByteData> _pixels(WidgetTester tester, GlobalKey key) async =>
           key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
       final image = await boundary.toImage(pixelRatio: 1);
       final data = await image.toByteData(
-        format: ui.ImageByteFormat.rawStraightRgba,
+        format: ui.ImageByteFormat.rawRgba,
       );
       image.dispose();
       return data!;
@@ -116,7 +116,7 @@ void main() {
     expect(placements.map((p) => p.lane).toSet(), hasLength(2));
   });
 
-  test('Unadjusted and start-only reservations retain their custom tails', () {
+  test('Unadjusted and start-only reservations use the global width', () {
     for (final startOnly in [false, true]) {
       final entry = _deadline(
         tailDays: 14,
@@ -126,6 +126,7 @@ void main() {
       final placement = layoutAgendaTimeline(
         [entry],
         minimumEventSpan: const Duration(minutes: 1),
+        layoutDays: 14,
       ).single;
       expect(
         placement.start,
@@ -350,9 +351,13 @@ void main() {
       // x+y remains constant when moving along a 45-degree band.
       expect(channel(6, 8, 3), channel(10, 4, 3));
       for (final x in [10, 26]) {
-        expect(channel(x, 4, 0), closeTo(0x33, 3));
-        expect(channel(x, 4, 1), closeTo(0x66, 3));
-        expect(channel(x, 4, 2), closeTo(0x99, 3));
+        // rawRgba is premultiplied: verify the palette against the measured
+        // alpha instead of unpremultiplying low-alpha bytes and amplifying
+        // Skia's integer rounding (the #455 baseline failure).
+        final paintedAlpha = channel(x, 4, 3) / 255;
+        expect(channel(x, 4, 0), closeTo(0x33 * paintedAlpha, 2));
+        expect(channel(x, 4, 1), closeTo(0x66 * paintedAlpha, 2));
+        expect(channel(x, 4, 2), closeTo(0x99 * paintedAlpha, 2));
       }
       await tester.pumpWidget(const SizedBox());
     });

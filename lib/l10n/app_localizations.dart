@@ -4320,6 +4320,30 @@ abstract class AppLocalizations {
   /// **'Adjusted deadline: {time}'**
   String agendaCutoffAdjusted(String time);
 
+  /// No description provided for @settingsAgendaLayoutDays.
+  ///
+  /// In en, this message translates to:
+  /// **'DDL layout width'**
+  String get settingsAgendaLayoutDays;
+
+  /// No description provided for @agendaLayoutDaysDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Use one layout width for deadlines, start-only items, and the left side of adjusted deadlines, overriding old per-item tails. Painted tails keep a fixed screen width.'**
+  String get agendaLayoutDaysDescription;
+
+  /// No description provided for @agendaLayoutDaysUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'days'**
+  String get agendaLayoutDaysUnit;
+
+  /// No description provided for @agendaLayoutDaysRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a whole number from 1 to 30'**
+  String get agendaLayoutDaysRange;
+
   /// No description provided for @releaseVersion.
   ///
   /// In en, this message translates to:

@@ -2513,6 +2513,18 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get settingsAgendaLayoutDays => 'DDL layout width';
+
+  @override
+  String get agendaLayoutDaysDescription => 'Use one layout width for deadlines, start-only items, and the left side of adjusted deadlines, overriding old per-item tails. Painted tails keep a fixed screen width.';
+
+  @override
+  String get agendaLayoutDaysUnit => 'days';
+
+  @override
+  String get agendaLayoutDaysRange => 'Enter a whole number from 1 to 30';
+
+  @override
   String releaseVersion(String channel, String version) {
     return '$channel $version';
   }

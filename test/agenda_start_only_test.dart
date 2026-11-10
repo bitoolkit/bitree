@@ -113,6 +113,7 @@ void main() {
       final placement = layoutAgendaTimeline(
         [_openEnded(tailDays: 6)],
         minimumEventSpan: const Duration(hours: 1),
+        layoutDays: 6,
       ).single;
 
       expect(placement.start, _opens);
@@ -124,6 +125,7 @@ void main() {
       final placement = layoutAgendaTimeline(
         [_due(tailDays: 6)],
         minimumEventSpan: const Duration(hours: 1),
+        layoutDays: 6,
       ).single;
 
       expect(placement.start, _opens.subtract(const Duration(days: 6)));
@@ -259,14 +261,16 @@ void main() {
   group('timeline', () {
     Future<void> showTimeline(
       WidgetTester tester,
-      List<AgendaEntry> entries,
-    ) async {
+      List<AgendaEntry> entries, {
+      int layoutDays = 4,
+    }) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       final app = TestAppController(entries: entries);
       await app.initialize();
+      await app.settings.setAgendaLayoutDays(layoutDays);
       await tester.pumpWidget(
         MaterialApp(
           theme: bitreeTheme(Brightness.light),
@@ -291,7 +295,7 @@ void main() {
     ) async {
       final due = _due(tailDays: 6);
       final open = _openEnded(tailDays: 6);
-      await showTimeline(tester, [due, open]);
+      await showTimeline(tester, [due, open], layoutDays: 6);
       final dueRect = bar(tester, due);
       final openRect = bar(tester, open);
 
@@ -307,7 +311,7 @@ void main() {
 
     testWidgets('The card stays painted as the view zooms in', (tester) async {
       final open = _openEnded(tailDays: 12);
-      await showTimeline(tester, [open]);
+      await showTimeline(tester, [open], layoutDays: 12);
       final before = bar(tester, open);
       expect(before.width, closeTo(48 * (12 - .25), .001));
       tester.widget<Slider>(find.byType(Slider)).onChanged!(24);

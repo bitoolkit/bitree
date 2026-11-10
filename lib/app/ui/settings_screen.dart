@@ -18,6 +18,7 @@ import '../../ui/section_label.dart';
 import '../controller.dart';
 import '../settings_controller.dart';
 import 'about_dialog.dart';
+import 'agenda_layout_days_settings.dart';
 import 'appearance_screen.dart';
 import 'deadline_cutoff_settings.dart';
 import 'logs_screen.dart';
@@ -212,6 +213,7 @@ class SettingsScreen extends StatelessWidget {
               ),
             ]),
           section(l10n.settingsLocalAgenda, [
+            AgendaLayoutDaysSettingsTile(settings: controller.settings),
             DeadlineCutoffSettingsTile(settings: controller.settings),
             ListTile(
               contentPadding: tilePadding,

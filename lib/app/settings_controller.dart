@@ -47,6 +47,7 @@ class AppSettingsController extends ChangeNotifier {
   final agendaViewMode = ValueNotifier(AgendaViewMode.timeline);
   final timetableHeightMode = ValueNotifier(TimetableHeightMode.normal);
   final deadlineCutoff = ValueNotifier(const DeadlineCutoffWindow());
+  final agendaLayoutDays = ValueNotifier(4);
 
   Future<void>? _paletteSettingsLoad;
   SystemPalette? _systemPalette;
@@ -56,6 +57,7 @@ class AppSettingsController extends ChangeNotifier {
   bool _agendaViewChosen = false;
   bool _timetableHeightChosen = false;
   bool _deadlineCutoffChosen = false;
+  bool _agendaLayoutDaysChosen = false;
   bool _developerMode = false;
   bool _widgetUseSystemPalette = false;
   bool _globalUseSystemPalette = false;
@@ -160,6 +162,19 @@ class AppSettingsController extends ChangeNotifier {
       }
     } catch (failure, stack) {
       AppDiagnostics.instance.report('读取 DDL 伪提前设置', failure, stack);
+    }
+    try {
+      final saved = await _preferences.getString('agendaLayoutDays');
+      if (!_agendaLayoutDaysChosen && !_disposed && saved != null) {
+        final days = int.tryParse(saved);
+        if (days == null || days < 1 || days > 30) {
+          throw const FormatException('DDL 排版宽度必须为 1–30 天');
+        }
+        agendaLayoutDays.value = days;
+        _notify();
+      }
+    } catch (failure, stack) {
+      AppDiagnostics.instance.report('读取 DDL 排版宽度', failure, stack);
     }
   }
 
@@ -372,6 +387,21 @@ class AppSettingsController extends ChangeNotifier {
     );
   }
 
+  Future<void> setAgendaLayoutDays(int value) {
+    if (_disposed) return Future<void>.value();
+    if (value < 1 || value > 30) {
+      throw RangeError.range(value, 1, 30, 'agendaLayoutDays');
+    }
+    _agendaLayoutDaysChosen = true;
+    agendaLayoutDays.value = value;
+    _notify();
+    return _writePreference(
+      'agendaLayoutDays',
+      value.toString(),
+      '保存 DDL 排版宽度',
+    );
+  }
+
   Future<void> _writePreference(String key, String value, String operation) {
     final previous = _preferenceWrites[key] ?? Future<void>.value();
     final write = previous.then((_) async {
@@ -397,6 +427,7 @@ class AppSettingsController extends ChangeNotifier {
     agendaViewMode.dispose();
     timetableHeightMode.dispose();
     deadlineCutoff.dispose();
+    agendaLayoutDays.dispose();
     super.dispose();
   }
 }

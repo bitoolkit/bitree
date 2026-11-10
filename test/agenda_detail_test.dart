@@ -19,13 +19,18 @@ void main() {
   final url = Uri.https('lexue.bit.edu.cn', '/mod/assign/view.php', {
     'id': '42',
   });
-  AgendaEntry deadline({bool detailed = false, bool allDay = false}) =>
+  AgendaEntry deadline({
+    bool detailed = false,
+    bool allDay = false,
+    int tailDays = 4,
+  }) =>
       AgendaEntry(
         id: 'assignment',
         title: detailed ? '第三章作业：线性表与链表的实现、测试和复杂度分析' : '1',
         kind: AgendaKind.deadline,
         startsAt: DateTime.utc(2020, 10, 27, 1, 11),
         allDay: allDay,
+        tailDays: tailDays,
         course: detailed ? '2026–2027 秋季学期 · 数据结构中文班' : '',
         source: detailed ? DeadlineSource.lexue : null,
         url: detailed ? url : null,
@@ -210,10 +215,10 @@ void main() {
     expect(find.byType(SheetLayout), findsOneWidget);
   });
 
-  testWidgets('Edit opens the existing editor and saves the same entry', (
+  testWidgets('Edit preserves the entry and legacy width without a per-item slider', (
     tester,
   ) async {
-    final controller = await open(tester, deadline());
+    final controller = await open(tester, deadline(tailDays: 14));
     await tester.tap(find.widgetWithText(TextButton, '编辑'));
     await tester.pumpAndSettle();
     expect(find.text('编辑DDL'), findsOneWidget);
@@ -221,36 +226,15 @@ void main() {
       (widget) => widget is TextField && widget.decoration?.labelText == '名称',
     );
     expect(tester.widget<TextField>(name).controller!.text, '1');
-    final tailDays = find.byType(Slider);
-    expect(tester.widget<Slider>(tailDays).value, 4);
-    expect(tester.widget<Slider>(tailDays).divisions, 29);
-    expect(find.text('4 天'), findsOneWidget);
-    await tester.ensureVisible(tailDays);
-    final track = tester.getRect(tailDays);
-    await tester.tapAt(Offset(track.right - 1, track.center.dy));
-    await tester.pumpAndSettle();
-    expect(tester.widget<Slider>(tailDays).value, 30);
-    expect(find.text('30 天'), findsOneWidget);
-    await tester.tapAt(Offset(track.left + 1, track.center.dy));
-    await tester.pumpAndSettle();
-    expect(tester.widget<Slider>(tailDays).value, 1);
-    expect(find.text('1 天'), findsOneWidget);
-    await tester.dragFrom(
-      Offset(track.left + 24, track.center.dy),
-      Offset(track.width / 2 - 24, 0),
-    );
-    await tester.pumpAndSettle();
-    final selectedDays = tester.widget<Slider>(tailDays).value;
-    expect(selectedDays, inExclusiveRange(1, 30));
-    expect(selectedDays, selectedDays.roundToDouble());
-    expect(find.text('${selectedDays.round()} 天'), findsOneWidget);
-    expect(controller.agenda.entries.single.tailDays, 4);
+    expect(find.byType(Slider), findsNothing);
+    expect(find.text('拖尾长度（天）'), findsNothing);
+    expect(controller.agenda.entries.single.tailDays, 14);
     await tester.enterText(name, '第二章习题');
     await tester.tap(find.widgetWithText(FilledButton, '保存'));
     await tester.pumpAndSettle();
     expect(controller.agenda.entries.single.id, 'assignment');
     expect(controller.agenda.entries.single.title, '第二章习题');
-    expect(controller.agenda.entries.single.tailDays, selectedDays.round());
+    expect(controller.agenda.entries.single.tailDays, 14);
     expect(find.byType(SheetLayout), findsNothing);
     unawaited(
       showAgendaEntry(
@@ -262,7 +246,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(TextButton, '编辑'));
     await tester.pumpAndSettle();
-    expect(tester.widget<Slider>(tailDays).value, selectedDays);
+    expect(find.byType(Slider), findsNothing);
+    expect(controller.agenda.entries.single.tailDays, 14);
     expect(tester.takeException(), isNull);
   });
 

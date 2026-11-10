@@ -63,21 +63,26 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   DateTime? _gestureAnchor;
   List<AgendaEntry>? _cachedEntries;
   DeadlineCutoffWindow? _cachedCutoff;
+  int? _cachedLayoutDays;
   Duration? _cachedMinimumEventSpan;
   List<AgendaTimelinePlacement> _cachedPlacements = const [];
   final Map<String, DateTime> _nextStartById = {};
 
   List<AgendaTimelinePlacement> _layout(Duration minimumEventSpan) {
     final cutoff = widget.controller.settings.deadlineCutoff.value;
+    final layoutDays = widget.controller.settings.agendaLayoutDays.value;
     if (!identical(_cachedEntries, widget.entries) ||
         _cachedCutoff != cutoff ||
+        _cachedLayoutDays != layoutDays ||
         _cachedMinimumEventSpan != minimumEventSpan) {
       _cachedEntries = widget.entries;
       _cachedCutoff = cutoff;
+      _cachedLayoutDays = layoutDays;
       _cachedMinimumEventSpan = minimumEventSpan;
       _cachedPlacements = layoutAgendaTimeline(
         widget.entries.map((entry) => entry.withDeadlineCutoff(cutoff)),
         minimumEventSpan: minimumEventSpan,
+        layoutDays: layoutDays,
       );
       _nextStartById.clear();
       final nextByLane = <int, DateTime>{};
@@ -96,6 +101,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     _center = calendarDate(widget.now).add(const Duration(hours: 12));
     _lanes.addListener(_laneChanged);
     widget.controller.settings.deadlineCutoff.addListener(_laneChanged);
+    widget.controller.settings.agendaLayoutDays.addListener(_laneChanged);
     _horizontalFling = AnimationController.unbounded(vsync: this)
       ..addListener(_tickHorizontal);
     _verticalFling = AnimationController.unbounded(vsync: this)
@@ -162,7 +168,9 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller.settings.deadlineCutoff.removeListener(_laneChanged);
+      oldWidget.controller.settings.agendaLayoutDays.removeListener(_laneChanged);
       widget.controller.settings.deadlineCutoff.addListener(_laneChanged);
+      widget.controller.settings.agendaLayoutDays.addListener(_laneChanged);
       _cachedEntries = null;
     }
     if (oldWidget.visible != widget.visible) {
@@ -202,6 +210,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     _verticalFling.dispose();
     _lanes.removeListener(_laneChanged);
     widget.controller.settings.deadlineCutoff.removeListener(_laneChanged);
+    widget.controller.settings.agendaLayoutDays.removeListener(_laneChanged);
     _lanes.dispose();
     super.dispose();
   }
@@ -289,12 +298,8 @@ class _AgendaTimelineState extends State<AgendaTimeline>
         final laneHeight = barHeight + 12;
         // Keep the tail a quarter baseline day inside its reservation.
         // Width is set by the MINIMUM zoom, never by the current zoom.
-        double deadlineWidth(AgendaEntry entry) =>
-            cellWidth *
-            ((entry.hasDeadlineCutoff
-                    ? AgendaEntry.defaultTailDays
-                    : entry.tailDays) -
-                0.25);
+        double deadlineWidth(AgendaEntry _) =>
+            cellWidth * (widget.controller.settings.agendaLayoutDays.value - 0.25);
         Duration deadlineDuration(AgendaEntry entry) => Duration(
           microseconds:
               (deadlineWidth(entry) / pixelsPerHour * _microsecondsPerHour)

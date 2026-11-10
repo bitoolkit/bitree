@@ -23,23 +23,20 @@ class AgendaTimelinePlacement {
 List<AgendaTimelinePlacement> layoutAgendaTimeline(
   Iterable<AgendaEntry> entries, {
   required Duration minimumEventSpan,
+  int layoutDays = AgendaEntry.defaultTailDays,
 }) {
-  // An ordinary deadline hangs `tailDays` to the left of its due time. One
-  // that only records an opening time reserves the same span forwards from
-  // that opening time, so both reserve `tailDays` of lane space.
+  if (layoutDays < 1 || layoutDays > AgendaEntry.maxTailDays) {
+    throw RangeError.range(layoutDays, 1, AgendaEntry.maxTailDays, 'layoutDays');
+  }
+  // All deadline types share a global reservation. Legacy per-entry tailDays
+  // remains stored, but no longer controls layout or painted width.
   DateTime reservationStart(AgendaEntry entry) =>
       entry.isDeadline && !entry.startOnly
-      ? entry.dueAt.subtract(
-          Duration(
-            days: entry.hasDeadlineCutoff
-                ? AgendaEntry.defaultTailDays
-                : entry.tailDays,
-          ),
-        )
+      ? entry.dueAt.subtract(Duration(days: layoutDays))
       : entry.startsAt;
   DateTime reservationEnd(AgendaEntry entry) => entry.isDeadline
       ? entry.startOnly
-            ? entry.startsAt.add(Duration(days: entry.tailDays))
+            ? entry.startsAt.add(Duration(days: layoutDays))
             : entry.realDueAt
       : entry.endsAt!;
   final intervals =

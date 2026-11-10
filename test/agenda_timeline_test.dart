@@ -53,6 +53,7 @@ Future<TestAppController> _show(
   List<AgendaEntry> entries, {
   double scale = 1,
   Brightness brightness = Brightness.light,
+  int layoutDays = 4,
 }) async {
   tester.view.physicalSize = const Size(390, 844);
   tester.view.devicePixelRatio = 1;
@@ -60,6 +61,7 @@ Future<TestAppController> _show(
   addTearDown(tester.view.resetDevicePixelRatio);
   final app = TestAppController(entries: entries);
   await app.initialize();
+  await app.settings.setAgendaLayoutDays(layoutDays);
   await tester.pumpWidget(
     MaterialApp(
       theme: bitreeTheme(brightness),
@@ -141,7 +143,7 @@ void main() {
   });
 
   for (final days in [1, 7, 14]) {
-    test('DDL lane reservations follow $days tail days', () {
+    test('DDL lane reservations follow $days global layout days', () {
       final ddl = AgendaEntry(
         id: 'custom',
         title: '作业',
@@ -160,7 +162,7 @@ void main() {
       final placements = layoutAgendaTimeline([
         ddl,
         overlapping,
-      ], minimumEventSpan: const Duration(minutes: 1));
+      ], minimumEventSpan: const Duration(minutes: 1), layoutDays: days);
       final reservation = placements.singleWhere((p) => p.entry == ddl);
       expect(reservation.start, ddl.dueAt.subtract(Duration(days: days)));
       expect(reservation.end, ddl.dueAt);
@@ -177,7 +179,7 @@ void main() {
         startsAt: _date.add(const Duration(hours: 13)),
         tailDays: days,
       );
-      await _show(tester, [ddl]);
+      await _show(tester, [ddl], layoutDays: days);
       final before = tester.getRect(_paintedBar(ddl));
       expect(before.width, closeTo(48 * (days - .25), .001));
       tester.widget<Slider>(find.byType(Slider)).onChanged!(24);
@@ -200,7 +202,7 @@ void main() {
       startsAt: _date.add(const Duration(days: 7)),
       tailDays: 14,
     );
-    await _show(tester, [ddl]);
+    await _show(tester, [ddl], layoutDays: 14);
     final viewport = tester.getRect(find.byType(AgendaTimeline));
     final tail = tester.getRect(_paintedBar(ddl));
     expect(tail.right, greaterThan(viewport.right));

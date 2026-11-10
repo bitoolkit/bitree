@@ -1780,6 +1780,10 @@
       }
     }
   },
+  "settingsAgendaLayoutDays": "DDL layout width",
+  "agendaLayoutDaysDescription": "Use one layout width for deadlines, start-only items, and the left side of adjusted deadlines, overriding old per-item tails. Painted tails keep a fixed screen width.",
+  "agendaLayoutDaysUnit": "days",
+  "agendaLayoutDaysRange": "Enter a whole number from 1 to 30",
   "releaseVersion": "{channel} {version}",
   "@releaseVersion": {
     "placeholders": {

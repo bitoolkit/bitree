@@ -2399,6 +2399,18 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get settingsAgendaLayoutDays => 'DDL 排版宽度';
+
+  @override
+  String get agendaLayoutDaysDescription => '统一控制 DDL、仅开始时间项目及伪提前 DDL 左侧信息区的排版宽度，覆盖原单条拖尾设置；渲染仍保持屏幕定宽。';
+
+  @override
+  String get agendaLayoutDaysUnit => '天';
+
+  @override
+  String get agendaLayoutDaysRange => '请输入 1–30 的整数';
+
+  @override
   String releaseVersion(String channel, String version) {
     return '$channel $version';
   }
