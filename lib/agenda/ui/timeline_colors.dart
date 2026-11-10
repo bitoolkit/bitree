@@ -97,24 +97,25 @@ enum _TimelineTone {
       null => null,
     },
   };
-  final finished = entry.isFinished(now);
-  final fadeAll =
-      finished && (entry.isDeadline || entry.kind == AgendaKind.exam);
-  final fillAlpha = fadeAll ? 0.5 : (finished ? 0.55 : 1.0);
-  final foregroundAlpha = fadeAll ? 0.5 : 1.0;
+  final finished = entry.done || entry.isFinished(now);
+  final fillAlpha = finished ? 0.5 : 1.0;
+  final foregroundAlpha = finished ? 0.5 : 1.0;
   late final _TimelineColors colors;
   if (tone != null) {
     final values = theme.brightness == Brightness.dark ? tone.dark : tone.light;
     colors = (
-      fill: values.fill.withValues(alpha: fillAlpha),
-      text: values.text.withValues(alpha: foregroundAlpha),
-      accent: values.accent.withValues(alpha: foregroundAlpha),
+      fill: values.fill.withValues(alpha: values.fill.a * fillAlpha),
+      text: values.text.withValues(alpha: values.text.a * foregroundAlpha),
+      accent: values.accent.withValues(alpha: values.accent.a * foregroundAlpha),
     );
   } else if (agendaPaletteColors(theme) case final blockPalette?) {
+    final fill = Color(blockPalette.fill);
+    final text = Color(blockPalette.text);
+    final accent = Color(blockPalette.accent);
     colors = (
-      fill: Color(blockPalette.fill).withValues(alpha: fillAlpha),
-      text: Color(blockPalette.text).withValues(alpha: foregroundAlpha),
-      accent: Color(blockPalette.accent).withValues(alpha: foregroundAlpha),
+      fill: fill.withValues(alpha: fill.a * fillAlpha),
+      text: text.withValues(alpha: text.a * foregroundAlpha),
+      accent: accent.withValues(alpha: accent.a * foregroundAlpha),
     );
   } else {
     final manualDeadline =
@@ -129,12 +130,11 @@ enum _TimelineTone {
         : manualDeadline
         ? scheme.onSecondaryContainer
         : scheme.onPrimaryContainer;
+    final accent = manualDeadline ? scheme.secondary : scheme.primary;
     colors = (
-      fill: fill.withValues(alpha: fillAlpha),
-      text: text.withValues(alpha: foregroundAlpha),
-      accent: (manualDeadline ? scheme.secondary : scheme.primary).withValues(
-        alpha: foregroundAlpha,
-      ),
+      fill: fill.withValues(alpha: fill.a * fillAlpha),
+      text: text.withValues(alpha: text.a * foregroundAlpha),
+      accent: accent.withValues(alpha: accent.a * foregroundAlpha),
     );
   }
 

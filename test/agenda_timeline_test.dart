@@ -1,6 +1,7 @@
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/timeline_layout.dart';
 import 'package:bitree/agenda/ui/agenda_timeline.dart';
+import 'package:bitree/agenda/ui/event_timeline_entry.dart';
 import 'package:bitree/l10n/app_localizations_zh.dart';
 import 'package:bitree/l10n/formats.dart';
 import 'package:bitree/ui/theme.dart';
@@ -28,6 +29,16 @@ Finder _bar(AgendaEntry entry) => find.bySemanticsLabel(
 
 Finder _paintedBar(AgendaEntry entry) =>
     find.byKey(ValueKey(('agenda-timeline-bar', entry.id)));
+
+String _startPreview(AgendaEntry entry) {
+  final l10n = AppLocalizationsZh();
+  return l10n.agendaTimelineStarts(localizedAgendaDateTime(l10n, entry.startsAt));
+}
+
+String _endPreview(AgendaEntry entry) {
+  final l10n = AppLocalizationsZh();
+  return l10n.agendaTimelineEnds(localizedAgendaDateTime(l10n, entry.endsAt!));
+}
 
 List<AgendaEntry> _stackedDeadlines() => [
   for (var index = 0; index < 24; index++)
@@ -84,7 +95,7 @@ Future<TestAppController> _show(
 }
 
 void main() {
-  test('Minimum display spans separate short events without changing their real times', () {
+  test('Event information reservations keep real endpoints and minimum hit spans', () {
     final first = _event('first', 11);
     final second = _event('second', 14, exam: true);
     final entries = [first, second];
@@ -93,7 +104,10 @@ void main() {
       minimumEventSpan: const Duration(hours: 48),
     );
     expect(zoomedOut.map((placement) => placement.lane), [0, 1]);
-    expect(zoomedOut.first.start, first.startsAt);
+    expect(
+      zoomedOut.first.start,
+      first.startsAt.subtract(const Duration(days: 4)),
+    );
     expect(zoomedOut.first.end, first.endsAt);
     expect(
       zoomedOut.first.layoutEnd,
@@ -103,7 +117,17 @@ void main() {
       entries,
       minimumEventSpan: const Duration(hours: 2),
     );
-    expect(zoomedIn.map((placement) => placement.lane), [0, 0]);
+    // Their real intervals do not overlap, but the four-day information
+    // reservations do, independently of the minimum hit-target span.
+    expect(zoomedIn.map((placement) => placement.lane), [0, 1]);
+    expect(
+      zoomedIn.first.start,
+      first.startsAt.subtract(const Duration(days: 4)),
+    );
+    expect(
+      zoomedIn.first.layoutEnd,
+      first.startsAt.add(const Duration(hours: 2)),
+    );
     expect(zoomedIn.map((placement) => placement.end), [
       first.endsAt,
       second.endsAt,
@@ -134,6 +158,8 @@ void main() {
     final deadlinePlacement = placements.singleWhere(
       (placement) => placement.entry == ddl,
     );
+    expect(eventPlacement.start, long.startsAt.subtract(const Duration(days: 4)));
+    expect(eventPlacement.end, long.endsAt);
     expect(eventPlacement.layoutEnd, long.endsAt);
     expect(
       deadlinePlacement.start,
@@ -216,9 +242,11 @@ void main() {
     (Brightness.dark, 1.6),
   ]) {
     testWidgets(
-      'Short cards keep a fixed 2px minimum and stay tappable in $brightness, $scale',
+      'Short events keep fixed information cards and real time spans in $brightness, $scale',
       (tester) async {
-        final first = _event('first', 11);
+        // Keep these intervals in the future at the fixed test clock so their
+        // range caption is tested independently of overdue status formatting.
+        final first = _event('first', 13);
         final second = _event('second', 14, exam: true);
         final ddl = AgendaEntry(
           id: 'ddl',
@@ -233,21 +261,14 @@ void main() {
           scale: scale,
           brightness: brightness,
         );
-        final viewport = tester.getRect(find.byType(AgendaTimeline));
-        void checkCards(double eventWidth) {
+        void checkCards(double realIntervalWidth) {
           final rectangles = entries
               .map((entry) => tester.getRect(_paintedBar(entry)))
               .toList();
-          expect(rectangles.first.width, closeTo(eventWidth, .001));
-          expect(
-            rectangles[1].width,
-            closeTo(
-              eventWidth.clamp(0, viewport.right - rectangles[1].left),
-              .001,
-            ),
-          );
-          expect(rectangles.last.width, closeTo(180, .001));
           for (var index = 0; index < rectangles.length; index++) {
+            // Event/exam information regions now use the same fixed-width
+            // screen-space reservation as the DDL, not a 2px text box.
+            expect(rectangles[index].width, closeTo(180, .001));
             expect(
               rectangles[index].height,
               closeTo(tester.getRect(_bar(entries[index])).height, .001),
@@ -256,18 +277,36 @@ void main() {
               expect(rectangles[index].overlaps(rectangles[other]), isFalse);
             }
           }
+          for (final entry in [first, second]) {
+            final card = tester.widget<EventTimelineEntry>(
+              find.byWidgetPredicate(
+                (widget) => widget is EventTimelineEntry &&
+                    widget.entry.id == entry.id,
+              ),
+            );
+            expect(card.informationWidth, closeTo(180, .001));
+            expect(
+              card.geometry.startX - card.geometry.informationLeft,
+              closeTo(180, .001),
+            );
+            expect(
+              card.geometry.endX - card.geometry.startX,
+              closeTo(realIntervalWidth, .001),
+            );
+          }
           expect(
             tester.getSemantics(_bar(first)).label,
-            contains('11:00–11:05'),
+            contains('13:00–13:05'),
           );
           expect(tester.takeException(), isNull);
         }
 
-        checkCards(2);
+        // At minimum zoom the five-minute real interval is below 2px. Its
+        // markers stay at the actual times while the information area is wide.
+        checkCards(2 * 5 / 60);
         tester.widget<Slider>(find.byType(Slider)).onChanged!(24);
         await tester.pumpAndSettle();
-        // At 48px/hour, the real five-minute duration is 4px, above the 2px floor.
-        checkCards(4);
+        checkCards(48 * 5 / 60);
         final short = tester.getRect(_bar(first));
         await tester.tapAt(Offset(short.right - 12, short.center.dy));
         await tester.pumpAndSettle();
@@ -279,7 +318,7 @@ void main() {
           findsWidgets,
         );
         expect(app.agenda.entries, orderedEquals(entries));
-        expect(first.endsAt, _date.add(const Duration(hours: 11, minutes: 5)));
+        expect(first.endsAt, _date.add(const Duration(hours: 13, minutes: 5)));
         await tester.tap(find.byTooltip('关闭'));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
@@ -289,32 +328,52 @@ void main() {
   }
 
   testWidgets(
-    'A minimum-width card stays visible after its real end leaves the viewport',
+    'A future event stays tappable while only its information tail is visible',
     (tester) async {
-      final beforeViewport = _date
-          .subtract(const Duration(days: 4))
-          .add(const Duration(hours: 10));
+      final afterViewport = _date.add(const Duration(days: 5, hours: 12));
       final entry = AgendaEntry(
         id: 'edge',
         title: '边缘短日程',
         kind: AgendaKind.event,
-        startsAt: beforeViewport,
-        endsAt: beforeViewport.add(const Duration(minutes: 5)),
+        startsAt: afterViewport,
+        endsAt: afterViewport.add(const Duration(minutes: 5)),
       );
       await _show(tester, [entry]);
+      final viewport = tester.getRect(find.byType(AgendaTimeline));
       final painted = tester.getRect(_paintedBar(entry));
-      expect(painted.left, 0);
-      // Half of the 2px bar is clipped at the left edge; its hit target is wider.
-      expect(painted.width, closeTo(1, .001));
+      expect(painted.width, closeTo(180, .001));
+      expect(painted.left, lessThan(viewport.right));
+      expect(painted.right, greaterThan(viewport.right));
       final card = tester.getRect(_bar(entry));
-      expect(card.left, 0);
-      await tester.tapAt(card.center);
+      expect(card.right, lessThanOrEqualTo(viewport.right));
+      expect(card.width, greaterThan(0));
+      await tester.tapAt(Offset(viewport.right - 20, card.center.dy));
       await tester.pumpAndSettle();
       expect(find.byType(BottomSheet), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },
   );
+
+  testWidgets('An event wholly left of the viewport has no artificial 2px tail', (
+    tester,
+  ) async {
+    final beforeViewport = _date
+        .subtract(const Duration(days: 4))
+        .add(const Duration(hours: 10));
+    final entry = AgendaEntry(
+      id: 'past-edge',
+      title: '屏外短日程',
+      kind: AgendaKind.event,
+      startsAt: beforeViewport,
+      endsAt: beforeViewport.add(const Duration(minutes: 5)),
+    );
+    await _show(tester, [entry]);
+    expect(_paintedBar(entry), findsNothing);
+    expect(_bar(entry), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
 
   testWidgets('Global lanes reserve space without rendering off-screen cards', (
     tester,
@@ -537,11 +596,11 @@ void main() {
       await tester.longPress(_bar(entry));
       await tester.pumpAndSettle();
       expect(
-        find.textContaining('开始：2026-11-17 周二 11:00', findRichText: true),
+        find.textContaining(_startPreview(entry), findRichText: true),
         findsOneWidget,
       );
       expect(
-        find.textContaining('结束：2026-11-17 周二 13:00', findRichText: true),
+        find.textContaining(_endPreview(entry), findRichText: true),
         findsOneWidget,
       );
       expect(find.byType(BottomSheet), findsNothing);
@@ -623,11 +682,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pumpAndSettle();
     expect(
-      find.textContaining('开始：2026-11-17 周二 11:00', findRichText: true),
+      find.textContaining(_startPreview(entry), findRichText: true),
       findsOneWidget,
     );
     expect(
-      find.textContaining('结束：2026-11-17 周二 11:05', findRichText: true),
+      find.textContaining(_endPreview(entry), findRichText: true),
       findsOneWidget,
     );
     expect(find.byType(BottomSheet), findsNothing);

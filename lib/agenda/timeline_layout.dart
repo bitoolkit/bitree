@@ -30,10 +30,10 @@ List<AgendaTimelinePlacement> layoutAgendaTimeline(
   }
   // All deadline types share a global reservation. Legacy per-entry tailDays
   // remains stored, but no longer controls layout or painted width.
-  DateTime reservationStart(AgendaEntry entry) =>
-      entry.isDeadline && !entry.startOnly
-      ? entry.dueAt.subtract(Duration(days: layoutDays))
-      : entry.startsAt;
+  DateTime reservationStart(AgendaEntry entry) => entry.startOnly
+      ? entry.startsAt
+      : (entry.isDeadline ? entry.dueAt : entry.startsAt)
+            .subtract(Duration(days: layoutDays));
   DateTime reservationEnd(AgendaEntry entry) => entry.isDeadline
       ? entry.startOnly
             ? entry.startsAt.add(Duration(days: layoutDays))
@@ -56,7 +56,7 @@ List<AgendaTimelinePlacement> layoutAgendaTimeline(
   final laneEnds = <DateTime>[];
   final result = <AgendaTimelinePlacement>[];
   for (final interval in intervals) {
-    final minimumEnd = interval.start.add(minimumEventSpan);
+    final minimumEnd = interval.entry.startsAt.add(minimumEventSpan);
     final layoutEnd =
         !interval.entry.isDeadline && interval.end.isBefore(minimumEnd)
         ? minimumEnd

@@ -24,12 +24,16 @@ class AdjustedDeadlineExtensionPainter extends CustomPainter {
     required this.realX,
     required this.color,
     this.stripeWidth = 16,
+    this.highOpacity = 0.32,
+    this.lowOpacity = 0.16,
   });
 
   final double effectiveX;
   final double realX;
   final Color color;
   final double stripeWidth;
+  final double highOpacity;
+  final double lowOpacity;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -54,7 +58,7 @@ class AdjustedDeadlineExtensionPainter extends CustomPainter {
         path,
         Paint()
           ..color = color.withValues(
-            alpha: color.a * (index.isEven ? 0.32 : 0.16),
+            alpha: color.a * (index.isEven ? highOpacity : lowOpacity),
           ),
       );
     }
@@ -66,7 +70,9 @@ class AdjustedDeadlineExtensionPainter extends CustomPainter {
       oldDelegate.effectiveX != effectiveX ||
       oldDelegate.realX != realX ||
       oldDelegate.color != color ||
-      oldDelegate.stripeWidth != stripeWidth;
+      oldDelegate.stripeWidth != stripeWidth ||
+      oldDelegate.highOpacity != highOpacity ||
+      oldDelegate.lowOpacity != lowOpacity;
 }
 
 /// Always used as a foreground painter: even a subpixel interval must draw the

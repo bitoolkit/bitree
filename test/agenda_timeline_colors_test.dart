@@ -95,5 +95,36 @@ void main() {
         expect(finishedColors.accent.a, closeTo(0.5, 0.01));
       }
     });
+
+    testWidgets('Completed events and exams fade fill, text and accent in $brightness', (
+      tester,
+    ) async {
+      late BuildContext context;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: bitreeTheme(brightness),
+          home: Builder(
+            builder: (value) {
+              context = value;
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+      for (final entry in entries.where((entry) => !entry.isDeadline)) {
+        // Keep the test clock before the event starts: this verifies the
+        // completed palette, not automatic completion or overdue transitions.
+        final pending = agendaTimelineColors(context, entry, now);
+        final completed = agendaTimelineColors(
+          context,
+          entry.copyWith(done: true),
+          now,
+        );
+        expect(completed.fill.a, closeTo(pending.fill.a * .5, .01));
+        expect(completed.text.a, closeTo(pending.text.a * .5, .01));
+        expect(completed.accent.a, closeTo(pending.accent.a * .5, .01));
+      }
+      expect(tester.takeException(), isNull);
+    });
   }
 }

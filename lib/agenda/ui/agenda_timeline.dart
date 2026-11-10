@@ -13,6 +13,7 @@ import '../model.dart';
 import '../timeline_layout.dart';
 import 'adjusted_deadline_painter.dart';
 import 'agenda_detail.dart';
+import 'event_timeline_entry.dart';
 import 'timeline_entry.dart';
 
 const _microsecondsPerHour = Duration.microsecondsPerSecond * 3600;
@@ -310,11 +311,16 @@ class _AgendaTimelineState extends State<AgendaTimeline>
         // `deadlineWidth` wide, so card culling follows the painted box rather
         // than the wider reservation. This does not change the scroll range.
         DateTime paintedStart(AgendaTimelinePlacement placement) =>
-            placement.entry.isDeadline && !placement.entry.startOnly
-            ? placement.entry.dueAt.subtract(deadlineDuration(placement.entry))
-            : placement.start;
+            placement.entry.startOnly
+            ? placement.start
+            : (placement.entry.isDeadline
+                      ? placement.entry.dueAt
+                      : placement.entry.startsAt)
+                  .subtract(deadlineDuration(placement.entry));
         DateTime paintedEnd(AgendaTimelinePlacement placement) =>
-            placement.entry.isDeadline && placement.entry.startOnly
+            !placement.entry.isDeadline
+            ? placement.entry.endsAt!
+            : placement.entry.startOnly
             ? placement.start.add(deadlineDuration(placement.entry))
             : placement.layoutEnd;
         final minimumEventSpan = Duration(
@@ -676,6 +682,31 @@ class _AgendaTimelineState extends State<AgendaTimeline>
         time.difference(_center).inMicroseconds /
             _microsecondsPerHour *
             pixelsPerHour;
+    if (!entry.isDeadline) {
+      final start = x(entry.startsAt);
+      final end = x(entry.endsAt!);
+      final informationLeft = start - deadlineWidth;
+      final left = math.max(0.0, informationLeft);
+      final right = math.min(width, end);
+      return Positioned(
+        key: ValueKey(('agenda-timeline-entry', entry.id)),
+        left: left,
+        top: placement.lane * laneHeight + 12,
+        width: math.max(0.0, right - left),
+        height: laneHeight - 12,
+        child: EventTimelineEntry(
+          entry: entry,
+          now: widget.now,
+          informationWidth: deadlineWidth,
+          geometry: EventTimelineGeometry(
+            informationLeft: informationLeft - left,
+            startX: start - left,
+            endX: end - left,
+          ),
+          onTap: () => showAgendaEntry(context, widget.controller, entry),
+        ),
+      );
+    }
     if (entry.hasDeadlineCutoff) {
       final effective = x(entry.dueAt);
       final real = x(entry.realDueAt);
