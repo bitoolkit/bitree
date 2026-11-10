@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/memory_diagnostics_io.dart';
 import 'support/test_app.dart';
 
 final _now = DateTime.utc(2030, 1, 2, 12);
@@ -81,20 +82,23 @@ void main() {
   const pathProvider = MethodChannel('plugins.flutter.io/path_provider');
   final messenger =
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-  late Directory logDirectory;
+  IOOverrides? previousIo;
   setUpAll(() async {
-    logDirectory = await Directory.systemTemp.createTemp(
-      'bitree-agenda-completion-logs-',
-    );
-    messenger.setMockMethodCallHandler(pathProvider, (_) async => logDirectory.path);
-    // Prime the shared successful directory future before fault-injection tests.
+    final support = '${Directory.systemTemp.path}/bitree-completion-memory';
+    previousIo = IOOverrides.current;
+    // Install before priming the singleton: its cached Directory must also be
+    // in memory, not a real Directory with IO tied to a retired FakeAsync zone.
+    IOOverrides.global = MemoryDiagnosticsIo();
+    messenger.setMockMethodCallHandler(pathProvider, (_) async => support);
     await AppDiagnostics.instance.recentLines();
   });
   tearDownAll(() async {
-    await AppDiagnostics.instance.recentLines();
-    messenger.setMockMethodCallHandler(pathProvider, null);
-    expect(logDirectory.absolute.path, contains('bitree-agenda-completion-logs-'));
-    await logDirectory.delete(recursive: true);
+    try {
+      await AppDiagnostics.instance.recentLines();
+    } finally {
+      messenger.setMockMethodCallHandler(pathProvider, null);
+      IOOverrides.global = previousIo;
+    }
   });
 
   test('Elapsed time and completion are independent for all kinds', () {
@@ -240,6 +244,10 @@ void main() {
     expect(controller.entries.single.completionSchemaVersion, 0);
     expect(store.entries.single.done, isFalse);
     expect(controller.entries.single.overdue(_now), isFalse);
+    expect(
+      await AppDiagnostics.instance.recentLines(),
+      contains('simulated agenda write failure'),
+    );
     expect(await controller.reconcileExamCompletion(), isFalse);
     store.fail = false;
     expect(await controller.reconcileExamCompletion(), isTrue);
