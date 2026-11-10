@@ -13,11 +13,16 @@ import 'physics_lab_deadlines.dart';
 import 'store.dart';
 
 class AgendaController extends ChangeNotifier {
-  AgendaController(this._store, {DateTime Function()? now})
-    : _now = now ?? campusNow;
+  AgendaController(
+    this._store, {
+    DateTime Function()? now,
+    void Function(String, Object, StackTrace)? reportError,
+  }) : _now = now ?? campusNow,
+       _reportError = reportError ?? AppDiagnostics.instance.report;
 
   final AgendaStore _store;
   final DateTime Function() _now;
+  final void Function(String, Object, StackTrace) _reportError;
   Timer? _completionTimer;
   bool _completionClockActive = false;
   List<AgendaEntry> _entries = const [];
@@ -66,12 +71,12 @@ class AgendaController extends ChangeNotifier {
         } on Exception catch (failure, stack) {
           // Keep the unmigrated records on failure. A later reconciliation can
           // retry, rather than claiming the automatic opportunity was consumed.
-          AppDiagnostics.instance.report('迁移日程完成状态', failure, stack);
+          _reportError('迁移日程完成状态', failure, stack);
         }
       }
       _ready = true;
     } on Exception catch (failure, stack) {
-      AppDiagnostics.instance.report('读取日程', failure, stack);
+      _reportError('读取日程', failure, stack);
     } finally {
       _busy = false;
       _notify();
@@ -393,7 +398,7 @@ class AgendaController extends ChangeNotifier {
     } on RequestCancelled {
       rethrow;
     } on Exception catch (failure, stack) {
-      AppDiagnostics.instance.report('保存日程', failure, stack);
+      _reportError('保存日程', failure, stack);
       return false;
     } finally {
       _busy = false;

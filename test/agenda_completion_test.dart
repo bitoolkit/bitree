@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:bitree/academics/controller.dart';
 import 'package:bitree/agenda/controller.dart';
@@ -9,17 +8,14 @@ import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/ui/agenda_list_tile.dart';
 import 'package:bitree/agenda/ui/agenda_operations.dart';
 import 'package:bitree/app/controller.dart';
-import 'package:bitree/core/diagnostics.dart';
 import 'package:bitree/l10n/app_localizations_zh.dart';
 import 'package:bitree/l10n/formats.dart';
 import 'package:bitree/school/service.dart';
 import 'package:bitree/ui/swipe_action_tile.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'support/memory_diagnostics_io.dart';
 import 'support/test_app.dart';
 
 final _now = DateTime.utc(2030, 1, 2, 12);
@@ -77,29 +73,20 @@ class _Store extends MemoryAgendaStore {
   }
 }
 
+final _reportedErrors = <String>[];
+
+AgendaController _controller(_Store store, {DateTime Function()? now}) =>
+    AgendaController(
+      store,
+      now: now,
+      reportError: (operation, failure, _) {
+        _reportedErrors.add('$operation: $failure');
+      },
+    );
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  const pathProvider = MethodChannel('plugins.flutter.io/path_provider');
-  final messenger =
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-  IOOverrides? previousIo;
-  setUpAll(() async {
-    final support = '${Directory.systemTemp.path}/bitree-completion-memory';
-    previousIo = IOOverrides.current;
-    // Install before priming the singleton: its cached Directory must also be
-    // in memory, not a real Directory with IO tied to a retired FakeAsync zone.
-    IOOverrides.global = MemoryDiagnosticsIo();
-    messenger.setMockMethodCallHandler(pathProvider, (_) async => support);
-    await AppDiagnostics.instance.recentLines();
-  });
-  tearDownAll(() async {
-    try {
-      await AppDiagnostics.instance.recentLines();
-    } finally {
-      messenger.setMockMethodCallHandler(pathProvider, null);
-      IOOverrides.global = previousIo;
-    }
-  });
+  setUp(_reportedErrors.clear);
 
   test('Elapsed time and completion are independent for all kinds', () {
     for (final kind in AgendaKind.values) {
@@ -169,7 +156,7 @@ void main() {
       _item(id: 'new'),
       _legacy(_item(id: 'future', endsAt: _now.add(const Duration(hours: 1)))),
     ]);
-    final controller = AgendaController(store, now: () => _now);
+    final controller = _controller(store, now: () => _now);
     addTearDown(controller.dispose);
     await controller.load();
     expect(controller.entries.singleWhere((e) => e.id == 'legacy').done, isTrue);
@@ -180,7 +167,7 @@ void main() {
     expect(controller.entries.singleWhere((e) => e.id == 'legacy').overdue(_now), isTrue);
     await controller.reconcileExamCompletion(now: _now.add(const Duration(days: 1)));
     expect(controller.entries.every((e) => !e.done), isTrue);
-    final reopened = AgendaController(store, now: () => _now.add(const Duration(days: 2)));
+    final reopened = _controller(store, now: () => _now.add(const Duration(days: 2)));
     addTearDown(reopened.dispose);
     await reopened.load();
     expect(reopened.entries.every((e) => !e.done), isTrue);
@@ -195,7 +182,7 @@ void main() {
         endsAt: _now.add(const Duration(hours: 1)),
       )),
     ]);
-    final controller = AgendaController(store, now: () => _now);
+    final controller = _controller(store, now: () => _now);
     addTearDown(controller.dispose);
     await controller.load();
     expect(controller.entries.every((e) => e.done && e.examAutoCompletionHandled), isTrue);
@@ -205,7 +192,7 @@ void main() {
     expect(store.writes, 1);
     expect(await controller.setDone('past', false), isTrue);
     await controller.reconcileExamCompletion();
-    final restarted = AgendaController(store, now: () => _now.add(const Duration(days: 2)));
+    final restarted = _controller(store, now: () => _now.add(const Duration(days: 2)));
     addTearDown(restarted.dispose);
     await restarted.load();
     final past = restarted.entries.singleWhere((e) => e.id == 'past');
@@ -220,7 +207,7 @@ void main() {
       kind: AgendaKind.exam,
       endsAt: _now.add(const Duration(hours: 1)),
     )]);
-    final controller = AgendaController(store, now: () => clock);
+    final controller = _controller(store, now: () => clock);
     addTearDown(controller.dispose);
     await controller.load();
     expect(await controller.setDone('item', true), isTrue);
@@ -235,7 +222,7 @@ void main() {
 
   test('Failed migration or auto-completion does not consume state', () async {
     final store = _Store([_legacy(_item(kind: AgendaKind.exam))])..fail = true;
-    final controller = AgendaController(store, now: () => _now);
+    final controller = _controller(store, now: () => _now);
     addTearDown(controller.dispose);
     await controller.load();
     expect(controller.ready, isTrue);
@@ -245,8 +232,8 @@ void main() {
     expect(store.entries.single.done, isFalse);
     expect(controller.entries.single.overdue(_now), isFalse);
     expect(
-      await AppDiagnostics.instance.recentLines(),
-      contains('simulated agenda write failure'),
+      _reportedErrors,
+      contains(contains('simulated agenda write failure')),
     );
     expect(await controller.reconcileExamCompletion(), isFalse);
     store.fail = false;
@@ -260,7 +247,7 @@ void main() {
 
   test('Manual write failure leaves completion untouched and can be retried', () async {
     final store = _Store([_item(kind: AgendaKind.exam)]);
-    final controller = AgendaController(store, now: () => _now);
+    final controller = _controller(store, now: () => _now);
     addTearDown(controller.dispose);
     await controller.load();
     store.fail = true;
@@ -278,7 +265,7 @@ void main() {
       kind: AgendaKind.exam,
       endsAt: _now.add(const Duration(hours: 1)),
     )]);
-    final controller = AgendaController(store, now: () => clock);
+    final controller = _controller(store, now: () => clock);
     addTearDown(controller.dispose);
     await controller.load();
     final snapshot = controller.entries.single;
@@ -297,7 +284,7 @@ void main() {
 
   test('Completion actions resolve current metadata rather than stale snapshots', () async {
     final store = _Store([_item(kind: AgendaKind.exam, endsAt: _now.add(const Duration(hours: 1)))]);
-    final controller = AgendaController(store, now: () => _now);
+    final controller = _controller(store, now: () => _now);
     addTearDown(controller.dispose);
     await controller.load();
     final snapshot = controller.entries.single;
@@ -319,7 +306,7 @@ void main() {
         final store = _Store([_item(
           kind: kind, done: !target, handled: true,
         )]);
-        final controller = AgendaController(store, now: () => _now);
+        final controller = _controller(store, now: () => _now);
         addTearDown(controller.dispose);
         await controller.load();
         final snapshot = controller.entries.single;
@@ -342,7 +329,7 @@ void main() {
 
     test('Queued metadata edits read completion at execution time for $kind', () async {
       final store = _Store([_item(kind: kind, handled: true)]);
-      final controller = AgendaController(store, now: () => _now);
+      final controller = _controller(store, now: () => _now);
       addTearDown(controller.dispose);
       await controller.load();
       final snapshot = controller.entries.single;
@@ -365,7 +352,7 @@ void main() {
 
     test('Default save can still explicitly change completion for $kind', () async {
       final store = _Store([_item(kind: kind, handled: true)]);
-      final controller = AgendaController(store, now: () => _now);
+      final controller = _controller(store, now: () => _now);
       addTearDown(controller.dispose);
       await controller.load();
       expect(await controller.save(controller.entries.single.copyWith(done: true)), isTrue);
@@ -375,7 +362,7 @@ void main() {
 
   test('Metadata edits cannot restore legacy migration over a newer undo', () async {
     final store = _Store([_item(done: true)]);
-    final controller = AgendaController(store, now: () => _now);
+    final controller = _controller(store, now: () => _now);
     addTearDown(controller.dispose);
     await controller.load();
     final snapshot = controller.entries.single;
@@ -395,7 +382,7 @@ void main() {
       kind: AgendaKind.exam, local: false,
       endsAt: _now.add(const Duration(hours: 1)),
     )]);
-    final controller = AgendaController(store, now: () => clock);
+    final controller = _controller(store, now: () => clock);
     addTearDown(controller.dispose);
     await controller.load();
     await controller.setDone('item', true);
@@ -423,7 +410,7 @@ void main() {
 
   test('Local content protection and distinct exam identities are not conflated', () async {
     final store = _Store([_item(kind: AgendaKind.exam, handled: true)]);
-    final controller = AgendaController(store, now: () => _now);
+    final controller = _controller(store, now: () => _now);
     addTearDown(controller.dispose);
     await controller.load();
     await controller.replaceExams('term', [_item(
@@ -432,7 +419,7 @@ void main() {
     expect(controller.entries.single.title, '日程');
     expect(controller.entries.single.local, isTrue);
     final remoteStore = _Store([_item(kind: AgendaKind.exam, local: false, handled: true)]);
-    final remote = AgendaController(remoteStore, now: () => _now);
+    final remote = _controller(remoteStore, now: () => _now);
     addTearDown(remote.dispose);
     await remote.load();
     await remote.replaceExams('term', [_item(
@@ -445,7 +432,7 @@ void main() {
 
   test('Immediate deletion undo preserves a reopened exam opportunity marker', () async {
     final store = _Store([_item(kind: AgendaKind.exam)]);
-    final controller = AgendaController(store, now: () => _now);
+    final controller = _controller(store, now: () => _now);
     addTearDown(controller.dispose);
     await controller.load();
     await controller.setDone('item', false);
@@ -466,7 +453,7 @@ void main() {
       startsAt: _now, source: DeadlineSource.eclass, local: false,
     );
     final store = _Store([raw]);
-    final controller = AgendaController(store, now: () => _now);
+    final controller = _controller(store, now: () => _now);
     addTearDown(controller.dispose);
     await controller.load();
     await controller.setDone('ddl', true);
@@ -480,7 +467,7 @@ void main() {
     var clock = _now;
     final end = _now.add(const Duration(minutes: 1));
     final store = _Store([_item(kind: AgendaKind.exam, endsAt: end)]);
-    final controller = AgendaController(store, now: () => clock);
+    final controller = _controller(store, now: () => clock);
     try {
       await controller.load();
       controller.setCompletionClockActive(true);
@@ -505,7 +492,7 @@ void main() {
     var clock = _now;
     final end = _now.add(const Duration(minutes: 1));
     final store = _Store([_item(kind: AgendaKind.exam, endsAt: end)]);
-    final controller = AgendaController(store, now: () => clock);
+    final controller = _controller(store, now: () => clock);
     try {
       await controller.load();
       controller.setCompletionClockActive(true);
@@ -514,6 +501,8 @@ void main() {
       clock = end;
       await tester.pump(const Duration(minutes: 1));
       expect(store.writes, 1);
+      expect(_reportedErrors, hasLength(1));
+      expect(_reportedErrors.single, contains('simulated agenda write failure'));
       expect(controller.entries.single.examAutoCompletionHandled, isFalse);
       expect(controller.entries.single.overdue(clock), isFalse);
       clock = end.add(const Duration(seconds: 29));
@@ -535,7 +524,7 @@ void main() {
     final store = _Store([_item(
       kind: AgendaKind.exam, endsAt: _now.add(const Duration(minutes: 1)),
     )]);
-    final agenda = AgendaController(store, now: () => clock);
+    final agenda = _controller(store, now: () => clock);
     final app = AppController(
       store: MemoryScheduleStore(), school: SchoolService(),
       schoolStorage: MemorySchoolStorage(), preferences: MemoryPreferences(),
@@ -569,7 +558,7 @@ void main() {
   for (final kind in [AgendaKind.event, AgendaKind.exam]) {
     testWidgets('$kind list and detail both expose reversible completion', (tester) async {
       final raw = _item(kind: kind, handled: true);
-      final agenda = AgendaController(_Store([raw]), now: () => _now);
+      final agenda = _controller(_Store([raw]), now: () => _now);
       final app = TestAppController(agenda: agenda);
       await app.initialize();
       await tester.pumpWidget(MaterialApp(
