@@ -36,7 +36,7 @@ class AcademicController extends ChangeNotifier {
         try {
           final record = account == null
               ? const AcademicRecord()
-              : await _store.read(account);
+              : await _store.readAndMigrate(account);
           cancellation.check();
           _record = record;
           _ready = true;

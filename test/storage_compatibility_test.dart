@@ -148,7 +148,7 @@ void main() {
       selectedTerm: semester.term,
       schedules: {semester.term: semester, spring.term: spring},
     ));
-    final saved = await ScheduleStore().read();
+    final saved = await ScheduleStore().readAndMigrate();
     expect(saved.selectedTerm, semester.term);
     expect(saved.schedules[semester.term]!.firstWeek, -3);
     expect(saved.schedules[spring.term]!.lastWeek, 20);
@@ -202,10 +202,13 @@ void main() {
     ) as Map;
     expect(academicsJson['schemaVersion'], currentStorageSchemaVersion);
     expect(academicsJson['accounts'], isA<Map>());
-    final academic = await AcademicStore().read('student');
+    final academic = await AcademicStore().readAndMigrate('student');
     expect(academic.targetCredits, 150);
     expect(academic.categoryTargets, {'必修': 90});
-    expect((await AcademicStore().read('another-student')).targetCredits, 120);
+    expect(
+      (await AcademicStore().readAndMigrate('another-student')).targetCredits,
+      120,
+    );
     expect(
       academic
           .withCreditTargets(total: null, categories: const {})
@@ -230,7 +233,7 @@ void main() {
     await File('${directory.path}/schedule.json').writeAsString(
       await File('test/fixtures/legacy/v0.2.0/schedule.json').readAsString(),
     );
-    final legacySchedule = await ScheduleStore().read();
+    final legacySchedule = await ScheduleStore().readAndMigrate();
     expect(legacySchedule.selectedTerm, '2026-2027-1');
     expect(
       legacySchedule.schedules['2026-2027-1']!.courses.single.name,
@@ -256,7 +259,7 @@ void main() {
     await File('${directory.path}/academics.json').writeAsString(
       await File('test/fixtures/legacy/v0.3.0/academics.json').readAsString(),
     );
-    final legacyAcademic = await AcademicStore().read('student');
+    final legacyAcademic = await AcademicStore().readAndMigrate('student');
     expect(legacyAcademic.targetCredits, 150);
     expect(legacyAcademic.categoryTargets, {'必修': 90});
 
@@ -266,7 +269,10 @@ void main() {
         'semesters': {semester.term: semester.toJson()},
       }),
     );
-    expect((await ScheduleStore().read()).selectedTerm, semester.term);
+    expect(
+      (await ScheduleStore().readAndMigrate()).selectedTerm,
+      semester.term,
+    );
 
     await File('${directory.path}/agenda.json')
         .writeAsString(jsonEncode([deadline.toJson()]));
@@ -281,7 +287,10 @@ void main() {
 
     await File('${directory.path}/academics.json')
         .writeAsString(jsonEncode({'student': record.toJson()}));
-    expect((await AcademicStore().read('student')).targetCredits, 150);
+    expect(
+      (await AcademicStore().readAndMigrate('student')).targetCredits,
+      150,
+    );
 
     await File('${directory.path}/schedule.json').writeAsString(
       jsonEncode({
@@ -290,6 +299,205 @@ void main() {
         'semesters': <String, Object>{},
       }),
     );
-    await expectLater(ScheduleStore().read(), throwsFormatException);
+    await expectLater(ScheduleStore().readAndMigrate(), throwsFormatException);
+  });
+
+  group('Stored document migration', () {
+    late Directory directory;
+
+    setUp(() async {
+      directory = await Directory.systemTemp.createTemp('bitree-migration-');
+      addTearDown(() => directory.delete(recursive: true));
+      const channel = MethodChannel('plugins.flutter.io/path_provider');
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(channel, (_) async => directory.path);
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+    });
+
+    test(
+      'Schedule migration saves every semester and runs only once',
+      () async {
+        final legacy = jsonDecode(
+          await File('test/fixtures/legacy/v0.2.0/schedule.json')
+              .readAsString(),
+        ) as Map<String, dynamic>;
+        final semesters = legacy['semesters'] as Map<String, dynamic>;
+        final spring = SemesterSchedule(
+          term: '2025-2026-2',
+          firstMonday: DateTime.utc(2026, 2, 23),
+          firstWeek: -1,
+          lastWeek: 20,
+          courses: const [],
+          syncedAt: DateTime.utc(2026, 3, 1, 10),
+        );
+        semesters[spring.term] = spring.toJson();
+        final file = File('${directory.path}/schedule.json');
+        await file.writeAsString(jsonEncode(legacy));
+
+        final library = await ScheduleStore().readAndMigrate();
+
+        expect(library.selectedTerm, '2026-2027-1');
+        final fall = library.schedules['2026-2027-1']!;
+        expect(fall.courses.single.id, 'legacy-course');
+        expect(fall.courses.single.local, isTrue);
+        expect(fall.courses.single.weeks, [1, 2]);
+        expect(fall.firstWeek, -3);
+        expect(library.schedules[spring.term]!.toJson(), spring.toJson());
+        expect(jsonDecode(await file.readAsString()), {
+          'schemaVersion': currentStorageSchemaVersion,
+          'selectedTerm': '2026-2027-1',
+          'semesters': {
+            '2026-2027-1': fall.toJson(),
+            spring.term: spring.toJson(),
+          },
+        });
+
+        final modified = DateTime.utc(2000);
+        await file.setLastModified(modified);
+        final reloaded = await ScheduleStore().readAndMigrate();
+        expect(reloaded.schedules.keys, library.schedules.keys);
+        expect((await file.lastModified()).toUtc(), modified);
+      },
+    );
+
+    test(
+      'Academic migration preserves every account and runs only once',
+      () async {
+        final legacy = jsonDecode(
+          await File('test/fixtures/legacy/v0.3.0/academics.json')
+              .readAsString(),
+        ) as Map<String, dynamic>;
+        final other = AcademicRecord(
+          grades: [
+            CourseGrade(
+              id: 'math',
+              number: 'MATH1',
+              name: '高等数学',
+              term: '2026-2027-1',
+              credits: 5,
+              result: '90',
+              attribute: '必修',
+              category: '基础课',
+            ),
+          ],
+          gradesUpdatedAt: DateTime.utc(2026, 11, 1, 10),
+          targetCredits: 160,
+          categoryTargets: const {'必修': 100},
+          categoryOverrides: const {'MATH1': '专业课'},
+        );
+        legacy['other'] = other.toJson();
+        final file = File('${directory.path}/academics.json');
+        await file.writeAsString(jsonEncode(legacy));
+
+        final record = await AcademicStore().readAndMigrate('student');
+
+        expect(record.targetCredits, 150);
+        expect(record.categoryTargets, {'必修': 90});
+        expect(jsonDecode(await file.readAsString()), {
+          'schemaVersion': currentStorageSchemaVersion,
+          'accounts': legacy,
+        });
+        final modified = DateTime.utc(2000);
+        await file.setLastModified(modified);
+        expect(
+          (await AcademicStore().readAndMigrate('other')).toJson(),
+          other.toJson(),
+        );
+        expect((await file.lastModified()).toUtc(), modified);
+
+        await AcademicStore().write(
+          'other',
+          other.copyWith(targetCredits: null),
+        );
+        final updated = jsonDecode(await file.readAsString()) as Map;
+        expect(updated['accounts']['student'], legacy['student']);
+        expect(
+          updated['accounts']['other'],
+          other.copyWith(targetCredits: null).toJson(),
+        );
+      },
+    );
+
+    test('An unknown account still migrates the saved accounts', () async {
+      final legacy = jsonDecode(
+        await File('test/fixtures/legacy/v0.3.0/academics.json').readAsString(),
+      ) as Map<String, dynamic>;
+      final file = File('${directory.path}/academics.json');
+      await file.writeAsString(jsonEncode({'schemaVersion': 1, ...legacy}));
+
+      final record = await AcademicStore().readAndMigrate('unknown');
+
+      expect(record.toJson(), const AcademicRecord().toJson());
+      expect(jsonDecode(await file.readAsString()), {
+        'schemaVersion': currentStorageSchemaVersion,
+        'accounts': legacy,
+      });
+    });
+
+    for (final name in ['schedule', 'academics']) {
+      final fixture = name == 'schedule'
+          ? 'test/fixtures/legacy/v0.2.0/schedule.json'
+          : 'test/fixtures/legacy/v0.3.0/academics.json';
+      Future<Object> readAndMigrate() => name == 'schedule'
+          ? ScheduleStore().readAndMigrate()
+          : AcademicStore().readAndMigrate('student');
+
+      test(
+        '$name migration preserves the original file if saving fails',
+        () async {
+          final original = await File(fixture).readAsString();
+          final file = File('${directory.path}/$name.json');
+          await file.writeAsString(original);
+          await Directory('${file.path}.pending').create();
+
+          await expectLater(
+            readAndMigrate(),
+            throwsA(isA<FileSystemException>()),
+          );
+
+          expect(await file.readAsString(), original);
+        },
+      );
+
+      test('$name rejects newer versions without rewriting the file', () async {
+        final legacy = jsonDecode(await File(fixture).readAsString()) as Map;
+        final original = jsonEncode({
+          if (name == 'schedule') ...legacy else 'accounts': legacy,
+          'schemaVersion': currentStorageSchemaVersion + 1,
+        });
+        final file = File('${directory.path}/$name.json');
+        await file.writeAsString(original);
+
+        await expectLater(readAndMigrate(), throwsFormatException);
+
+        expect(await file.readAsString(), original);
+      });
+
+      test(
+        '$name rejects invalid old data before writing a migration',
+        () async {
+          final original = jsonEncode(
+            name == 'schedule'
+                ? {
+                    'selectedTerm': 'fall',
+                    'semesters': {
+                      'fall': {'firstMonday': 'invalid'},
+                    },
+                  }
+                : {
+                    'student': {'grades': 'invalid'},
+                  },
+          );
+          final file = File('${directory.path}/$name.json');
+          await file.writeAsString(original);
+
+          await expectLater(readAndMigrate(), throwsFormatException);
+
+          expect(await file.readAsString(), original);
+          expect(File('${file.path}.pending').existsSync(), isFalse);
+        },
+      );
+    }
   });
 }

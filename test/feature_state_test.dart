@@ -16,8 +16,8 @@ class _DelayedAcademicStore extends MemoryAcademicStore {
   final started = Completer<void>();
   final old = Completer<AcademicRecord>();
   @override
-  Future<AcademicRecord> read(String account) {
-    if (account != 'old') return super.read(account);
+  Future<AcademicRecord> readAndMigrate(String account) {
+    if (account != 'old') return super.readAndMigrate(account);
     started.complete();
     return old.future;
   }
@@ -45,9 +45,9 @@ class _FailingScheduleStore extends MemoryScheduleStore {
   bool failReads = true;
 
   @override
-  Future<ScheduleLibrary> read() {
+  Future<ScheduleLibrary> readAndMigrate() {
     if (failReads) throw const FormatException('damaged schedule');
-    return super.read();
+    return super.readAndMigrate();
   }
 }
 
@@ -135,7 +135,7 @@ void main() {
       expect(reloaded.weeks.last, 20);
       await controller.clear();
       expect(controller.schedule, isNull);
-      expect((await store.read()).schedules, isEmpty);
+      expect((await store.readAndMigrate()).schedules, isEmpty);
     },
   );
 
@@ -184,7 +184,7 @@ void main() {
     );
     expect(controller.schedule!.courses, hasLength(2));
     expect(
-      (await store.read()).schedules[semester.term]!.courses,
+      (await store.readAndMigrate()).schedules[semester.term]!.courses,
       hasLength(2),
     );
   });

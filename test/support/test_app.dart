@@ -31,7 +31,7 @@ class MemoryScheduleStore extends ScheduleStore {
   String? selectedTerm;
 
   @override
-  Future<ScheduleLibrary> read() async =>
+  Future<ScheduleLibrary> readAndMigrate() async =>
       (selectedTerm: selectedTerm, schedules: Map.of(schedules));
 
   @override
@@ -62,7 +62,7 @@ class MemoryAgendaStore extends AgendaStore {
 class MemoryAcademicStore extends AcademicStore {
   final accounts = <String, AcademicRecord>{};
   @override
-  Future<AcademicRecord> read(String account) async =>
+  Future<AcademicRecord> readAndMigrate(String account) async =>
       accounts[account] ?? const AcademicRecord();
   @override
   Future<void> write(String account, AcademicRecord record) async =>

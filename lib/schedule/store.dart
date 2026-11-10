@@ -12,22 +12,33 @@ typedef ScheduleLibrary = ({
 class ScheduleStore {
   final _file = const JsonFile('schedule.json');
 
-  Future<ScheduleLibrary> read() async =>
-      await _file.read(_decode) ??
-      (selectedTerm: null, schedules: const <String, SemesterSchedule>{});
+  Future<ScheduleLibrary> readAndMigrate() async {
+    final stored = await _file.read(_decode);
+    if (stored == null) {
+      return (
+        selectedTerm: null,
+        schedules: const <String, SemesterSchedule>{},
+      );
+    }
+    if (stored.legacy) await write(stored.library);
+    return stored.library;
+  }
 
-  ScheduleLibrary _decode(Object? value) {
+  ({ScheduleLibrary library, bool legacy}) _decode(Object? value) {
     final library = jsonObject(value, '课表');
-    storageSchemaVersion(library);
+    final version = storageSchemaVersion(library);
     final semesters = jsonObjectField(library, 'semesters');
     return (
-      selectedTerm: jsonStringFieldOrNull(library, 'selectedTerm'),
-      schedules: {
-        for (final entry in semesters.entries)
-          entry.key: SemesterSchedule.fromJson(
-            jsonObject(entry.value, 'semesters.${entry.key}'),
-          ),
-      },
+      library: (
+        selectedTerm: jsonStringFieldOrNull(library, 'selectedTerm'),
+        schedules: {
+          for (final entry in semesters.entries)
+            entry.key: SemesterSchedule.fromJson(
+              jsonObject(entry.value, 'semesters.${entry.key}'),
+            ),
+        },
+      ),
+      legacy: version < currentStorageSchemaVersion,
     );
   }
 

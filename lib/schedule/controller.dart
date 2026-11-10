@@ -35,7 +35,7 @@ class TimetableController extends ChangeNotifier {
     _ready = false;
     _notify();
     try {
-      final library = await _store.read();
+      final library = await _store.readAndMigrate();
       _schedules
         ..clear()
         ..addAll(library.schedules);
