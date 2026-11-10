@@ -52,7 +52,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
           .toList();
       final exams =
           selected
-              .where((entry) => _showPast || !entry.isFinished(now))
+              .where((entry) => _showPast || !entry.hasEnded(now))
               .toList()
             ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
       final conflicts = findExamConflicts(

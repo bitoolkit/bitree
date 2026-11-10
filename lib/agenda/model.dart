@@ -21,6 +21,8 @@ class AgendaEntry {
     this.location = '',
     this.notes = '',
     this.done = false,
+    this.examAutoCompletionHandled = false,
+    this.completionSchemaVersion = currentCompletionSchemaVersion,
     this.deleted = false,
     this.term,
     this.local = true,
@@ -70,6 +72,7 @@ class AgendaEntry {
     }
   }
 
+  static const currentCompletionSchemaVersion = 1;
   static const defaultTailDays = 4;
   static const maxTailDays = 30;
 
@@ -82,6 +85,14 @@ class AgendaEntry {
   final String location;
   final String notes;
   final bool done;
+
+  /// True after an exam's one automatic opportunity or a manual completion
+  /// choice. Undoing completion never resets this durable marker.
+  final bool examAutoCompletionHandled;
+
+  /// Zero means an old record still needs its one-time, clock-aware migration.
+  /// Parsing JSON itself deliberately has no dependence on the current time.
+  final int completionSchemaVersion;
   final bool deleted;
   final String? term;
   final bool local;
@@ -132,10 +143,21 @@ class AgendaEntry {
       ? this
       : copyWith(deadlineCutoffWindow: window);
 
-  bool overdue(DateTime now) =>
-      isDeadline && !startOnly && !done && dueAt.isBefore(now);
+  bool overdue(DateTime now) {
+    if (done || (isDeadline && startOnly)) return false;
+    // An unhandled exam is awaiting its one automatic completion, not overdue.
+    // Only an explicitly reopened exam may become overdue after its real end.
+    if (kind == AgendaKind.exam && !examAutoCompletionHandled) return false;
+    return isDeadline ? dueAt.isBefore(now) : hasEnded(now);
+  }
 
-  bool isFinished(DateTime now) => isDeadline ? done : !endsAt!.isAfter(now);
+  /// Time passing and completion are separate. In particular, reopening an
+  /// ended exam must not make it completed again during a widget rebuild.
+  bool hasEnded(DateTime now) => isDeadline
+      ? !startOnly && !dueAt.isAfter(now)
+      : !endsAt!.isAfter(now);
+
+  bool isFinished(DateTime now) => done;
 
   bool occursOn(DateTime date) {
     final day = calendarDate(date);
@@ -146,6 +168,8 @@ class AgendaEntry {
 
   AgendaEntry copyWith({
     bool? done,
+    bool? examAutoCompletionHandled,
+    int? completionSchemaVersion,
     bool? deleted,
     DeadlineCutoffWindow? deadlineCutoffWindow,
   }) => AgendaEntry(
@@ -158,6 +182,10 @@ class AgendaEntry {
     location: location,
     notes: notes,
     done: done ?? this.done,
+    examAutoCompletionHandled:
+        examAutoCompletionHandled ?? this.examAutoCompletionHandled,
+    completionSchemaVersion:
+        completionSchemaVersion ?? this.completionSchemaVersion,
     deleted: deleted ?? this.deleted,
     term: term,
     local: local,
@@ -180,6 +208,8 @@ class AgendaEntry {
     'location': location,
     'notes': notes,
     'done': done,
+    'examAutoCompletionHandled': examAutoCompletionHandled,
+    'completionSchemaVersion': completionSchemaVersion,
     'deleted': deleted,
     'term': term,
     'local': local,
@@ -220,6 +250,10 @@ class AgendaEntry {
       location: jsonStringField(json, 'location'),
       notes: jsonStringField(json, 'notes'),
       done: jsonBoolField(json, 'done'),
+      examAutoCompletionHandled:
+          jsonBoolField(json, 'examAutoCompletionHandled', fallback: false),
+      completionSchemaVersion:
+          jsonIntFieldOrNull(json, 'completionSchemaVersion') ?? 0,
       deleted: jsonBoolField(json, 'deleted', fallback: false),
       term: jsonStringFieldOrNull(json, 'term'),
       local: jsonBoolField(json, 'local'),

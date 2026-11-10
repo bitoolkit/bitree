@@ -136,13 +136,21 @@ void main() {
             final context = tester.element(find.byType(CalendarBlockTile));
             final timeline = agendaTimelineColors(context, event, startsAt);
             expect(timeline, (fill: fill, text: text, accent: accent));
+            final afterEnd = startsAt.add(const Duration(hours: 2));
+            // A new unfinished event becomes overdue, not automatically done.
+            expect(event.isFinished(afterEnd), isFalse);
+            expect(event.overdue(afterEnd), isTrue);
+            expect(
+              agendaTimelineColors(context, event, afterEnd).fill,
+              scheme.errorContainer,
+            );
             if (cat != null) {
               final finished = agendaTimelineColors(
                 context,
-                event,
-                startsAt.add(const Duration(hours: 2)),
+                event.copyWith(done: true),
+                afterEnd,
               );
-              expect(finished.fill, fill.withValues(alpha: 0.55));
+              expect(finished.fill, fill.withValues(alpha: fill.a * 0.5));
               final deadline = AgendaEntry(
                 id: 'manual-ddl',
                 title: '自建 DDL',

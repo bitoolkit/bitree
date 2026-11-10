@@ -255,7 +255,10 @@ void main() {
       ));
       await tester.pumpAndSettle();
       final field = find.byKey(const ValueKey('agenda-layout-days-input'));
-      await tester.ensureVisible(field);
+      await tester.scrollUntilVisible(
+        field, 200, scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
       await tester.enterText(field, '7');
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
@@ -272,7 +275,9 @@ void main() {
       final textField = tester.widget<TextFormField>(field);
       expect(textField.controller!.text, '12');
       final slider = find.byKey(const ValueKey('agenda-layout-days-slider'));
-      await tester.ensureVisible(slider);
+      await tester.scrollUntilVisible(
+        slider, 200, scrollable: find.byType(Scrollable).first,
+      );
       await tester.pumpAndSettle();
       tester.widget<Slider>(slider).onChanged!(30);
       await tester.pumpAndSettle();

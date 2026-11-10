@@ -263,19 +263,24 @@ String localizedCalendarItemTitle(AppLocalizations l10n, CalendarItem item) =>
 String localizedAgendaClock(AppLocalizations l10n, AgendaEntry entry) =>
     entry.effectiveAllDay ? l10n.allDay : clockText(entry.scheduledAt);
 
+String localizedAgendaOverdueClock(AppLocalizations l10n, AgendaEntry entry) =>
+    entry.effectiveAllDay
+    ? l10n.allDay
+    : clockText(entry.isDeadline ? entry.dueAt : entry.endsAt!);
+
 String localizedAgendaTimeCaption(
   AppLocalizations l10n,
   AgendaEntry entry,
   DateTime now,
 ) {
+  if (entry.done) return l10n.completed;
+  if (entry.overdue(now)) return l10n.overdue;
   if (entry.isDeadline) {
-    if (entry.done) return l10n.completed;
     // Overdue is impossible without a due date, and calling the opening time
     // a due date would be wrong.
     if (entry.startOnly) return l10n.start;
-    return entry.overdue(now) ? l10n.overdue : l10n.due;
+    return l10n.due;
   }
-  if (entry.isFinished(now)) return l10n.ended;
   if (entry.allDay) return '';
   final end = entry.endsAt!;
   final endTime = calendarDate(entry.startsAt) == calendarDate(end)

@@ -82,15 +82,24 @@ internal fun readWidgetContent(context: Context): WidgetContent {
     val todayHeading = "今天${weekdays[weekday(today) - 1]}"
 
     try {
-        val entries = readCourseEntries(context, listOf(today, tomorrow)) + readAgendaEntries(context)
+        val entries = readCourseEntries(context, listOf(today, tomorrow)) + readAgendaEntries(context, now.timeInMillis)
         fun entriesOn(date: Calendar) = entries.filter { it.occursOn(date) }
             .sortedWith(compareBy({ !it.allDay }, { it.startsAt }, { it.kind }, { it.title }))
 
         val todayEntries = entriesOn(today)
         val minute = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
-        val remaining = todayEntries.filter { it.endsAt > now.timeInMillis }
+        val remaining = todayEntries.filter {
+            when (it.kind) {
+                WidgetEntryKind.EVENT, WidgetEntryKind.EXAM -> true
+                else -> it.endsAt > now.timeInMillis
+            }
+        }
         for (entry in remaining) {
-            if (entry.endsAt < nextUpdate) nextUpdate = entry.endsAt
+            // Overdue agenda entries remain visible; past boundaries must never
+            // create an immediate widget-update loop. Courses keep the old rule.
+            if (entry.endsAt > now.timeInMillis && entry.endsAt < nextUpdate) {
+                nextUpdate = entry.endsAt
+            }
         }
         val showTomorrow = minute >= 21 * 60 && remaining.isEmpty()
         val displayed = if (showTomorrow) entriesOn(tomorrow) else remaining
@@ -152,7 +161,7 @@ private fun readCourseEntries(context: Context, dates: List<Calendar>): List<Wid
     }
 }
 
-private fun readAgendaEntries(context: Context): List<WidgetEntry> {
+private fun readAgendaEntries(context: Context, now: Long): List<WidgetEntry> {
     val file = File(context.filesDir, "agenda.json")
     if (!file.exists()) return emptyList()
 
@@ -163,7 +172,7 @@ private fun readAgendaEntries(context: Context): List<WidgetEntry> {
 
     return (0 until rows.length()).map { rows.getJSONObject(it) }
         .filter { !it.getBoolean("done") && !it.optBoolean("deleted") }
-        .map { row ->
+        .mapNotNull { row ->
             val kind = WidgetEntryKind.valueOf(row.getString("kind").uppercase(Locale.ROOT))
             val start = timestamp(row.getString("startsAt"))
             val allDay = row.getBoolean("allDay")
@@ -172,6 +181,15 @@ private fun readAgendaEntries(context: Context): List<WidgetEntry> {
                 allDay -> dayStart(start).apply { add(Calendar.DATE, 1) }.timeInMillis
                 else -> start
             }
+            // Read-only fallback while Flutter is stopped. Only Dart persists
+            // the one-shot marker; reopening an exam keeps it visible as overdue.
+            if (kind == WidgetEntryKind.EXAM &&
+                !row.optBoolean("examAutoCompletionHandled") && end <= now
+            ) return@mapNotNull null
+            // Match the one-time legacy event migration without writing JSON.
+            if (kind == WidgetEntryKind.EVENT &&
+                row.optInt("completionSchemaVersion", 0) < 1 && end <= now
+            ) return@mapNotNull null
             WidgetEntry(
                 title = row.getString("title"),
                 kind = kind,

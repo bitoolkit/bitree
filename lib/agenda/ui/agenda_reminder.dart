@@ -116,7 +116,7 @@ class _AgendaReminderState extends State<AgendaReminder>
     final caption = entry == null
         ? ''
         : entry.overdue(widget.now)
-        ? l10n.agendaReminderOverdue(localizedAgendaClock(l10n, entry))
+        ? l10n.agendaReminderOverdue(localizedAgendaOverdueClock(l10n, entry))
         : entry.isDeadline || entry.allDay
         ? localizedAgendaTime(l10n, entry)
         : entry.startsAt.isAfter(widget.now)

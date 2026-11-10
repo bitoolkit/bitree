@@ -170,6 +170,51 @@ void main() {
     },
   );
 
+  for (final kind in [AgendaKind.event, AgendaKind.exam]) {
+    testWidgets('A past $kind completes and reopens in the same detail sheet', (
+      tester,
+    ) async {
+      final entry = AgendaEntry(
+        id: 'past-${kind.name}',
+        title: '过期待办',
+        kind: kind,
+        startsAt: DateTime.utc(2020, 10, 27, 9),
+        endsAt: DateTime.utc(2020, 10, 27, 11),
+        done: false,
+        // This exam already used its automatic completion opportunity; opening
+        // or editing its sheet must not consume the user's explicit undo.
+        examAutoCompletionHandled: kind == AgendaKind.exam,
+        completionSchemaVersion: AgendaEntry.currentCompletionSchemaVersion,
+      );
+      final controller = await open(tester, entry);
+      final sheet = tester.element(find.byType(SheetLayout));
+      expect(find.text('已逾期'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, '编辑'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, '标记完成'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, '标记完成'));
+      await tester.pumpAndSettle();
+      expect(tester.element(find.byType(SheetLayout)), same(sheet));
+      expect(controller.agenda.entries.single.done, isTrue);
+      expect(find.text('已完成'), findsOneWidget);
+      expect(find.text('已逾期'), findsNothing);
+      expect(
+        tester.widget<CompletionText>(find.byType(CompletionText)).completed,
+        isTrue,
+      );
+      await tester.tap(find.widgetWithText(FilledButton, '标为未完成'));
+      await tester.pumpAndSettle();
+      expect(tester.element(find.byType(SheetLayout)), same(sheet));
+      final reopened = controller.agenda.entries.single;
+      expect(reopened.done, isFalse);
+      expect(reopened.overdue(DateTime.utc(2030)), isTrue);
+      if (kind == AgendaKind.exam) {
+        expect(reopened.examAutoCompletionHandled, isTrue);
+      }
+      expect(find.text('已逾期'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('Delete still asks for confirmation and closes after deletion', (
     tester,
   ) async {
@@ -262,11 +307,13 @@ void main() {
       endsAt: DateTime.utc(2026, 12, 28, 11),
       location: '文萃楼F704',
       notes: '座位号：12',
+      done: true,
+      examAutoCompletionHandled: true,
       term: '2026-2027-1',
       local: false,
     );
     final controller = await open(tester, entry);
-    await tester.tap(find.widgetWithText(FilledButton, '编辑'));
+    await tester.tap(find.widgetWithText(TextButton, '编辑'));
     await tester.pumpAndSettle();
     expect(find.text('编辑考试'), findsOneWidget);
     expect(find.text('拖尾长度（天）'), findsNothing);
@@ -286,6 +333,9 @@ void main() {
     expect(saved.location, entry.location);
     expect(saved.notes, entry.notes);
     expect(saved.term, entry.term);
+    expect(saved.done, isTrue);
+    expect(saved.examAutoCompletionHandled, isTrue);
+    expect(saved.completionSchemaVersion, entry.completionSchemaVersion);
     expect(saved.local, isTrue);
     expect(find.byType(SheetLayout), findsNothing);
     expect(tester.takeException(), isNull);
@@ -303,6 +353,8 @@ void main() {
         location: '文萃楼F704',
         term: '2026-2027-1',
         local: false,
+        done: false,
+        examAutoCompletionHandled: true,
         details: const ExamAgendaDetails(
           seat: '12',
           mode: '闭卷',
@@ -310,7 +362,7 @@ void main() {
         ),
       );
       final controller = await open(tester, entry);
-      await tester.tap(find.widgetWithText(FilledButton, '编辑'));
+      await tester.tap(find.widgetWithText(TextButton, '编辑'));
       await tester.pumpAndSettle();
       final notes = find.byWidgetPredicate(
         (widget) =>
@@ -325,6 +377,9 @@ void main() {
       final saved = controller.agenda.entries.single;
       expect(saved.details, isNull);
       expect(saved.notes, '座位号：12\n闭卷\n教师：张老师');
+      expect(saved.done, isFalse);
+      expect(saved.examAutoCompletionHandled, isTrue);
+      expect(saved.completionSchemaVersion, entry.completionSchemaVersion);
       expect(tester.takeException(), isNull);
     },
   );
@@ -347,6 +402,8 @@ void main() {
           startsAt: start,
           endsAt: end,
           allDay: true,
+          done: false,
+          completionSchemaVersion: AgendaEntry.currentCompletionSchemaVersion,
         ),
       );
       expect(
@@ -357,8 +414,9 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('全天', findRichText: true), findsOneWidget);
-      expect(find.text('已结束'), findsOneWidget);
-      expect(find.text('标记完成'), findsNothing);
+      expect(find.text('已结束'), findsNothing);
+      expect(find.text('已逾期'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, '标记完成'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
