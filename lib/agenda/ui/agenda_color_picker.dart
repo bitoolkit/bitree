@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -30,11 +28,16 @@ Future<AgendaColorPickerResult?> showAgendaColorPicker(
         l10n,
       ),
   };
-  final availableHeight = MediaQuery.sizeOf(context).height - 48;
   final confirmed =
       await ColorPicker(
         color: initial,
         onColorChanged: (color) => selected = color,
+        title: Text(
+          l10n.agendaColorPickerTitle,
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        mainAxisSize: MainAxisSize.min,
+        padding: EdgeInsets.zero,
         width: 36,
         height: 36,
         borderRadius: 18,
@@ -73,15 +76,10 @@ Future<AgendaColorPickerResult?> showAgendaColorPicker(
         ),
       ).showPickerDialog(
         context,
-        title: Text(l10n.agendaColorPickerTitle),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        constraints: BoxConstraints(
-          minWidth: 280,
-          maxWidth: 380,
-          minHeight: math.min(480.0, availableHeight),
-          maxHeight: math.min(650.0, availableHeight),
-        ),
+        semanticLabel: l10n.agendaColorPickerTitle,
+        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+        actionsPadding: const EdgeInsets.all(24),
+        insetPadding: DialogTheme.of(context).insetPadding!,
       );
   if (!confirmed) return null;
 
