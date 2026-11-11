@@ -90,15 +90,18 @@ void main() {
         expect(channel(0, 20, 0), greaterThan(channel(0, 20, 2)));
       }
       expect(channel(10, 4, 0), lessThan(channel(10, 4, 2)));
-      for (final (x, y) in [(10, 4), (26, 4), (90, 20)]) {
+      for (final (x, y) in [(10, 4), (26, 4)]) {
         final alpha = channel(x, y, 3) / 255;
         expect(channel(x, y, 0), closeTo(0x33 * alpha, 2));
         expect(channel(x, y, 1), closeTo(0x66 * alpha, 2));
         expect(channel(x, y, 2), closeTo(0x99 * alpha, 2));
       }
-      expect(channel(90, 20, 3), closeTo(255 * completionAlpha, 2));
-      // The real interval is solid: no vertical or horizontal fade.
-      expect(channel(90, 8, 3), channel(100, 25, 3));
+      // The real interval alternates whole bands, fill first then the accent.
+      // (88, 20) and (100, 25) sit fully inside one band each.
+      expect(channel(88, 20, 3), closeTo(255 * completionAlpha, 2));
+      expect(channel(88, 20, 0), greaterThan(channel(88, 20, 2)));
+      expect(channel(100, 25, 3), closeTo(255 * completionAlpha, 2));
+      expect(channel(100, 25, 2), greaterThan(channel(100, 25, 0)));
       // Both temporal boundaries use the accent, independently of duration.
       for (final x in [79, 109]) {
         if (!done) {
@@ -106,8 +109,8 @@ void main() {
           expect(channel(x, 20, 1), closeTo(0x55, 2));
           expect(channel(x, 20, 2), closeTo(0x22, 2));
         } else {
-          // Translucent marker paint composites over the interval/inner border.
-          expect(channel(x, 20, 0), greaterThan(channel(90, 20, 0)));
+          // Translucent marker paint composites over the interval bands.
+          expect(channel(x, 20, 0), greaterThan(channel(88, 20, 0)));
         }
       }
       expect(channel(111, 20, 3), 0);
@@ -142,9 +145,10 @@ void main() {
     for (final (x, y) in [(0, 20), (6, 8), (10, 4), (26, 4), (70, 20)]) {
       expect(channel(x, y, 3), 0, reason: 'info pixel $x,$y');
     }
-    // The interval and both boundary lines still paint unchanged.
-    expect(channel(90, 20, 3), 255);
-    expect(channel(90, 8, 3), channel(100, 25, 3));
+    // The banded interval and both boundary lines still paint unchanged.
+    expect(channel(88, 20, 3), 255);
+    expect(channel(88, 20, 0), greaterThan(channel(88, 20, 2)));
+    expect(channel(100, 25, 2), greaterThan(channel(100, 25, 0)));
     for (final x in [79, 109]) {
       expect(channel(x, 20, 0), closeTo(0x99, 2));
       expect(channel(x, 20, 1), closeTo(0x55, 2));

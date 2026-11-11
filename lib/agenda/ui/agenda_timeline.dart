@@ -790,7 +790,11 @@ class _AgendaTimelineState extends State<AgendaTimeline>
           .agendaEventInfoBar.value;
       final start = x(entry.startsAt);
       final end = x(entry.endsAt!);
-      final informationLeft = showInformation ? start - deadlineWidth : start;
+      // Hidden, the surface still extends one line width left of the real
+      // start so the start indicator stays painted at its true position.
+      final informationLeft = showInformation
+          ? start - deadlineWidth
+          : start - eventTimelineLineWidth;
       final left = math.max(0.0, informationLeft);
       final right = math.min(width, end);
       return Positioned(

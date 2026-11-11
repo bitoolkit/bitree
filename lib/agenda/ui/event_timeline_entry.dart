@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../../core/time.dart';
@@ -22,6 +20,10 @@ class EventTimelineGeometry {
   final double endX;
 }
 
+/// Width of the start/end indicator lines; the hidden card's painted surface
+/// extends by this much left of the real start so the indicator stays visible.
+const double eventTimelineLineWidth = 3;
+
 /// Event information has the same fixed screen width as a DDL tail. The actual
 /// event interval retains its time-scaled width, independently of the text.
 class EventTimelinePainter extends CustomPainter {
@@ -29,7 +31,7 @@ class EventTimelinePainter extends CustomPainter {
     required this.geometry,
     required this.fill,
     required this.accent,
-    this.lineWidth = 3,
+    this.lineWidth = eventTimelineLineWidth,
     this.showInformation = true,
   });
 
@@ -68,14 +70,14 @@ class EventTimelinePainter extends CustomPainter {
         );
       }
     }
-    final intervalLeft = math.max(0.0, geometry.startX);
-    final intervalRight = math.min(size.width, geometry.endX);
-    if (intervalRight > intervalLeft) {
-      canvas.drawRect(
-        Rect.fromLTRB(intervalLeft, 0, intervalRight, size.height),
-        Paint()..color = fill,
-      );
-    }
+    // The real interval alternates whole fill and accent bands, the first
+    // band being the fill anchored at the start line.
+    AdjustedDeadlineExtensionPainter(
+      effectiveX: geometry.startX,
+      realX: geometry.endX,
+      color: fill,
+      secondColor: accent,
+    ).paint(canvas, size);
     for (final x in [geometry.startX, geometry.endX]) {
       canvas.drawRect(
         Rect.fromLTRB(x - lineWidth, 0, x, size.height),

@@ -23,6 +23,7 @@ class AdjustedDeadlineExtensionPainter extends CustomPainter {
     required this.effectiveX,
     required this.realX,
     required this.color,
+    this.secondColor,
     this.stripeWidth = 16,
     this.highOpacity = 0.32,
     this.lowOpacity = 0.16,
@@ -31,6 +32,11 @@ class AdjustedDeadlineExtensionPainter extends CustomPainter {
   final double effectiveX;
   final double realX;
   final Color color;
+
+  /// When set, bands alternate whole colors instead of one color's two alpha
+  /// levels: even bands paint [color], odd bands paint [secondColor], both at
+  /// their own full alpha. The first band starts at [effectiveX].
+  final Color? secondColor;
   final double stripeWidth;
   final double highOpacity;
   final double lowOpacity;
@@ -54,12 +60,15 @@ class AdjustedDeadlineExtensionPainter extends CustomPainter {
         ..lineTo(x + stripeWidth - size.height, size.height)
         ..lineTo(x - size.height, size.height)
         ..close();
+      final second = secondColor;
       canvas.drawPath(
         path,
-        Paint()
-          ..color = color.withValues(
-            alpha: color.a * (index.isEven ? highOpacity : lowOpacity),
-          ),
+        second == null
+            ? Paint()
+                ..color = color.withValues(
+                  alpha: color.a * (index.isEven ? highOpacity : lowOpacity),
+                )
+            : Paint()..color = index.isEven ? color : second,
       );
     }
     canvas.restore();
@@ -70,6 +79,7 @@ class AdjustedDeadlineExtensionPainter extends CustomPainter {
       oldDelegate.effectiveX != effectiveX ||
       oldDelegate.realX != realX ||
       oldDelegate.color != color ||
+      oldDelegate.secondColor != secondColor ||
       oldDelegate.stripeWidth != stripeWidth ||
       oldDelegate.highOpacity != highOpacity ||
       oldDelegate.lowOpacity != lowOpacity;

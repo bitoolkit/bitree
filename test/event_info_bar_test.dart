@@ -150,7 +150,10 @@ void main() {
     expect(bar('afternoon'), findsNothing);
     final hidden = tester.widget<EventTimelineEntry>(event('morning'));
     expect(hidden.showInformation, isFalse);
-    expect(hidden.geometry.informationLeft, closeTo(hidden.geometry.startX, .001));
+    // The painted surface still keeps exactly one line width left of the
+    // real start so the start indicator stays visible.
+    expect(hidden.geometry.informationLeft, closeTo(0, .001));
+    expect(hidden.geometry.startX, closeTo(3, .001));
     // Without the lead the adjacent intervals share one lane.
     expect(
       tester.getRect(card('morning')).top,
