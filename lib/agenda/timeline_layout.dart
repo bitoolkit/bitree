@@ -35,16 +35,15 @@ class AgendaTimelineLayout {
   AgendaTimelineLayout(
     Iterable<AgendaEntry> entries, {
     required Duration minimumEventSpan,
-    required Duration deadlineCardSpan,
+    required this.deadlineCardSpan,
     int layoutDays = AgendaEntry.defaultTailDays,
-  }) : _deadlineCardSpan = deadlineCardSpan,
-       _reservations = _reserveLanes(
+  }) : _reservations = _reserveLanes(
          entries,
          minimumEventSpan: minimumEventSpan,
          layoutDays: layoutDays,
        );
 
-  final Duration _deadlineCardSpan;
+  final Duration deadlineCardSpan;
   final List<_LaneReservation> _reservations;
 
   List<AgendaTimelinePlacement> atZoom(double zoom) {
@@ -52,7 +51,7 @@ class AgendaTimelineLayout {
       throw RangeError.value(zoom, 'zoom', 'Must be finite and at least one');
     }
     final fixedWidthSpan = Duration(
-      microseconds: (_deadlineCardSpan.inMicroseconds / zoom).ceil(),
+      microseconds: (deadlineCardSpan.inMicroseconds / zoom).ceil(),
     );
     return [
       for (final interval in _reservations)
