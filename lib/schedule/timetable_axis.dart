@@ -9,8 +9,9 @@ class TimetableAxis {
   const TimetableAxis({this.expanded = false});
 
   final bool expanded;
-  static const morningEnd = 8 * 60;
+  static const morningEnd = 9 * 60;
   static const eveningStart = 21 * 60;
+  static const compressionMidpoint = 3 * 60;
   static const dayEnd = 24 * 60;
   static final periods = [
     for (final period in sectionTimes)
@@ -27,14 +28,14 @@ class TimetableAxis {
   }
 
   static double _density(double minute) {
-    if (minute < morningEnd || minute > eveningStart) {
-      final u = minute < morningEnd
-          ? minute / morningEnd
-          : (dayEnd - minute) / (dayEnd - eveningStart);
-      final cosine = (1 - math.cos(math.pi * u)) / 2;
-      // A cosine shoulder with a small positive floor remains invertible.
-      // Its fourth power leaves roughly four fifths of the grid for daytime.
-      return (0.02 + 0.98 * math.pow(cosine, 4)) / 45;
+    if (minute < morningEnd || minute >= eveningStart) {
+      // Treat 21:00–03:00 and 03:00–09:00 as equal six-hour shoulders.
+      // Unwrap only the curve's phase; grid coordinates still start at 00:00.
+      final nightMinute = minute >= eveningStart ? minute - dayEnd : minute;
+      final distance = (nightMinute - compressionMidpoint).abs();
+      final phase =
+          (1 - distance / (morningEnd - compressionMidpoint)) * math.pi / 3;
+      return math.cos(phase) / 45;
     }
     final teaching =
         minute >= periods.last.end ||
@@ -45,7 +46,8 @@ class TimetableAxis {
   static List<double> _buildExpandedOffsets() {
     final offsets = <double>[0];
     for (var minute = 0; minute < dayEnd; minute++) {
-      // Midpoints preserve the exact height of every 45-minute period.
+      // Integrate minute-sized bins, including partial teaching periods
+      // before 09:00, and reuse the same coordinates everywhere in the grid.
       offsets.add(offsets.last + _density(minute + 0.5));
     }
     return List.unmodifiable(offsets);
@@ -111,8 +113,8 @@ class TimetableAxis {
     return null;
   }
 
-  /// Teaching periods snap as before; other times snap to quarter hours,
-  /// clipped to their surrounding break so they cannot select a nearby class.
+  /// Teaching periods snap as before. Early/late hours snap to whole hours;
+  /// daytime breaks use quarter hours, clipped to the surrounding classes.
   ({int start, int end}) cellAtOffset(double offset) {
     if (!expanded) {
       final index = offset.floor().clamp(0, periods.length - 1);
@@ -121,11 +123,12 @@ class TimetableAxis {
     final minute = minuteAtOffset(offset).floor().clamp(0, dayEnd - 1);
     final section = sectionAtMinute(minute);
     if (section != null) return periods[section - 1];
+    final step = minute < morningEnd || minute >= eveningStart ? 60 : 15;
     final previous = periods.where((period) => period.end <= minute).lastOrNull;
     final next = periods.where((period) => period.start > minute).firstOrNull;
     return (
-      start: math.max(previous?.end ?? 0, minute ~/ 15 * 15),
-      end: math.min(next?.start ?? dayEnd, (minute ~/ 15 + 1) * 15),
+      start: math.max(previous?.end ?? 0, minute ~/ step * step),
+      end: math.min(next?.start ?? dayEnd, (minute ~/ step + 1) * step),
     );
   }
 }

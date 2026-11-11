@@ -103,12 +103,16 @@ class HomeScreen extends StatelessWidget {
               style: TextStyle(
                 fontSize: 21,
                 fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
-            icon: const Text(
+            icon: Text(
               '口',
-              style: TextStyle(fontSize: 21, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.w500,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         AddButton(

@@ -290,64 +290,21 @@ class _TimetableGridState extends State<TimetableGrid> {
             children: [
               SizedBox(
                 width: widget.gutterWidth,
-                child: Stack(
-                  children: [
-                    for (
-                      var section = 1;
-                      section <= sectionTimes.length;
-                      section++
-                    )
-                      Positioned(
-                        top: axis.sectionStart(section) * rowHeight,
-                        height:
-                            (axis.sectionEnd(section) -
-                                axis.sectionStart(section)) *
-                            rowHeight,
-                        left: 0,
-                        right: 0,
-                        child: _PeriodLabel(section: section),
+                child: axis.expanded
+                    ? _ExpandedTimeLabels(axis: axis, rowHeight: rowHeight)
+                    : Column(
+                        children: [
+                          for (
+                            var section = 1;
+                            section <= sectionTimes.length;
+                            section++
+                          )
+                            SizedBox(
+                              height: rowHeight,
+                              child: _PeriodLabel(section: section),
+                            ),
+                        ],
                       ),
-                    if (axis.expanded) ...[
-                      Positioned(
-                        top: 0,
-                        height:
-                            axis.offsetForMinute(
-                              TimetableAxis.morningEnd.toDouble(),
-                            ) *
-                            rowHeight,
-                        left: 0,
-                        right: 0,
-                        child: _HourLabels(
-                          axis: axis,
-                          rowHeight: rowHeight,
-                          first: 0,
-                          last: 7,
-                        ),
-                      ),
-                      Positioned(
-                        top:
-                            axis.offsetForMinute(
-                              TimetableAxis.eveningStart.toDouble(),
-                            ) *
-                            rowHeight,
-                        height:
-                            (axis.length -
-                                axis.offsetForMinute(
-                                  TimetableAxis.eveningStart.toDouble(),
-                                )) *
-                            rowHeight,
-                        left: 0,
-                        right: 0,
-                        child: _HourLabels(
-                          axis: axis,
-                          rowHeight: rowHeight,
-                          first: 21,
-                          last: 24,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
               ),
               Expanded(
                 child: AddMenu(

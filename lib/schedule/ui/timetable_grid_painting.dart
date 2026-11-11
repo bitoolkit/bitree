@@ -44,7 +44,10 @@ class _TimetableBackground extends CustomPainter {
       paint
         ..color = surfaceColor.withValues(alpha: 0.1)
         ..strokeWidth = 0.5;
-      for (final hour in [for (var h = 0; h <= 8; h++) h, 21, 22, 23, 24]) {
+      for (final hour in [
+        for (var h = 0; h <= TimetableAxis.morningEnd ~/ 60; h++) h,
+        for (var h = TimetableAxis.eveningStart ~/ 60; h <= 24; h++) h,
+      ]) {
         final y = (axis.offsetForMinute(hour * 60.0) * rowHeight)
             .clamp(0.5, math.max(0.5, size.height - 0.5))
             .toDouble();
@@ -79,110 +82,132 @@ class _TimetableBackground extends CustomPainter {
       todayBackground != oldDelegate.todayBackground;
 }
 
-/// Hour labels keep their order without colliding near midnight. Short leader
-/// lines connect displaced labels to their actual non-linear tick positions.
-class _HourLabels extends StatelessWidget {
-  const _HourLabels({
-    required this.axis,
-    required this.rowHeight,
-    required this.first,
-    required this.last,
-  });
+/// Time labels stay centered on their mapped ticks. Only their size changes
+/// when neighboring ticks are close together; midnight endpoints stay inside.
+class _ExpandedTimeLabels extends StatelessWidget {
+  const _ExpandedTimeLabels({required this.axis, required this.rowHeight});
 
   final TimetableAxis axis;
   final double rowHeight;
-  final int first;
-  final int last;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      final scale = MediaQuery.textScalerOf(context).scale(1);
-      final count = last - first + 1;
-      final height = constraints.maxHeight;
-      final labelHeight = math.min(10.0 * scale, height / count);
-      final origin = axis.offsetForMinute(first * 60.0) * rowHeight;
-      final ticks = [
-        for (var hour = first; hour <= last; hour++)
-          axis.offsetForMinute(hour * 60.0) * rowHeight - origin,
-      ];
-      final tops = <double>[];
-      for (final tick in ticks) {
-        tops.add(
+  Widget build(BuildContext context) {
+    final scale = MediaQuery.textScalerOf(context).scale(1);
+    final color = Theme.of(context).colorScheme.onSurfaceVariant;
+    final height = axis.length * rowHeight;
+    final times = <int, ({String text, bool teaching})>{
+      for (var hour = 0; hour <= TimetableAxis.morningEnd ~/ 60; hour++)
+        hour * 60: (
+          text: '${hour.toString().padLeft(2, '0')}:00',
+          teaching: false,
+        ),
+      for (final period in sectionTimes)
+        TimetableAxis.clockMinute(period.$1): (text: period.$1, teaching: true),
+      for (var hour = TimetableAxis.eveningStart ~/ 60; hour <= 24; hour++)
+        hour * 60: (text: '$hour:00', teaching: false),
+    }.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+    final ticks = [
+      for (final time in times)
+        axis.offsetForMinute(time.key.toDouble()) * rowHeight,
+    ];
+    final labelHeights = [
+      for (var index = 0; index < ticks.length; index++)
+        math.min(
+          times[index].value.teaching
+              ? math.min(10.0 * scale, rowHeight * 0.4)
+              : 10.0 * scale,
+          math.min(
+            index == 0 ? double.infinity : ticks[index] - ticks[index - 1],
+            index == ticks.length - 1
+                ? double.infinity
+                : ticks[index + 1] - ticks[index],
+          ),
+        ),
+    ];
+    // Endpoints sit fully inside the grid; leave room for their neighbors
+    // without moving either neighbor away from its time coordinate.
+    labelHeights[0] = math.min(labelHeights[0], ticks[1] - labelHeights[1] / 2);
+    final last = ticks.length - 1;
+    labelHeights[last] = math.min(
+      labelHeights[last],
+      ticks[last] - ticks[last - 1] - labelHeights[last - 1] / 2,
+    );
+
+    double sectionNumberHeight(int section) {
+      final start = axis.sectionStart(section) * rowHeight;
+      final end = axis.sectionEnd(section) * rowHeight;
+      final center = (start + end) / 2;
+      var available = math.min(13.0 * scale, (end - start) * 0.4);
+      for (var index = 0; index < ticks.length; index++) {
+        available = math.min(
+          available,
           math.max(
-            tick - labelHeight / 2,
-            tops.isEmpty ? 0.0 : tops.last + labelHeight,
+            0.0,
+            (center - ticks[index]).abs() * 2 - labelHeights[index],
           ),
         );
       }
-      for (var index = count - 1; index >= 0; index--) {
-        tops[index] = math.min(
-          tops[index],
-          index == count - 1
-              ? height - labelHeight
-              : tops[index + 1] - labelHeight,
-        );
-      }
-      final color = Theme.of(context).colorScheme.onSurfaceVariant;
-      return CustomPaint(
-        painter: _HourLabelLeaders(
-          ticks: ticks,
-          centers: [for (final top in tops) top + labelHeight / 2],
-          color: color.withValues(alpha: 0.35),
-        ),
-        child: Stack(
-          children: [
-            for (var index = 0; index < count; index++)
-              Positioned(
-                top: tops[index],
-                height: labelHeight,
-                left: 0,
-                right: 6,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    '${(first + index).toString().padLeft(2, '0')}:00',
-                    style: TextStyle(fontSize: 9, height: 1, color: color),
+      return available;
+    }
+
+    return SizedBox(
+      height: height,
+      child: Stack(
+        children: [
+          for (var index = 0; index < times.length; index++)
+            Positioned(
+              top: (ticks[index] - labelHeights[index] / 2)
+                  .clamp(0.0, math.max(0.0, height - labelHeights[index]))
+                  .toDouble(),
+              height: labelHeights[index],
+              left: 0,
+              right: 0,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  times[index].value.text,
+                  style: TextStyle(fontSize: 9, height: 1, color: color),
+                ),
+              ),
+            ),
+          for (var section = 1; section <= sectionTimes.length; section++)
+            Positioned(
+              top: axis.sectionStart(section) * rowHeight,
+              height:
+                  (axis.sectionEnd(section) - axis.sectionStart(section)) *
+                  rowHeight,
+              left: 0,
+              right: 0,
+              child: Semantics(
+                label: context.l10n.sectionSemantics(
+                  section,
+                  sectionTimes[section - 1].$1,
+                  sectionTimes[section - 1].$2,
+                ),
+                child: ExcludeSemantics(
+                  child: Center(
+                    child: SizedBox(
+                      height: sectionNumberHeight(section),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          '$section',
+                          style: TextStyle(
+                            fontSize: 11,
+                            height: 1,
+                            color: color,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-          ],
-        ),
-      );
-    },
-  );
-}
-
-class _HourLabelLeaders extends CustomPainter {
-  const _HourLabelLeaders({
-    required this.ticks,
-    required this.centers,
-    required this.color,
-  });
-
-  final List<double> ticks;
-  final List<double> centers;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 0.5;
-    for (var index = 0; index < ticks.length; index++) {
-      canvas.drawLine(
-        Offset(math.max(0, size.width - 5), centers[index]),
-        Offset(size.width, ticks[index].clamp(0, size.height).toDouble()),
-        paint,
-      );
-    }
+            ),
+        ],
+      ),
+    );
   }
-
-  @override
-  bool shouldRepaint(_HourLabelLeaders oldDelegate) =>
-      color != oldDelegate.color ||
-      !listEquals(ticks, oldDelegate.ticks) ||
-      !listEquals(centers, oldDelegate.centers);
 }
 
 class _PeriodLabel extends StatelessWidget {

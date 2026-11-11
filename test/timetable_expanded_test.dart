@@ -5,6 +5,8 @@ import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/ui/calendar_block.dart';
 import 'package:bitree/app/ui/add_menu.dart';
 import 'package:bitree/schedule/model.dart';
+import 'package:bitree/schedule/section_times.dart';
+import 'package:bitree/schedule/timetable_axis.dart';
 import 'package:bitree/schedule/ui/current_time_indicator.dart';
 import 'package:bitree/schedule/ui/home_screen.dart';
 import 'package:bitree/schedule/ui/timetable.dart';
@@ -148,7 +150,7 @@ void main() {
         closeTo(_position(tester).viewportDimension, 1e-7),
       );
       for (final hour in [
-        for (var hour = 0; hour < 8; hour++) hour,
+        for (var hour = 0; hour <= 9; hour++) hour,
         21,
         22,
         23,
@@ -159,8 +161,35 @@ void main() {
           findsOneWidget,
         );
       }
+      final gridRect = tester.getRect(find.byType(TimetableGrid).first);
+      for (final (text, minute) in [
+        for (var hour = 1; hour <= 9; hour++)
+          ('${hour.toString().padLeft(2, '0')}:00', hour * 60.0),
+        for (final period in sectionTimes)
+          (period.$1, TimetableAxis.clockMinute(period.$1).toDouble()),
+        for (var hour = 21; hour < 24; hour++) ('$hour:00', hour * 60.0),
+      ]) {
+        expect(
+          tester.getCenter(find.text(text)).dy - gridRect.top,
+          closeTo(grid.axis.offsetForMinute(minute) * grid.rowHeight, 0.001),
+          reason: '$text stays on its actual time coordinate',
+        );
+      }
+      expect(
+        tester.getRect(find.text('00:00')).top,
+        greaterThanOrEqualTo(gridRect.top),
+      );
+      expect(
+        tester.getRect(find.text('24:00')).bottom,
+        lessThanOrEqualTo(gridRect.bottom),
+      );
+      expect(
+        tester.getRect(find.text('09:00')).bottom,
+        lessThanOrEqualTo(tester.getRect(find.text('2')).top + 0.001),
+        reason: 'The new 09:00 tick does not collide with the second period',
+      );
       final labels = [
-        for (var hour = 0; hour < 8; hour++)
+        for (var hour = 0; hour <= 9; hour++)
           tester.getRect(find.text('${hour.toString().padLeft(2, '0')}:00')),
       ];
       for (var index = 1; index < labels.length; index++) {
@@ -211,8 +240,8 @@ void main() {
     'Early, lunch and late entries remain accessible, including midnight clusters',
     (tester) async {
       final entries = [
-        _event('凌晨一', 30, 60),
-        _event('凌晨二', 90, 120),
+        _event('凌晨一', 30, 35),
+        _event('凌晨二', 36, 40),
         _event('晨跑', 420, 450),
         _event('午餐', 750, 780),
         _event('夜跑', 1335, 1380),
@@ -242,87 +271,98 @@ void main() {
     },
   );
 
-  testWidgets('Late-hour selection creates an event at its actual clock time', (
-    tester,
-  ) async {
-    final controller = await _showHome(tester);
-    await tester.tap(find.text('口'));
-    await tester.pumpAndSettle();
-    final finder = find.byType(TimetableGrid).first;
-    final grid = tester.widget<TimetableGrid>(finder);
-    final rect = tester.getRect(finder);
-    final column = (rect.width - grid.gutterWidth) / 7;
-    final point =
-        rect.topLeft +
-        Offset(
-          grid.gutterWidth + column * 3.5,
-          grid.axis.offsetForMinute(21 * 60 + 20) * grid.rowHeight,
+  for (final (minute, expectedStart) in [
+    (3 * 60 + 20, 3 * 60),
+    (7 * 60 + 20, 7 * 60),
+    (21 * 60 + 20, 21 * 60),
+    (21 * 60 + 40, 21 * 60),
+  ]) {
+    testWidgets(
+      'Early/late selection at minute $minute saves a clock-aligned hour',
+      (tester) async {
+        final controller = await _showHome(tester);
+        await tester.tap(find.text('口'));
+        await tester.pumpAndSettle();
+        final finder = find.byType(TimetableGrid).first;
+        final grid = tester.widget<TimetableGrid>(finder);
+        final rect = tester.getRect(finder);
+        final column = (rect.width - grid.gutterWidth) / 7;
+        final point =
+            rect.topLeft +
+            Offset(
+              grid.gutterWidth + column * 3.5,
+              grid.axis.offsetForMinute(minute.toDouble()) * grid.rowHeight,
+            );
+        await tester.tapAt(point);
+        await tester.pumpAndSettle();
+        expect(find.widgetWithText(MenuItemButton, '添加课程'), findsNothing);
+        final menu = tester.widget<AddMenu>(
+          find.byWidgetPredicate(
+            (widget) => widget is AddMenu && widget.timeRange != null,
+          ),
         );
-    await tester.tapAt(point);
-    await tester.pumpAndSettle();
-    expect(find.widgetWithText(MenuItemButton, '添加课程'), findsNothing);
-    final menu = tester.widget<AddMenu>(
-      find.byWidgetPredicate(
-        (widget) => widget is AddMenu && widget.timeRange != null,
-      ),
+        expect(
+          menu.timeRange!.start,
+          _monday.add(Duration(days: 3, minutes: expectedStart)),
+        );
+        expect(
+          menu.timeRange!.end,
+          _monday.add(Duration(days: 3, minutes: expectedStart + 60)),
+        );
+        await tester.tap(find.widgetWithText(MenuItemButton, '添加日程'));
+        await tester.pumpAndSettle();
+        final name = find.byWidgetPredicate(
+          (widget) =>
+              widget is TextField && widget.decoration?.labelText == '名称',
+        );
+        await tester.enterText(name, '晚间活动');
+        await tester.tap(find.widgetWithText(FilledButton, '保存'));
+        await tester.pumpAndSettle();
+        final saved = controller.agenda.entries.single;
+        expect(saved.startsAt, menu.timeRange!.start);
+        expect(saved.endsAt, menu.timeRange!.end);
+        expect(tester.takeException(), isNull);
+      },
     );
-    expect(
-      menu.timeRange!.start,
-      _monday.add(const Duration(days: 3, hours: 21, minutes: 15)),
-    );
-    expect(
-      menu.timeRange!.end,
-      _monday.add(const Duration(days: 3, hours: 21, minutes: 30)),
-    );
-    await tester.tap(find.widgetWithText(MenuItemButton, '添加日程'));
-    await tester.pumpAndSettle();
-    final name = find.byWidgetPredicate(
-      (widget) => widget is TextField && widget.decoration?.labelText == '名称',
-    );
-    await tester.enterText(name, '晚间活动');
-    await tester.tap(find.widgetWithText(FilledButton, '保存'));
-    await tester.pumpAndSettle();
-    final saved = controller.agenda.entries.single;
-    expect(saved.startsAt, menu.timeRange!.start);
-    expect(saved.endsAt, menu.timeRange!.end);
-    expect(tester.takeException(), isNull);
-  });
+  }
 
-  testWidgets('The current-time line stays on this day after 21:00', (
+  testWidgets('The clock stays on its calendar day before and after 03:00', (
     tester,
   ) async {
     await _showHome(tester);
     await tester.tap(find.text('口'));
     await tester.pumpAndSettle();
     final grid = tester.widget<TimetableGrid>(find.byType(TimetableGrid).first);
-    (grid.currentTime as ValueNotifier<DateTime>).value = _monday.add(
-      const Duration(hours: 22),
-    );
-    await tester.pump();
-    final indicator = tester.widget<CurrentTimeIndicator>(
-      find.byType(CurrentTimeIndicator).first,
-    );
-    expect(indicator.axis.expanded, isTrue);
-    final paint = tester.widget<CustomPaint>(
-      find.descendant(
-        of: find.byType(CurrentTimeIndicator).first,
-        matching: find.byType(CustomPaint),
-      ),
-    );
-    final dynamic painter = paint.painter;
-    expect(painter.day, 0);
-    expect(
-      painter.center as double,
-      closeTo(
-        CurrentTimeIndicator.centerAt(
-          grid.axis.offsetForMinute(1320),
-          grid.rowHeight,
-          axis: grid.axis,
+    for (final minute in [60, 180, 1320]) {
+      (grid.currentTime as ValueNotifier<DateTime>).value = _monday.add(
+        Duration(minutes: minute),
+      );
+      await tester.pump();
+      final indicator = tester.widget<CurrentTimeIndicator>(
+        find.byType(CurrentTimeIndicator).first,
+      );
+      expect(indicator.axis.expanded, isTrue);
+      final paint = tester.widget<CustomPaint>(
+        find.descendant(
+          of: find.byType(CurrentTimeIndicator).first,
+          matching: find.byType(CustomPaint),
         ),
-        1e-6,
-      ),
-    );
-    expect(tester.takeException(), isNull);
+      );
+      final dynamic painter = paint.painter;
+      expect(painter.day, 0);
+      expect(
+        painter.center as double,
+        closeTo(
+          CurrentTimeIndicator.centerAt(
+            grid.axis.offsetForMinute(minute.toDouble()),
+            grid.rowHeight,
+            axis: grid.axis,
+          ),
+          1e-6,
+        ),
+      );
+      expect(tester.takeException(), isNull);
+    }
   });
 
   test('The expansion choice survives restart', () async {
