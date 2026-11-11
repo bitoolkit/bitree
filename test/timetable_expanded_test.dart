@@ -6,11 +6,11 @@ import 'package:bitree/agenda/ui/calendar_block.dart';
 import 'package:bitree/app/ui/add_menu.dart';
 import 'package:bitree/schedule/model.dart';
 import 'package:bitree/schedule/section_times.dart';
-import 'package:bitree/schedule/timetable_axis.dart';
 import 'package:bitree/schedule/ui/current_time_indicator.dart';
 import 'package:bitree/schedule/ui/home_screen.dart';
 import 'package:bitree/schedule/ui/timetable.dart';
 import 'package:bitree/schedule/ui/timetable_grid.dart';
+import 'package:bitree/schedule/ui/timetable_time_gutter.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -139,6 +139,7 @@ void main() {
         scale: scale,
         entries: _fullDayBounds,
       );
+      expect(find.byType(TimetableTimeGutter), findsOneWidget);
       expect(find.text('口'), findsOneWidget);
       expect(find.text('目'), findsNothing);
       expect(
@@ -149,6 +150,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('目'), findsOneWidget);
       expect(find.text('口'), findsNothing);
+      expect(find.byType(TimetableTimeGutter), findsOneWidget);
       final grid = tester.widget<TimetableGrid>(
         find.byType(TimetableGrid).first,
       );
@@ -160,7 +162,7 @@ void main() {
         closeTo(_position(tester).viewportDimension, 1e-7),
       );
       for (final hour in [
-        for (var hour = 0; hour <= 9; hour++) hour,
+        for (var hour = 0; hour <= 8; hour++) hour,
         21,
         22,
         23,
@@ -173,10 +175,8 @@ void main() {
       }
       final gridRect = tester.getRect(find.byType(TimetableGrid).first);
       for (final (text, minute) in [
-        for (var hour = 1; hour <= 9; hour++)
+        for (var hour = 1; hour < 8; hour++)
           ('${hour.toString().padLeft(2, '0')}:00', hour * 60.0),
-        for (final period in sectionTimes)
-          (period.$1, TimetableAxis.clockMinute(period.$1).toDouble()),
         for (var hour = 21; hour < 24; hour++) ('$hour:00', hour * 60.0),
       ]) {
         expect(
@@ -185,22 +185,52 @@ void main() {
           reason: '$text stays on its actual time coordinate',
         );
       }
+      for (var section = 1; section <= sectionTimes.length; section++) {
+        final start = tester.getRect(
+          find.byKey(ValueKey(('timetable-period-label', section))),
+        );
+        expect(
+          start.top,
+          greaterThanOrEqualTo(
+            gridRect.top +
+                grid.axis.sectionStart(section) * grid.rowHeight -
+                0.001,
+          ),
+        );
+        expect(
+          start.bottom,
+          lessThanOrEqualTo(
+            gridRect.top +
+                grid.axis.sectionEnd(section) * grid.rowHeight +
+                0.001,
+          ),
+        );
+      }
       expect(
-        tester.getRect(find.text('00:00')).top,
+        tester
+            .getRect(find.byKey(const ValueKey(('timetable-hour-slot', 0))))
+            .top,
         greaterThanOrEqualTo(gridRect.top),
       );
       expect(
-        tester.getRect(find.text('24:00')).bottom,
+        tester
+            .getRect(find.byKey(const ValueKey(('timetable-hour-slot', 1440))))
+            .bottom,
         lessThanOrEqualTo(gridRect.bottom),
       );
+      expect(find.text('09:00'), findsNothing);
       expect(
-        tester.getRect(find.text('09:00')).bottom,
-        lessThanOrEqualTo(tester.getRect(find.text('2')).top + 0.001),
-        reason: 'The new 09:00 tick does not collide with the second period',
+        tester.getCenter(find.text('08:00')).dy,
+        lessThan(tester.getCenter(find.text('08:50')).dy),
       );
       final labels = [
-        for (var hour = 0; hour <= 9; hour++)
-          tester.getRect(find.text('${hour.toString().padLeft(2, '0')}:00')),
+        for (var hour = 0; hour < 8; hour++)
+          tester.getRect(
+            find.byKey(ValueKey(('timetable-hour-slot', hour * 60))),
+          ),
+        tester.getRect(
+          find.byKey(const ValueKey(('timetable-period-label', 1))),
+        ),
       ];
       for (var index = 1; index < labels.length; index++) {
         expect(

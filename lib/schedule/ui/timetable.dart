@@ -13,6 +13,7 @@ import '../layout.dart';
 import '../time_position.dart';
 import 'timetable_grid.dart';
 import 'timetable_header.dart';
+import 'timetable_time_gutter.dart';
 
 class Timetable extends StatefulWidget {
   const Timetable({
@@ -284,7 +285,7 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
             .toList(),
     ];
 
-    final gutterWidth = 30.0 * scale;
+    final gutterWidth = TimetableTimeGutter.preferredWidth(context);
     return Column(
       children: [
         TimetableHeader(

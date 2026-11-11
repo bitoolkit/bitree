@@ -8,7 +8,6 @@ import 'package:flutter/services.dart';
 import '../../agenda/controller.dart';
 import '../../agenda/ui/calendar_block.dart';
 import '../../app/ui/add_menu.dart';
-import '../../l10n/l10n.dart';
 import '../../ui/design.dart';
 import '../controller.dart';
 import '../layout.dart';
@@ -17,6 +16,7 @@ import '../selection.dart';
 import '../timetable_axis.dart';
 import 'course_colors.dart';
 import 'current_time_indicator.dart';
+import 'timetable_time_gutter.dart';
 
 part 'timetable_grid_painting.dart';
 
@@ -290,21 +290,7 @@ class _TimetableGridState extends State<TimetableGrid> {
             children: [
               SizedBox(
                 width: widget.gutterWidth,
-                child: axis.expanded
-                    ? _ExpandedTimeLabels(axis: axis, rowHeight: rowHeight)
-                    : Column(
-                        children: [
-                          for (
-                            var section = 1;
-                            section <= sectionTimes.length;
-                            section++
-                          )
-                            SizedBox(
-                              height: rowHeight,
-                              child: _PeriodLabel(section: section),
-                            ),
-                        ],
-                      ),
+                child: TimetableTimeGutter(axis: axis, rowHeight: rowHeight),
               ),
               Expanded(
                 child: AddMenu(

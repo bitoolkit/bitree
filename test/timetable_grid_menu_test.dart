@@ -139,7 +139,8 @@ void main() {
       rowHeight: 53.2,
     );
 
-    expect(find.text('08:00\n08:45'), findsOneWidget);
+    expect(find.text('08:00'), findsOneWidget);
+    expect(find.text('08:45'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
