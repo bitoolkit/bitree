@@ -105,6 +105,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   List<AgendaEntry>? _cachedEntries;
   DeadlineCutoffWindow? _cachedCutoff;
   int? _cachedLayoutDays;
+  bool? _cachedEventInfoBar;
   Duration? _cachedMinimumEventSpan;
   Duration? _cachedDeadlineCardSpan;
   double? _cachedZoom;
@@ -123,14 +124,17 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   ) {
     final cutoff = widget.controller.settings.deadlineCutoff.value;
     final layoutDays = widget.controller.settings.agendaLayoutDays.value;
+    final eventInfoBar = widget.controller.settings.agendaEventInfoBar.value;
     if (!identical(_cachedEntries, widget.entries) ||
         _cachedCutoff != cutoff ||
         _cachedLayoutDays != layoutDays ||
+        _cachedEventInfoBar != eventInfoBar ||
         _cachedMinimumEventSpan != minimumEventSpan ||
         _cachedDeadlineCardSpan != deadlineCardSpan) {
       _cachedEntries = widget.entries;
       _cachedCutoff = cutoff;
       _cachedLayoutDays = layoutDays;
+      _cachedEventInfoBar = eventInfoBar;
       _cachedMinimumEventSpan = minimumEventSpan;
       _cachedDeadlineCardSpan = deadlineCardSpan;
       _cachedZoom = null;
@@ -140,6 +144,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
         minimumEventSpan: minimumEventSpan,
         deadlineCardSpan: deadlineCardSpan,
         layoutDays: layoutDays,
+        reserveEventInformation: eventInfoBar,
       );
     }
     if (_cachedZoom != _zoom) {
@@ -157,6 +162,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     );
     widget.controller.settings.deadlineCutoff.addListener(_settingsChanged);
     widget.controller.settings.agendaLayoutDays.addListener(_settingsChanged);
+    widget.controller.settings.agendaEventInfoBar.addListener(_settingsChanged);
     _horizontalFling = AnimationController.unbounded(vsync: this)
       ..addListener(_tickHorizontal);
   }
@@ -258,8 +264,10 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller.settings.deadlineCutoff.removeListener(_settingsChanged);
       oldWidget.controller.settings.agendaLayoutDays.removeListener(_settingsChanged);
+      oldWidget.controller.settings.agendaEventInfoBar.removeListener(_settingsChanged);
       widget.controller.settings.deadlineCutoff.addListener(_settingsChanged);
       widget.controller.settings.agendaLayoutDays.addListener(_settingsChanged);
+      widget.controller.settings.agendaEventInfoBar.addListener(_settingsChanged);
       _cachedEntries = null;
     }
     if (oldWidget.filter != widget.filter) {
@@ -309,6 +317,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     _stopMotion(holdVertical: true);
     widget.controller.settings.deadlineCutoff.removeListener(_settingsChanged);
     widget.controller.settings.agendaLayoutDays.removeListener(_settingsChanged);
+    widget.controller.settings.agendaEventInfoBar.removeListener(_settingsChanged);
     _horizontalFling.dispose();
     _releaseVerticalHold();
     _lanes.dispose();
@@ -777,9 +786,11 @@ class _AgendaTimelineState extends State<AgendaTimeline>
             _microsecondsPerHour *
             pixelsPerHour;
     if (!entry.isDeadline) {
+      final showInformation = widget.controller.settings
+          .agendaEventInfoBar.value;
       final start = x(entry.startsAt);
       final end = x(entry.endsAt!);
-      final informationLeft = start - deadlineWidth;
+      final informationLeft = showInformation ? start - deadlineWidth : start;
       final left = math.max(0.0, informationLeft);
       final right = math.min(width, end);
       return Positioned(
@@ -792,6 +803,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
           entry: entry,
           now: widget.now,
           informationWidth: deadlineWidth,
+          showInformation: showInformation,
           geometry: EventTimelineGeometry(
             informationLeft: informationLeft - left,
             startX: start - left,

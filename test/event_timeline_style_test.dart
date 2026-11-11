@@ -79,9 +79,17 @@ void main() {
       final data = await _pixels(tester, key);
       int channel(int x, int y, int component) =>
           data.getUint8((y * 120 + x) * 4 + component);
-      expect(channel(10, 4, 3), closeTo(255 * completionAlpha * .5, 2));
-      expect(channel(26, 4, 3), closeTo(255 * completionAlpha * .25, 2));
+      // Bands alternate between the solid fill and its half alpha.
+      expect(channel(10, 4, 3), closeTo(255 * completionAlpha, 2));
+      expect(channel(26, 4, 3), closeTo(255 * completionAlpha * .5, 2));
       expect(channel(6, 8, 3), channel(10, 4, 3));
+      if (!done) {
+        // The inner border is the accent (red-led), unlike the fill-colored
+        // stripes (blue-led). The 1.5px stroke never fully covers a pixel, so
+        // compare premultiplied hue instead of an exact alpha.
+        expect(channel(0, 20, 0), greaterThan(channel(0, 20, 2)));
+      }
+      expect(channel(10, 4, 0), lessThan(channel(10, 4, 2)));
       for (final (x, y) in [(10, 4), (26, 4), (90, 20)]) {
         final alpha = channel(x, y, 3) / 255;
         expect(channel(x, y, 0), closeTo(0x33 * alpha, 2));
@@ -106,6 +114,45 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
   }
+
+  testWidgets('Hidden information bars keep the interval and both lines only', (
+    tester,
+  ) async {
+    final key = GlobalKey();
+    await tester.pumpWidget(MaterialApp(
+      home: Center(child: RepaintBoundary(
+        key: key,
+        child: SizedBox(width: 120, height: 40, child: CustomPaint(
+          painter: const EventTimelinePainter(
+            geometry: EventTimelineGeometry(
+              informationLeft: 0, startX: 80, endX: 110,
+            ),
+            fill: Color(0xFF336699),
+            accent: Color(0xFF995522),
+            showInformation: false,
+          ),
+        )),
+      )),
+    ));
+    await tester.pumpAndSettle();
+    final data = await _pixels(tester, key);
+    int channel(int x, int y, int component) =>
+        data.getUint8((y * 120 + x) * 4 + component);
+    // No stripes and no inner border where the information card used to be.
+    for (final (x, y) in [(0, 20), (6, 8), (10, 4), (26, 4), (70, 20)]) {
+      expect(channel(x, y, 3), 0, reason: 'info pixel $x,$y');
+    }
+    // The interval and both boundary lines still paint unchanged.
+    expect(channel(90, 20, 3), 255);
+    expect(channel(90, 8, 3), channel(100, 25, 3));
+    for (final x in [79, 109]) {
+      expect(channel(x, 20, 0), closeTo(0x99, 2));
+      expect(channel(x, 20, 1), closeTo(0x55, 2));
+      expect(channel(x, 20, 2), closeTo(0x22, 2));
+    }
+    expect(channel(111, 20, 3), 0);
+    await tester.pumpWidget(const SizedBox());
+  });
 
   for (final exam in [false, true]) {
     testWidgets('Event and exam information stays fixed while the span zooms: $exam', (

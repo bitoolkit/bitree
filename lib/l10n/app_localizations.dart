@@ -4440,6 +4440,18 @@ abstract class AppLocalizations {
   /// **'Enter a whole number from 1 to 30'**
   String get agendaLayoutDaysRange;
 
+  /// No description provided for @settingsAgendaEventInfoBar.
+  ///
+  /// In en, this message translates to:
+  /// **'Event information bar'**
+  String get settingsAgendaEventInfoBar;
+
+  /// No description provided for @settingsAgendaEventInfoBarDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the left information card for events and exams in the timeline. When off, its layout space is released; boundary lines, the filled interval, and deadlines are unaffected.'**
+  String get settingsAgendaEventInfoBarDescription;
+
   /// No description provided for @releaseVersion.
   ///
   /// In en, this message translates to:

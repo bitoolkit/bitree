@@ -215,6 +215,18 @@ class SettingsScreen extends StatelessWidget {
           section(l10n.settingsLocalAgenda, [
             AgendaLayoutDaysSettingsTile(settings: controller.settings),
             DeadlineCutoffSettingsTile(settings: controller.settings),
+            ValueListenableBuilder(
+              valueListenable: controller.settings.agendaEventInfoBar,
+              builder: (context, infoBar, _) => SwitchListTile(
+                key: const ValueKey('agenda-event-info-bar-settings'),
+                contentPadding: tilePadding,
+                secondary: const Icon(Icons.article_outlined),
+                title: Text(l10n.settingsAgendaEventInfoBar),
+                subtitle: Text(l10n.settingsAgendaEventInfoBarDescription),
+                value: infoBar,
+                onChanged: controller.settings.setAgendaEventInfoBar,
+              ),
+            ),
             ListTile(
               contentPadding: tilePadding,
               leading: Icon(Icons.delete_outline_rounded, color: scheme.error),

@@ -2461,6 +2461,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get agendaLayoutDaysRange => '请输入 1–30 的整数';
 
   @override
+  String get settingsAgendaEventInfoBar => '日程与考试信息栏';
+
+  @override
+  String get settingsAgendaEventInfoBarDescription => '控制泳道图中普通日程和考试左侧的信息栏是否显示；关闭后不再预留排版空间，开始与结束标线及中间时段不受影响。DDL 不受此开关影响。';
+
+  @override
   String releaseVersion(String channel, String version) {
     return '$channel $version';
   }

@@ -727,5 +727,7 @@
   "agendaLayoutDaysDescription": "统一控制 DDL、仅开始时间项目及伪提前 DDL 左侧信息区的排版宽度，覆盖原单条拖尾设置；渲染仍保持屏幕定宽。",
   "agendaLayoutDaysUnit": "天",
   "agendaLayoutDaysRange": "请输入 1–30 的整数",
+  "settingsAgendaEventInfoBar": "日程与考试信息栏",
+  "settingsAgendaEventInfoBarDescription": "控制泳道图中普通日程和考试左侧的信息栏是否显示；关闭后不再预留排版空间，开始与结束标线及中间时段不受影响。DDL 不受此开关影响。",
   "releaseVersion": "{channel} {version}"
 }

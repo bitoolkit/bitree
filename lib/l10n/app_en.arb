@@ -1807,6 +1807,8 @@
   "agendaLayoutDaysDescription": "Use one layout width for deadlines, start-only items, and the left side of adjusted deadlines, overriding old per-item tails. Painted tails keep a fixed screen width.",
   "agendaLayoutDaysUnit": "days",
   "agendaLayoutDaysRange": "Enter a whole number from 1 to 30",
+  "settingsAgendaEventInfoBar": "Event information bar",
+  "settingsAgendaEventInfoBarDescription": "Show the left information card for events and exams in the timeline. When off, its layout space is released; boundary lines, the filled interval, and deadlines are unaffected.",
   "releaseVersion": "{channel} {version}",
   "@releaseVersion": {
     "placeholders": {

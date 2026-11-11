@@ -2575,6 +2575,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get agendaLayoutDaysRange => 'Enter a whole number from 1 to 30';
 
   @override
+  String get settingsAgendaEventInfoBar => 'Event information bar';
+
+  @override
+  String get settingsAgendaEventInfoBarDescription => 'Show the left information card for events and exams in the timeline. When off, its layout space is released; boundary lines, the filled interval, and deadlines are unaffected.';
+
+  @override
   String releaseVersion(String channel, String version) {
     return '$channel $version';
   }

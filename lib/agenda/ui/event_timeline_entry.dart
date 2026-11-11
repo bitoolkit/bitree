@@ -30,12 +30,14 @@ class EventTimelinePainter extends CustomPainter {
     required this.fill,
     required this.accent,
     this.lineWidth = 3,
+    this.showInformation = true,
   });
 
   final EventTimelineGeometry geometry;
   final Color fill;
   final Color accent;
   final double lineWidth;
+  final bool showInformation;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -45,24 +47,26 @@ class EventTimelinePainter extends CustomPainter {
     final information = Rect.fromLTRB(
       geometry.informationLeft, 0, geometry.startX, size.height,
     );
-    // Palette alpha already contains completion fading. Apply the information
-    // region's extra half without replacing (and losing) the existing alpha.
-    AdjustedDeadlineExtensionPainter(
-      effectiveX: geometry.informationLeft,
-      realX: geometry.startX,
-      color: fill,
-      highOpacity: .5,
-      lowOpacity: .25,
-    ).paint(canvas, size);
-    final borderWidth = lineWidth / 2;
-    if (information.width >= borderWidth && size.height >= borderWidth) {
-      canvas.drawRect(
-        information.deflate(borderWidth / 2),
-        Paint()
-          ..color = fill
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = borderWidth,
-      );
+    if (showInformation) {
+      // Palette alpha already contains completion fading. Multiply the stripe
+      // bands without replacing (and losing) the existing alpha.
+      AdjustedDeadlineExtensionPainter(
+        effectiveX: geometry.informationLeft,
+        realX: geometry.startX,
+        color: fill,
+        highOpacity: 1,
+        lowOpacity: .5,
+      ).paint(canvas, size);
+      final borderWidth = lineWidth / 2;
+      if (information.width >= borderWidth && size.height >= borderWidth) {
+        canvas.drawRect(
+          information.deflate(borderWidth / 2),
+          Paint()
+            ..color = accent
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = borderWidth,
+        );
+      }
     }
     final intervalLeft = math.max(0.0, geometry.startX);
     final intervalRight = math.min(size.width, geometry.endX);
@@ -88,7 +92,8 @@ class EventTimelinePainter extends CustomPainter {
       oldDelegate.geometry.endX != geometry.endX ||
       oldDelegate.fill != fill ||
       oldDelegate.accent != accent ||
-      oldDelegate.lineWidth != lineWidth;
+      oldDelegate.lineWidth != lineWidth ||
+      oldDelegate.showInformation != showInformation;
 }
 
 class EventTimelineEntry extends StatefulWidget {
@@ -99,6 +104,7 @@ class EventTimelineEntry extends StatefulWidget {
     required this.geometry,
     required this.informationWidth,
     required this.onTap,
+    this.showInformation = true,
   });
 
   final AgendaEntry entry;
@@ -106,6 +112,10 @@ class EventTimelineEntry extends StatefulWidget {
   final EventTimelineGeometry geometry;
   final double informationWidth;
   final VoidCallback onTap;
+
+  /// Hides the left information card's text, stripes and inner border. The
+  /// real interval, its fill and both boundary lines always stay painted.
+  final bool showInformation;
 
   @override
   State<EventTimelineEntry> createState() => _EventTimelineEntryState();
@@ -183,61 +193,63 @@ class _EventTimelineEntryState extends State<EventTimelineEntry> {
                   geometry: geometry,
                   fill: colors.fill,
                   accent: colors.accent,
+                  showInformation: widget.showInformation,
                 ),
                 child: Stack(
                   clipBehavior: Clip.hardEdge,
                   children: [
-                    Positioned(
-                      left: geometry.informationLeft,
-                      top: 0,
-                      bottom: 0,
-                      width: informationWidth,
-                      child: _information ??= RepaintBoundary(
-                        child: SizedBox(
-                          key: ValueKey(('agenda-timeline-bar', entry.id)),
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.right,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    height: 1.2,
-                                    fontWeight: FontWeight.w600,
-                                    color: colors.text,
-                                    decoration: entry.done
-                                        ? TextDecoration.lineThrough
-                                        : null,
+                    if (widget.showInformation)
+                      Positioned(
+                        left: geometry.informationLeft,
+                        top: 0,
+                        bottom: 0,
+                        width: informationWidth,
+                        child: _information ??= RepaintBoundary(
+                          child: SizedBox(
+                            key: ValueKey(('agenda-timeline-bar', entry.id)),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.right,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      height: 1.2,
+                                      fontWeight: FontWeight.w600,
+                                      color: colors.text,
+                                      decoration: entry.done
+                                          ? TextDecoration.lineThrough
+                                          : null,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  caption,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.right,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    height: 1.2,
-                                    fontWeight: FontWeight.w600,
-                                    color: colors.accent,
-                                    fontFeatures: const [
-                                      FontFeature.tabularFigures(),
-                                    ],
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    caption,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.right,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      height: 1.2,
+                                      fontWeight: FontWeight.w600,
+                                      color: colors.accent,
+                                      fontFeatures: const [
+                                        FontFeature.tabularFigures(),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),

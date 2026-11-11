@@ -48,6 +48,7 @@ class AppSettingsController extends ChangeNotifier {
   final timetableHeightMode = ValueNotifier(TimetableHeightMode.normal);
   final deadlineCutoff = ValueNotifier(const DeadlineCutoffWindow());
   final agendaLayoutDays = ValueNotifier(4);
+  final agendaEventInfoBar = ValueNotifier(true);
 
   Future<void>? _paletteSettingsLoad;
   SystemPalette? _systemPalette;
@@ -58,6 +59,7 @@ class AppSettingsController extends ChangeNotifier {
   bool _timetableHeightChosen = false;
   bool _deadlineCutoffChosen = false;
   bool _agendaLayoutDaysChosen = false;
+  bool _agendaEventInfoBarChosen = false;
   bool _developerMode = false;
   bool _widgetUseSystemPalette = false;
   bool _globalUseSystemPalette = false;
@@ -176,6 +178,18 @@ class AppSettingsController extends ChangeNotifier {
       }
     } catch (failure, stack) {
       AppDiagnostics.instance.report('读取 DDL 排版宽度', failure, stack);
+    }
+    try {
+      final saved = await _preferences.getString('agendaEventInfoBar');
+      if (!_agendaEventInfoBarChosen && !_disposed && saved != null) {
+        if (saved != 'true' && saved != 'false') {
+          throw const FormatException('日程信息栏设置必须是布尔值');
+        }
+        agendaEventInfoBar.value = saved == 'true';
+        _notify();
+      }
+    } catch (failure, stack) {
+      AppDiagnostics.instance.report('读取日程信息栏设置', failure, stack);
     }
   }
 
@@ -414,6 +428,18 @@ class AppSettingsController extends ChangeNotifier {
     );
   }
 
+  Future<void> setAgendaEventInfoBar(bool value) {
+    if (_disposed) return Future<void>.value();
+    _agendaEventInfoBarChosen = true;
+    agendaEventInfoBar.value = value;
+    _notify();
+    return _writePreference(
+      'agendaEventInfoBar',
+      value ? 'true' : 'false',
+      '保存日程信息栏设置',
+    );
+  }
+
   Future<void> _writePreference(String key, String value, String operation) {
     final previous = _preferenceWrites[key] ?? Future<void>.value();
     final write = previous.then((_) async {
@@ -440,6 +466,7 @@ class AppSettingsController extends ChangeNotifier {
     timetableHeightMode.dispose();
     deadlineCutoff.dispose();
     agendaLayoutDays.dispose();
+    agendaEventInfoBar.dispose();
     super.dispose();
   }
 }

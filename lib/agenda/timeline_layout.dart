@@ -37,13 +37,19 @@ class AgendaTimelineLayout {
     required Duration minimumEventSpan,
     required this.deadlineCardSpan,
     int layoutDays = AgendaEntry.defaultTailDays,
+    this.reserveEventInformation = true,
   }) : _reservations = _reserveLanes(
          entries,
          minimumEventSpan: minimumEventSpan,
          layoutDays: layoutDays,
+         reserveEventInformation: reserveEventInformation,
        );
 
   final Duration deadlineCardSpan;
+
+  /// When the event information card is hidden, events reserve and paint only
+  /// their real interval instead of an information-width lead on the left.
+  final bool reserveEventInformation;
   final List<_LaneReservation> _reservations;
 
   List<AgendaTimelinePlacement> atZoom(double zoom) {
@@ -61,12 +67,14 @@ class AgendaTimelineLayout {
           start: interval.start,
           end: interval.end,
           layoutEnd: interval.layoutEnd,
-          paintStart: interval.entry.startOnly
+          paintStart:
+              interval.entry.startOnly ||
+                  (!interval.entry.isDeadline && !reserveEventInformation)
               ? interval.entry.startsAt
               : (interval.entry.isDeadline
-                        ? interval.entry.dueAt
-                        : interval.entry.startsAt)
-                    .subtract(fixedWidthSpan),
+                    ? interval.entry.dueAt
+                    : interval.entry.startsAt)
+                .subtract(fixedWidthSpan),
           paintEnd: interval.entry.startOnly
               ? interval.entry.startsAt.add(fixedWidthSpan)
               : interval.end,
@@ -82,6 +90,7 @@ List<AgendaTimelinePlacement> layoutAgendaTimeline(
   Iterable<AgendaEntry> entries, {
   required Duration minimumEventSpan,
   int layoutDays = AgendaEntry.defaultTailDays,
+  bool reserveEventInformation = true,
 }) => AgendaTimelineLayout(
   entries,
   minimumEventSpan: minimumEventSpan,
@@ -89,17 +98,20 @@ List<AgendaTimelinePlacement> layoutAgendaTimeline(
     microseconds: (Duration.microsecondsPerDay * (layoutDays - .25)).round(),
   ),
   layoutDays: layoutDays,
+  reserveEventInformation: reserveEventInformation,
 ).atZoom(1);
 
 List<_LaneReservation> _reserveLanes(
   Iterable<AgendaEntry> entries, {
   required Duration minimumEventSpan,
   required int layoutDays,
+  required bool reserveEventInformation,
 }) {
   if (layoutDays < 1 || layoutDays > AgendaEntry.maxTailDays) {
     throw RangeError.range(layoutDays, 1, AgendaEntry.maxTailDays, 'layoutDays');
   }
-  DateTime reservationStart(AgendaEntry entry) => entry.startOnly
+  DateTime reservationStart(AgendaEntry entry) =>
+      entry.startOnly || (!entry.isDeadline && !reserveEventInformation)
       ? entry.startsAt
       : (entry.isDeadline ? entry.dueAt : entry.startsAt)
             .subtract(Duration(days: layoutDays));
