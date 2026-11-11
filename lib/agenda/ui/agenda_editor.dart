@@ -1,20 +1,26 @@
 import 'package:flutter/material.dart';
 
-import '../../app/controller.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../schedule/selection.dart';
+import '../../ui/design.dart';
 import '../../ui/dialog_layout.dart';
 import '../../ui/editor_sheet.dart';
 import '../../ui/external_link.dart';
 import '../../ui/sheet_layout.dart';
+import '../agenda_color.dart';
+import '../controller.dart';
 import '../model.dart';
+import 'agenda_color_palette.dart';
+import 'agenda_color_picker.dart';
 import 'agenda_operations.dart';
+
+part 'agenda_editor_sections.dart';
 
 Future<void> editAgenda(
   BuildContext context,
-  AppController controller, {
+  AgendaController controller, {
   AgendaEntry? entry,
   AgendaKind kind = AgendaKind.event,
   TimetableSelection? selection,
@@ -50,7 +56,7 @@ class _AgendaEditor extends StatefulWidget {
     this.term,
   });
 
-  final AppController controller;
+  final AgendaController controller;
   final AgendaEntry? entry;
   final String? entryTitle;
   final String? entryNotes;
@@ -80,6 +86,7 @@ class _AgendaEditorState extends State<_AgendaEditor> {
             widget.endsAt ??
             _start.add(const Duration(hours: 1));
   late bool _allDay = widget.entry?.allDay ?? false;
+  late AgendaColor? _color = widget.entry?.color;
   bool _saving = false;
   String? _error;
 
@@ -158,7 +165,7 @@ class _AgendaEditorState extends State<_AgendaEditor> {
       _error = null;
     });
     final l10n = context.l10n;
-    final success = await widget.controller.agenda.save(
+    final success = await widget.controller.save(
       AgendaEntry(
         id:
             widget.entry?.id ??
@@ -179,6 +186,7 @@ class _AgendaEditorState extends State<_AgendaEditor> {
         source: widget.entry?.source,
         course: widget.entry?.course ?? '',
         url: widget.entry?.url,
+        color: _kind == AgendaKind.exam ? null : _color,
         // Editing turns a generated record into a user-authored snapshot. Its
         // localized presentation must not keep overriding the edited values.
         details: null,
@@ -186,8 +194,7 @@ class _AgendaEditorState extends State<_AgendaEditor> {
         // Editing keeps the open-ended flag, but only while the entry stays a
         // deadline: an event or exam always has an end time.
         startOnly:
-            _kind == AgendaKind.deadline &&
-            (widget.entry?.startOnly ?? false),
+            _kind == AgendaKind.deadline && (widget.entry?.startOnly ?? false),
       ),
       preserveCompletion: true,
     );
@@ -221,27 +228,9 @@ class _AgendaEditorState extends State<_AgendaEditor> {
     }
   }
 
-  Widget _when(String label, DateTime value, bool start) => Padding(
-    padding: const EdgeInsets.only(top: 8),
-    child: Row(
-      children: [
-        SizedBox(width: 44, child: Text(label)),
-        Expanded(
-          child: OutlinedButton(
-            onPressed: _saving ? null : () => _pickDate(start),
-            child: Text(dateText(value)),
-          ),
-        ),
-        if (!_allDay) ...[
-          const SizedBox(width: 8),
-          OutlinedButton(
-            onPressed: _saving ? null : () => _pickTime(start),
-            child: Text(clockText(value)),
-          ),
-        ],
-      ],
-    ),
-  );
+  void _updateColor(AgendaColor? color) {
+    setState(() => _color = color);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -320,9 +309,19 @@ class _AgendaEditorState extends State<_AgendaEditor> {
             validator: (text) =>
                 text!.trim().isEmpty ? l10n.agendaNameRequired : null,
           ),
+          const SizedBox(height: 20),
           Row(
             children: [
-              Expanded(child: Text(l10n.agendaAllDay)),
+              Expanded(
+                child: Text(
+                  l10n.agendaTime,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Text(l10n.agendaAllDay),
               Switch(
                 value: _allDay,
                 onChanged: _saving
@@ -331,34 +330,34 @@ class _AgendaEditorState extends State<_AgendaEditor> {
               ),
             ],
           ),
-          _when(
-            // An imported open-ended deadline records an opening time, so the
-            // field must not be labelled as a due time.
-            _kind == AgendaKind.deadline && widget.entry?.startOnly != true
-                ? l10n.due
-                : l10n.start,
-            _start,
-            true,
-          ),
-          if (_kind != AgendaKind.deadline) _when(l10n.end, _end, false),
-          const SizedBox(height: 16),
-          if (_kind != AgendaKind.deadline) ...[
-            TextFormField(
-              controller: _location,
-              enabled: !_saving,
-              decoration: InputDecoration(
-                labelText: l10n.agendaLocationOptional,
-              ),
+          const SizedBox(height: 4),
+          Material(
+            color: theme.colorScheme.surfaceContainerLow,
+            shape: RoundedRectangleBorder(
+              borderRadius: AppCorners.control,
+              side: BorderSide(color: theme.colorScheme.outlineVariant),
             ),
-            const SizedBox(height: 12),
-          ],
-          TextFormField(
-            controller: _notes,
-            enabled: !_saving,
-            minLines: 2,
-            maxLines: 4,
-            decoration: InputDecoration(labelText: l10n.agendaNotesOptional),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                _timeRow(
+                  _kind == AgendaKind.deadline &&
+                          widget.entry?.startOnly != true
+                      ? l10n.due
+                      : l10n.start,
+                  _start,
+                  true,
+                ),
+                if (_kind != AgendaKind.deadline) ...[
+                  Divider(height: 1, color: theme.colorScheme.outlineVariant),
+                  _timeRow(l10n.end, _end, false),
+                ],
+              ],
+            ),
           ),
+          const SizedBox(height: 8),
+          if (_kind != AgendaKind.exam) _colorSelector(),
+          _moreOptions(),
         ],
       ),
     );

@@ -10,7 +10,7 @@ import 'adjusted_deadline_painter.dart';
 import 'timeline_colors.dart';
 
 /// Renders entry content independently of timeline coordinates and lane packing.
-class AgendaTimelineEntry extends StatelessWidget {
+class AgendaTimelineEntry extends StatefulWidget {
   const AgendaTimelineEntry({
     super.key,
     required this.entry,
@@ -29,9 +29,40 @@ class AgendaTimelineEntry extends StatelessWidget {
   final AdjustedDeadlineGeometry? adjustedGeometry;
 
   @override
+  State<AgendaTimelineEntry> createState() => _AgendaTimelineEntryState();
+}
+
+class _AgendaTimelineEntryState extends State<AgendaTimelineEntry> {
+  Widget? _body;
+
+  AgendaEntry get entry => widget.entry;
+  DateTime get now => widget.now;
+  double get barWidth => widget.barWidth;
+  double get deadlineWidth => widget.deadlineWidth;
+  void _open() => widget.onTap();
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _body = null;
+  }
+
+  @override
+  void didUpdateWidget(covariant AgendaTimelineEntry oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.entry != widget.entry ||
+        oldWidget.now != widget.now ||
+        oldWidget.barWidth != widget.barWidth ||
+        oldWidget.deadlineWidth != widget.deadlineWidth) {
+      _body = null;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final body = _buildBody(context);
-    final geometry = adjustedGeometry;
+    // Geometry belongs to the fresh outer wrapper, never the cached text layer.
+    final body = _body ??= RepaintBoundary(child: _buildBody(context));
+    final geometry = widget.adjustedGeometry;
     if (geometry == null) return body;
     final colors = agendaTimelineColors(context, entry, now);
     return AdjustedDeadlineSurface(
@@ -43,7 +74,7 @@ class AgendaTimelineEntry extends StatelessWidget {
       // another half gives 0.5 when pending and 0.25 when completed.
       realMarkerColor: colors.accent.withValues(alpha: colors.accent.a * 0.5),
       body: body,
-      onTap: onTap,
+      onTap: _open,
       semanticsLabel: _preview(context.l10n, entry, now),
     );
   }
@@ -112,14 +143,14 @@ class AgendaTimelineEntry extends StatelessWidget {
     return Semantics(
       button: true,
       label: description,
-      onTap: onTap,
+      onTap: _open,
       child: ExcludeSemantics(
         child: Tooltip(
           message: _preview(l10n, entry, now),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: onTap,
+              onTap: _open,
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: SizedBox(

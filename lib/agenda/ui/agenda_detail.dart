@@ -1,30 +1,31 @@
 import 'package:flutter/material.dart';
 
-import '../../app/controller.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_notice.dart';
 import '../../ui/external_link.dart';
 import '../../ui/sheet_layout.dart';
+import '../controller.dart';
 import '../model.dart';
 import 'agenda_editor.dart';
 import 'agenda_operations.dart';
 import 'completion_text.dart';
+import 'timeline_colors.dart';
 
 Future<void> showAgendaEntry(
   BuildContext pageContext,
-  AppController controller,
+  AgendaController controller,
   AgendaEntry entry,
 ) => showAppSheet<void>(
   context: pageContext,
   builder: (sheetContext) => ListenableBuilder(
-    listenable: controller.agenda,
+    listenable: controller,
     builder: (context, _) {
       final l10n = context.l10n;
       // Keep the closing sheet readable after its entry has been deleted.
       final current =
-          controller.agenda.entries
+          controller.entries
               .where((value) => value.id == entry.id)
               .firstOrNull ??
           entry;
@@ -94,7 +95,7 @@ Future<void> showAgendaEntry(
           actions: [
             IconButton(
               tooltip: l10n.delete,
-              onPressed: controller.agenda.busy
+              onPressed: controller.busy
                   ? null
                   : () async {
                       if (await deleteAgendaEntry(
@@ -190,7 +191,7 @@ Future<void> showAgendaEntry(
         ),
         actions: SheetActionBar.split(
           leading: TextButton.icon(
-            onPressed: controller.agenda.busy ? null : edit,
+            onPressed: controller.busy ? null : edit,
             icon: const Icon(Icons.edit_outlined, size: 18),
             label: Text(l10n.edit),
           ),
@@ -201,11 +202,11 @@ Future<void> showAgendaEntry(
                     foregroundColor: scheme.onSecondaryContainer,
                   )
                 : null,
-            onPressed: controller.agenda.busy
+            onPressed: controller.busy
                 ? null
                 : () async {
                     final saved = await toggleAgendaDone(
-                      controller.agenda,
+                      controller,
                       current,
                     );
                     if (!saved && context.mounted) {
@@ -240,6 +241,9 @@ class _EntryTime extends StatelessWidget {
     final color = entry.overdue(now) ? scheme.error : scheme.onSurface;
     final displayedAt = entry.scheduledAt;
     final allDay = entry.effectiveAllDay;
+    final accent = entry.overdue(now)
+        ? null
+        : agendaTimelineColors(context, entry, now).accent;
     // An open-ended deadline has no due date: it reads like a timed entry and
     // is labelled as opening rather than as due.
     final String time;
@@ -269,7 +273,7 @@ class _EntryTime extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(
           left: BorderSide(
-            color: entry.overdue(now) ? scheme.error : scheme.primary,
+            color: entry.overdue(now) ? scheme.error : accent ?? scheme.primary,
             width: 3,
           ),
         ),

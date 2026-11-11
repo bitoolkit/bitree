@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../app/controller.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
@@ -8,6 +7,7 @@ import '../../ui/app_dropdown_field.dart';
 import '../../ui/dialog_layout.dart';
 import '../../ui/editor_sheet.dart';
 import '../../ui/sheet_layout.dart';
+import '../controller.dart';
 import '../model.dart';
 import '../selection.dart';
 import 'course_period_fields.dart';
@@ -16,7 +16,7 @@ import 'week_range_dialog.dart';
 
 Future<void> editCourse(
   BuildContext context,
-  AppController controller, {
+  TimetableController controller, {
   Course? course,
   TimetableSelection? selection,
 }) => showAppSheet<void>(
@@ -31,7 +31,7 @@ Future<void> editCourse(
 class _CourseEditor extends StatefulWidget {
   const _CourseEditor({required this.controller, this.course, this.selection});
 
-  final AppController controller;
+  final TimetableController controller;
   final Course? course;
   final TimetableSelection? selection;
 
@@ -54,28 +54,22 @@ class _CourseEditorState extends State<_CourseEditor> {
   late int _end =
       widget.course?.endSection ?? widget.selection?.endSection ?? 2;
   late DateTime _monday =
-      widget.controller.timetable.schedule?.firstMonday ??
-      mondayOf(campusNow());
+      widget.controller.schedule?.firstMonday ?? mondayOf(campusNow());
   late Set<int> _weeks =
       widget.course?.weeks.toSet() ??
       (widget.selection == null
           ? null
-          : {
-              widget.controller.timetable.schedule!.weekAt(
-                widget.selection!.date,
-              ),
-            }) ??
-      (widget.controller.timetable.schedule?.weeks ?? academicWeeks(1, 25))
-          .toSet();
-  late int _firstWeek = widget.controller.timetable.schedule?.firstWeek ?? 1;
-  late int _lastWeek = widget.controller.timetable.schedule?.lastWeek ?? 25;
+          : {widget.controller.schedule!.weekAt(widget.selection!.date)}) ??
+      (widget.controller.schedule?.weeks ?? academicWeeks(1, 25)).toSet();
+  late int _firstWeek = widget.controller.schedule?.firstWeek ?? 1;
+  late int _lastWeek = widget.controller.schedule?.lastWeek ?? 25;
   bool _saving = false;
   String? _error;
 
   String _initialTerm() {
     final now = campusNow();
     final year = now.month >= 8 ? now.year : now.year - 1;
-    return widget.controller.timetable.schedule?.term ??
+    return widget.controller.schedule?.term ??
         '$year-${year + 1}-${now.month >= 8 ? 1 : 2}';
   }
 
@@ -93,9 +87,7 @@ class _CourseEditorState extends State<_CourseEditor> {
       context,
       first: _firstWeek,
       last: _lastWeek,
-      controller: widget.controller.timetable.schedule == null
-          ? null
-          : widget.controller,
+      controller: widget.controller.schedule == null ? null : widget.controller,
     );
     if (range == null || !mounted) return;
     setState(() {
@@ -134,10 +126,10 @@ class _CourseEditorState extends State<_CourseEditor> {
       weeks: _weeks.toList(),
       local: true,
     );
-    final success = await widget.controller.timetable.saveCourse(
+    final success = await widget.controller.saveCourse(
       course,
       replacing: widget.course,
-      semester: widget.controller.timetable.schedule == null
+      semester: widget.controller.schedule == null
           ? SemesterSchedule(
               term: _term.text.trim(),
               firstMonday: _monday,
@@ -175,7 +167,7 @@ class _CourseEditorState extends State<_CourseEditor> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (widget.controller.timetable.schedule == null) ...[
+          if (widget.controller.schedule == null) ...[
             TextFormField(
               controller: _term,
               enabled: !_saving,

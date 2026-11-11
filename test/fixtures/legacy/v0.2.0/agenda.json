@@ -1,0 +1,19 @@
+[
+  {
+    "id": "legacy-event",
+    "title": "旧版日程",
+    "kind": "event",
+    "startsAt": "2026-10-01T09:00:00.000Z",
+    "endsAt": "2026-10-01T10:00:00.000Z",
+    "allDay": false,
+    "location": "",
+    "notes": "",
+    "done": false,
+    "deleted": false,
+    "term": "2026-2027-1",
+    "local": true,
+    "source": null,
+    "course": "",
+    "url": null
+  }
+]

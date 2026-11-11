@@ -871,10 +871,60 @@ class AppLocalizationsEn extends AppLocalizations {
   String get agendaAllDay => 'All day';
 
   @override
+  String get agendaTime => 'Time';
+
+  @override
+  String get agendaMoreOptions => 'More options';
+
+  @override
   String get agendaLocationOptional => 'Location (optional)';
 
   @override
   String get agendaNotesOptional => 'Notes (optional)';
+
+  @override
+  String get agendaColor => 'Agenda color';
+
+  @override
+  String get agendaColorDefault => 'Default';
+
+  @override
+  String get agendaColorBlue => 'Blue';
+
+  @override
+  String get agendaColorCoral => 'Coral';
+
+  @override
+  String get agendaColorViolet => 'Violet';
+
+  @override
+  String get agendaColorGreen => 'Green';
+
+  @override
+  String get agendaColorAmber => 'Amber';
+
+  @override
+  String get agendaColorTeal => 'Teal';
+
+  @override
+  String get agendaColorRose => 'Rose';
+
+  @override
+  String get agendaColorSlate => 'Slate';
+
+  @override
+  String agendaColorCustom(String value) {
+    return 'Custom $value';
+  }
+
+  @override
+  String get agendaColorPickerTitle => 'Choose color';
+
+  @override
+  String get agendaColorPresets => 'Quick colors';
+
+  @override
+  String get agendaColorCustomSection => 'Custom color';
 
   @override
   String get agendaTailDays => 'Tail length (days)';

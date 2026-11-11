@@ -5,6 +5,7 @@ import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import 'async/serial_queue.dart';
@@ -63,7 +64,7 @@ class AppDiagnostics {
         final directory = await _getDirectory();
         await _retainedFiles(directory);
         final date = now.toIso8601String().substring(0, 10);
-        await File('${directory.path}/bitree-$date.log')
+        await File(p.join(directory.path, 'bitree-$date.log'))
             .writeAsString(text, mode: FileMode.append, flush: true);
       }).catchError((Object failure, StackTrace stack) {
         // A logging failure must not interrupt the operation being diagnosed.
@@ -79,7 +80,7 @@ class AppDiagnostics {
 
   Future<Directory> _getDirectory() => _directory ??= () async {
     final support = await getApplicationSupportDirectory();
-    return Directory('${support.path}/logs').create(recursive: true);
+    return Directory(p.join(support.path, 'logs')).create(recursive: true);
   }();
 
   Future<List<File>> _retainedFiles(Directory directory) async {

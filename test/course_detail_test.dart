@@ -77,8 +77,12 @@ void main() {
             home: Scaffold(
               body: Builder(
                 builder: (context) => TextButton(
-                  onPressed: () =>
-                      showCourse(context, controller, first, date: date),
+                  onPressed: () => showCourse(
+                    context,
+                    controller.timetable,
+                    first,
+                    date: date,
+                  ),
                   child: const Text('课程详情'),
                 ),
               ),

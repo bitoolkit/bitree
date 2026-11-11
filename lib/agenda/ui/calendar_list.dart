@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../../app/controller.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
+import '../../schedule/controller.dart';
 import '../../schedule/ui/course_detail.dart';
 import '../../ui/campus_time_builder.dart';
 import '../../ui/design.dart';
 import '../../ui/sheet_layout.dart';
 import '../calendar.dart';
+import '../controller.dart';
 import '../model.dart';
 import 'agenda_detail.dart';
 import 'agenda_list_tile.dart';
@@ -22,7 +23,7 @@ IconData agendaIcon(AgendaKind kind) => switch (kind) {
 
 Future<void> showAgendaDay(
   BuildContext context,
-  AppController controller,
+  AgendaController controller,
   DateTime date,
 ) async {
   final l10n = context.l10n;
@@ -31,11 +32,11 @@ Future<void> showAgendaDay(
     builder: (context) => CampusTimeBuilder(
       active: true,
       builder: (context, now) => ListenableBuilder(
-        listenable: controller.agenda,
+        listenable: controller,
         builder: (context, _) {
-          final pending = controller.agenda.pendingOn(date, now: now);
+          final pending = controller.pendingOn(date, now: now);
           final completed =
-              controller.agenda.entries
+              controller.entries
                   .where((entry) => entry.done && entry.occursOn(date))
                   .toList()
                 ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
@@ -103,15 +104,17 @@ Future<void> showAgendaDay(
 
 Future<void> openCalendarItem(
   BuildContext context,
-  AppController controller,
+  TimetableController timetable,
+  AgendaController agenda,
   CalendarItem item,
 ) => item.course != null
-    ? showCourse(context, controller, item.course!, date: item.startsAt)
-    : showAgendaEntry(context, controller, item.entry!);
+    ? showCourse(context, timetable, item.course!, date: item.startsAt)
+    : showAgendaEntry(context, agenda, item.entry!);
 
 Future<void> showCalendarItems(
   BuildContext context,
-  AppController controller,
+  TimetableController timetable,
+  AgendaController agenda,
   String title,
   List<CalendarItem> items, {
   bool showDates = false,
@@ -170,7 +173,7 @@ Future<void> showCalendarItems(
     ),
   );
   if (selected != null && context.mounted) {
-    await openCalendarItem(context, controller, selected);
+    await openCalendarItem(context, timetable, agenda, selected);
   }
 }
 

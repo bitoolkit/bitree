@@ -91,7 +91,7 @@ class EventTimelinePainter extends CustomPainter {
       oldDelegate.lineWidth != lineWidth;
 }
 
-class EventTimelineEntry extends StatelessWidget {
+class EventTimelineEntry extends StatefulWidget {
   const EventTimelineEntry({
     super.key,
     required this.entry,
@@ -106,6 +106,35 @@ class EventTimelineEntry extends StatelessWidget {
   final EventTimelineGeometry geometry;
   final double informationWidth;
   final VoidCallback onTap;
+
+  @override
+  State<EventTimelineEntry> createState() => _EventTimelineEntryState();
+}
+
+class _EventTimelineEntryState extends State<EventTimelineEntry> {
+  Widget? _information;
+
+  AgendaEntry get entry => widget.entry;
+  DateTime get now => widget.now;
+  EventTimelineGeometry get geometry => widget.geometry;
+  double get informationWidth => widget.informationWidth;
+  void _open() => widget.onTap();
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _information = null;
+  }
+
+  @override
+  void didUpdateWidget(covariant EventTimelineEntry oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.entry != widget.entry ||
+        oldWidget.now != widget.now ||
+        oldWidget.informationWidth != widget.informationWidth) {
+      _information = null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -141,13 +170,13 @@ class EventTimelineEntry extends StatelessWidget {
     return Semantics(
       button: true,
       label: semantics,
-      onTap: onTap,
+      onTap: _open,
       child: ExcludeSemantics(
         child: Tooltip(
           message: preview,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: onTap,
+            onTap: _open,
             child: ClipRect(
               child: CustomPaint(
                 painter: EventTimelinePainter(
@@ -163,44 +192,48 @@ class EventTimelineEntry extends StatelessWidget {
                       top: 0,
                       bottom: 0,
                       width: informationWidth,
-                      child: SizedBox(
-                        key: ValueKey(('agenda-timeline-bar', entry.id)),
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.right,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  height: 1.2,
-                                  fontWeight: FontWeight.w600,
-                                  color: colors.text,
-                                  decoration: entry.done
-                                      ? TextDecoration.lineThrough
-                                      : null,
+                      child: _information ??= RepaintBoundary(
+                        child: SizedBox(
+                          key: ValueKey(('agenda-timeline-bar', entry.id)),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.right,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    height: 1.2,
+                                    fontWeight: FontWeight.w600,
+                                    color: colors.text,
+                                    decoration: entry.done
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                caption,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.right,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  height: 1.2,
-                                  fontWeight: FontWeight.w600,
-                                  color: colors.accent,
-                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                const SizedBox(height: 2),
+                                Text(
+                                  caption,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.right,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    height: 1.2,
+                                    fontWeight: FontWeight.w600,
+                                    color: colors.accent,
+                                    fontFeatures: const [
+                                      FontFeature.tabularFigures(),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),

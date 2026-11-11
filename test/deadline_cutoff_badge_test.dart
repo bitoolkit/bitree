@@ -58,7 +58,7 @@ Future<TestAppController> _showHeader(
           builder: (context, _) => Column(
             children: [
               TimetableHeader(
-                controller: app,
+                controller: app.agenda,
                 monday: _monday,
                 now: _now,
                 gutterWidth: 40,

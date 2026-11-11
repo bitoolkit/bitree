@@ -212,7 +212,7 @@ class _ExamTile extends StatelessWidget {
         ],
       ),
       trailing: const Icon(Icons.chevron_right_rounded),
-      onTap: () => showAgendaEntry(context, controller, exam),
+      onTap: () => showAgendaEntry(context, controller.agenda, exam),
     );
   }
 }
@@ -278,7 +278,12 @@ class _ExamConflictsScreen extends StatelessWidget {
                   ].where((value) => value.isNotEmpty).join('  '),
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () => openCalendarItem(context, controller, item),
+                onTap: () => openCalendarItem(
+                  context,
+                  controller.timetable,
+                  controller.agenda,
+                  item,
+                ),
               ),
             const Divider(height: 24),
           ],

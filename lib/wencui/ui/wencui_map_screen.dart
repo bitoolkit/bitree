@@ -2,31 +2,28 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../../app/controller.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
+import '../../schedule/controller.dart';
 import '../../schedule/location.dart';
 import '../../schedule/model.dart';
-import '../../ui/app_dialog.dart';
-import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_page.dart';
 import '../../ui/design.dart';
-import '../../ui/external_link.dart';
-import '../../ui/selection_controls.dart';
 import '../../ui/sheet_layout.dart';
 import '../atlas.dart';
 import '../place.dart';
 import 'floor_map.dart';
+import 'wencui_map_controls.dart';
 
 class WencuiMapScreen extends StatefulWidget {
   const WencuiMapScreen({
     super.key,
-    required this.controller,
+    required this.timetable,
     this.initialRoom = '',
     this.initialCourse,
     this.initialOverview = false,
   });
-  final AppController controller;
+  final TimetableController timetable;
   final String initialRoom;
   final Course? initialCourse;
   final bool initialOverview;
@@ -34,44 +31,6 @@ class WencuiMapScreen extends StatefulWidget {
   @override
   State<WencuiMapScreen> createState() => _WencuiMapScreenState();
 }
-
-void _showMapInfo(BuildContext context) => showAppDialog<void>(
-  context: context,
-  builder: (dialogContext) {
-    final l10n = dialogContext.l10n;
-    return AlertDialog(
-      scrollable: true,
-      title: Text(l10n.mapInfoTitle),
-      content: Text(l10n.mapInfoBody),
-      actions: [
-        TextButton(
-          onPressed: () => openExternalLink(
-            dialogContext,
-            Uri.parse(
-              'https://github.com/Zebedee2021/BIT-Nav-2026/tree/main/wencui',
-            ),
-            failureTitle: l10n.openMapSourceFailed,
-          ),
-          child: Text(l10n.mapSource),
-        ),
-        TextButton(
-          onPressed: () => openExternalLink(
-            dialogContext,
-            Uri.parse(
-              'https://wencuigis.info.bit.edu.cn/3dbuilding/#/building2',
-            ),
-            failureTitle: l10n.openSchoolNavigationFailed,
-          ),
-          child: Text(l10n.school3dNavigation),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext),
-          child: Text(l10n.close),
-        ),
-      ],
-    );
-  },
-);
 
 class _WencuiMapScreenState extends State<WencuiMapScreen> {
   final _search = SearchController();
@@ -123,8 +82,7 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
   List<({Course course, WencuiPlace place})> get _courses {
     final seen = <String>{};
     return [
-      for (final course
-          in widget.controller.timetable.schedule?.courses ?? <Course>[])
+      for (final course in widget.timetable.schedule?.courses ?? <Course>[])
         if (WencuiPlace.parse(course.room, campus: course.campus)
             case final place?)
           if (seen.add('${course.name}\u0000${place.label}'))
@@ -319,244 +277,56 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
         : results;
   }
 
-  Widget _searchBar(bool narrow, WencuiAtlas atlas) => SearchAnchor(
+  Widget _searchBar(bool narrow, WencuiAtlas atlas) => WencuiMapSearchBar(
     searchController: _search,
-    isFullScreen: narrow,
-    viewShape: narrow ? const RoundedRectangleBorder() : null,
-    viewHintText: context.l10n.wencuiCourseSearchHint,
-    viewOnSubmitted: (query) {
+    narrow: narrow,
+    hasCourses: _courses.isNotEmpty,
+    onSubmitted: (query) {
       final place = WencuiPlace.parse(query);
       if (place != null) _selectPlace(place, atlas);
     },
-    suggestionsBuilder: (_, search) => _suggestions(atlas, search),
-    builder: (_, controller) => SearchBar(
-      readOnly: true,
-      hintText: context.l10n.wencuiSearchHint,
-      onTap: controller.openView,
-      leading: const Icon(Icons.search_rounded),
-      trailing: [
-        if (_courses.isNotEmpty)
-          IconButton(
-            tooltip: context.l10n.myWencuiCourses,
-            onPressed: () => _showCourses(atlas),
-            icon: const Icon(Icons.school_outlined),
-          ),
-      ],
-    ),
+    suggestionsBuilder: (search) => _suggestions(atlas, search),
+    onShowCourses: () => _showCourses(atlas),
   );
 
-  Widget _floorControl(WencuiAtlas atlas) => Material(
-    color: Theme.of(context).colorScheme.surfaceContainerLow,
-    elevation: 1,
-    borderRadius: AppCorners.control,
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          tooltip: context.l10n.upperFloor,
-          onPressed: _floor == 10
-              ? null
-              : () => _changeFloor(_floor + 1, atlas),
-          icon: const Icon(Icons.keyboard_arrow_up_rounded),
-        ),
-        AppMenuAnchor(
-          controller: _floorMenu,
-          menuChildren: [
-            SizedBox(
-              width: 240,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (var row = 0; row < 2; row++)
-                    Row(
-                      children: [
-                        for (var column = 1; column <= 5; column++)
-                          Expanded(
-                            child: TextButton(
-                              style: TextButton.styleFrom(
-                                padding: EdgeInsets.zero,
-                                backgroundColor: row * 5 + column == _floor
-                                    ? Theme.of(context)
-                                          .colorScheme
-                                          .primaryContainer
-                                    : null,
-                              ),
-                              onPressed: () {
-                                _floorMenu.close();
-                                _changeFloor(row * 5 + column, atlas);
-                              },
-                              child: Text('${row * 5 + column}'),
-                            ),
-                          ),
-                      ],
-                    ),
-                ],
-              ),
-            ),
-          ],
-          builder: (context, menu, isOpen) => TextButton(
-            onPressed: () => isOpen ? menu.close() : menu.open(),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-            ),
-            child: Text(
-              context.l10n.currentFloor(_floor),
-              semanticsLabel: context.l10n.selectFloorSemantics(_floor),
-            ),
-          ),
-        ),
-        IconButton(
-          tooltip: context.l10n.lowerFloor,
-          onPressed: _floor == 1 ? null : () => _changeFloor(_floor - 1, atlas),
-          icon: const Icon(Icons.keyboard_arrow_down_rounded),
-        ),
-      ],
-    ),
+  Widget _floorControl(WencuiAtlas atlas) => WencuiMapFloorControl(
+    currentFloor: _floor,
+    menuController: _floorMenu,
+    onFloorChanged: (floor) => _changeFloor(floor, atlas),
   );
 
   Widget _details(WencuiAtlas atlas) {
-    final theme = Theme.of(context);
-    final l10n = context.l10n;
     final place = _place;
-    final selected = _selected;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    place == null
-                        ? selected == null
-                              ? l10n.tapBuildingOrSearch
-                              : localizedWencuiFeatureLabel(l10n, selected)
-                        : localizedWencuiPlace(l10n, place),
-                    style: theme.textTheme.titleLarge,
-                  ),
-                  if (_course != null) ...[
-                    const SizedBox(height: 3),
-                    Text(_course!.name, style: theme.textTheme.bodyMedium),
-                  ],
-                  if (place != null) ...[
-                    const SizedBox(height: 3),
-                    Text(
-                      _placeDetails(l10n, place),
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            if (place != null || selected != null)
-              IconButton(
-                tooltip: l10n.clearDestination,
-                onPressed: () {
-                  setState(() {
-                    _place = null;
-                    _selected = null;
-                    _course = null;
-                    _facilities.clear();
-                  });
-                  _camera.show(null);
-                },
-                icon: const Icon(Icons.close_rounded),
-              ),
-          ],
-        ),
-        if (place?.room != null && atlas.room(place!.label) == null) ...[
-          const SizedBox(height: 6),
-          Text(
-            l10n.roomNotMarked(
-              place.label,
-              localizedWencuiWing(l10n, place.wing),
-            ),
-            style: theme.textTheme.bodySmall,
-          ),
-        ],
-        if (selected != null && selected.kind != WencuiFeatureKind.room) ...[
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(
-                wencuiFeatureIcon(
-                  selected.kind,
-                  restroomGender: selected.restroomGender,
-                ),
-                size: 18,
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  l10n.selectedFeature(
-                    localizedWencuiFeatureTitle(l10n, selected),
-                  ),
-                  style: theme.textTheme.bodyMedium,
-                ),
-              ),
-            ],
-          ),
-        ],
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            for (final (kind, label) in [
-              (WencuiFeatureKind.stairs, l10n.stairs),
-              (WencuiFeatureKind.lift, l10n.lift),
-              (WencuiFeatureKind.restroom, l10n.restroom),
-            ])
-              AppSelectionButton.compact(
-                selected: _facilities.contains(kind),
-                onPressed: () => _toggleFacility(kind, atlas),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  spacing: AppSpacing.xs,
-                  children: [
-                    Icon(wencuiFeatureIcon(kind), size: 18),
-                    Text(label),
-                  ],
-                ),
-              ),
-            if (place?.wing.firstFloor == 1)
-              TextButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _floor = 1;
-                    _selected = null;
-                    _facilities.add(WencuiFeatureKind.entrance);
-                  });
-                  _camera.show(atlas.wingBounds(1, place!.wing));
-                },
-                icon: const Icon(Icons.door_front_door_outlined, size: 18),
-                label: Text(l10n.firstFloorEntrance),
-              ),
-            if (place != null)
-              TextButton.icon(
-                onPressed: () => _returnToRoom(atlas),
-                icon: const Icon(Icons.my_location_rounded, size: 18),
-                label: Text(
-                  place.room == null ? l10n.backToBuilding : l10n.backToRoom,
-                ),
-              ),
-          ],
-        ),
-      ],
+    return WencuiMapDetails(
+      place: place,
+      selected: _selected,
+      course: _course,
+      floor: _floor,
+      facilities: _facilities,
+      roomIsMarked:
+          place == null ||
+          place.room == null ||
+          atlas.room(place.label) != null,
+      onClear: () {
+        setState(() {
+          _place = null;
+          _selected = null;
+          _course = null;
+          _facilities.clear();
+        });
+        _camera.show(null);
+      },
+      onToggleFacility: (kind) => _toggleFacility(kind, atlas),
+      onEntrance: () {
+        setState(() {
+          _floor = 1;
+          _selected = null;
+          _facilities.add(WencuiFeatureKind.entrance);
+        });
+        _camera.show(atlas.wingBounds(1, place!.wing));
+      },
+      onReturnToRoom: () => _returnToRoom(atlas),
     );
-  }
-
-  String _placeDetails(AppLocalizations l10n, WencuiPlace place) {
-    final details = place.floor == null
-        ? localizedWencuiWingFloorRange(l10n, place.wing)
-        : localizedWencuiWingFloor(l10n, place.wing, place.floor!);
-    if (place.floor == null || _floor == place.floor) return details;
-    return l10n.viewingFloor(details, _floor);
   }
 
   Widget _content(WencuiAtlas atlas) => LayoutBuilder(
@@ -626,12 +396,12 @@ class _WencuiMapScreenState extends State<WencuiMapScreen> {
     actions: [
       IconButton(
         tooltip: context.l10n.mapInfoTitle,
-        onPressed: () => _showMapInfo(context),
+        onPressed: () => showWencuiMapInfo(context),
         icon: const Icon(Icons.info_outline_rounded),
       ),
     ],
     child: ListenableBuilder(
-      listenable: widget.controller.timetable,
+      listenable: widget.timetable,
       builder: (_, _) => FutureBuilder<WencuiAtlas>(
         future: _loading,
         builder: (context, snapshot) => snapshot.hasData

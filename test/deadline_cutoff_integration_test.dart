@@ -255,7 +255,7 @@ void main() {
             child: TextButton(
               onPressed: () => showAgendaEntry(
                 context,
-                app,
+                app.agenda,
                 app.agenda.entries.single,
               ),
               child: const Text('打开详情'),

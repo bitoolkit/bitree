@@ -10,9 +10,10 @@ import 'api.dart';
 import 'credentials.dart';
 import 'errors.dart';
 import 'progress.dart';
+import 'status.dart';
 import 'storage.dart';
 
-enum MoocStatus { connected, signedOut, expired }
+export 'status.dart';
 
 class MoocController extends ChangeNotifier {
   MoocController({required this._storage, required this._agenda});

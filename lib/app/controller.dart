@@ -43,7 +43,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       agenda: agenda,
       academics: academics,
     );
-    classrooms = ClassroomRepository(this.school);
+    classroomRepository = ClassroomRepository(this.school);
     mooc = MoocController(
       storage: moocStorage ?? MoocStorage(),
       agenda: agenda,
@@ -76,7 +76,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   final AppSettingsController settings;
   final TimetableController timetable;
   late final SchoolController school;
-  late final ClassroomRepository classrooms;
+  late final ClassroomRepository classroomRepository;
   final AgendaController agenda;
   final AcademicController academics;
   late final MoocController mooc;
@@ -111,7 +111,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     settings.deadlineCutoff.removeListener(_updateDeadlineCutoff);
     settings.dispose();
     sync.dispose();
-    classrooms.dispose();
+    classroomRepository.dispose();
     school.dispose();
     mooc.dispose();
     timetable.dispose();

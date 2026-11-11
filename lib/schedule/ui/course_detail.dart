@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../app/controller.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_dialog.dart';
@@ -13,6 +12,7 @@ import '../../wencui/place.dart';
 import '../../wencui/ui/location_card.dart';
 import '../../wencui/ui/wencui_map_screen.dart';
 import '../building_palette.dart';
+import '../controller.dart';
 import '../model.dart';
 import '../section_times.dart';
 import '../selection.dart';
@@ -21,17 +21,17 @@ import 'course_editor.dart';
 
 Future<void> showCourse(
   BuildContext context,
-  AppController controller,
+  TimetableController controller,
   Course course, {
   DateTime? date,
 }) {
   var selected = course;
-  final schedule = controller.timetable.schedule;
+  final schedule = controller.schedule;
   final occurrence =
       date ??
       (schedule != null && course.weekday != null
           ? schedule
-                .mondayAt(controller.timetable.week)
+                .mondayAt(controller.week)
                 .add(Duration(days: course.weekday! - 1))
           : null);
   return showAppSheet<void>(
@@ -40,7 +40,7 @@ Future<void> showCourse(
       builder: (_, selectCourse) => CampusTimeBuilder(
         active: true,
         builder: (_, now) => ListenableBuilder(
-          listenable: controller.timetable,
+          listenable: controller,
           builder: (_, _) => _CourseDetails(
             controller: controller,
             course: selected,
@@ -56,7 +56,7 @@ Future<void> showCourse(
                     Navigator.of(context).push<void>(
                       MaterialPageRoute(
                         builder: (_) => WencuiMapScreen(
-                          controller: controller,
+                          timetable: controller,
                           initialCourse: selected,
                           initialOverview: true,
                         ),
@@ -85,7 +85,7 @@ class _CourseDetails extends StatelessWidget {
     required this.onNext,
   });
 
-  final AppController controller;
+  final TimetableController controller;
   final Course course;
   final VoidCallback onEdit;
   final VoidCallback? onMap;
@@ -111,7 +111,7 @@ class _CourseDetails extends StatelessWidget {
         : occurrence != null && !now.isBefore(occurrence.endsAt)
         ? l10n.ended
         : l10n.course;
-    final schedule = controller.timetable.schedule;
+    final schedule = controller.schedule;
     final next = date == null || course.endSection == null || schedule == null
         ? null
         : schedule
@@ -176,7 +176,7 @@ class _CourseDetails extends StatelessWidget {
             ),
           ],
         ),
-        actions: [SheetCloseButton(enabled: !controller.timetable.busy)],
+        actions: [SheetCloseButton(enabled: !controller.busy)],
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -237,14 +237,14 @@ class _CourseDetails extends StatelessWidget {
               color: theme.colorScheme.error.withValues(alpha: 0.4),
             ),
           ),
-          onPressed: controller.timetable.busy
+          onPressed: controller.busy
               ? null
               : () => _deleteCourse(context, controller, course),
           icon: const Icon(Icons.delete_outline_rounded, size: 18),
           label: Text(l10n.delete),
         ),
         primary: FilledButton(
-          onPressed: controller.timetable.busy ? null : onEdit,
+          onPressed: controller.busy ? null : onEdit,
           child: Text(l10n.courseEditorEditTitle),
         ),
       ),
@@ -388,7 +388,7 @@ class _CopyableCourseName extends StatelessWidget {
 
 Future<void> _deleteCourse(
   BuildContext context,
-  AppController controller,
+  TimetableController controller,
   Course course,
 ) async {
   final l10n = context.l10n;
@@ -401,7 +401,7 @@ Future<void> _deleteCourse(
   );
   if (!confirmed || !context.mounted) return;
 
-  final success = await controller.timetable.deleteCourse(course);
+  final success = await controller.deleteCourse(course);
   if (!context.mounted) return;
 
   if (success) {

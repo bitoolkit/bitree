@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:bitree/agenda/ui/agenda_color_picker.dart';
 import 'package:bitree/classrooms/ui/classroom_time_field.dart';
 import 'package:bitree/schedule/ui/week_range_dialog.dart';
 import 'package:bitree/school/ui/school_verification_dialog.dart';
@@ -7,6 +8,7 @@ import 'package:bitree/school/verification.dart';
 import 'package:bitree/ui/dialog_layout.dart';
 import 'package:bitree/ui/external_link.dart';
 import 'package:bitree/ui/theme.dart';
+import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,6 +22,7 @@ Future<void> _host(
   Size size,
   Widget Function(BuildContext context) child, {
   double textScale = 1,
+  TargetPlatform? platform,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
@@ -28,7 +31,7 @@ Future<void> _host(
   addTearDown(tester.view.resetViewInsets);
   await tester.pumpWidget(
     MaterialApp(
-      theme: bitreeTheme(Brightness.light),
+      theme: bitreeTheme(Brightness.light).copyWith(platform: platform),
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context)
             .copyWith(textScaler: TextScaler.linear(textScale)),
@@ -45,6 +48,77 @@ void _expectWidth(WidgetTester tester, Size size) {
 }
 
 void main() {
+  for (final (size, scale, platform) in [
+    (const Size(390, 844), 1.0, TargetPlatform.android),
+    (const Size(320, 640), 1.8, TargetPlatform.android),
+    (const Size(844, 390), 1.0, TargetPlatform.android),
+    (const Size(1440, 900), 1.0, TargetPlatform.linux),
+  ]) {
+    testWidgets('Color picker fits $platform at $size, scale=$scale', (
+      tester,
+    ) async {
+      await _host(
+        tester,
+        size,
+        (context) => TextButton(
+          onPressed: () => showAgendaColorPicker(context),
+          child: const Text('打开'),
+        ),
+        textScale: scale,
+        platform: platform,
+      );
+      await tester.tap(find.text('打开'));
+      await tester.pumpAndSettle();
+      final surface = find.ancestor(
+        of: find.byType(ColorPicker),
+        matching: _surface,
+      );
+      expect(surface, findsOneWidget);
+      final dialog = tester.getRect(surface);
+      expect(dialog.width, math.min(360, size.width - 48));
+      final title = tester.getRect(find.text('选择颜色'));
+      expect(title.left - dialog.left, greaterThanOrEqualTo(8));
+      expect(title.top - dialog.top, greaterThanOrEqualTo(8));
+      final toolbarButton = find
+          .descendant(
+            of: find.byType(ColorPicker),
+            matching: find.byType(IconButton),
+          )
+          .first;
+      expect(
+        tester.getRect(toolbarButton).center.dy,
+        closeTo(title.center.dy, .01),
+      );
+      final apply = find.widgetWithText(FilledButton, '应用');
+      expect(apply.hitTestable(), findsOneWidget);
+      expect(tester.getRect(apply).bottom, lessThanOrEqualTo(size.height - 24));
+      if (size.height >= 800) {
+        final code = tester.getRect(find.byType(ColorCodeField));
+        expect(
+          tester.getRect(apply).top - code.bottom,
+          inInclusiveRange(0, 48),
+        );
+      }
+      await tester.tap(find.text('自定义颜色'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ColorWheelPicker), findsOneWidget);
+      if (platform == TargetPlatform.android && size.height > size.width) {
+        const keyboardHeight = 240.0;
+        tester.view.viewInsets = const FakeViewPadding(bottom: keyboardHeight);
+        await tester.pumpAndSettle();
+        expect(
+          tester.getRect(apply).bottom,
+          lessThanOrEqualTo(size.height - keyboardHeight),
+        );
+      }
+      expect(apply.hitTestable(), findsOneWidget);
+      await tester.tap(find.text('取消'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   for (final size in [
     const Size(320, 640),
     const Size(390, 844),

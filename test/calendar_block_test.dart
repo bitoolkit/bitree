@@ -1,8 +1,10 @@
 import 'dart:math' as math;
 
+import 'package:bitree/agenda/agenda_color.dart';
 import 'package:bitree/agenda/calendar.dart';
 import 'package:bitree/agenda/deadline_source.dart';
 import 'package:bitree/agenda/model.dart';
+import 'package:bitree/agenda/ui/agenda_color_palette.dart';
 import 'package:bitree/agenda/ui/calendar_block.dart';
 import 'package:bitree/agenda/ui/timeline_colors.dart';
 import 'package:bitree/schedule/building_palette.dart';
@@ -38,6 +40,62 @@ void main() {
       ));
     }
   });
+
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'A custom agenda color overrides the default color in $brightness',
+      (tester) async {
+        final theme = bitreeTheme(brightness);
+        final values = agendaColorValues(theme.colorScheme, AgendaColor.green);
+        final controller = TestAppController();
+        final event = AgendaEntry(
+          id: 'custom-color',
+          title: '自定义颜色',
+          kind: AgendaKind.event,
+          startsAt: DateTime.utc(2026, 11, 17, 18),
+          endsAt: DateTime.utc(2026, 11, 17, 19),
+          color: AgendaColor.green,
+        );
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: theme,
+            home: Scaffold(
+              body: Center(
+                child: SizedBox(
+                  width: 120,
+                  height: 120,
+                  child: CalendarBlockTile(
+                    items: [CalendarItem.agenda(event)],
+                    timetable: controller.timetable,
+                    agenda: controller.agenda,
+                    isToday: false,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final material = tester.widget<Material>(
+          find
+              .descendant(
+                of: find.byType(CalendarBlockTile),
+                matching: find.byType(Material),
+              )
+              .first,
+        );
+        final title = tester.widget<Text>(find.text(event.title));
+        expect(material.color, values.fill);
+        expect(title.style!.color, values.text);
+        expect(
+          (material.shape! as RoundedRectangleBorder).side.color,
+          values.accent,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   for (final brightness in Brightness.values) {
     for (final system in [false, true]) {
@@ -98,7 +156,8 @@ void main() {
                         height: 120,
                         child: CalendarBlockTile(
                           items: [CalendarItem.agenda(entry)],
-                          controller: controller,
+                          timetable: controller.timetable,
+                          agenda: controller.agenda,
                           isToday: false,
                         ),
                       ),

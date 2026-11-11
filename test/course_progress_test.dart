@@ -140,7 +140,8 @@ void main() {
                   child: ColoredBox(
                     color: theme.colorScheme.surface,
                     child: TimetableGrid(
-                      controller: controller,
+                      timetable: controller.timetable,
+                      agenda: controller.agenda,
                       monday: mondayOf(date),
                       layouts: [
                         for (var day = 0; day < 7; day++)

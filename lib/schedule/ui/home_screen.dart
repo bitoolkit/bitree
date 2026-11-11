@@ -57,7 +57,7 @@ class HomeScreen extends StatelessWidget {
           ? Text(l10n.homeTitle)
           : LayoutBuilder(
               builder: (context, constraints) {
-                final selector = WeekSelector(controller: controller);
+                final selector = WeekSelector(controller: controller.timetable);
                 final compact =
                     constraints.maxWidth <
                     MediaQuery.textScalerOf(context).scale(200);
@@ -88,9 +88,13 @@ class HomeScreen extends StatelessWidget {
               },
             ),
       actions: [
-        AddButton(controller: controller, date: selectedDate),
+        AddButton(
+          timetable: controller.timetable,
+          agenda: controller.agenda,
+          date: selectedDate,
+        ),
         SyncButton(controller: controller),
-        ScheduleMenu(controller: controller),
+        ScheduleMenu(controller: controller.timetable),
       ],
       child: Stack(
         fit: StackFit.expand,
@@ -118,7 +122,10 @@ class HomeScreen extends StatelessWidget {
                             OutlinedButton.icon(
                               onPressed: controller.timetable.busy
                                   ? null
-                                  : () => editCourse(context, controller),
+                                  : () => editCourse(
+                                      context,
+                                      controller.timetable,
+                                    ),
                               icon: const Icon(Icons.add_rounded, size: 20),
                               label: Text(l10n.addCourse),
                             ),
@@ -132,7 +139,9 @@ class HomeScreen extends StatelessWidget {
                           controller.timetable.weeks.first,
                           controller.timetable.weeks.last,
                         )),
-                        controller: controller,
+                        timetable: controller.timetable,
+                        agenda: controller.agenda,
+                        heightMode: controller.settings.timetableHeightMode,
                         active: active,
                       ),
               ),
@@ -154,7 +163,7 @@ class HomeScreen extends StatelessWidget {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 560),
                 child: AgendaReminder(
-                  controller: controller,
+                  controller: controller.agenda,
                   entries: controller.agenda.ready
                       ? controller.agenda.pendingOn(now, now: now)
                       : const [],
@@ -180,7 +189,7 @@ class HomeScreen extends StatelessWidget {
           SimpleDialogOption(
             onPressed: () {
               Navigator.pop(dialogContext);
-              showCourse(context, controller, course);
+              showCourse(context, controller.timetable, course);
             },
             child: Text(course.name),
           ),

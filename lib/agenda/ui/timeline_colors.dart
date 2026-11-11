@@ -4,6 +4,7 @@ import '../../ui/course_palette.dart';
 import '../deadline_source.dart';
 import '../model.dart';
 import '../physics_lab_deadlines.dart';
+import 'agenda_color_palette.dart';
 
 typedef _TimelineColors = ({Color fill, Color text, Color accent});
 
@@ -85,6 +86,10 @@ enum _TimelineTone {
   final scheme = theme.colorScheme;
 
   final physicsLabDeadline = isPhysicsLabDeadline(entry);
+  final customColors = switch (entry.color) {
+    final color? => agendaColorValues(theme.colorScheme, color),
+    null => null,
+  };
   final tone = switch (entry.kind) {
     AgendaKind.event => null,
     AgendaKind.exam => _TimelineTone.exam,
@@ -101,7 +106,17 @@ enum _TimelineTone {
   final fillAlpha = finished ? 0.5 : 1.0;
   final foregroundAlpha = finished ? 0.5 : 1.0;
   late final _TimelineColors colors;
-  if (tone != null) {
+  if (customColors != null) {
+    colors = (
+      fill: customColors.fill.withValues(alpha: customColors.fill.a * fillAlpha),
+      text: customColors.text.withValues(
+        alpha: customColors.text.a * foregroundAlpha,
+      ),
+      accent: customColors.accent.withValues(
+        alpha: customColors.accent.a * foregroundAlpha,
+      ),
+    );
+  } else if (tone != null) {
     final values = theme.brightness == Brightness.dark ? tone.dark : tone.light;
     colors = (
       fill: values.fill.withValues(alpha: values.fill.a * fillAlpha),

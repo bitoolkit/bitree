@@ -22,6 +22,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
     defaultConfig {
         applicationId = "dev.so1ve.bitree"
         manifestPlaceholders["appLabel"] = "BITree"
@@ -58,6 +62,13 @@ android {
 }
 
 androidComponents {
+    onVariants { variant ->
+        val variantName = variant.name.replaceFirstChar { it.uppercaseChar() }
+        // Host tests package Flutter assets, so their producer must run first.
+        tasks.matching { it.name == "package${variantName}UnitTestForUnitTest" }
+            .configureEach { dependsOn("copyFlutterAssets$variantName") }
+    }
+
     onVariants(selector().withBuildType("release")) { variant ->
         // Compress direct-download APKs; keep Play-generated APKs mmap-friendly.
         variant.packaging.jniLibs.useLegacyPackaging.set(true)
@@ -77,4 +88,6 @@ flutter {
 
 dependencies {
     implementation("androidx.core:core-remoteviews:1.1.0")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.16.1")
 }

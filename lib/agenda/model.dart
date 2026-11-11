@@ -1,5 +1,6 @@
 import '../core/json.dart';
 import '../core/time.dart';
+import 'agenda_color.dart';
 import 'deadline_cutoff.dart';
 import 'deadline_source.dart';
 import 'details.dart';
@@ -29,6 +30,7 @@ class AgendaEntry {
     this.source,
     this.course = '',
     this.url,
+    this.color,
     this.details,
     this.tailDays = defaultTailDays,
     this.startOnly = false,
@@ -46,6 +48,9 @@ class AgendaEntry {
     }
     if (tailDays < 1 || tailDays > maxTailDays) {
       throw const FormatException('拖尾长度必须为 1–30 天');
+    }
+    if (color != null && kind == AgendaKind.exam) {
+      throw const FormatException('考试颜色由状态决定');
     }
     final entryUrl = url;
     final entrySource = source;
@@ -99,10 +104,11 @@ class AgendaEntry {
   final DeadlineSource? source;
   final String course;
   final Uri? url;
+  final AgendaColor? color;
   final AgendaEntryDetails? details;
 
-  /// Timeline reservation in days; the painted tail leaves a quarter-day gap
-  /// at minimum zoom and keeps its screen width as the view zooms in.
+  /// Legacy per-entry width retained for storage compatibility. Timeline layout
+  /// and fixed-screen information widths use the global layout-days setting.
   final int tailDays;
 
   /// A deadline that only knows when it opened, with no due date at all —
@@ -192,6 +198,7 @@ class AgendaEntry {
     source: source,
     course: course,
     url: url,
+    color: color,
     details: details,
     tailDays: tailDays,
     startOnly: startOnly,
@@ -216,6 +223,11 @@ class AgendaEntry {
     'source': source?.name,
     'course': course,
     'url': url?.toString(),
+    'color': switch (color) {
+      AgendaColor(id: final id?) => id,
+      final value? => value.value,
+      null => null,
+    },
     'details': details?.toJson(),
     'tailDays': tailDays,
     'startOnly': startOnly,
@@ -239,6 +251,15 @@ class AgendaEntry {
     }
 
     final rawUrl = jsonStringFieldOrNull(json, 'url');
+    final rawColor = json['color'];
+    final color = switch (rawColor) {
+      null => null,
+      int value when value >= 0 && value <= 0xFFFFFFFF =>
+        AgendaColor.presetByValue(value) ?? AgendaColor(value),
+      String id =>
+        AgendaColor.presetNamed(id) ?? (throw FormatException('color 格式不正确')),
+      _ => throw FormatException('color 格式不正确'),
+    };
     final rawDetails = json['details'];
     return AgendaEntry(
       id: jsonStringField(json, 'id'),
@@ -262,6 +283,7 @@ class AgendaEntry {
       url: rawUrl == null
           ? null
           : Uri.tryParse(rawUrl) ?? (throw FormatException('url 格式不正确')),
+      color: color,
       tailDays: jsonIntFieldOrNull(json, 'tailDays') ?? defaultTailDays,
       // Entries written before this flag existed simply had no open-ended
       // deadlines, so a missing key means an ordinary deadline.

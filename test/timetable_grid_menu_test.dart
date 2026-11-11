@@ -69,7 +69,8 @@ void main() {
           ),
           body: SingleChildScrollView(
             child: TimetableGrid(
-              controller: controller,
+              timetable: controller.timetable,
+              agenda: controller.agenda,
               monday: monday,
               layouts: [
                 for (var day = 0; day < 7; day++)

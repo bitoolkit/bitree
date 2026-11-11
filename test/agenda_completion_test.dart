@@ -566,7 +566,7 @@ void main() {
         home: Scaffold(body: ListenableBuilder(
           listenable: agenda,
           builder: (context, _) => AgendaListTile(
-            controller: app, entry: agenda.entries.single, now: _now,
+            controller: agenda, entry: agenda.entries.single, now: _now,
           ),
         )),
       ));

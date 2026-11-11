@@ -234,8 +234,31 @@
   "agendaName": "名称",
   "agendaNameRequired": "请输入名称",
   "agendaAllDay": "全天",
+  "agendaTime": "时间",
+  "agendaMoreOptions": "更多选项",
   "agendaLocationOptional": "地点（选填）",
   "agendaNotesOptional": "备注（选填）",
+  "agendaColor": "日程颜色",
+  "agendaColorDefault": "默认",
+  "agendaColorBlue": "蓝色",
+  "agendaColorCoral": "珊瑚色",
+  "agendaColorViolet": "紫色",
+  "agendaColorGreen": "绿色",
+  "agendaColorAmber": "琥珀色",
+  "agendaColorTeal": "青色",
+  "agendaColorRose": "玫红",
+  "agendaColorSlate": "灰色",
+  "agendaColorCustom": "自定义 {value}",
+  "@agendaColorCustom": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "agendaColorPickerTitle": "选择颜色",
+  "agendaColorPresets": "快捷颜色",
+  "agendaColorCustomSection": "自定义颜色",
   "agendaTailDays": "拖尾长度（天）",
   "agendaTailDaysHint": "1–30 天，默认 4 天",
   "agendaTailDaysValue": "{days} 天",

@@ -1,0 +1,13 @@
+{
+  "student": {
+    "grades": [],
+    "plan": null,
+    "gradesUpdatedAt": null,
+    "planUpdatedAt": null,
+    "targetCredits": 150.0,
+    "categoryTargets": {
+      "必修": 90.0
+    },
+    "categoryOverrides": {}
+  }
+}

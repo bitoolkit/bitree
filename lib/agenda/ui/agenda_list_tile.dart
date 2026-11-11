@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 
-import '../../app/controller.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_notice.dart';
 import '../../ui/swipe_action_tile.dart';
+import '../controller.dart';
 import '../model.dart';
 import 'agenda_detail.dart';
 import 'agenda_operations.dart';
 import 'completion_text.dart';
+import 'timeline_colors.dart';
 
 class AgendaListTile extends StatelessWidget {
   const AgendaListTile({
@@ -20,17 +21,13 @@ class AgendaListTile extends StatelessWidget {
     this.onTap,
   });
 
-  final AppController controller;
+  final AgendaController controller;
   final AgendaEntry entry;
   final DateTime now;
   final VoidCallback? onTap;
 
   Future<bool> _complete(BuildContext context, {bool haptic = false}) async {
-    final saved = await toggleAgendaDone(
-      controller.agenda,
-      entry,
-      haptic: haptic,
-    );
+    final saved = await toggleAgendaDone(controller, entry, haptic: haptic);
     if (!saved && context.mounted) {
       showAppNotice(context, context.l10n.operationSaveFailed);
     }
@@ -55,6 +52,9 @@ class AgendaListTile extends StatelessWidget {
     ].join('  ');
     final description = localizedAgendaNotes(l10n, entry).trim();
     final hasDetails = description.isNotEmpty || subtitle.isNotEmpty;
+    final entryColors = entry.kind == AgendaKind.exam
+        ? null
+        : agendaTimelineColors(context, entry, now);
     final dueToday =
         entry.isDeadline &&
         !entry.done &&
@@ -71,7 +71,7 @@ class AgendaListTile extends StatelessWidget {
         border: Border(bottom: BorderSide(color: scheme.outlineVariant)),
       ),
       child: SwipeActionTile(
-        enabled: !controller.agenda.busy,
+        enabled: !controller.busy,
         leftAction: TileSwipeAction(
           label: l10n.agendaSwipeDelete,
           releaseLabel: l10n.agendaSwipeDeleteRelease,
@@ -112,13 +112,29 @@ class AgendaListTile extends StatelessWidget {
                       child: Checkbox(
                         value: entry.done,
                         shape: const CircleBorder(),
-                        onChanged: controller.agenda.busy
+                        onChanged: controller.busy
                             ? null
                             : (_) => _complete(context, haptic: true),
                       ),
                     ),
                   ),
                   const SizedBox(width: 4),
+                  if (entryColors != null) ...[
+                    Tooltip(
+                      message: l10n.agendaColor,
+                      child: Container(
+                        key: ValueKey(('agenda-color', entry.id)),
+                        width: 9,
+                        height: 9,
+                        margin: const EdgeInsets.only(top: 8),
+                        decoration: BoxDecoration(
+                          color: entryColors.accent,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

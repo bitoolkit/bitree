@@ -10,6 +10,7 @@ import '../core/diagnostics.dart';
 import '../schedule/controller.dart';
 import 'academics.dart';
 import 'access.dart';
+import 'account_status.dart';
 import 'error_message.dart';
 import 'errors.dart';
 import 'learning/eclass_deadlines.dart';
@@ -20,14 +21,7 @@ import 'session.dart';
 import 'storage.dart';
 import 'verification.dart';
 
-enum AccountStatus {
-  unverified,
-  signedIn,
-  signedOut,
-  expired,
-  smsRequired,
-  imageRequired,
-}
+export 'account_status.dart';
 
 /// Runs school operations through one authenticated, cancellable session owner.
 class SchoolController extends ChangeNotifier {
@@ -197,18 +191,14 @@ class SchoolController extends ChangeNotifier {
     bool notifyErrors = true,
   }) async {
     if (_username == null) return false;
-    return _run(
-      '恢复学校登录',
-      () async {
-        if (verify == null) {
-          await _access.read(null, (session) => session.checkLogin());
-        } else {
-          await _access.restoreAccount(_requiredVerification(verify));
-        }
-        return true;
-      },
-      notifyErrors: notifyErrors,
-    );
+    return _run('恢复学校登录', () async {
+      if (verify == null) {
+        await _access.read(null, (session) => session.checkLogin());
+      } else {
+        await _access.restoreAccount(_requiredVerification(verify));
+      }
+      return true;
+    }, notifyErrors: notifyErrors);
   }
 
   Future<bool> synchronize({String? term, VerifySchoolLogin? verify}) => _run(

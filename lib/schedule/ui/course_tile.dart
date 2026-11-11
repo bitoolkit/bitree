@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../app/controller.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/design.dart';
+import '../controller.dart';
 import '../model.dart';
 import 'course_colors.dart';
 import 'course_detail.dart';
@@ -19,7 +19,7 @@ class CourseTile extends StatelessWidget {
   });
 
   final Course course;
-  final AppController controller;
+  final TimetableController controller;
   final bool isToday;
   final DateTime? date;
 

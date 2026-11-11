@@ -2,11 +2,13 @@ import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/timeline_layout.dart';
 import 'package:bitree/agenda/ui/agenda_timeline.dart';
 import 'package:bitree/agenda/ui/event_timeline_entry.dart';
+import 'package:bitree/agenda/ui/timeline_entry.dart';
 import 'package:bitree/l10n/app_localizations_zh.dart';
 import 'package:bitree/l10n/formats.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/test_app.dart';
@@ -65,6 +67,7 @@ Future<TestAppController> _show(
   double scale = 1,
   Brightness brightness = Brightness.light,
   int layoutDays = 4,
+  ValueNotifier<bool>? visible,
 }) async {
   tester.view.physicalSize = const Size(390, 844);
   tester.view.devicePixelRatio = 1;
@@ -73,6 +76,8 @@ Future<TestAppController> _show(
   final app = TestAppController(entries: entries);
   await app.initialize();
   await app.settings.setAgendaLayoutDays(layoutDays);
+  final visibility = visible ?? ValueNotifier(true);
+  if (visible == null) addTearDown(visibility.dispose);
   await tester.pumpWidget(
     MaterialApp(
       theme: bitreeTheme(brightness),
@@ -82,10 +87,14 @@ Future<TestAppController> _show(
         child: child!,
       ),
       home: Scaffold(
-        body: AgendaTimeline(
-          controller: app,
-          entries: entries,
-          now: _date.add(const Duration(hours: 12)),
+        body: ValueListenableBuilder<bool>(
+          valueListenable: visibility,
+          builder: (context, isVisible, _) => AgendaTimeline(
+            controller: app,
+            entries: entries,
+            now: _date.add(const Duration(hours: 12)),
+            visible: isVisible,
+          ),
         ),
       ),
     ),
@@ -94,7 +103,533 @@ Future<TestAppController> _show(
   return app;
 }
 
+Future<void> _wheel(
+  WidgetTester tester,
+  Offset delta, {
+  bool vertical = false,
+}) async {
+  if (vertical) await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+  tester.binding.handlePointerEvent(
+    PointerScrollEvent(
+      position: tester.getCenter(
+        find.byKey(const ValueKey('agenda-timeline-lanes')),
+      ),
+      scrollDelta: delta,
+    ),
+  );
+  await tester.pumpAndSettle();
+  if (vertical) await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+}
+
 void main() {
+  for (final bottom in [false, true]) {
+    testWidgets(
+      'Horizontal panning preserves a held ${bottom ? 'bottom' : 'top'} overscroll',
+      (tester) async {
+        final entries = [
+          ..._stackedDeadlines(),
+          for (var index = 0; index < 25; index++)
+            AgendaEntry(
+              id: 'future-$index',
+              title: '后续作业 $index',
+              kind: AgendaKind.deadline,
+              startsAt: _date.add(const Duration(days: 10, hours: 12)),
+            ),
+        ];
+        await _show(tester, entries);
+        final position = _lanePosition(tester);
+        if (bottom) {
+          position.jumpTo(position.maxScrollExtent);
+          await tester.pumpAndSettle();
+        }
+        final dy = bottom ? -1.0 : 1.0;
+        final gesture = await tester.startGesture(const Offset(330, 500));
+        var released = false;
+        try {
+          await gesture.moveBy(Offset(0, dy * 30));
+          await tester.pump(const Duration(milliseconds: 16));
+          await gesture.moveBy(Offset(0, dy * 180));
+          await tester.pump(const Duration(milliseconds: 16));
+          final heldOffset = position.pixels;
+          final maximum = position.maxScrollExtent;
+          expect(
+            heldOffset,
+            bottom ? greaterThan(maximum + 10) : lessThan(-10),
+          );
+          final tracked = bottom ? entries[23] : entries.first;
+          final heldTop = tester.getRect(_paintedBar(tracked)).top;
+
+          for (var frame = 0; frame < 36; frame++) {
+            await gesture.moveBy(const Offset(-4, 0));
+            await tester.pump(const Duration(milliseconds: 16));
+            expect(
+              position.pixels,
+              closeTo(heldOffset, .01),
+              reason:
+                  'frame=$frame, originalMax=$maximum, currentMax=${position.maxScrollExtent}',
+            );
+            expect(
+              tester.getRect(_paintedBar(tracked)).top,
+              closeTo(heldTop, .01),
+            );
+          }
+          expect(position.maxScrollExtent, closeTo(maximum, .01));
+          await gesture.up();
+          released = true;
+          await tester.pumpAndSettle();
+          expect(
+            position.pixels,
+            closeTo(bottom ? position.maxScrollExtent : 0, .01),
+          );
+          expect(tester.takeException(), isNull);
+        } finally {
+          if (!released) await gesture.cancel();
+          await tester.pumpAndSettle();
+          await tester.pumpWidget(const SizedBox());
+        }
+      },
+    );
+  }
+
+  testWidgets(
+    'Background refreshes keep vertical position during horizontal drags',
+    (tester) async {
+      final entries = [
+        for (var day = 0; day < 24; day++)
+          for (var index = 0; index < (day == 0 || day == 22 ? 24 : 2); index++)
+            AgendaEntry(
+              id: 'frame-$day-$index',
+              title: '作业 $day $index',
+              kind: AgendaKind.deadline,
+              startsAt: _date.add(Duration(days: day, hours: 12)),
+            ),
+      ];
+      final app = await _show(tester, entries);
+      late StateSetter refresh;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: bitreeTheme(Brightness.light),
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) {
+                refresh = setState;
+                return AgendaTimeline(
+                  controller: app,
+                  entries: entries.toList(),
+                  now: _date.add(const Duration(hours: 12)),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final position = _lanePosition(tester);
+      position.jumpTo(position.maxScrollExtent * .8);
+      await tester.pumpAndSettle();
+      for (var swipe = 0; swipe < 4; swipe++) {
+        final direction = swipe.isEven ? -1.0 : 1.0;
+        final gesture = await tester.startGesture(const Offset(200, 600));
+        await gesture.moveBy(Offset(direction * 24, 0));
+        await tester.pump(const Duration(milliseconds: 16));
+        for (var frame = 0; frame < 36; frame++) {
+          final before = position.pixels;
+          await gesture.moveBy(Offset(direction * 12, 0));
+          refresh(() {});
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(
+            position.pixels,
+            closeTo(before, .01),
+            reason:
+                'swipe=$swipe frame=$frame, offset=$before -> ${position.pixels}, max=${position.maxScrollExtent}',
+          );
+        }
+        await gesture.cancel();
+        await tester.pumpAndSettle();
+      }
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets('Panning reuses the visible deadline content', (tester) async {
+    final entries = _stackedDeadlines();
+    await _show(tester, entries);
+    final tracked = entries[4];
+    final before = tester.getRect(_paintedBar(tracked));
+    final previousCallback = debugOnRebuildDirtyWidget;
+    var contentBuilds = 0;
+    debugOnRebuildDirtyWidget = (element, builtOnce) {
+      previousCallback?.call(element, builtOnce);
+      if (element.widget case AgendaTimelineEntry(:final entry)
+          when entry.id == tracked.id) {
+        contentBuilds++;
+      }
+    };
+    addTearDown(() => debugOnRebuildDirtyWidget = previousCallback);
+
+    final gesture = await tester.startGesture(const Offset(340, 650));
+    await gesture.moveBy(const Offset(-24, -24));
+    await tester.pump(const Duration(milliseconds: 16));
+    contentBuilds = 0;
+    for (var frame = 0; frame < 12; frame++) {
+      await gesture.moveBy(const Offset(-3, -1));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    final after = tester.getRect(_paintedBar(tracked));
+    expect(after.left, lessThan(before.left));
+    expect(after.top, lessThan(before.top));
+    expect(contentBuilds, 0);
+    await gesture.cancel();
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Retained cards update their time, completion and text scale', (
+    tester,
+  ) async {
+    final entry = _stackedDeadlines().first;
+    final app = await _show(tester, [entry]);
+    var entries = [entry];
+    var now = _date.add(const Duration(hours: 11));
+    var scale = 1.0;
+    var brightness = Brightness.light;
+    late StateSetter update;
+    await tester.pumpWidget(
+      StatefulBuilder(
+        builder: (context, setState) {
+          update = setState;
+          return MaterialApp(
+            theme: bitreeTheme(brightness),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: TextScaler.linear(scale)),
+              child: child!,
+            ),
+            home: Scaffold(
+              body: AgendaTimeline(
+                controller: app,
+                entries: entries,
+                now: now,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('12:00 已逾期'), findsNothing);
+    update(() => now = _date.add(const Duration(hours: 13)));
+    await tester.pumpAndSettle();
+    expect(find.text('12:00 已逾期'), findsOneWidget);
+
+    update(() {
+      entries = [entry.copyWith(done: true)];
+      brightness = Brightness.dark;
+      scale = 1.6;
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('12:00 已逾期'), findsNothing);
+    expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.text(entry.title)).style!.decoration,
+      TextDecoration.lineThrough,
+    );
+    expect(
+      tester
+          .getSize(_paintedBar(entry))
+          .width,
+      closeTo(180, .001),
+    );
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Zooming reuses unchanged deadline text', (tester) async {
+    final entries = _stackedDeadlines();
+    await _show(tester, entries);
+    final tracked = entries[4];
+    final initialTop = tester.getRect(_paintedBar(tracked)).top;
+    final previousCallback = debugOnRebuildDirtyWidget;
+    var titleBuilds = 0;
+    debugOnRebuildDirtyWidget = (element, builtOnce) {
+      previousCallback?.call(element, builtOnce);
+      if (element.widget case Text(data: final text)
+          when text == tracked.title) {
+        titleBuilds++;
+      }
+    };
+    addTearDown(() => debugOnRebuildDirtyWidget = previousCallback);
+
+    for (final zoom in [2.0, 4.0, 8.0, 16.0, 24.0, 12.0, 4.0, 1.0]) {
+      tester.widget<Slider>(find.byType(Slider)).onChanged!(zoom);
+      await tester.pumpAndSettle();
+      expect(titleBuilds, 0);
+      expect(
+        tester.getRect(_paintedBar(tracked)).top,
+        closeTo(initialTop, .001),
+      );
+      expect(
+        tester.getRect(_paintedBar(tracked)).width,
+        closeTo(180, .001),
+      );
+    }
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Zoom keeps mixed entries in their original lanes', (
+    tester,
+  ) async {
+    final entries = [
+      for (final hour in [12, 14, 16])
+        AgendaEntry(
+          id: 'zoom-ddl-$hour',
+          title: '作业 $hour',
+          kind: AgendaKind.deadline,
+          startsAt: _date.add(Duration(hours: hour)),
+        ),
+      _event('zoom-event', 10),
+      AgendaEntry(
+        id: 'zoom-open',
+        title: '开放测验',
+        kind: AgendaKind.deadline,
+        startsAt: _date.add(const Duration(hours: 13)),
+        startOnly: true,
+      ),
+    ];
+    await _show(tester, entries);
+    final originalTops = {
+      for (final entry in entries)
+        entry.id: tester.getRect(_paintedBar(entry)).top,
+    };
+    for (final zoom in [1.5, 4.0, 12.0, 24.0, 8.0, 2.0, 1.0]) {
+      tester.widget<Slider>(find.byType(Slider)).onChanged!(zoom);
+      await tester.pumpAndSettle();
+      for (final entry in entries) {
+        expect(
+          tester.getRect(_paintedBar(entry)).top,
+          closeTo(originalTops[entry.id]!, .001),
+          reason: '${entry.id}, zoom=$zoom',
+        );
+      }
+    }
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
+    'Pinching preserves lanes, focal time and the vertical position',
+    (tester) async {
+      final first = AgendaEntry(
+        id: 'pinch-first',
+        title: '第一份作业',
+        kind: AgendaKind.deadline,
+        startsAt: _date.add(const Duration(hours: 12)),
+      );
+      final second = AgendaEntry(
+        id: 'pinch-second',
+        title: '第二份作业',
+        kind: AgendaKind.deadline,
+        startsAt: _date.add(const Duration(hours: 12, minutes: 30)),
+      );
+      await _show(tester, [first, second]);
+      final originalTop = tester.getRect(_paintedBar(second)).top;
+      final left = await tester.startGesture(
+        const Offset(185, 600),
+        pointer: 1,
+      );
+      final right = await tester.startGesture(
+        const Offset(205, 600),
+        pointer: 2,
+      );
+      await left.moveTo(const Offset(160, 600));
+      await right.moveTo(const Offset(230, 600));
+      await tester.pump();
+      final initialZoom = tester.widget<Slider>(find.byType(Slider)).value;
+      final initialRight = tester.getRect(_paintedBar(first)).right;
+      final initialOffset = _lanePosition(tester).pixels;
+      for (var step = 1; step <= 14; step++) {
+        await left.moveTo(Offset(160 - step * 10, 600));
+        await right.moveTo(Offset(230 + step * 10, 600));
+        await tester.pump(const Duration(milliseconds: 16));
+        final zoom = tester.widget<Slider>(find.byType(Slider)).value;
+        expect(
+          tester.getRect(_paintedBar(first)).right,
+          closeTo(195 + (initialRight - 195) * zoom / initialZoom, .01),
+        );
+        expect(
+          tester.getRect(_paintedBar(second)).top,
+          closeTo(originalTop, .01),
+        );
+        expect(_lanePosition(tester).pixels, closeTo(initialOffset, .01));
+      }
+      await right.up();
+      await tester.pump();
+      final beforeRelease = tester.getRect(_paintedBar(first)).right;
+      await left.up();
+      await tester.pumpAndSettle();
+      expect(
+        tester.getRect(_paintedBar(first)).right,
+        closeTo(beforeRelease, .01),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets('Ctrl-wheel zoom keeps the pointer time anchored', (
+    tester,
+  ) async {
+    final ddl = AgendaEntry(
+      id: 'wheel-zoom',
+      title: '作业',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(hours: 13)),
+    );
+    await _show(tester, [ddl]);
+    const anchor = Offset(140, 600);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    for (final delta in [-100.0, -200.0, -250.0, 150.0, 200.0]) {
+      final before = tester.getRect(_paintedBar(ddl));
+      final previousZoom = tester.widget<Slider>(find.byType(Slider)).value;
+      tester.binding.handlePointerEvent(
+        PointerScrollEvent(position: anchor, scrollDelta: Offset(0, delta)),
+      );
+      await tester.pumpAndSettle();
+      final zoom = tester.widget<Slider>(find.byType(Slider)).value;
+      final after = tester.getRect(_paintedBar(ddl));
+      expect(
+        after.right,
+        closeTo(
+          anchor.dx + (before.right - anchor.dx) * zoom / previousZoom,
+          .01,
+        ),
+      );
+      expect(after.top, closeTo(before.top, .01));
+    }
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  for (final cancel in [false, true]) {
+    testWidgets(
+      'Repeated top-edge pulls rebound after ${cancel ? 'cancellation' : 'release'}',
+      (tester) async {
+        await _show(tester, []);
+        final position = _lanePosition(tester);
+        for (var attempt = 0; attempt < 3; attempt++) {
+          final gesture = await tester.startGesture(const Offset(200, 180));
+          await gesture.moveBy(const Offset(0, 30));
+          await tester.pump(const Duration(milliseconds: 40));
+          await gesture.moveBy(const Offset(0, 80));
+          await tester.pump(const Duration(milliseconds: 40));
+          expect(position.pixels, lessThan(0));
+          if (cancel) {
+            await gesture.cancel();
+          } else {
+            await gesture.up();
+          }
+          await tester.pumpAndSettle();
+          expect(position.pixels, closeTo(0, .01));
+          expect(tester.takeException(), isNull);
+        }
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
+
+  testWidgets(
+    'Pulling past the bottom rebounds without growing the blank range',
+    (tester) async {
+      final entries = [
+        for (var index = 0; index < 20; index++)
+          AgendaEntry(
+            id: 'bottom-$index',
+            title: '重叠日程 $index',
+            kind: AgendaKind.event,
+            startsAt: _date.add(const Duration(hours: 11)),
+            endsAt: _date.add(const Duration(hours: 14)),
+          ),
+      ];
+      await _show(tester, entries);
+      final position = _lanePosition(tester);
+      final maximum = position.maxScrollExtent;
+      position.jumpTo(maximum);
+      await tester.pumpAndSettle();
+      for (final cancel in [false, true]) {
+        final gesture = await tester.startGesture(const Offset(200, 600));
+        await gesture.moveBy(const Offset(0, -30));
+        await tester.pump(const Duration(milliseconds: 40));
+        await gesture.moveBy(const Offset(0, -80));
+        await tester.pump(const Duration(milliseconds: 40));
+        expect(position.pixels, greaterThan(maximum));
+        expect(position.maxScrollExtent, closeTo(maximum, .01));
+        if (cancel) {
+          await gesture.cancel();
+        } else {
+          await gesture.up();
+        }
+        await tester.pumpAndSettle();
+        expect(position.pixels, closeTo(maximum, .01));
+        expect(position.maxScrollExtent, closeTo(maximum, .01));
+        expect(tester.takeException(), isNull);
+      }
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'A top-edge pull settles when the timeline is hidden and shown again',
+    (tester) async {
+      final visible = ValueNotifier(true);
+      addTearDown(visible.dispose);
+      await _show(tester, [], visible: visible);
+      final position = _lanePosition(tester);
+      final gesture = await tester.startGesture(const Offset(200, 180));
+      await gesture.moveBy(const Offset(0, 30));
+      await tester.pump(const Duration(milliseconds: 40));
+      await gesture.moveBy(const Offset(0, 80));
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(position.pixels, lessThan(0));
+      visible.value = false;
+      await tester.pump();
+      await gesture.cancel();
+      visible.value = true;
+      await tester.pumpAndSettle();
+      expect(position.pixels, closeTo(0, .01));
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'Wheel and zoom interruptions cannot leave a top-edge pull held',
+    (tester) async {
+      await _show(tester, []);
+      final position = _lanePosition(tester);
+      for (final zoom in [false, true]) {
+        final gesture = await tester.startGesture(const Offset(200, 180));
+        await gesture.moveBy(const Offset(0, 30));
+        await tester.pump(const Duration(milliseconds: 40));
+        await gesture.moveBy(const Offset(0, 80));
+        await tester.pump(const Duration(milliseconds: 40));
+        expect(position.pixels, lessThan(0));
+        if (zoom) await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+        await _wheel(tester, const Offset(48, 0));
+        if (zoom) await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+        expect(position.pixels, closeTo(0, .01));
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(position.pixels, closeTo(0, .01));
+        expect(tester.takeException(), isNull);
+      }
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   test('Event information reservations keep real endpoints and minimum hit spans', () {
     final first = _event('first', 11);
     final second = _event('second', 14, exam: true);
