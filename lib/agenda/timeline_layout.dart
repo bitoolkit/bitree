@@ -22,20 +22,120 @@ class AgendaTimelinePlacement {
   final DateTime paintEnd;
 }
 
-/// Reserve lanes at minimum zoom so changing scale cannot reorder the cards.
-/// Only their displayed spans shrink with [zoom]; tails keep their calendar span.
-List<AgendaTimelinePlacement> layoutAgendaTimeline(
+typedef _LaneReservation = ({
+  AgendaEntry entry,
+  int lane,
+  DateTime start,
+  DateTime end,
+});
+
+/// Assign lanes once for a set of entries, then project them at any zoom.
+class AgendaTimelineLayout {
+  AgendaTimelineLayout(
+    Iterable<AgendaEntry> entries, {
+    required Duration minimumEventSpan,
+    required Duration deadlineCardSpan,
+  }) : _minimumEventSpan = minimumEventSpan,
+       _deadlineCardSpan = deadlineCardSpan,
+       _reservations = _reserveLanes(
+         entries,
+         minimumEventSpan: minimumEventSpan,
+         deadlineCardSpan: deadlineCardSpan,
+       );
+
+  final Duration _minimumEventSpan;
+  final Duration _deadlineCardSpan;
+  final List<_LaneReservation> _reservations;
+
+  List<AgendaTimelinePlacement> atZoom(double zoom) {
+    final displayedEventSpan = Duration(
+      microseconds: (_minimumEventSpan.inMicroseconds / zoom).ceil(),
+    );
+    final displayedCardSpan = Duration(
+      microseconds: (_deadlineCardSpan.inMicroseconds / zoom).ceil(),
+    );
+    final paintedLaneEnds = <int, DateTime>{};
+    final cards =
+        <
+          ({
+            AgendaEntry entry,
+            int lane,
+            DateTime start,
+            DateTime end,
+            DateTime layoutEnd,
+            DateTime paintStart,
+          })
+        >[];
+    for (final interval in _reservations) {
+      final start = interval.entry.isDeadline && !interval.entry.startOnly
+          ? interval.end.subtract(displayedCardSpan)
+          : interval.start;
+      final end = interval.entry.startOnly
+          ? start.add(displayedCardSpan)
+          : interval.end;
+      final displayedMinimumEnd = start.add(displayedEventSpan);
+      final layoutEnd =
+          !interval.entry.isDeadline && end.isBefore(displayedMinimumEnd)
+          ? displayedMinimumEnd
+          : end;
+      final previousEnd = paintedLaneEnds[interval.lane];
+      final tailStart = interval.entry.isDeadline && !interval.entry.startOnly
+          ? end.subtract(
+              const Duration(days: 1) * (interval.entry.tailDays - 0.25),
+            )
+          : start;
+      final unobstructedStart =
+          previousEnd != null && previousEnd.isAfter(tailStart)
+          ? previousEnd
+          : tailStart;
+      cards.add((
+        entry: interval.entry,
+        lane: interval.lane,
+        start: start,
+        end: end,
+        layoutEnd: layoutEnd,
+        paintStart: unobstructedStart.isBefore(start)
+            ? unobstructedStart
+            : start,
+      ));
+      paintedLaneEnds[interval.lane] = layoutEnd;
+    }
+    final nextByLane = <int, DateTime>{};
+    final result = <AgendaTimelinePlacement>[];
+    for (final card in cards.reversed) {
+      final tailEnd = card.entry.startOnly
+          ? card.start.add(
+              const Duration(days: 1) * (card.entry.tailDays - 0.25),
+            )
+          : card.layoutEnd;
+      final nextStart = nextByLane[card.lane];
+      final unobstructedEnd = nextStart != null && nextStart.isBefore(tailEnd)
+          ? nextStart
+          : tailEnd;
+      result.add(
+        AgendaTimelinePlacement(
+          entry: card.entry,
+          lane: card.lane,
+          start: card.start,
+          end: card.end,
+          layoutEnd: card.layoutEnd,
+          paintStart: card.paintStart,
+          paintEnd: unobstructedEnd.isAfter(card.layoutEnd)
+              ? unobstructedEnd
+              : card.layoutEnd,
+        ),
+      );
+      nextByLane[card.lane] = card.start;
+    }
+    return result.reversed.toList(growable: false);
+  }
+}
+
+List<_LaneReservation> _reserveLanes(
   Iterable<AgendaEntry> entries, {
   required Duration minimumEventSpan,
   required Duration deadlineCardSpan,
-  double zoom = 1,
 }) {
-  final displayedEventSpan = Duration(
-    microseconds: (minimumEventSpan.inMicroseconds / zoom).ceil(),
-  );
-  final displayedCardSpan = Duration(
-    microseconds: (deadlineCardSpan.inMicroseconds / zoom).ceil(),
-  );
   final intervals =
       [
         for (final entry in entries.where((entry) => !entry.deleted))
@@ -57,18 +157,7 @@ List<AgendaTimelinePlacement> layoutAgendaTimeline(
         return byEnd != 0 ? byEnd : a.entry.id.compareTo(b.entry.id);
       });
   final laneEnds = <DateTime>[];
-  final paintedLaneEnds = <DateTime>[];
-  final cards =
-      <
-        ({
-          AgendaEntry entry,
-          int lane,
-          DateTime start,
-          DateTime end,
-          DateTime layoutEnd,
-          DateTime paintStart,
-        })
-      >[];
+  final cards = <_LaneReservation>[];
   for (final interval in intervals) {
     final minimumEnd = interval.start.add(minimumEventSpan);
     final reservationEnd =
@@ -79,72 +168,17 @@ List<AgendaTimelinePlacement> layoutAgendaTimeline(
     if (lane < 0) {
       lane = laneEnds.length;
     }
-    final start = interval.entry.isDeadline && !interval.entry.startOnly
-        ? interval.end.subtract(displayedCardSpan)
-        : interval.start;
-    final end = interval.entry.startOnly
-        ? start.add(displayedCardSpan)
-        : interval.end;
-    final displayedMinimumEnd = start.add(displayedEventSpan);
-    final layoutEnd =
-        !interval.entry.isDeadline && end.isBefore(displayedMinimumEnd)
-        ? displayedMinimumEnd
-        : end;
-    final previousEnd = lane < paintedLaneEnds.length
-        ? paintedLaneEnds[lane]
-        : null;
-    final tailStart = interval.entry.isDeadline && !interval.entry.startOnly
-        ? end.subtract(
-            const Duration(days: 1) * (interval.entry.tailDays - 0.25),
-          )
-        : start;
-    final unobstructedStart =
-        previousEnd != null && previousEnd.isAfter(tailStart)
-        ? previousEnd
-        : tailStart;
-    final paintStart = unobstructedStart.isBefore(start)
-        ? unobstructedStart
-        : start;
     if (lane == laneEnds.length) {
       laneEnds.add(reservationEnd);
-      paintedLaneEnds.add(layoutEnd);
     } else {
       laneEnds[lane] = reservationEnd;
-      paintedLaneEnds[lane] = layoutEnd;
     }
     cards.add((
       entry: interval.entry,
       lane: lane,
-      start: start,
-      end: end,
-      layoutEnd: layoutEnd,
-      paintStart: paintStart,
+      start: interval.start,
+      end: interval.end,
     ));
   }
-  final nextByLane = <int, DateTime>{};
-  final result = <AgendaTimelinePlacement>[];
-  for (final card in cards.reversed) {
-    final tailEnd = card.entry.startOnly
-        ? card.start.add(const Duration(days: 1) * (card.entry.tailDays - 0.25))
-        : card.layoutEnd;
-    final nextStart = nextByLane[card.lane];
-    final unobstructedEnd = nextStart != null && nextStart.isBefore(tailEnd)
-        ? nextStart
-        : tailEnd;
-    result.add(
-      AgendaTimelinePlacement(
-        entry: card.entry,
-        lane: card.lane,
-        start: card.start,
-        end: card.end,
-        layoutEnd: card.layoutEnd,
-        paintStart: card.paintStart,
-        paintEnd: unobstructedEnd.isAfter(card.layoutEnd)
-            ? unobstructedEnd
-            : card.layoutEnd,
-      ),
-    );
-    nextByLane[card.lane] = card.start;
-  }
-  return result.reversed.toList(growable: false);
+  return cards;
 }

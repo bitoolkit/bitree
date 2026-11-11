@@ -115,13 +115,13 @@ void main() {
         startsAt: _opens.add(const Duration(hours: 12)),
         endsAt: _opens.add(const Duration(hours: 14)),
       );
+      final layout = AgendaTimelineLayout(
+        [open, next],
+        minimumEventSpan: const Duration(hours: 1),
+        deadlineCardSpan: const Duration(hours: 6),
+      );
       for (final zoom in [1.0, 4.0, 24.0]) {
-        final placements = layoutAgendaTimeline(
-          [open, next],
-          minimumEventSpan: const Duration(hours: 1),
-          deadlineCardSpan: const Duration(hours: 6),
-          zoom: zoom,
-        );
+        final placements = layout.atZoom(zoom);
         expect(placements.map((placement) => placement.lane), [0, 0]);
         expect(placements.first.paintEnd, next.startsAt);
         expect(
@@ -134,11 +134,11 @@ void main() {
     test(
       'The card grows right from the opening time, followed by its tail',
       () {
-        final placement = layoutAgendaTimeline(
+        final placement = AgendaTimelineLayout(
           [_openEnded(tailDays: 6)],
           minimumEventSpan: const Duration(hours: 1),
           deadlineCardSpan: const Duration(hours: 6),
-        ).single;
+        ).atZoom(1).single;
 
         expect(placement.start, _opens);
         expect(placement.end, _opens.add(const Duration(hours: 6)));
@@ -152,11 +152,11 @@ void main() {
     );
 
     test('A deadline with a due date keeps its tail on the left', () {
-      final placement = layoutAgendaTimeline(
+      final placement = AgendaTimelineLayout(
         [_due(tailDays: 6)],
         minimumEventSpan: const Duration(hours: 1),
         deadlineCardSpan: const Duration(hours: 6),
-      ).single;
+      ).atZoom(1).single;
 
       expect(placement.start, _opens.subtract(const Duration(hours: 6)));
       expect(

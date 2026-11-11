@@ -335,15 +335,80 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets('Zooming reuses unchanged deadline text', (tester) async {
+    final entries = _stackedDeadlines();
+    await _show(tester, entries);
+    final tracked = entries[4];
+    final initialTop = tester.getRect(_paintedBar(tracked)).top;
+    final previousCallback = debugOnRebuildDirtyWidget;
+    var titleBuilds = 0;
+    debugOnRebuildDirtyWidget = (element, builtOnce) {
+      previousCallback?.call(element, builtOnce);
+      if (element.widget case Text(data: final text)
+          when text == tracked.title) {
+        titleBuilds++;
+      }
+    };
+    addTearDown(() => debugOnRebuildDirtyWidget = previousCallback);
+
+    for (final zoom in [2.0, 4.0, 8.0, 16.0, 24.0, 12.0, 4.0, 1.0]) {
+      tester.widget<Slider>(find.byType(Slider)).onChanged!(zoom);
+      await tester.pumpAndSettle();
+      expect(titleBuilds, 0);
+      expect(
+        tester.getRect(_paintedBar(tracked)).top,
+        closeTo(initialTop, .001),
+      );
+      expect(
+        tester.getRect(_paintedBar(tracked)).width,
+        closeTo(180 * zoom, .001),
+      );
+    }
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Long tails do not enlarge the cached card layer', (
+    tester,
+  ) async {
+    final ddl = AgendaEntry(
+      id: 'long-render-layer',
+      title: '长期作业',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(hours: 13)),
+      tailDays: 30,
+    );
+    await _show(tester, [ddl]);
+    tester.widget<Slider>(find.byType(Slider)).onChanged!(24);
+    await tester.pumpAndSettle();
+    final card = tester.getRect(_bar(ddl));
+    final layer = tester.getRect(
+      find.descendant(
+        of: find.byKey(ValueKey(ddl.id)),
+        matching: find.byType(RepaintBoundary),
+      ),
+    );
+    final tail = tester.getRect(_paintedBar(ddl));
+    expect(layer, card);
+    expect(tail.width, closeTo(48 * 29.75 * 24, .001));
+    expect(card.right, closeTo(243, .001));
+    await tester.tapAt(card.center);
+    await tester.pumpAndSettle();
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   test('Minimum display spans separate short events without changing their real times', () {
     final first = _event('first', 11);
     final second = _event('second', 14, exam: true);
     final entries = [first, second];
-    final zoomedOut = layoutAgendaTimeline(
+    final layout = AgendaTimelineLayout(
       entries,
       minimumEventSpan: const Duration(hours: 48),
       deadlineCardSpan: const Duration(days: 2),
     );
+    final zoomedOut = layout.atZoom(1);
     expect(zoomedOut.map((placement) => placement.lane), [0, 1]);
     expect(zoomedOut.first.start, first.startsAt);
     expect(zoomedOut.first.end, first.endsAt);
@@ -351,12 +416,7 @@ void main() {
       zoomedOut.first.layoutEnd,
       first.startsAt.add(const Duration(hours: 48)),
     );
-    final zoomedIn = layoutAgendaTimeline(
-      entries,
-      minimumEventSpan: const Duration(hours: 48),
-      deadlineCardSpan: const Duration(days: 2),
-      zoom: 24,
-    );
+    final zoomedIn = layout.atZoom(24);
     expect(zoomedIn.map((placement) => placement.lane), [0, 1]);
     expect(zoomedIn.map((placement) => placement.end), [
       first.endsAt,
@@ -378,11 +438,11 @@ void main() {
       kind: AgendaKind.deadline,
       startsAt: _date.add(const Duration(hours: 13)),
     );
-    final placements = layoutAgendaTimeline(
+    final placements = AgendaTimelineLayout(
       [long, ddl],
       minimumEventSpan: const Duration(days: 2),
       deadlineCardSpan: const Duration(days: 2),
-    );
+    ).atZoom(1);
     final eventPlacement = placements.singleWhere(
       (placement) => placement.entry == long,
     );
@@ -418,13 +478,13 @@ void main() {
         startsAt: ddl.dueAt.subtract(const Duration(hours: 12)),
         endsAt: ddl.dueAt.subtract(const Duration(hours: 10)),
       );
+      final layout = AgendaTimelineLayout(
+        [ddl, overlapping],
+        minimumEventSpan: const Duration(minutes: 1),
+        deadlineCardSpan: const Duration(hours: 6),
+      );
       for (final zoom in [1.0, 4.0, 24.0]) {
-        final placements = layoutAgendaTimeline(
-          [ddl, overlapping],
-          minimumEventSpan: const Duration(minutes: 1),
-          deadlineCardSpan: const Duration(hours: 6),
-          zoom: zoom,
-        );
+        final placements = layout.atZoom(zoom);
         final reservation = placements.singleWhere((p) => p.entry == ddl);
         expect(
           reservation.start,

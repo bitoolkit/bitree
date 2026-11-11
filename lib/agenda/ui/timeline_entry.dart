@@ -9,7 +9,7 @@ import '../model.dart';
 import 'timeline_colors.dart';
 
 /// Renders entry content independently of timeline coordinates and lane packing.
-class AgendaTimelineEntry extends StatelessWidget {
+class AgendaTimelineEntry extends StatefulWidget {
   const AgendaTimelineEntry({
     super.key,
     required this.entry,
@@ -26,7 +26,36 @@ class AgendaTimelineEntry extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  State<AgendaTimelineEntry> createState() => _AgendaTimelineEntryState();
+}
+
+class _AgendaTimelineEntryState extends State<AgendaTimelineEntry> {
+  Widget? _card;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _card = null;
+  }
+
+  @override
+  void didUpdateWidget(covariant AgendaTimelineEntry oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.entry != widget.entry ||
+        oldWidget.now != widget.now ||
+        (widget.entry.isDeadline
+            ? oldWidget.cardWidth != widget.cardWidth
+            : oldWidget.barWidth != widget.barWidth)) {
+      _card = null;
+    }
+  }
+
+  void _open() => widget.onTap();
+
+  Widget _buildCard(BuildContext context) {
+    final entry = widget.entry;
+    final now = widget.now;
+    final width = entry.isDeadline ? widget.cardWidth : widget.barWidth;
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final colors = agendaTimelineColors(context, entry, now);
@@ -88,14 +117,14 @@ class AgendaTimelineEntry extends StatelessWidget {
     final card = Semantics(
       button: true,
       label: description,
-      onTap: onTap,
+      onTap: _open,
       child: ExcludeSemantics(
         child: Tooltip(
           message: _preview(l10n, entry, now),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: onTap,
+              onTap: _open,
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: SizedBox(
@@ -105,7 +134,7 @@ class AgendaTimelineEntry extends StatelessWidget {
                         : 'agenda-timeline-bar',
                     entry.id,
                   )),
-                  width: entry.isDeadline ? cardWidth : barWidth,
+                  width: width,
                   height: double.infinity,
                   child: Ink(
                     decoration: BoxDecoration(
@@ -150,8 +179,7 @@ class AgendaTimelineEntry extends StatelessWidget {
                               horizontal: 8,
                               vertical: 4,
                             ),
-                            child:
-                                (entry.isDeadline ? cardWidth : barWidth) < 48
+                            child: width < 48
                                 ? const SizedBox.shrink()
                                 : Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -242,7 +270,21 @@ class AgendaTimelineEntry extends StatelessWidget {
         ),
       ),
     );
+    // Cache the card layer independently of the tail, which the viewport clips.
+    return RepaintBoundary(child: card);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final card = _card ??= _buildCard(context);
+    final entry = widget.entry;
     if (!entry.isDeadline) return card;
+    final barWidth = widget.barWidth;
+    final cardWidth = widget.cardWidth;
+    final openEnded = entry.startOnly;
+    final deadlineFill = entry.overdue(widget.now)
+        ? Theme.of(context).colorScheme.errorContainer
+        : agendaTimelineColors(context, entry, widget.now).fill;
     return SizedBox(
       key: ValueKey(('agenda-timeline-bar', entry.id)),
       width: barWidth,

@@ -63,7 +63,8 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   bool _gestureTrackpad = false;
   final Set<int> _downPointers = <int>{};
   final Set<int> _panZoomPointers = <int>{};
-  late DateTime _center;
+  late final ValueNotifier<DateTime> _visibleCenter;
+  DateTime get _center => _visibleCenter.value;
   double _zoom = 1;
   double _gestureZoom = 1;
   int _gesturePointers = 0;
@@ -72,6 +73,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   Duration? _cachedMinimumEventSpan;
   Duration? _cachedDeadlineCardSpan;
   double? _cachedZoom;
+  AgendaTimelineLayout? _laneLayout;
   List<AgendaTimelinePlacement> _cachedPlacements = const [];
   final Map<String, DateTime> _nextStartById = {};
   final Map<String, AgendaTimelineEntry> _cards = {};
@@ -86,19 +88,21 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   ) {
     if (!identical(_cachedEntries, widget.entries) ||
         _cachedMinimumEventSpan != minimumEventSpan ||
-        _cachedDeadlineCardSpan != deadlineCardSpan ||
-        _cachedZoom != _zoom) {
+        _cachedDeadlineCardSpan != deadlineCardSpan) {
       _cachedEntries = widget.entries;
       _cachedMinimumEventSpan = minimumEventSpan;
       _cachedDeadlineCardSpan = deadlineCardSpan;
-      _cachedZoom = _zoom;
+      _cachedZoom = null;
       _cards.clear();
-      _cachedPlacements = layoutAgendaTimeline(
+      _laneLayout = AgendaTimelineLayout(
         widget.entries,
         minimumEventSpan: minimumEventSpan,
         deadlineCardSpan: deadlineCardSpan,
-        zoom: _zoom,
       );
+    }
+    if (_cachedZoom != _zoom) {
+      _cachedZoom = _zoom;
+      _cachedPlacements = _laneLayout!.atZoom(_zoom);
       _nextStartById.clear();
       final nextByLane = <int, DateTime>{};
       for (final placement in _cachedPlacements.reversed) {
@@ -113,7 +117,9 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   @override
   void initState() {
     super.initState();
-    _center = calendarDate(widget.now).add(const Duration(hours: 12));
+    _visibleCenter = ValueNotifier(
+      calendarDate(widget.now).add(const Duration(hours: 12)),
+    );
     _horizontalFling = AnimationController.unbounded(vsync: this)
       ..addListener(_tickHorizontal);
   }
@@ -183,14 +189,12 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     final delta = _horizontalFling.value - _lastHorizontal;
     _lastHorizontal = _horizontalFling.value;
     if (!mounted || !widget.active || !widget.visible) return;
-    setState(() {
-      _center = _center.subtract(
-        Duration(
-          microseconds: (delta / _flingPixelsPerHour * _microsecondsPerHour)
-              .round(),
-        ),
-      );
-    });
+    _visibleCenter.value = _center.subtract(
+      Duration(
+        microseconds: (delta / _flingPixelsPerHour * _microsecondsPerHour)
+            .round(),
+      ),
+    );
   }
 
   bool get _canFling =>
@@ -229,7 +233,8 @@ class _AgendaTimelineState extends State<AgendaTimeline>
       _downPointers.clear();
       _panZoomPointers.clear();
       if (widget.active) {
-        _center = calendarDate(widget.now).add(const Duration(hours: 12));
+        _visibleCenter.value = calendarDate(widget.now)
+            .add(const Duration(hours: 12));
       }
     }
     if (widget.active &&
@@ -255,6 +260,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     _horizontalFling.dispose();
     _releaseVerticalHold();
     _lanes.dispose();
+    _visibleCenter.dispose();
     _gridText?.dispose();
     super.dispose();
   }
@@ -274,24 +280,22 @@ class _AgendaTimelineState extends State<AgendaTimeline>
 
   void _zoomAt(double zoom, double x, double width, double baseline) {
     _stopMotion();
-    final anchor = _timeAt(x, width, baseline * _zoom);
     final next = zoom.clamp(1.0, 24.0).toDouble();
-    setState(() {
-      _zoom = next;
-      _center = anchor.subtract(
-        Duration(
-          microseconds:
-              ((x - width / 2) / (baseline * next) * _microsecondsPerHour)
-                  .round(),
-        ),
-      );
-    });
+    if (next == _zoom) return;
+    final anchor = _timeAt(x, width, baseline * _zoom);
+    setState(() => _zoom = next);
+    _visibleCenter.value = anchor.subtract(
+      Duration(
+        microseconds:
+            ((x - width / 2) / (baseline * next) * _microsecondsPerHour)
+                .round(),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
@@ -304,7 +308,6 @@ class _AgendaTimelineState extends State<AgendaTimeline>
             : _zoom == 24
             ? l10n.agendaTimelineOneHour
             : l10n.agendaTimelineHours(hoursPerCell.toStringAsFixed(1));
-        final laneHeight = _laneHeight;
         final deadlineCardWidth = 144.0 * _fontScale;
         final deadlineCardSpan = Duration(
           microseconds: (deadlineCardWidth / baseline * _microsecondsPerHour)
@@ -316,38 +319,24 @@ class _AgendaTimelineState extends State<AgendaTimeline>
               .ceil(),
         );
         final placements = _layout(minimumEventSpan, deadlineCardSpan);
-        final left = _timeAt(0, width, pixelsPerHour);
-        final right = _timeAt(width, width, pixelsPerHour);
-        final painter = _TimelineGridPainter(
-          center: _center,
-          now: widget.now,
-          pixelsPerHour: pixelsPerHour,
-          cellWidth: cellWidth,
-          scheme: theme.colorScheme,
-          text: _gridText!,
-          header: true,
-          l10n: l10n,
-        );
 
-        return Listener(
-          onPointerDown: (_) => _stopMotion(holdVertical: true),
-          onPointerSignal: (event) {
-            if (event is PointerScrollEvent) _stopMotion();
-          },
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Listener(
+              onPointerDown: (_) => _stopMotion(),
+              onPointerSignal: (event) {
+                if (event is PointerScrollEvent) _stopMotion();
+              },
+              child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(
                   children: [
                     TextButton.icon(
                       onPressed: () {
                         _stopMotion();
-                        setState(() {
-                          _center = calendarDate(widget.now)
-                              .add(const Duration(hours: 12));
-                        });
+                        _visibleCenter.value = calendarDate(widget.now)
+                            .add(const Duration(hours: 12));
                       },
                       icon: const Icon(Icons.today_outlined, size: 18),
                       label: Text(l10n.today),
@@ -369,358 +358,363 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                   ],
                 ),
               ),
-              Expanded(
-                child: Listener(
-                  onPointerDown: (event) {
+            ),
+            Expanded(
+              child: Listener(
+                onPointerDown: (event) {
+                  _stopMotion(holdVertical: true);
+                  if (_downPointers.isEmpty) {
+                    _gestureHadMultiplePointers = false;
+                  }
+                  _downPointers.add(event.pointer);
+                  if (_downPointers.length > 1) {
+                    _gestureHadMultiplePointers = true;
+                  }
+                },
+                onPointerUp: (event) {
+                  _downPointers.remove(event.pointer);
+                  if (_downPointers.isEmpty) _releaseVerticalHold();
+                },
+                onPointerCancel: (event) {
+                  _downPointers.remove(event.pointer);
+                  _panZoomPointers.remove(event.pointer);
+                  _gestureHadMultiplePointers = true;
+                  _stopMotion();
+                },
+                onPointerPanZoomStart: (event) {
+                  _stopMotion(holdVertical: true);
+                  if (_panZoomPointers.isEmpty && _downPointers.isEmpty) {
+                    _gestureHadMultiplePointers = false;
+                  }
+                  _panZoomPointers.add(event.pointer);
+                },
+                onPointerPanZoomEnd: (event) {
+                  _panZoomPointers.remove(event.pointer);
+                  if (_panZoomPointers.isEmpty) _releaseVerticalHold();
+                },
+                onPointerSignal: (event) {
+                  if (event is! PointerScrollEvent) return;
+                  GestureBinding.instance.pointerSignalResolver.register(
+                    event,
+                    (resolved) {
+                      final scroll = resolved as PointerScrollEvent;
+                      final keys = HardwareKeyboard.instance.logicalKeysPressed;
+                      final control =
+                          keys.contains(LogicalKeyboardKey.controlLeft) ||
+                          keys.contains(LogicalKeyboardKey.controlRight);
+                      final shift =
+                          keys.contains(LogicalKeyboardKey.shiftLeft) ||
+                          keys.contains(LogicalKeyboardKey.shiftRight);
+                      final delta = scroll.scrollDelta.dy != 0
+                          ? scroll.scrollDelta.dy
+                          : scroll.scrollDelta.dx;
+                      if (control) {
+                        _zoomAt(
+                          _zoom * math.exp(-delta / 350),
+                          scroll.localPosition.dx,
+                          width,
+                          baseline,
+                        );
+                      } else if (shift) {
+                        _stopMotion();
+                        _scrollLanes(delta);
+                      } else {
+                        _stopMotion();
+                        _visibleCenter.value = _center.add(
+                          Duration(
+                            microseconds:
+                                ((scroll.scrollDelta.dx +
+                                            scroll.scrollDelta.dy) /
+                                        pixelsPerHour *
+                                        _microsecondsPerHour)
+                                    .round(),
+                          ),
+                        );
+                      }
+                    },
+                  );
+                },
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onScaleStart: (details) {
                     _stopMotion(holdVertical: true);
-                    if (_downPointers.isEmpty) {
-                      _gestureHadMultiplePointers = false;
+                    _gestureTrackpad = _panZoomPointers.isNotEmpty;
+                    _gestureHadMultiplePointers =
+                        _gestureHadMultiplePointers ||
+                        (!_gestureTrackpad &&
+                            (details.pointerCount > 1 ||
+                                _downPointers.length > 1));
+                    _gestureScaled = false;
+                    _gesturePointers = details.pointerCount;
+                    _gestureZoom = _zoom;
+                    _gestureAnchor = _timeAt(
+                      details.localFocalPoint.dx,
+                      width,
+                      pixelsPerHour,
+                    );
+                    if (!_gestureHadMultiplePointers && _lanes.hasClients) {
+                      _verticalDrag = _lanes.position.drag(
+                        DragStartDetails(
+                          globalPosition: details.focalPoint,
+                          localPosition: details.localFocalPoint,
+                        ),
+                        () => _verticalDrag = null,
+                      );
                     }
-                    _downPointers.add(event.pointer);
-                    if (_downPointers.length > 1) {
+                  },
+                  onScaleUpdate: (details) {
+                    if (!_gestureTrackpad && details.pointerCount > 1) {
                       _gestureHadMultiplePointers = true;
                     }
-                  },
-                  onPointerUp: (event) {
-                    _downPointers.remove(event.pointer);
-                    if (_downPointers.isEmpty) _releaseVerticalHold();
-                  },
-                  onPointerCancel: (event) {
-                    _downPointers.remove(event.pointer);
-                    _panZoomPointers.remove(event.pointer);
-                    _gestureHadMultiplePointers = true;
-                    _stopMotion();
-                  },
-                  onPointerPanZoomStart: (event) {
-                    _stopMotion(holdVertical: true);
-                    if (_panZoomPointers.isEmpty && _downPointers.isEmpty) {
-                      _gestureHadMultiplePointers = false;
+                    // Pan/zoom events identify trackpads, regardless of whether
+                    // the recognizer reports zero or virtual multiple pointers.
+                    // Native trackpad momentum must never get a second fling.
+                    if ((details.scale - 1).abs() > 0.0001) {
+                      _gestureScaled = true;
                     }
-                    _panZoomPointers.add(event.pointer);
-                  },
-                  onPointerPanZoomEnd: (event) {
-                    _panZoomPointers.remove(event.pointer);
-                    if (_panZoomPointers.isEmpty) _releaseVerticalHold();
-                  },
-                  onPointerSignal: (event) {
-                    if (event is! PointerScrollEvent) return;
-                    _stopMotion();
-                    GestureBinding.instance.pointerSignalResolver.register(
-                      event,
-                      (resolved) {
-                        final scroll = resolved as PointerScrollEvent;
-                        final keys =
-                            HardwareKeyboard.instance.logicalKeysPressed;
-                        final control =
-                            keys.contains(LogicalKeyboardKey.controlLeft) ||
-                            keys.contains(LogicalKeyboardKey.controlRight);
-                        final shift =
-                            keys.contains(LogicalKeyboardKey.shiftLeft) ||
-                            keys.contains(LogicalKeyboardKey.shiftRight);
-                        final delta = scroll.scrollDelta.dy != 0
-                            ? scroll.scrollDelta.dy
-                            : scroll.scrollDelta.dx;
-                        if (control) {
-                          _zoomAt(
-                            _zoom * math.exp(-delta / 350),
-                            scroll.localPosition.dx,
-                            width,
-                            baseline,
-                          );
-                        } else if (shift) {
-                          _scrollLanes(delta);
-                        } else {
-                          setState(() {
-                            _center = _center.add(
-                              Duration(
-                                microseconds:
-                                    ((scroll.scrollDelta.dx +
-                                                scroll.scrollDelta.dy) /
-                                            pixelsPerHour *
-                                            _microsecondsPerHour)
-                                        .round(),
-                              ),
-                            );
-                          });
-                        }
-                      },
-                    );
-                  },
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onScaleStart: (details) {
-                      _stopMotion(holdVertical: true);
-                      _gestureTrackpad = _panZoomPointers.isNotEmpty;
-                      _gestureHadMultiplePointers =
-                          _gestureHadMultiplePointers ||
-                          (!_gestureTrackpad &&
-                              (details.pointerCount > 1 ||
-                                  _downPointers.length > 1));
-                      _gestureScaled = false;
-                      _gesturePointers = details.pointerCount;
-                      _gestureZoom = _zoom;
+                    // Adding/removing a finger changes the focal point. Rebase so
+                    // that transition does not jump to another calendar time.
+                    if (_gesturePointers != details.pointerCount) {
                       _gestureAnchor = _timeAt(
                         details.localFocalPoint.dx,
                         width,
-                        pixelsPerHour,
+                        baseline * _zoom,
                       );
-                      if (!_gestureHadMultiplePointers && _lanes.hasClients) {
-                        _verticalDrag = _lanes.position.drag(
-                          DragStartDetails(
-                            globalPosition: details.focalPoint,
-                            localPosition: details.localFocalPoint,
-                          ),
-                          () => _verticalDrag = null,
-                        );
-                      }
-                    },
-                    onScaleUpdate: (details) {
-                      if (!_gestureTrackpad && details.pointerCount > 1) {
-                        _gestureHadMultiplePointers = true;
-                      }
-                      // Pan/zoom events identify trackpads, regardless of whether
-                      // the recognizer reports zero or virtual multiple pointers.
-                      // Native trackpad momentum must never get a second fling.
-                      if ((details.scale - 1).abs() > 0.0001) {
-                        _gestureScaled = true;
-                      }
-                      // Adding/removing a finger changes the focal point. Rebase so
-                      // that transition does not jump to another calendar time.
-                      if (_gesturePointers != details.pointerCount) {
-                        _gestureAnchor = _timeAt(
-                          details.localFocalPoint.dx,
-                          width,
-                          baseline * _zoom,
-                        );
-                        _gestureZoom = _zoom / details.scale;
-                        _gesturePointers = details.pointerCount;
-                      }
-                      final next = (_gestureZoom * details.scale)
-                          .clamp(1.0, 24.0)
-                          .toDouble();
-                      final anchor = _gestureAnchor;
-                      if (anchor == null) return;
-                      final center = anchor.subtract(
-                        Duration(
-                          microseconds:
-                              ((details.localFocalPoint.dx - width / 2) /
-                                      (baseline * next) *
-                                      _microsecondsPerHour)
-                                  .round(),
+                      _gestureZoom = _zoom / details.scale;
+                      _gesturePointers = details.pointerCount;
+                    }
+                    final next = (_gestureZoom * details.scale)
+                        .clamp(1.0, 24.0)
+                        .toDouble();
+                    final anchor = _gestureAnchor;
+                    if (anchor == null) return;
+                    final center = anchor.subtract(
+                      Duration(
+                        microseconds:
+                            ((details.localFocalPoint.dx - width / 2) /
+                                    (baseline * next) *
+                                    _microsecondsPerHour)
+                                .round(),
+                      ),
+                    );
+                    if (next != _zoom) setState(() => _zoom = next);
+                    _visibleCenter.value = center;
+                    if ((_gestureTrackpad || details.pointerCount <= 1) &&
+                        !_gestureHadMultiplePointers &&
+                        !_gestureScaled) {
+                      _verticalDrag?.update(
+                        DragUpdateDetails(
+                          delta: Offset(0, details.focalPointDelta.dy),
+                          primaryDelta: details.focalPointDelta.dy,
+                          globalPosition: details.focalPoint,
+                          localPosition: details.localFocalPoint,
                         ),
                       );
-                      if (next != _zoom || center != _center) {
-                        setState(() {
-                          _zoom = next;
-                          _center = center;
-                        });
-                      }
-                      if ((_gestureTrackpad || details.pointerCount <= 1) &&
-                          !_gestureHadMultiplePointers &&
-                          !_gestureScaled) {
-                        _verticalDrag?.update(
-                          DragUpdateDetails(
-                            delta: Offset(0, details.focalPointDelta.dy),
-                            primaryDelta: details.focalPointDelta.dy,
-                            globalPosition: details.focalPoint,
-                            localPosition: details.localFocalPoint,
-                          ),
-                        );
-                      } else {
-                        final drag = _verticalDrag;
-                        _verticalDrag = null;
-                        drag?.cancel();
-                      }
-                    },
-                    onScaleEnd: (details) {
-                      final hadAnchor = _gestureAnchor != null;
-                      _gestureAnchor = null;
+                    } else {
                       final drag = _verticalDrag;
                       _verticalDrag = null;
-                      drag?.end(
-                        DragEndDetails(
-                          velocity: Velocity(
-                            pixelsPerSecond: Offset(
-                              0,
-                              _canFling
-                                  ? details.velocity.pixelsPerSecond.dy
-                                  : 0,
-                            ),
+                      drag?.cancel();
+                    }
+                  },
+                  onScaleEnd: (details) {
+                    final hadAnchor = _gestureAnchor != null;
+                    _gestureAnchor = null;
+                    final drag = _verticalDrag;
+                    _verticalDrag = null;
+                    drag?.end(
+                      DragEndDetails(
+                        velocity: Velocity(
+                          pixelsPerSecond: Offset(
+                            0,
+                            _canFling ? details.velocity.pixelsPerSecond.dy : 0,
                           ),
-                          primaryVelocity: _canFling
-                              ? details.velocity.pixelsPerSecond.dy
-                              : 0,
                         ),
+                        primaryVelocity: _canFling
+                            ? details.velocity.pixelsPerSecond.dy
+                            : 0,
+                      ),
+                    );
+                    _releaseVerticalHold();
+                    if (hadAnchor) {
+                      _startFling(
+                        details.velocity.pixelsPerSecond,
+                        baseline * _zoom,
                       );
-                      _releaseVerticalHold();
-                      if (hadAnchor) {
-                        _startFling(
-                          details.velocity.pixelsPerSecond,
-                          baseline * _zoom,
-                        );
-                      }
-                    },
-                    child: CustomPaint(
-                      foregroundPainter: _TimelineNowPainter(
-                        center: _center,
-                        now: widget.now,
-                        pixelsPerHour: pixelsPerHour,
-                        color: theme.colorScheme.error,
-                      ),
-                      child: Column(
-                        children: [
-                          SizedBox(
-                            height: _headerHeight,
-                            width: width,
-                            child: CustomPaint(painter: painter),
-                          ),
-                          Expanded(
-                            child: ListenableBuilder(
-                              listenable: _lanes,
-                              builder: (context, _) => LayoutBuilder(
-                                builder: (context, laneConstraints) {
-                                  final height = laneConstraints.maxHeight;
-                                  if (_laneViewportHeight != height) {
-                                    _laneViewportHeight = height;
-                                    _retainedLaneExtent = null;
-                                  }
-                                  final previousOffset = _lanes.hasClients
-                                      ? _lanes.offset
-                                      : 0.0;
-                                  final placementsInTime = placements
-                                      .where(
-                                        (placement) =>
-                                            placement.paintEnd.isAfter(left) &&
-                                            placement.paintStart.isBefore(
-                                              right,
-                                            ),
-                                      )
-                                      .toList(growable: false);
-                                  final displayedLaneCount = placementsInTime
-                                      .fold<int>(
-                                        0,
-                                        (count, placement) =>
-                                            math.max(count, placement.lane + 1),
-                                      );
-                                  final contentExtent = math.max(
-                                    0.0,
-                                    (displayedLaneCount + 1) * laneHeight +
-                                        12 -
-                                        height,
-                                  );
-                                  // Keep an old lower position when the date changes.
-                                  // Scrolling up releases it, leaving one spare lane.
-                                  _retainedLaneExtent = math.max(
-                                    contentExtent,
-                                    math.min(
-                                      _retainedLaneExtent ?? contentExtent,
-                                      math.max(0.0, previousOffset),
-                                    ),
-                                  );
-                                  final contentHeight =
-                                      height + _retainedLaneExtent!;
-                                  // Filtering and resizing may clamp the offset
-                                  // in this frame. Cull at that new position.
-                                  final offset = previousOffset
-                                      .clamp(0.0, _retainedLaneExtent!)
-                                      .toDouble();
-                                  final visible = placementsInTime
-                                      .where(
-                                        (placement) =>
-                                            (placement.lane + 1) * laneHeight >=
-                                                offset &&
-                                            placement.lane * laneHeight + 12 <=
-                                                offset + height,
-                                      )
-                                      .toList(growable: false);
-                                  return Stack(
-                                    fit: StackFit.expand,
-                                    children: [
-                                      CustomPaint(
-                                        painter: _TimelineGridPainter(
-                                          center: _center,
-                                          now: widget.now,
-                                          pixelsPerHour: pixelsPerHour,
-                                          cellWidth: cellWidth,
-                                          scheme: theme.colorScheme,
-                                          text: _gridText!,
-                                          header: false,
-                                          l10n: l10n,
-                                        ),
-                                      ),
-                                      ScrollConfiguration(
-                                        behavior: ScrollConfiguration.of(
-                                          context,
-                                        ).copyWith(scrollbars: false),
-                                        // Preserve overscroll when horizontal
-                                        // panning changes the content height.
-                                        child: CustomScrollView(
-                                          key: const ValueKey(
-                                            'agenda-timeline-lanes',
-                                          ),
-                                          controller: _lanes,
-                                          physics: const BouncingScrollPhysics(
-                                            parent:
-                                                NeverScrollableScrollPhysics(),
-                                          ),
-                                          slivers: [
-                                            SliverToBoxAdapter(
-                                              child: SizedBox(
-                                                height: contentHeight,
-                                                width: width,
-                                                child: Stack(
-                                                  clipBehavior: Clip.hardEdge,
-                                                  children: [
-                                                    for (final placement
-                                                        in visible)
-                                                      _buildEntry(
-                                                        context,
-                                                        placement,
-                                                        width,
-                                                        pixelsPerHour,
-                                                        laneHeight,
-                                                      ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      if (widget.entries.isEmpty)
-                                        Center(
-                                          child: IgnorePointer(
-                                            child: Padding(
-                                              padding: const EdgeInsets.all(24),
-                                              child: Text(
-                                                l10n.agendaTimelineEmpty,
-                                                textAlign: TextAlign.center,
-                                                style: theme.textTheme.bodyLarge
-                                                    ?.copyWith(
-                                                      color: theme
-                                                          .colorScheme
-                                                          .onSurfaceVariant,
-                                                    ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                    }
+                  },
+                  child: ListenableBuilder(
+                    listenable: _visibleCenter,
+                    builder: (context, _) => _buildViewport(
+                      context,
+                      placements: placements,
+                      width: width,
+                      cellWidth: cellWidth,
+                      pixelsPerHour: pixelsPerHour,
                     ),
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         );
       },
+    );
+  }
+
+  Widget _buildViewport(
+    BuildContext context, {
+    required List<AgendaTimelinePlacement> placements,
+    required double width,
+    required double cellWidth,
+    required double pixelsPerHour,
+  }) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final laneHeight = _laneHeight;
+    final left = _timeAt(0, width, pixelsPerHour);
+    final right = _timeAt(width, width, pixelsPerHour);
+    final placementsInTime = <AgendaTimelinePlacement>[];
+    var displayedLaneCount = 0;
+    for (final placement in placements) {
+      if (placement.paintEnd.isAfter(left) &&
+          placement.paintStart.isBefore(right)) {
+        placementsInTime.add(placement);
+        displayedLaneCount = math.max(displayedLaneCount, placement.lane + 1);
+      }
+    }
+    final painter = _TimelineGridPainter(
+      center: _center,
+      now: widget.now,
+      pixelsPerHour: pixelsPerHour,
+      cellWidth: cellWidth,
+      scheme: theme.colorScheme,
+      text: _gridText!,
+      header: true,
+      l10n: l10n,
+    );
+    return CustomPaint(
+      foregroundPainter: _TimelineNowPainter(
+        center: _center,
+        now: widget.now,
+        pixelsPerHour: pixelsPerHour,
+        color: theme.colorScheme.error,
+      ),
+      child: Column(
+        children: [
+          SizedBox(
+            height: _headerHeight,
+            width: width,
+            child: CustomPaint(painter: painter),
+          ),
+          Expanded(
+            child: ListenableBuilder(
+              listenable: _lanes,
+              builder: (context, _) => LayoutBuilder(
+                builder: (context, laneConstraints) {
+                  final height = laneConstraints.maxHeight;
+                  if (_laneViewportHeight != height) {
+                    _laneViewportHeight = height;
+                    _retainedLaneExtent = null;
+                  }
+                  final previousOffset = _lanes.hasClients
+                      ? _lanes.offset
+                      : 0.0;
+                  final contentExtent = math.max(
+                    0.0,
+                    (displayedLaneCount + 1) * laneHeight + 12 - height,
+                  );
+                  // Keep an old lower position when the date changes.
+                  // Scrolling up releases it, leaving one spare lane.
+                  _retainedLaneExtent = math.max(
+                    contentExtent,
+                    math.min(
+                      _retainedLaneExtent ?? contentExtent,
+                      math.max(0.0, previousOffset),
+                    ),
+                  );
+                  final contentHeight = height + _retainedLaneExtent!;
+                  // Filtering and resizing may clamp the offset
+                  // in this frame. Cull at that new position.
+                  final offset = previousOffset
+                      .clamp(0.0, _retainedLaneExtent!)
+                      .toDouble();
+                  final visible = placementsInTime.where(
+                    (placement) =>
+                        (placement.lane + 1) * laneHeight >= offset &&
+                        placement.lane * laneHeight + 12 <= offset + height,
+                  );
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      CustomPaint(
+                        painter: _TimelineGridPainter(
+                          center: _center,
+                          now: widget.now,
+                          pixelsPerHour: pixelsPerHour,
+                          cellWidth: cellWidth,
+                          scheme: theme.colorScheme,
+                          text: _gridText!,
+                          header: false,
+                          l10n: l10n,
+                        ),
+                      ),
+                      ScrollConfiguration(
+                        behavior: ScrollConfiguration.of(context)
+                            .copyWith(scrollbars: false),
+                        // Preserve overscroll when horizontal
+                        // panning changes the content height.
+                        child: CustomScrollView(
+                          key: const ValueKey('agenda-timeline-lanes'),
+                          controller: _lanes,
+                          physics: const BouncingScrollPhysics(
+                            parent: NeverScrollableScrollPhysics(),
+                          ),
+                          slivers: [
+                            SliverToBoxAdapter(
+                              child: SizedBox(
+                                height: contentHeight,
+                                width: width,
+                                child: Stack(
+                                  clipBehavior: Clip.hardEdge,
+                                  children: [
+                                    for (final placement in visible)
+                                      _buildEntry(
+                                        context,
+                                        placement,
+                                        width,
+                                        pixelsPerHour,
+                                        laneHeight,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (widget.entries.isEmpty)
+                        Center(
+                          child: IgnorePointer(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Text(
+                                l10n.agendaTimelineEmpty,
+                                textAlign: TextAlign.center,
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -749,9 +743,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     final barWidth = entry.isDeadline
         ? spanWidth(placement.paintStart, placement.paintEnd)
         : math.max(0.0, right - left);
-    final cardWidth = entry.isDeadline
-        ? spanWidth(placement.start, placement.layoutEnd)
-        : barWidth;
+    final cardWidth = entry.isDeadline ? 144.0 * _fontScale : barWidth;
     final nextStart = _nextStartById[entry.id];
     final availableWidth = nextStart == null
         ? double.infinity
@@ -783,7 +775,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
       top: placement.lane * laneHeight + 12,
       width: tapWidth,
       height: laneHeight - 12,
-      child: RepaintBoundary(child: card),
+      child: card,
     );
   }
 }
