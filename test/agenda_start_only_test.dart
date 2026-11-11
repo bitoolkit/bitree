@@ -115,15 +115,20 @@ void main() {
         startsAt: _opens.add(const Duration(hours: 12)),
         endsAt: _opens.add(const Duration(hours: 14)),
       );
-      final placements = layoutAgendaTimeline(
-        [open, next],
-        minimumEventSpan: const Duration(hours: 1),
-        deadlineCardSpan: const Duration(hours: 6),
-        deadlineTailDaySpan: const Duration(days: 1),
-      );
-      expect(placements.map((placement) => placement.lane), [0, 0]);
-      expect(placements.first.paintEnd, next.startsAt);
-      expect(placements.first.layoutEnd, _opens.add(const Duration(hours: 6)));
+      for (final zoom in [1.0, 4.0, 24.0]) {
+        final placements = layoutAgendaTimeline(
+          [open, next],
+          minimumEventSpan: const Duration(hours: 1),
+          deadlineCardSpan: const Duration(hours: 6),
+          zoom: zoom,
+        );
+        expect(placements.map((placement) => placement.lane), [0, 0]);
+        expect(placements.first.paintEnd, next.startsAt);
+        expect(
+          placements.first.layoutEnd,
+          _opens.add(Duration(minutes: (360 / zoom).round())),
+        );
+      }
     });
 
     test(
@@ -133,7 +138,6 @@ void main() {
           [_openEnded(tailDays: 6)],
           minimumEventSpan: const Duration(hours: 1),
           deadlineCardSpan: const Duration(hours: 6),
-          deadlineTailDaySpan: const Duration(days: 1),
         ).single;
 
         expect(placement.start, _opens);
@@ -152,7 +156,6 @@ void main() {
         [_due(tailDays: 6)],
         minimumEventSpan: const Duration(hours: 1),
         deadlineCardSpan: const Duration(hours: 6),
-        deadlineTailDaySpan: const Duration(days: 1),
       ).single;
 
       expect(placement.start, _opens.subtract(const Duration(hours: 6)));
@@ -355,12 +358,12 @@ void main() {
       await tester.pumpAndSettle();
       final after = bar(tester, open);
 
-      // Card and tail keep their screen width while zooming.
+      // The tail keeps its calendar span as the time axis expands.
       expect(
         find.byKey(ValueKey(('agenda-timeline-bar', open.id))),
         findsOneWidget,
       );
-      expect(after.width, closeTo(before.width, .001));
+      expect(after.width, closeTo(before.width * 24, .001));
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     });

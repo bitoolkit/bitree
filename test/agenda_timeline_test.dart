@@ -343,7 +343,6 @@ void main() {
       entries,
       minimumEventSpan: const Duration(hours: 48),
       deadlineCardSpan: const Duration(days: 2),
-      deadlineTailDaySpan: const Duration(days: 1),
     );
     expect(zoomedOut.map((placement) => placement.lane), [0, 1]);
     expect(zoomedOut.first.start, first.startsAt);
@@ -354,11 +353,11 @@ void main() {
     );
     final zoomedIn = layoutAgendaTimeline(
       entries,
-      minimumEventSpan: const Duration(hours: 2),
-      deadlineCardSpan: const Duration(hours: 2),
-      deadlineTailDaySpan: const Duration(hours: 1),
+      minimumEventSpan: const Duration(hours: 48),
+      deadlineCardSpan: const Duration(days: 2),
+      zoom: 24,
     );
-    expect(zoomedIn.map((placement) => placement.lane), [0, 0]);
+    expect(zoomedIn.map((placement) => placement.lane), [0, 1]);
     expect(zoomedIn.map((placement) => placement.end), [
       first.endsAt,
       second.endsAt,
@@ -383,7 +382,6 @@ void main() {
       [long, ddl],
       minimumEventSpan: const Duration(days: 2),
       deadlineCardSpan: const Duration(days: 2),
-      deadlineTailDaySpan: const Duration(days: 1),
     );
     final eventPlacement = placements.singleWhere(
       (placement) => placement.entry == long,
@@ -420,41 +418,195 @@ void main() {
         startsAt: ddl.dueAt.subtract(const Duration(hours: 12)),
         endsAt: ddl.dueAt.subtract(const Duration(hours: 10)),
       );
-      final placements = layoutAgendaTimeline(
-        [ddl, overlapping],
-        minimumEventSpan: const Duration(minutes: 1),
-        deadlineCardSpan: const Duration(hours: 6),
-        deadlineTailDaySpan: const Duration(days: 1),
-      );
-      final reservation = placements.singleWhere((p) => p.entry == ddl);
-      expect(reservation.start, ddl.dueAt.subtract(const Duration(hours: 6)));
-      expect(reservation.paintStart, overlapping.endsAt);
-      expect(reservation.end, ddl.dueAt);
-      expect(placements.map((p) => p.lane).toSet(), hasLength(1));
+      for (final zoom in [1.0, 4.0, 24.0]) {
+        final placements = layoutAgendaTimeline(
+          [ddl, overlapping],
+          minimumEventSpan: const Duration(minutes: 1),
+          deadlineCardSpan: const Duration(hours: 6),
+          zoom: zoom,
+        );
+        final reservation = placements.singleWhere((p) => p.entry == ddl);
+        expect(
+          reservation.start,
+          ddl.dueAt.subtract(Duration(minutes: (360 / zoom).round())),
+        );
+        expect(reservation.paintStart, overlapping.endsAt);
+        expect(reservation.end, ddl.dueAt);
+        expect(placements.map((p) => p.lane).toSet(), hasLength(1));
+      }
     });
 
-    testWidgets('A $days-day DDL tail keeps its configured width on zoom', (
-      tester,
-    ) async {
-      final ddl = AgendaEntry(
-        id: 'custom',
-        title: '作业',
+    for (final startOnly in [false, true]) {
+      testWidgets(
+        'A $days-day DDL tail scales with calendar time on zoom, startOnly=$startOnly',
+        (tester) async {
+          final ddl = AgendaEntry(
+            id: 'custom',
+            title: '作业',
+            kind: AgendaKind.deadline,
+            startsAt: _date.add(const Duration(hours: 13)),
+            tailDays: days,
+            startOnly: startOnly,
+          );
+          await _show(tester, [ddl]);
+          final before = tester.getRect(_paintedBar(ddl));
+          expect(before.width, closeTo(math.max(144, 48 * (days - .25)), .001));
+          for (final zoom in [2.0, 8.0, 24.0, 4.0, 1.0]) {
+            tester.widget<Slider>(find.byType(Slider)).onChanged!(zoom);
+            await tester.pumpAndSettle();
+            final after = tester.getRect(_paintedBar(ddl));
+            expect(
+              after.width,
+              closeTo(math.max(144, 48 * (days - .25) * zoom), .001),
+            );
+            expect(
+              startOnly ? after.left : after.right,
+              closeTo(195 + 2 * zoom, .001),
+            );
+            expect(after.top, closeTo(before.top, .001));
+            expect(tester.getRect(_bar(ddl)).width, closeTo(144, .001));
+          }
+          expect(tester.takeException(), isNull);
+          await tester.pumpWidget(const SizedBox());
+        },
+      );
+    }
+  }
+
+  testWidgets('Zoom keeps mixed entries in their original lanes', (
+    tester,
+  ) async {
+    final entries = [
+      for (final hour in [12, 14, 16])
+        AgendaEntry(
+          id: 'zoom-ddl-$hour',
+          title: '作业 $hour',
+          kind: AgendaKind.deadline,
+          startsAt: _date.add(Duration(hours: hour)),
+        ),
+      _event('zoom-event', 10),
+      AgendaEntry(
+        id: 'zoom-open',
+        title: '开放测验',
         kind: AgendaKind.deadline,
         startsAt: _date.add(const Duration(hours: 13)),
-        tailDays: days,
-      );
-      await _show(tester, [ddl]);
-      final before = tester.getRect(_paintedBar(ddl));
-      expect(before.width, closeTo(math.max(144, 48 * (days - .25)), .001));
-      tester.widget<Slider>(find.byType(Slider)).onChanged!(24);
+        startOnly: true,
+      ),
+    ];
+    await _show(tester, entries);
+    final originalTops = {
+      for (final entry in entries)
+        entry.id: tester.getRect(_paintedBar(entry)).top,
+    };
+    for (final zoom in [1.5, 4.0, 12.0, 24.0, 8.0, 2.0, 1.0]) {
+      tester.widget<Slider>(find.byType(Slider)).onChanged!(zoom);
       await tester.pumpAndSettle();
-      final after = tester.getRect(_paintedBar(ddl));
-      expect(after.width, closeTo(before.width, .001));
-      expect(after.right, closeTo(243, .001));
+      for (final entry in entries) {
+        expect(
+          tester.getRect(_paintedBar(entry)).top,
+          closeTo(originalTops[entry.id]!, .001),
+          reason: '${entry.id}, zoom=$zoom',
+        );
+      }
+    }
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
+    'Pinching preserves lanes, focal time and the vertical position',
+    (tester) async {
+      final first = AgendaEntry(
+        id: 'pinch-first',
+        title: '第一份作业',
+        kind: AgendaKind.deadline,
+        startsAt: _date.add(const Duration(hours: 12)),
+      );
+      final second = AgendaEntry(
+        id: 'pinch-second',
+        title: '第二份作业',
+        kind: AgendaKind.deadline,
+        startsAt: _date.add(const Duration(hours: 24)),
+      );
+      await _show(tester, [first, second]);
+      final originalTop = tester.getRect(_paintedBar(second)).top;
+      final left = await tester.startGesture(
+        const Offset(185, 600),
+        pointer: 1,
+      );
+      final right = await tester.startGesture(
+        const Offset(205, 600),
+        pointer: 2,
+      );
+      await left.moveTo(const Offset(160, 600));
+      await right.moveTo(const Offset(230, 600));
+      await tester.pump();
+      final initialZoom = tester.widget<Slider>(find.byType(Slider)).value;
+      final initialRight = tester.getRect(_paintedBar(first)).right;
+      final initialOffset = _lanePosition(tester).pixels;
+      for (var step = 1; step <= 14; step++) {
+        await left.moveTo(Offset(160 - step * 10, 600));
+        await right.moveTo(Offset(230 + step * 10, 600));
+        await tester.pump(const Duration(milliseconds: 16));
+        final zoom = tester.widget<Slider>(find.byType(Slider)).value;
+        expect(
+          tester.getRect(_paintedBar(first)).right,
+          closeTo(195 + (initialRight - 195) * zoom / initialZoom, .01),
+        );
+        expect(
+          tester.getRect(_paintedBar(second)).top,
+          closeTo(originalTop, .01),
+        );
+        expect(_lanePosition(tester).pixels, closeTo(initialOffset, .01));
+      }
+      await right.up();
+      await tester.pump();
+      final beforeRelease = tester.getRect(_paintedBar(first)).right;
+      await left.up();
+      await tester.pumpAndSettle();
+      expect(
+        tester.getRect(_paintedBar(first)).right,
+        closeTo(beforeRelease, .01),
+      );
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
-    });
-  }
+    },
+  );
+
+  testWidgets('Ctrl-wheel zoom keeps the pointer time anchored', (
+    tester,
+  ) async {
+    final ddl = AgendaEntry(
+      id: 'wheel-zoom',
+      title: '作业',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(hours: 13)),
+    );
+    await _show(tester, [ddl]);
+    const anchor = Offset(140, 600);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    for (final delta in [-100.0, -200.0, -250.0, 150.0, 200.0]) {
+      final before = tester.getRect(_paintedBar(ddl));
+      final previousZoom = tester.widget<Slider>(find.byType(Slider)).value;
+      tester.binding.handlePointerEvent(
+        PointerScrollEvent(position: anchor, scrollDelta: Offset(0, delta)),
+      );
+      await tester.pumpAndSettle();
+      final zoom = tester.widget<Slider>(find.byType(Slider)).value;
+      final after = tester.getRect(_paintedBar(ddl));
+      expect(
+        after.right,
+        closeTo(
+          anchor.dx + (before.right - anchor.dx) * zoom / previousZoom,
+          .01,
+        ),
+      );
+      expect(after.top, closeTo(before.top, .01));
+    }
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
 
   testWidgets('Long DDL tails stay visible when the deadline is off screen', (
     tester,
@@ -498,7 +650,7 @@ void main() {
           brightness: brightness,
         );
         final viewport = tester.getRect(find.byType(AgendaTimeline));
-        void checkCards(double eventWidth) {
+        void checkCards(double eventWidth, {double zoom = 1}) {
           final rectangles = entries
               .map((entry) => tester.getRect(_paintedBar(entry)))
               .toList();
@@ -512,7 +664,7 @@ void main() {
           );
           expect(
             rectangles.last.width,
-            closeTo(math.max(180, 144 * scale), .001),
+            closeTo(math.max(180 * zoom, 144 * scale), .001),
           );
           for (var index = 0; index < rectangles.length; index++) {
             expect(
@@ -534,7 +686,7 @@ void main() {
         tester.widget<Slider>(find.byType(Slider)).onChanged!(24);
         await tester.pumpAndSettle();
         // At 48px/hour, the real five-minute duration is 4px, above the 2px floor.
-        checkCards(4);
+        checkCards(4, zoom: 24);
         final short = tester.getRect(_bar(first));
         await tester.tapAt(Offset(short.right - 12, short.center.dy));
         await tester.pumpAndSettle();

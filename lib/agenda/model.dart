@@ -93,8 +93,8 @@ class AgendaEntry {
   final AgendaColor? color;
   final AgendaEntryDetails? details;
 
-  /// Maximum gradient tail in baseline days. Other cards can shorten the tail;
-  /// its screen width stays fixed as the view zooms in.
+  /// Maximum gradient tail in calendar days. Other cards can shorten the tail;
+  /// it follows the timeline's time scale when zooming.
   final int tailDays;
 
   /// A deadline that only knows when it opened, with no due date at all —

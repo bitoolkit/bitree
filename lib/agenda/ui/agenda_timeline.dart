@@ -71,7 +71,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   List<AgendaEntry>? _cachedEntries;
   Duration? _cachedMinimumEventSpan;
   Duration? _cachedDeadlineCardSpan;
-  Duration? _cachedDeadlineTailDaySpan;
+  double? _cachedZoom;
   List<AgendaTimelinePlacement> _cachedPlacements = const [];
   final Map<String, DateTime> _nextStartById = {};
   final Map<String, AgendaTimelineEntry> _cards = {};
@@ -83,22 +83,21 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   List<AgendaTimelinePlacement> _layout(
     Duration minimumEventSpan,
     Duration deadlineCardSpan,
-    Duration deadlineTailDaySpan,
   ) {
     if (!identical(_cachedEntries, widget.entries) ||
         _cachedMinimumEventSpan != minimumEventSpan ||
         _cachedDeadlineCardSpan != deadlineCardSpan ||
-        _cachedDeadlineTailDaySpan != deadlineTailDaySpan) {
+        _cachedZoom != _zoom) {
       _cachedEntries = widget.entries;
       _cachedMinimumEventSpan = minimumEventSpan;
       _cachedDeadlineCardSpan = deadlineCardSpan;
-      _cachedDeadlineTailDaySpan = deadlineTailDaySpan;
+      _cachedZoom = _zoom;
       _cards.clear();
       _cachedPlacements = layoutAgendaTimeline(
         widget.entries,
         minimumEventSpan: minimumEventSpan,
         deadlineCardSpan: deadlineCardSpan,
-        deadlineTailDaySpan: deadlineTailDaySpan,
+        zoom: _zoom,
       );
       _nextStartById.clear();
       final nextByLane = <int, DateTime>{};
@@ -308,23 +307,15 @@ class _AgendaTimelineState extends State<AgendaTimeline>
         final laneHeight = _laneHeight;
         final deadlineCardWidth = 144.0 * _fontScale;
         final deadlineCardSpan = Duration(
-          microseconds:
-              (deadlineCardWidth / pixelsPerHour * _microsecondsPerHour).ceil(),
-        );
-        final deadlineTailDaySpan = Duration(
-          microseconds: (Duration.microsecondsPerDay / _zoom).round(),
+          microseconds: (deadlineCardWidth / baseline * _microsecondsPerHour)
+              .ceil(),
         );
         final minimumEventSpan = Duration(
           // The visual floor is fixed and does not scale with accessibility text.
-          microseconds:
-              (_minimumEventWidth / pixelsPerHour * _microsecondsPerHour)
-                  .ceil(),
+          microseconds: (_minimumEventWidth / baseline * _microsecondsPerHour)
+              .ceil(),
         );
-        final placements = _layout(
-          minimumEventSpan,
-          deadlineCardSpan,
-          deadlineTailDaySpan,
-        );
+        final placements = _layout(minimumEventSpan, deadlineCardSpan);
         final left = _timeAt(0, width, pixelsPerHour);
         final right = _timeAt(width, width, pixelsPerHour);
         final painter = _TimelineGridPainter(
