@@ -194,7 +194,12 @@ void main() {
     ));
     await tester.pump();
     final switcher = find.byKey(const ValueKey('agenda-event-info-bar-settings'));
-    await tester.ensureVisible(switcher);
+    // The settings list builds lazily, so scroll until the row exists.
+    await tester.scrollUntilVisible(
+      switcher,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     expect(tester.widget<SwitchListTile>(switcher).value, isTrue);
     await tester.tap(switcher);
