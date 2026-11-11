@@ -43,6 +43,14 @@ class CurrentTimeIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    if (axis.expanded) {
+      final minute =
+          now.difference(calendarDate(now)).inMicroseconds /
+          Duration.microsecondsPerMinute;
+      if (minute < axis.startMinute || minute >= axis.endMinute) {
+        return const SizedBox.shrink();
+      }
+    }
     final position = axis.expanded
         ? (time: now, section: axis.offsetAt(now, now))
         : timeIndicatorPositionAt(now);

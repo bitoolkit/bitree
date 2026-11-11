@@ -52,6 +52,11 @@ AgendaEntry _event(String id, int start, int end) => AgendaEntry(
   endsAt: _monday.add(Duration(minutes: end)),
 );
 
+final _fullDayBounds = [
+  _event('range-start', 6 * 1440, 6 * 1440 + 1),
+  _event('range-end', 7 * 1440 - 1, 7 * 1440),
+];
+
 ScrollPosition _position(WidgetTester tester) => tester
     .state<ScrollableState>(
       find
@@ -128,7 +133,12 @@ void main() {
     testWidgets('The eye button expands a non-scrolling day at $size, $scale', (
       tester,
     ) async {
-      await _showHome(tester, size: size, scale: scale);
+      await _showHome(
+        tester,
+        size: size,
+        scale: scale,
+        entries: _fullDayBounds,
+      );
       expect(find.text('口'), findsOneWidget);
       expect(find.text('目'), findsNothing);
       expect(
@@ -280,7 +290,7 @@ void main() {
     testWidgets(
       'Early/late selection at minute $minute saves a clock-aligned hour',
       (tester) async {
-        final controller = await _showHome(tester);
+        final controller = await _showHome(tester, entries: _fullDayBounds);
         await tester.tap(find.text('口'));
         await tester.pumpAndSettle();
         final finder = find.byType(TimetableGrid).first;
@@ -318,7 +328,9 @@ void main() {
         await tester.enterText(name, '晚间活动');
         await tester.tap(find.widgetWithText(FilledButton, '保存'));
         await tester.pumpAndSettle();
-        final saved = controller.agenda.entries.single;
+        final saved = controller.agenda.entries.firstWhere(
+          (entry) => entry.title == '晚间活动',
+        );
         expect(saved.startsAt, menu.timeRange!.start);
         expect(saved.endsAt, menu.timeRange!.end);
         expect(tester.takeException(), isNull);
@@ -329,7 +341,7 @@ void main() {
   testWidgets('The clock stays on its calendar day before and after 03:00', (
     tester,
   ) async {
-    await _showHome(tester);
+    await _showHome(tester, entries: _fullDayBounds);
     await tester.tap(find.text('口'));
     await tester.pumpAndSettle();
     final grid = tester.widget<TimetableGrid>(find.byType(TimetableGrid).first);
@@ -364,6 +376,90 @@ void main() {
       expect(tester.takeException(), isNull);
     }
   });
+
+  testWidgets(
+    'The expanded range fits this week and hides the clock outside it',
+    (tester) async {
+      await _showHome(tester);
+      await tester.tap(find.text('口'));
+      await tester.pumpAndSettle();
+      final grid = tester.widget<TimetableGrid>(
+        find.byType(TimetableGrid).first,
+      );
+      expect(grid.axis.startMinute, 8 * 60);
+      expect(grid.axis.endMinute, 21 * 60);
+      expect(find.text('00:00'), findsNothing);
+      expect(find.text('24:00'), findsNothing);
+      expect(find.text('08:00'), findsOneWidget);
+      expect(find.text('21:00'), findsOneWidget);
+      expect(_position(tester).maxScrollExtent, closeTo(0, 1e-7));
+      final paints = find.descendant(
+        of: find.byType(CurrentTimeIndicator).first,
+        matching: find.byType(CustomPaint),
+      );
+      for (final hour in [1, 10, 22]) {
+        (grid.currentTime as ValueNotifier<DateTime>).value = _monday.add(
+          Duration(hours: hour),
+        );
+        await tester.pump();
+        expect(paints, hour == 10 ? findsOneWidget : findsNothing);
+      }
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Week bounds combine different days, ignore pinned/completed entries and follow week changes',
+    (tester) async {
+      final controller = await _showHome(
+        tester,
+        entries: [
+          _event('周二早间', 1440 + 6 * 60 + 20, 1440 + 7 * 60),
+          _event('周六晚间', 5 * 1440 + 22 * 60 + 15, 5 * 1440 + 22 * 60 + 40),
+          _event('已完成', 0, 15).copyWith(done: true),
+          _event('已删除', 0, 15).copyWith(deleted: true),
+          AgendaEntry(
+            id: 'all-day',
+            title: '全天事项',
+            kind: AgendaKind.event,
+            startsAt: _monday,
+            endsAt: _monday.add(const Duration(days: 1)),
+            allDay: true,
+          ),
+          AgendaEntry(
+            id: 'deadline',
+            title: '午夜截止',
+            kind: AgendaKind.deadline,
+            startsAt: _monday.add(const Duration(hours: 23, minutes: 59)),
+          ),
+        ],
+      );
+      await tester.tap(find.text('口'));
+      await tester.pumpAndSettle();
+      TimetableGrid gridFor(int week) => tester.widget<TimetableGrid>(
+        find.descendant(
+          of: find.byWidgetPredicate(
+            (widget) => widget is Timetable && widget.week == week,
+          ),
+          matching: find.byType(TimetableGrid),
+        ),
+      );
+      expect(gridFor(1).axis.startMinute, 6 * 60);
+      expect(gridFor(1).axis.endMinute, 23 * 60);
+      expect(find.text('06:00'), findsOneWidget);
+      expect(find.text('23:00'), findsOneWidget);
+      expect(find.text('00:00'), findsNothing);
+      controller.timetable.selectWeek(2);
+      await tester.pumpAndSettle();
+      expect(gridFor(2).axis.startMinute, 0);
+      expect(gridFor(2).axis.endMinute, 1440);
+      controller.timetable.selectWeek(1);
+      await tester.pumpAndSettle();
+      expect(gridFor(1).axis.startMinute, 6 * 60);
+      expect(gridFor(1).axis.endMinute, 23 * 60);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   test('The expansion choice survives restart', () async {
     final preferences = MemoryPreferences();

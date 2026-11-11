@@ -22,6 +22,9 @@ class _TimetableBackground extends CustomPainter {
     const radius = Radius.circular(6);
 
     for (var section = 1; section < sectionTimes.length; section += 2) {
+      if (axis.sectionEnd(section + 1) <= axis.sectionStart(section + 1)) {
+        continue;
+      }
       paint.color = surfaceColor.withValues(alpha: 0.025);
       final band = Rect.fromLTWH(
         0,
@@ -48,6 +51,9 @@ class _TimetableBackground extends CustomPainter {
         for (var h = 0; h <= TimetableAxis.morningEnd ~/ 60; h++) h,
         for (var h = TimetableAxis.eveningStart ~/ 60; h <= 24; h++) h,
       ]) {
+        if (hour * 60 < axis.startMinute || hour * 60 > axis.endMinute) {
+          continue;
+        }
         final y = (axis.offsetForMinute(hour * 60.0) * rowHeight)
             .clamp(0.5, math.max(0.5, size.height - 0.5))
             .toDouble();
@@ -77,6 +83,8 @@ class _TimetableBackground extends CustomPainter {
   bool shouldRepaint(_TimetableBackground oldDelegate) =>
       rowHeight != oldDelegate.rowHeight ||
       axis.expanded != oldDelegate.axis.expanded ||
+      axis.startMinute != oldDelegate.axis.startMinute ||
+      axis.endMinute != oldDelegate.axis.endMinute ||
       surfaceColor != oldDelegate.surfaceColor ||
       todayColumn != oldDelegate.todayColumn ||
       todayBackground != oldDelegate.todayBackground;
@@ -95,17 +103,41 @@ class _ExpandedTimeLabels extends StatelessWidget {
     final scale = MediaQuery.textScalerOf(context).scale(1);
     final color = Theme.of(context).colorScheme.onSurfaceVariant;
     final height = axis.length * rowHeight;
-    final times = <int, ({String text, bool teaching})>{
-      for (var hour = 0; hour <= TimetableAxis.morningEnd ~/ 60; hour++)
-        hour * 60: (
-          text: '${hour.toString().padLeft(2, '0')}:00',
-          teaching: false,
-        ),
-      for (final period in sectionTimes)
-        TimetableAxis.clockMinute(period.$1): (text: period.$1, teaching: true),
-      for (var hour = TimetableAxis.eveningStart ~/ 60; hour <= 24; hour++)
-        hour * 60: (text: '$hour:00', teaching: false),
-    }.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+    String clockLabel(int minute) =>
+        '${(minute ~/ 60).toString().padLeft(2, '0')}:${(minute % 60).toString().padLeft(2, '0')}';
+    final times =
+        <int, ({String text, bool teaching})>{
+              axis.startMinute: (
+                text: clockLabel(axis.startMinute),
+                teaching: false,
+              ),
+              axis.endMinute: (
+                text: clockLabel(axis.endMinute),
+                teaching: false,
+              ),
+              for (var hour = 0; hour <= TimetableAxis.morningEnd ~/ 60; hour++)
+                hour * 60: (
+                  text: '${hour.toString().padLeft(2, '0')}:00',
+                  teaching: false,
+                ),
+              for (final period in sectionTimes)
+                TimetableAxis.clockMinute(period.$1): (
+                  text: period.$1,
+                  teaching: true,
+                ),
+              for (
+                var hour = TimetableAxis.eveningStart ~/ 60;
+                hour <= 24;
+                hour++
+              )
+                hour * 60: (text: '$hour:00', teaching: false),
+            }.entries
+            .where(
+              (entry) =>
+                  entry.key >= axis.startMinute && entry.key <= axis.endMinute,
+            )
+            .toList()
+          ..sort((a, b) => a.key.compareTo(b.key));
     final ticks = [
       for (final time in times)
         axis.offsetForMinute(time.key.toDouble()) * rowHeight,
@@ -171,31 +203,33 @@ class _ExpandedTimeLabels extends StatelessWidget {
               ),
             ),
           for (var section = 1; section <= sectionTimes.length; section++)
-            Positioned(
-              top: axis.sectionStart(section) * rowHeight,
-              height:
-                  (axis.sectionEnd(section) - axis.sectionStart(section)) *
-                  rowHeight,
-              left: 0,
-              right: 0,
-              child: Semantics(
-                label: context.l10n.sectionSemantics(
-                  section,
-                  sectionTimes[section - 1].$1,
-                  sectionTimes[section - 1].$2,
-                ),
-                child: ExcludeSemantics(
-                  child: Center(
-                    child: SizedBox(
-                      height: sectionNumberHeight(section),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          '$section',
-                          style: TextStyle(
-                            fontSize: 11,
-                            height: 1,
-                            color: color,
+            if (axis.sectionEnd(section) > axis.sectionStart(section))
+              Positioned(
+                top: axis.sectionStart(section) * rowHeight,
+                height:
+                    (axis.sectionEnd(section) - axis.sectionStart(section)) *
+                    rowHeight,
+                left: 0,
+                right: 0,
+                child: Semantics(
+                  label: context.l10n.sectionSemantics(
+                    section,
+                    sectionTimes[section - 1].$1,
+                    sectionTimes[section - 1].$2,
+                  ),
+                  child: ExcludeSemantics(
+                    child: Center(
+                      child: SizedBox(
+                        height: sectionNumberHeight(section),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '$section',
+                            style: TextStyle(
+                              fontSize: 11,
+                              height: 1,
+                              color: color,
+                            ),
                           ),
                         ),
                       ),
@@ -203,7 +237,6 @@ class _ExpandedTimeLabels extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
         ],
       ),
     );

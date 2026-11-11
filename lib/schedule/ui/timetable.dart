@@ -11,7 +11,6 @@ import '../controller.dart';
 import '../height_mode.dart';
 import '../layout.dart';
 import '../time_position.dart';
-import '../timetable_axis.dart';
 import 'timetable_grid.dart';
 import 'timetable_header.dart';
 
@@ -272,7 +271,7 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
           widget.agenda.entries,
         ),
     ];
-    final axis = TimetableAxis(expanded: widget.expanded);
+    final axis = weekTimetableAxis(days, monday, expanded: widget.expanded);
     final items = [
       for (var day = 0; day < 7; day++)
         days[day]
@@ -333,7 +332,11 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
                         : null,
                     child: RepaintBoundary(
                       child: TimetableGrid(
-                        key: ValueKey(widget.expanded),
+                        key: ValueKey((
+                          widget.expanded,
+                          axis.startMinute,
+                          axis.endMinute,
+                        )),
                         axis: axis,
                         timetable: widget.timetable,
                         agenda: widget.agenda,

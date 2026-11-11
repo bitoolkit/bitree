@@ -6,9 +6,19 @@ import 'section_times.dart';
 /// Shared coordinates for cards, labels, the clock and pointer selection.
 /// One unit is the height of a teaching period, in either display mode.
 class TimetableAxis {
-  const TimetableAxis({this.expanded = false});
+  const TimetableAxis({
+    this.expanded = false,
+    this.startMinute = 0,
+    this.endMinute = dayEnd,
+  }) : assert(
+         startMinute >= 0 && endMinute <= dayEnd && startMinute < endMinute,
+       );
 
   final bool expanded;
+
+  /// Visible clock bounds in expanded mode; the teaching grid stays unchanged.
+  final int startMinute;
+  final int endMinute;
   static const morningEnd = 9 * 60;
   static const eveningStart = 21 * 60;
   static const compressionMidpoint = 3 * 60;
@@ -19,8 +29,9 @@ class TimetableAxis {
   ];
   static final _expandedOffsets = _buildExpandedOffsets();
 
-  double get length =>
-      expanded ? _expandedOffsets.last : sectionTimes.length.toDouble();
+  double get length => expanded
+      ? _expandedOffsets[endMinute] - _expandedOffsets[startMinute]
+      : sectionTimes.length.toDouble();
 
   static int clockMinute(String clock) {
     final parts = clock.split(':');
@@ -61,9 +72,11 @@ class TimetableAxis {
   double offsetForMinute(double minute) {
     minute = minute.clamp(0, dayEnd).toDouble();
     if (expanded) {
+      minute = minute.clamp(startMinute, endMinute).toDouble();
       final index = minute.floor();
-      if (index == dayEnd) return length;
-      return _expandedOffsets[index] +
+      if (index == endMinute) return length;
+      return _expandedOffsets[index] -
+          _expandedOffsets[startMinute] +
           (minute - index) *
               (_expandedOffsets[index + 1] - _expandedOffsets[index]);
     }
@@ -84,8 +97,9 @@ class TimetableAxis {
       final period = periods[index];
       return period.start + (offset - index) * (period.end - period.start);
     }
-    var low = 0;
-    var high = dayEnd;
+    offset += _expandedOffsets[startMinute];
+    var low = startMinute;
+    var high = endMinute;
     while (low + 1 < high) {
       final middle = (low + high) ~/ 2;
       if (_expandedOffsets[middle] <= offset) {
@@ -120,7 +134,9 @@ class TimetableAxis {
       final index = offset.floor().clamp(0, periods.length - 1);
       return periods[index];
     }
-    final minute = minuteAtOffset(offset).floor().clamp(0, dayEnd - 1);
+    final minute = minuteAtOffset(offset)
+        .floor()
+        .clamp(startMinute, endMinute - 1);
     final section = sectionAtMinute(minute);
     if (section != null) return periods[section - 1];
     final step = minute < morningEnd || minute >= eveningStart ? 60 : 15;
