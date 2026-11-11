@@ -61,15 +61,14 @@ class AdjustedDeadlineExtensionPainter extends CustomPainter {
         ..lineTo(x - size.height, size.height)
         ..close();
       final second = secondColor;
-      canvas.drawPath(
-        path,
-        second == null
-            ? Paint()
-                ..color = color.withValues(
-                  alpha: color.a * (index.isEven ? highOpacity : lowOpacity),
-                )
-            : Paint()..color = index.isEven ? color : second,
-      );
+      final band = second == null
+          ? color.withValues(
+              alpha: color.a * (index.isEven ? highOpacity : lowOpacity),
+            )
+          : index.isEven
+          ? color
+          : second;
+      canvas.drawPath(path, Paint()..color = band);
     }
     canvas.restore();
   }
