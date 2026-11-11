@@ -9,7 +9,6 @@ import '../controller.dart';
 import '../model.dart';
 import 'agenda_detail.dart';
 import 'agenda_operations.dart';
-import 'calendar_list.dart';
 import 'completion_text.dart';
 import 'timeline_colors.dart';
 
@@ -46,6 +45,10 @@ class AgendaListTile extends StatelessWidget {
       else if (entry.source != null)
         entry.source!.localizedLabel(l10n),
       if (entry.location.isNotEmpty) entry.location,
+      if (entry.hasAdjustedDeadline)
+        l10n.agendaCutoffOriginal(
+          localizedAgendaDateTime(l10n, entry.realDueAt),
+        ),
     ].join('  ');
     final description = localizedAgendaNotes(l10n, entry).trim();
     final hasDetails = description.isNotEmpty || subtitle.isNotEmpty;
@@ -55,7 +58,7 @@ class AgendaListTile extends StatelessWidget {
     final dueToday =
         entry.isDeadline &&
         !entry.done &&
-        calendarDate(entry.startsAt) == calendarDate(now);
+        calendarDate(entry.scheduledAt) == calendarDate(now);
     final timeColor = entry.overdue(now)
         ? scheme.error
         : dueToday
@@ -78,20 +81,16 @@ class AgendaListTile extends StatelessWidget {
           onInvoke: () =>
               deleteAgendaEntry(context, controller, entry, confirm: false),
         ),
-        rightAction: entry.isDeadline
-            ? TileSwipeAction(
-                label: entry.done
-                    ? l10n.agendaSwipeRestore
-                    : l10n.agendaSwipeDone,
-                releaseLabel: entry.done
-                    ? l10n.agendaSwipeRestoreRelease
-                    : l10n.agendaSwipeDoneRelease,
-                icon: entry.done ? Icons.undo_rounded : Icons.check_rounded,
-                background: scheme.primaryContainer,
-                foreground: scheme.onPrimaryContainer,
-                onInvoke: () => _complete(context),
-              )
-            : null,
+        rightAction: TileSwipeAction(
+          label: entry.done ? l10n.agendaSwipeRestore : l10n.agendaSwipeDone,
+          releaseLabel: entry.done
+              ? l10n.agendaSwipeRestoreRelease
+              : l10n.agendaSwipeDoneRelease,
+          icon: entry.done ? Icons.undo_rounded : Icons.check_rounded,
+          background: scheme.primaryContainer,
+          foreground: scheme.onPrimaryContainer,
+          onInvoke: () => _complete(context),
+        ),
         child: Material(
           type: MaterialType.transparency,
           child: InkWell(
@@ -106,24 +105,18 @@ class AgendaListTile extends StatelessWidget {
                 children: [
                   SizedBox.square(
                     dimension: 44,
-                    child: entry.isDeadline
-                        ? Tooltip(
-                            message: entry.done
-                                ? l10n.agendaMarkUndone
-                                : l10n.agendaMarkDone,
-                            child: Checkbox(
-                              value: entry.done,
-                              shape: const CircleBorder(),
-                              onChanged: controller.busy
-                                  ? null
-                                  : (_) => _complete(context, haptic: true),
-                            ),
-                          )
-                        : Icon(
-                            agendaIcon(entry.kind),
-                            size: 22,
-                            color: scheme.onSurfaceVariant,
-                          ),
+                    child: Tooltip(
+                      message: entry.done
+                          ? l10n.agendaMarkUndone
+                          : l10n.agendaMarkDone,
+                      child: Checkbox(
+                        value: entry.done,
+                        shape: const CircleBorder(),
+                        onChanged: controller.busy
+                            ? null
+                            : (_) => _complete(context, haptic: true),
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 4),
                   if (entryColors != null) ...[

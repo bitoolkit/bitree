@@ -2394,6 +2394,79 @@ class AppLocalizationsZh extends AppLocalizations {
   String get timetableHeightHint => '适应屏幕可一屏总览全部节次；正常高度保留舒适行高和纵向滚动。';
 
   @override
+  String get settingsDeadlineCutoff => 'DDL 伪提前';
+
+  @override
+  String get deadlineCutoffEnabled => '启用每日伪提前';
+
+  @override
+  String get deadlineCutoffDescription => '将时间段内的 DDL 伪提前至该段起点；不影响普通日程、考试或无截止日期测验。';
+
+  @override
+  String get deadlineCutoffStart => '开始时间';
+
+  @override
+  String get deadlineCutoffEnd => '结束时间';
+
+  @override
+  String get deadlineCutoffDisabled => '未启用';
+
+  @override
+  String deadlineCutoffSameDay(String start, String end) {
+    return '每天 $start–$end';
+  }
+
+  @override
+  String deadlineCutoffOvernight(String start, String end) {
+    return '每天 $start 至次日 $end';
+  }
+
+  @override
+  String deadlineCutoffInstant(String time) {
+    return '仅每天 $time 这一时刻（不是全天）';
+  }
+
+  @override
+  String get deadlineCutoffBoundaryHint => '开始和结束时刻均包含在区间内。结束早于开始时表示跨日；两者相同时仅匹配单个时刻。';
+
+  @override
+  String get deadlineCutoffPreserveHint => '真实截止时间保持不变。关闭后不再伪提前，但会保留已选择的开始和结束时间。';
+
+  @override
+  String get agendaAdjustedDeadline => '伪截止';
+
+  @override
+  String get agendaRealDeadline => '真实截止时间';
+
+  @override
+  String agendaCutoffOriginal(String time) {
+    return '真实截止：$time';
+  }
+
+  @override
+  String agendaCutoffAdjusted(String time) {
+    return '伪截止：$time';
+  }
+
+  @override
+  String get settingsAgendaLayoutDays => 'DDL 排版宽度';
+
+  @override
+  String get agendaLayoutDaysDescription => '统一控制 DDL、仅开始时间项目及伪提前 DDL 左侧信息区的排版宽度，覆盖原单条拖尾设置；渲染仍保持屏幕定宽。';
+
+  @override
+  String get agendaLayoutDaysUnit => '天';
+
+  @override
+  String get agendaLayoutDaysRange => '请输入 1–30 的整数';
+
+  @override
+  String get settingsAgendaEventInfoBar => '日程与考试信息栏';
+
+  @override
+  String get settingsAgendaEventInfoBarDescription => '控制泳道图中普通日程和考试左侧的信息栏是否显示；关闭后不再预留排版空间，开始与结束标线及中间时段不受影响。DDL 不受此开关影响。';
+
+  @override
   String releaseVersion(String channel, String version) {
     return '$channel $version';
   }

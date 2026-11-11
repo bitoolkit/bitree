@@ -39,7 +39,7 @@ Future<void> showAgendaDay(
               controller.entries
                   .where((entry) => entry.done && entry.occursOn(date))
                   .toList()
-                ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+                ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
           Widget row(AgendaEntry entry) => AgendaListTile(
             key: ValueKey(entry.id),
             controller: controller,

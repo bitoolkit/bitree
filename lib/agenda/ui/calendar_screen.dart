@@ -208,7 +208,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               loadStatus(),
               Expanded(
                 child: AgendaTimeline(
-                  controller: controller.agenda,
+                  controller: controller,
                   entries: entries,
                   now: now,
                   filter: (kind: _kind, term: selectedTerm),

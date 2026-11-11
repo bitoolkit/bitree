@@ -4326,6 +4326,132 @@ abstract class AppLocalizations {
   /// **'Fit to screen shows every period at once. Normal height keeps comfortable rows and vertical scrolling.'**
   String get timetableHeightHint;
 
+  /// No description provided for @settingsDeadlineCutoff.
+  ///
+  /// In en, this message translates to:
+  /// **'Deadline cutoff window'**
+  String get settingsDeadlineCutoff;
+
+  /// No description provided for @deadlineCutoffEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable daily cutoff window'**
+  String get deadlineCutoffEnabled;
+
+  /// No description provided for @deadlineCutoffDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Move DDLs within this window to its start. Events, exams and open-ended quizzes are unaffected.'**
+  String get deadlineCutoffDescription;
+
+  /// No description provided for @deadlineCutoffStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start time'**
+  String get deadlineCutoffStart;
+
+  /// No description provided for @deadlineCutoffEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'End time'**
+  String get deadlineCutoffEnd;
+
+  /// No description provided for @deadlineCutoffDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enabled'**
+  String get deadlineCutoffDisabled;
+
+  /// No description provided for @deadlineCutoffSameDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily, {start}–{end}'**
+  String deadlineCutoffSameDay(String start, String end);
+
+  /// No description provided for @deadlineCutoffOvernight.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily, {start} to {end} the next day'**
+  String deadlineCutoffOvernight(String start, String end);
+
+  /// No description provided for @deadlineCutoffInstant.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the instant {time} each day (not all day)'**
+  String deadlineCutoffInstant(String time);
+
+  /// No description provided for @deadlineCutoffBoundaryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Both endpoints are included. An end before the start crosses midnight; equal times match only one instant.'**
+  String get deadlineCutoffBoundaryHint;
+
+  /// No description provided for @deadlineCutoffPreserveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Actual deadlines stay unchanged. Turning this off retains your selected start and end times.'**
+  String get deadlineCutoffPreserveHint;
+
+  /// No description provided for @agendaAdjustedDeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjusted deadline'**
+  String get agendaAdjustedDeadline;
+
+  /// No description provided for @agendaRealDeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'Actual deadline'**
+  String get agendaRealDeadline;
+
+  /// No description provided for @agendaCutoffOriginal.
+  ///
+  /// In en, this message translates to:
+  /// **'Actual deadline: {time}'**
+  String agendaCutoffOriginal(String time);
+
+  /// No description provided for @agendaCutoffAdjusted.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjusted deadline: {time}'**
+  String agendaCutoffAdjusted(String time);
+
+  /// No description provided for @settingsAgendaLayoutDays.
+  ///
+  /// In en, this message translates to:
+  /// **'DDL layout width'**
+  String get settingsAgendaLayoutDays;
+
+  /// No description provided for @agendaLayoutDaysDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Use one layout width for deadlines, start-only items, and the left side of adjusted deadlines, overriding old per-item tails. Painted tails keep a fixed screen width.'**
+  String get agendaLayoutDaysDescription;
+
+  /// No description provided for @agendaLayoutDaysUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'days'**
+  String get agendaLayoutDaysUnit;
+
+  /// No description provided for @agendaLayoutDaysRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a whole number from 1 to 30'**
+  String get agendaLayoutDaysRange;
+
+  /// No description provided for @settingsAgendaEventInfoBar.
+  ///
+  /// In en, this message translates to:
+  /// **'Event information bar'**
+  String get settingsAgendaEventInfoBar;
+
+  /// No description provided for @settingsAgendaEventInfoBarDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the left information card for events and exams in the timeline. When off, its layout space is released; boundary lines, the filled interval, and deadlines are unaffected.'**
+  String get settingsAgendaEventInfoBarDescription;
+
   /// No description provided for @releaseVersion.
   ///
   /// In en, this message translates to:

@@ -74,7 +74,9 @@ class _AgendaEditorState extends State<_AgendaEditor> {
   late final _title = TextEditingController(text: widget.entryTitle);
   late final _location = TextEditingController(text: widget.entry?.location);
   late final _notes = TextEditingController(text: widget.entryNotes);
-  late int _tailDays = widget.entry?.tailDays ?? AgendaEntry.defaultTailDays;
+  // Preserve legacy per-entry metadata without offering an ineffective override.
+  late final int _tailDays =
+      widget.entry?.tailDays ?? AgendaEntry.defaultTailDays;
   late AgendaKind _kind = widget.kind;
   late DateTime _start = widget.entry?.startsAt ?? widget.startsAt;
   late DateTime _end =
@@ -176,6 +178,10 @@ class _AgendaEditorState extends State<_AgendaEditor> {
         location: _location.text.trim(),
         notes: _notes.text.trim(),
         done: widget.entry?.done ?? false,
+        examAutoCompletionHandled:
+            widget.entry?.examAutoCompletionHandled ?? false,
+        completionSchemaVersion: widget.entry?.completionSchemaVersion ??
+            AgendaEntry.currentCompletionSchemaVersion,
         term: widget.entry?.term ?? widget.term,
         source: widget.entry?.source,
         course: widget.entry?.course ?? '',
@@ -190,6 +196,7 @@ class _AgendaEditorState extends State<_AgendaEditor> {
         startOnly:
             _kind == AgendaKind.deadline && (widget.entry?.startOnly ?? false),
       ),
+      preserveCompletion: true,
     );
     if (!mounted) return;
     if (success) {
@@ -223,10 +230,6 @@ class _AgendaEditorState extends State<_AgendaEditor> {
 
   void _updateColor(AgendaColor? color) {
     setState(() => _color = color);
-  }
-
-  void _updateTailDays(int value) {
-    setState(() => _tailDays = value);
   }
 
   @override
@@ -354,7 +357,7 @@ class _AgendaEditorState extends State<_AgendaEditor> {
           ),
           const SizedBox(height: 8),
           if (_kind != AgendaKind.exam) _colorSelector(),
-          _moreOptions(theme),
+          _moreOptions(),
         ],
       ),
     );

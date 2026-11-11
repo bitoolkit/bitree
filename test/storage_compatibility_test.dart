@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:bitree/academics/model.dart';
 import 'package:bitree/academics/store.dart';
 import 'package:bitree/agenda/agenda_color.dart';
+import 'package:bitree/agenda/controller.dart';
 import 'package:bitree/agenda/deadline_source.dart';
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/store.dart';
@@ -435,6 +436,114 @@ void main() {
       });
     });
 
+    test('Versioned agenda retains colors, raw dates and reopened completion', () async {
+      final now = DateTime.utc(2030, 1, 3, 12);
+      final rawDue = DateTime.utc(2030, 1, 3, 7);
+      final examStart = DateTime.utc(2030, 1, 3, 9);
+      final store = _CountingAgendaStore();
+      await store.write([
+        AgendaEntry(
+          id: 'colored-ddl', title: '自定义作业', kind: AgendaKind.deadline,
+          startsAt: rawDue, color: const AgendaColor(0x803366CC),
+          deadlineCutoffWindow: const DeadlineCutoffWindow(enabled: true),
+        ),
+        AgendaEntry(
+          id: 'reopened-exam', title: '撤销考试', kind: AgendaKind.exam,
+          startsAt: examStart, endsAt: examStart.add(const Duration(hours: 2)),
+          examAutoCompletionHandled: true,
+        ),
+      ]);
+      store.writes = 0;
+      final controller = AgendaController(store, now: () => now);
+      addTearDown(controller.dispose);
+      controller.setDeadlineCutoff(const DeadlineCutoffWindow(enabled: true));
+      await controller.load();
+      expect(store.writes, 0);
+      final ddl = controller.entries.singleWhere((entry) => entry.id == 'colored-ddl');
+      expect(ddl.startsAt, rawDue);
+      expect(ddl.realDueAt, rawDue);
+      expect(ddl.dueAt, DateTime.utc(2030, 1, 2, 22));
+      expect(ddl.color, const AgendaColor(0x803366CC));
+      expect(ddl.copyWith(done: true).color, ddl.color);
+      final reopened = controller.entries.singleWhere((entry) => entry.id == 'reopened-exam');
+      expect(reopened.done, isFalse);
+      expect(reopened.examAutoCompletionHandled, isTrue);
+      expect(reopened.overdue(now), isTrue);
+      await controller.setDone('colored-ddl', true);
+      final document = jsonDecode(
+        await File('${directory.path}/agenda.json').readAsString(),
+      ) as Map<String, dynamic>;
+      expect(document['schemaVersion'], currentStorageSchemaVersion);
+      final rows = (document['entries'] as List).cast<Map<String, dynamic>>();
+      final storedDdl = rows.singleWhere((row) => row['id'] == 'colored-ddl');
+      expect(storedDdl['color'], 0x803366CC);
+      expect(storedDdl['startsAt'], rawDue.toIso8601String());
+      expect(storedDdl.containsKey('deadlineCutoffWindow'), isFalse);
+      expect(storedDdl.containsKey('dueAt'), isFalse);
+      expect(storedDdl['completionSchemaVersion'], AgendaEntry.currentCompletionSchemaVersion);
+      final restartStore = _CountingAgendaStore();
+      final restarted = AgendaController(restartStore, now: () => now.add(const Duration(days: 1)));
+      addTearDown(restarted.dispose);
+      await restarted.load();
+      await restarted.reconcileExamCompletion();
+      expect(restartStore.writes, 0);
+      expect(restarted.entries.singleWhere((entry) => entry.id == 'colored-ddl').color, ddl.color);
+      final exam = restarted.entries.singleWhere((entry) => entry.id == 'reopened-exam');
+      expect(exam.startsAt, examStart);
+      expect(exam.done, isFalse);
+      expect(exam.examAutoCompletionHandled, isTrue);
+    });
+
+    test('Legacy envelope and completion migrations run only once across undo', () async {
+      final now = DateTime.utc(2030, 1, 3, 12);
+      final start = DateTime.utc(2030, 1, 3, 9);
+      Map<String, dynamic> legacy(AgendaEntry entry) => entry.toJson()
+        ..remove('completionSchemaVersion')
+        ..remove('examAutoCompletionHandled');
+      final file = File('${directory.path}/agenda.json');
+      await file.writeAsString(jsonEncode([
+        legacy(AgendaEntry(
+          id: 'legacy-event', title: '旧日程', kind: AgendaKind.event,
+          startsAt: start, endsAt: start.add(const Duration(hours: 1)),
+          color: AgendaColor.coral,
+        )),
+        legacy(AgendaEntry(
+          id: 'legacy-exam', title: '旧考试', kind: AgendaKind.exam,
+          startsAt: start, endsAt: start.add(const Duration(hours: 2)),
+        )),
+      ]));
+      final store = _CountingAgendaStore();
+      final controller = AgendaController(store, now: () => now);
+      addTearDown(controller.dispose);
+      await controller.load();
+      // File-envelope migration and clock-aware completion migration are
+      // separate one-time writes, not competing schema versions.
+      expect(store.writes, 2);
+      expect(controller.entries.every((entry) => entry.done), isTrue);
+      expect(controller.entries.singleWhere((entry) => entry.id == 'legacy-event').color, AgendaColor.coral);
+      await controller.load();
+      await controller.reconcileExamCompletion();
+      expect(store.writes, 2);
+      expect(await controller.setDone('legacy-event', false), isTrue);
+      expect(await controller.setDone('legacy-exam', false), isTrue);
+      final beforeRestart = await file.readAsString();
+      final document = jsonDecode(beforeRestart) as Map<String, dynamic>;
+      expect(document['schemaVersion'], currentStorageSchemaVersion);
+      final rows = (document['entries'] as List).cast<Map<String, dynamic>>();
+      expect(rows.every((row) => row['completionSchemaVersion'] == AgendaEntry.currentCompletionSchemaVersion), isTrue);
+      expect(rows.singleWhere((row) => row['id'] == 'legacy-exam')['examAutoCompletionHandled'], isTrue);
+      expect(rows.singleWhere((row) => row['id'] == 'legacy-event')['color'], 'coral');
+      final restartedStore = _CountingAgendaStore();
+      final restarted = AgendaController(restartedStore, now: () => now.add(const Duration(days: 1)));
+      addTearDown(restarted.dispose);
+      await restarted.load();
+      await restarted.reconcileExamCompletion();
+      expect(restartedStore.writes, 0);
+      expect(restarted.entries.every((entry) => !entry.done && entry.startsAt == start), isTrue);
+      expect(restarted.entries.every((entry) => entry.overdue(now)), isTrue);
+      expect(await file.readAsString(), beforeRestart);
+    });
+
     for (final name in ['schedule', 'academics']) {
       final fixture = name == 'schedule'
           ? 'test/fixtures/legacy/v0.2.0/schedule.json'
@@ -500,4 +609,14 @@ void main() {
       );
     }
   });
+}
+
+class _CountingAgendaStore extends AgendaStore {
+  int writes = 0;
+
+  @override
+  Future<void> write(List<AgendaEntry> entries) async {
+    writes++;
+    await super.write(entries);
+  }
 }

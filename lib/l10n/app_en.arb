@@ -1747,6 +1747,68 @@
   "timetableHeightNormal": "Normal height",
   "timetableHeightFit": "Fit to screen",
   "timetableHeightHint": "Fit to screen shows every period at once. Normal height keeps comfortable rows and vertical scrolling.",
+  "settingsDeadlineCutoff": "Deadline cutoff window",
+  "deadlineCutoffEnabled": "Enable daily cutoff window",
+  "deadlineCutoffDescription": "Move DDLs within this window to its start. Events, exams and open-ended quizzes are unaffected.",
+  "deadlineCutoffStart": "Start time",
+  "deadlineCutoffEnd": "End time",
+  "deadlineCutoffDisabled": "Not enabled",
+  "deadlineCutoffSameDay": "Daily, {start}–{end}",
+  "@deadlineCutoffSameDay": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "deadlineCutoffOvernight": "Daily, {start} to {end} the next day",
+  "@deadlineCutoffOvernight": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "deadlineCutoffInstant": "Only the instant {time} each day (not all day)",
+  "@deadlineCutoffInstant": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "deadlineCutoffBoundaryHint": "Both endpoints are included. An end before the start crosses midnight; equal times match only one instant.",
+  "deadlineCutoffPreserveHint": "Actual deadlines stay unchanged. Turning this off retains your selected start and end times.",
+  "agendaAdjustedDeadline": "Adjusted deadline",
+  "agendaRealDeadline": "Actual deadline",
+  "agendaCutoffOriginal": "Actual deadline: {time}",
+  "@agendaCutoffOriginal": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "agendaCutoffAdjusted": "Adjusted deadline: {time}",
+  "@agendaCutoffAdjusted": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsAgendaLayoutDays": "DDL layout width",
+  "agendaLayoutDaysDescription": "Use one layout width for deadlines, start-only items, and the left side of adjusted deadlines, overriding old per-item tails. Painted tails keep a fixed screen width.",
+  "agendaLayoutDaysUnit": "days",
+  "agendaLayoutDaysRange": "Enter a whole number from 1 to 30",
+  "settingsAgendaEventInfoBar": "Event information bar",
+  "settingsAgendaEventInfoBarDescription": "Show the left information card for events and exams in the timeline. When off, its layout space is released; boundary lines, the filled interval, and deadlines are unaffected.",
   "releaseVersion": "{channel} {version}",
   "@releaseVersion": {
     "placeholders": {

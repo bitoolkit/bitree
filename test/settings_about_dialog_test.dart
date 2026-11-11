@@ -56,8 +56,12 @@ void main() {
       ),
     );
 
+    await tester.pumpAndSettle();
     final about = find.text('关于 BITree');
-    await tester.ensureVisible(about);
+    await tester.scrollUntilVisible(
+      about, 200, scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(about);
     await tester.pumpAndSettle();
 

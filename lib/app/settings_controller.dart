@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../agenda/deadline_cutoff.dart';
 import '../agenda/view_mode.dart';
 import '../core/async/serial_queue.dart';
 import '../core/diagnostics.dart';
@@ -45,6 +46,9 @@ class AppSettingsController extends ChangeNotifier {
   final SystemPaletteSource _systemPaletteSource;
   final agendaViewMode = ValueNotifier(AgendaViewMode.timeline);
   final timetableHeightMode = ValueNotifier(TimetableHeightMode.normal);
+  final deadlineCutoff = ValueNotifier(const DeadlineCutoffWindow());
+  final agendaLayoutDays = ValueNotifier(4);
+  final agendaEventInfoBar = ValueNotifier(true);
 
   Future<void>? _paletteSettingsLoad;
   SystemPalette? _systemPalette;
@@ -53,6 +57,9 @@ class AppSettingsController extends ChangeNotifier {
   bool _themeChosen = false;
   bool _agendaViewChosen = false;
   bool _timetableHeightChosen = false;
+  bool _deadlineCutoffChosen = false;
+  bool _agendaLayoutDaysChosen = false;
+  bool _agendaEventInfoBarChosen = false;
   bool _developerMode = false;
   bool _widgetUseSystemPalette = false;
   bool _globalUseSystemPalette = false;
@@ -145,6 +152,44 @@ class AppSettingsController extends ChangeNotifier {
       }
     } on Exception catch (failure, stack) {
       AppDiagnostics.instance.error('读取课表高度设置', failure, stack);
+    }
+    try {
+      final savedCutoff = await _preferences.getString('deadlineCutoff');
+      if (!_deadlineCutoffChosen && !_disposed && savedCutoff != null) {
+        final decoded = jsonDecode(savedCutoff);
+        if (decoded is! Map<String, dynamic>) {
+          throw const FormatException('DDL 伪提前设置格式不正确');
+        }
+        deadlineCutoff.value = DeadlineCutoffWindow.fromJson(decoded);
+        _notify();
+      }
+    } catch (failure, stack) {
+      AppDiagnostics.instance.report('读取 DDL 伪提前设置', failure, stack);
+    }
+    try {
+      final saved = await _preferences.getString('agendaLayoutDays');
+      if (!_agendaLayoutDaysChosen && !_disposed && saved != null) {
+        final days = int.tryParse(saved);
+        if (days == null || days < 1 || days > 30) {
+          throw const FormatException('DDL 排版宽度必须为 1–30 天');
+        }
+        agendaLayoutDays.value = days;
+        _notify();
+      }
+    } catch (failure, stack) {
+      AppDiagnostics.instance.report('读取 DDL 排版宽度', failure, stack);
+    }
+    try {
+      final saved = await _preferences.getString('agendaEventInfoBar');
+      if (!_agendaEventInfoBarChosen && !_disposed && saved != null) {
+        if (saved != 'true' && saved != 'false') {
+          throw const FormatException('日程信息栏设置必须是布尔值');
+        }
+        agendaEventInfoBar.value = saved == 'true';
+        _notify();
+      }
+    } catch (failure, stack) {
+      AppDiagnostics.instance.report('读取日程信息栏设置', failure, stack);
     }
   }
 
@@ -356,6 +401,45 @@ class AppSettingsController extends ChangeNotifier {
     return _writePreference('timetableHeightMode', value.name, '保存课表高度设置');
   }
 
+  Future<void> setDeadlineCutoff(DeadlineCutoffWindow value) {
+    if (_disposed) return Future<void>.value();
+    _deadlineCutoffChosen = true;
+    deadlineCutoff.value = value;
+    _notify();
+    return _writePreference(
+      'deadlineCutoff',
+      jsonEncode(value.toJson()),
+      '保存 DDL 伪提前设置',
+    );
+  }
+
+  Future<void> setAgendaLayoutDays(int value) {
+    if (_disposed) return Future<void>.value();
+    if (value < 1 || value > 30) {
+      throw RangeError.range(value, 1, 30, 'agendaLayoutDays');
+    }
+    _agendaLayoutDaysChosen = true;
+    agendaLayoutDays.value = value;
+    _notify();
+    return _writePreference(
+      'agendaLayoutDays',
+      value.toString(),
+      '保存 DDL 排版宽度',
+    );
+  }
+
+  Future<void> setAgendaEventInfoBar(bool value) {
+    if (_disposed) return Future<void>.value();
+    _agendaEventInfoBarChosen = true;
+    agendaEventInfoBar.value = value;
+    _notify();
+    return _writePreference(
+      'agendaEventInfoBar',
+      value ? 'true' : 'false',
+      '保存日程信息栏设置',
+    );
+  }
+
   Future<void> _writePreference(String key, String value, String operation) {
     final previous = _preferenceWrites[key] ?? Future<void>.value();
     final write = previous.then((_) async {
@@ -380,6 +464,9 @@ class AppSettingsController extends ChangeNotifier {
     _systemPaletteSource.dispose();
     agendaViewMode.dispose();
     timetableHeightMode.dispose();
+    deadlineCutoff.dispose();
+    agendaLayoutDays.dispose();
+    agendaEventInfoBar.dispose();
     super.dispose();
   }
 }

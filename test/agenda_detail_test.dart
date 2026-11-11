@@ -21,13 +21,18 @@ void main() {
   final url = Uri.https('lexue.bit.edu.cn', '/mod/assign/view.php', {
     'id': '42',
   });
-  AgendaEntry deadline({bool detailed = false, bool allDay = false}) =>
+  AgendaEntry deadline({
+    bool detailed = false,
+    bool allDay = false,
+    int tailDays = 4,
+  }) =>
       AgendaEntry(
         id: 'assignment',
         title: detailed ? '第三章作业：线性表与链表的实现、测试和复杂度分析' : '1',
         kind: AgendaKind.deadline,
         startsAt: DateTime.utc(2020, 10, 27, 1, 11),
         allDay: allDay,
+        tailDays: tailDays,
         course: detailed ? '2026–2027 秋季学期 · 数据结构中文班' : '',
         source: detailed ? DeadlineSource.lexue : null,
         url: detailed ? url : null,
@@ -175,6 +180,51 @@ void main() {
     },
   );
 
+  for (final kind in [AgendaKind.event, AgendaKind.exam]) {
+    testWidgets('A past $kind completes and reopens in the same detail sheet', (
+      tester,
+    ) async {
+      final entry = AgendaEntry(
+        id: 'past-${kind.name}',
+        title: '过期待办',
+        kind: kind,
+        startsAt: DateTime.utc(2020, 10, 27, 9),
+        endsAt: DateTime.utc(2020, 10, 27, 11),
+        done: false,
+        // This exam already used its automatic completion opportunity; opening
+        // or editing its sheet must not consume the user's explicit undo.
+        examAutoCompletionHandled: kind == AgendaKind.exam,
+        completionSchemaVersion: AgendaEntry.currentCompletionSchemaVersion,
+      );
+      final controller = await open(tester, entry);
+      final sheet = tester.element(find.byType(SheetLayout));
+      expect(find.text('已逾期'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, '编辑'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, '标记完成'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, '标记完成'));
+      await tester.pumpAndSettle();
+      expect(tester.element(find.byType(SheetLayout)), same(sheet));
+      expect(controller.agenda.entries.single.done, isTrue);
+      expect(find.text('已完成'), findsOneWidget);
+      expect(find.text('已逾期'), findsNothing);
+      expect(
+        tester.widget<CompletionText>(find.byType(CompletionText)).completed,
+        isTrue,
+      );
+      await tester.tap(find.widgetWithText(FilledButton, '标为未完成'));
+      await tester.pumpAndSettle();
+      expect(tester.element(find.byType(SheetLayout)), same(sheet));
+      final reopened = controller.agenda.entries.single;
+      expect(reopened.done, isFalse);
+      expect(reopened.overdue(DateTime.utc(2030)), isTrue);
+      if (kind == AgendaKind.exam) {
+        expect(reopened.examAutoCompletionHandled, isTrue);
+      }
+      expect(find.text('已逾期'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('Delete still asks for confirmation and closes after deletion', (
     tester,
   ) async {
@@ -220,10 +270,10 @@ void main() {
     expect(find.byType(SheetLayout), findsOneWidget);
   });
 
-  testWidgets('Edit opens the existing editor and saves the same entry', (
+  testWidgets('Edit preserves the entry and legacy width without a per-item slider', (
     tester,
   ) async {
-    final controller = await open(tester, deadline());
+    final controller = await open(tester, deadline(tailDays: 14));
     await tester.tap(find.widgetWithText(TextButton, '编辑'));
     await tester.pumpAndSettle();
     expect(find.text('编辑DDL'), findsOneWidget);
@@ -236,33 +286,12 @@ void main() {
     expect(find.text('备注（选填）'), findsNothing);
     expect(find.byType(OutlinedButton), findsNothing);
     expect(find.byType(Slider), findsNothing);
+    expect(find.text('拖尾长度（天）'), findsNothing);
+    expect(controller.agenda.entries.single.tailDays, 14);
     await tester.tap(find.byKey(const ValueKey('agenda-more-options')));
     await tester.pumpAndSettle();
     expect(find.text('备注（选填）'), findsOneWidget);
-    final tailDays = find.byType(Slider);
-    expect(tester.widget<Slider>(tailDays).value, 4);
-    expect(tester.widget<Slider>(tailDays).divisions, 29);
-    expect(find.text('4 天'), findsOneWidget);
-    await tester.ensureVisible(tailDays);
-    final track = tester.getRect(tailDays);
-    await tester.tapAt(Offset(track.right - 1, track.center.dy));
-    await tester.pumpAndSettle();
-    expect(tester.widget<Slider>(tailDays).value, 30);
-    expect(find.text('30 天'), findsOneWidget);
-    await tester.tapAt(Offset(track.left + 1, track.center.dy));
-    await tester.pumpAndSettle();
-    expect(tester.widget<Slider>(tailDays).value, 1);
-    expect(find.text('1 天'), findsOneWidget);
-    await tester.dragFrom(
-      Offset(track.left + 24, track.center.dy),
-      Offset(track.width / 2 - 24, 0),
-    );
-    await tester.pumpAndSettle();
-    final selectedDays = tester.widget<Slider>(tailDays).value;
-    expect(selectedDays, inExclusiveRange(1, 30));
-    expect(selectedDays, selectedDays.roundToDouble());
-    expect(find.text('${selectedDays.round()} 天'), findsOneWidget);
-    expect(controller.agenda.entries.single.tailDays, 4);
+    expect(find.byType(Slider), findsNothing);
     await tester.enterText(name, '第二章习题');
     final colorField = find.byKey(const ValueKey('agenda-color-field'));
     await tester.ensureVisible(colorField);
@@ -280,7 +309,7 @@ void main() {
     expect(controller.agenda.entries.single.id, 'assignment');
     expect(controller.agenda.entries.single.title, '第二章习题');
     expect(controller.agenda.entries.single.color, AgendaColor.coral);
-    expect(controller.agenda.entries.single.tailDays, selectedDays.round());
+    expect(controller.agenda.entries.single.tailDays, 14);
     expect(find.byType(SheetLayout), findsNothing);
     unawaited(
       showAgendaEntry(
@@ -292,13 +321,62 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(TextButton, '编辑'));
     await tester.pumpAndSettle();
-    expect(tester.widget<Slider>(tailDays).value, selectedDays);
+    expect(find.byType(Slider), findsNothing);
+    expect(controller.agenda.entries.single.tailDays, 14);
     expect(
       tester
           .widget<Text>(find.byKey(const ValueKey('agenda-color-value')))
           .data,
       '珊瑚色',
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Editing an adjusted coloured DDL saves the real timestamp', (
+    tester,
+  ) async {
+    final real = DateTime.utc(2030, 11, 11, 7);
+    final entry = AgendaEntry(
+      id: 'adjusted-colour',
+      title: '跨日作业',
+      kind: AgendaKind.deadline,
+      startsAt: real,
+      tailDays: 14,
+      color: AgendaColor.blue,
+      done: true,
+    );
+    final controller = await open(tester, entry);
+    await controller.settings.setDeadlineCutoff(
+      const DeadlineCutoffWindow(enabled: true),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('22:00  伪截止', findRichText: true), findsOneWidget);
+    await tester.tap(find.widgetWithText(TextButton, '编辑'));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('agenda-start-date')),
+        matching: find.text('2030-11-11'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('agenda-start-time')),
+        matching: find.text('07:00'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byType(Slider), findsNothing);
+    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.pumpAndSettle();
+    final saved = controller.agenda.entries.single;
+    expect(saved.startsAt, real);
+    expect(saved.realDueAt, real);
+    expect(saved.dueAt, DateTime.utc(2030, 11, 10, 22));
+    expect(saved.tailDays, 14);
+    expect(saved.color, AgendaColor.blue);
+    expect(saved.done, isTrue);
     expect(tester.takeException(), isNull);
   });
 
@@ -313,11 +391,13 @@ void main() {
       endsAt: DateTime.utc(2026, 12, 28, 11),
       location: '文萃楼F704',
       notes: '座位号：12',
+      done: true,
+      examAutoCompletionHandled: true,
       term: '2026-2027-1',
       local: false,
     );
     final controller = await open(tester, entry);
-    await tester.tap(find.widgetWithText(FilledButton, '编辑'));
+    await tester.tap(find.widgetWithText(TextButton, '编辑'));
     await tester.pumpAndSettle();
     expect(find.text('编辑考试'), findsOneWidget);
     expect(find.text('拖尾长度（天）'), findsNothing);
@@ -338,6 +418,9 @@ void main() {
     expect(saved.location, entry.location);
     expect(saved.notes, entry.notes);
     expect(saved.term, entry.term);
+    expect(saved.done, isTrue);
+    expect(saved.examAutoCompletionHandled, isTrue);
+    expect(saved.completionSchemaVersion, entry.completionSchemaVersion);
     expect(saved.local, isTrue);
     expect(find.byType(SheetLayout), findsNothing);
     expect(tester.takeException(), isNull);
@@ -355,6 +438,8 @@ void main() {
         location: '文萃楼F704',
         term: '2026-2027-1',
         local: false,
+        done: false,
+        examAutoCompletionHandled: true,
         details: const ExamAgendaDetails(
           seat: '12',
           mode: '闭卷',
@@ -362,7 +447,7 @@ void main() {
         ),
       );
       final controller = await open(tester, entry);
-      await tester.tap(find.widgetWithText(FilledButton, '编辑'));
+      await tester.tap(find.widgetWithText(TextButton, '编辑'));
       await tester.pumpAndSettle();
       final notes = find.byWidgetPredicate(
         (widget) =>
@@ -377,6 +462,9 @@ void main() {
       final saved = controller.agenda.entries.single;
       expect(saved.details, isNull);
       expect(saved.notes, '座位号：12\n闭卷\n教师：张老师');
+      expect(saved.done, isFalse);
+      expect(saved.examAutoCompletionHandled, isTrue);
+      expect(saved.completionSchemaVersion, entry.completionSchemaVersion);
       expect(tester.takeException(), isNull);
     },
   );
@@ -399,6 +487,8 @@ void main() {
           startsAt: start,
           endsAt: end,
           allDay: true,
+          done: false,
+          completionSchemaVersion: AgendaEntry.currentCompletionSchemaVersion,
         ),
       );
       expect(
@@ -409,8 +499,9 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('全天', findRichText: true), findsOneWidget);
-      expect(find.text('已结束'), findsOneWidget);
-      expect(find.text('标记完成'), findsNothing);
+      expect(find.text('已结束'), findsNothing);
+      expect(find.text('已逾期'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, '标记完成'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -458,7 +549,7 @@ void main() {
       endsAt: DateTime.utc(2020, 10, 27, 20),
     );
     final controller = await open(tester, entry);
-    await tester.tap(find.widgetWithText(FilledButton, '编辑'));
+    await tester.tap(find.widgetWithText(TextButton, '编辑'));
     await tester.pumpAndSettle();
 
     final colorField = find.byKey(const ValueKey('agenda-color-field'));
@@ -489,7 +580,7 @@ void main() {
       endsAt: DateTime.utc(2020, 10, 27, 20),
     );
     final controller = await open(tester, entry);
-    await tester.tap(find.widgetWithText(FilledButton, '编辑'));
+    await tester.tap(find.widgetWithText(TextButton, '编辑'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('agenda-color-field')));
     await tester.pumpAndSettle();
