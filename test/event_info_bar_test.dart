@@ -88,7 +88,9 @@ void main() {
       );
       expect(
         painted.paintStart,
-        reserve ? lessThan(event.startsAt) : event.startsAt,
+        reserve
+            ? event.startsAt.subtract(fixedCardSpan)
+            : event.startsAt,
       );
       expect(painted.end, event.endsAt);
       expect(painted.paintEnd, event.endsAt);
