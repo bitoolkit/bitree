@@ -1,3 +1,4 @@
+import 'package:bitree/agenda/controller.dart';
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/ui/agenda_list_tile.dart';
 import 'package:bitree/l10n/app_localizations_zh.dart';
@@ -47,7 +48,9 @@ Future<TestAppController> _showHeader(
   tester.view.physicalSize = const Size(390, 844);
   addTearDown(tester.view.resetDevicePixelRatio);
   addTearDown(tester.view.resetPhysicalSize);
-  final app = TestAppController(entries: entries);
+  final app = TestAppController(
+    agenda: AgendaController(MemoryAgendaStore(entries), now: () => _now),
+  );
   await app.initialize();
   await tester.pumpWidget(
     MaterialApp(

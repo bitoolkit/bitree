@@ -8,14 +8,22 @@ import 'package:flutter_test/flutter_test.dart';
 
 final _now = DateTime.utc(2030, 1, 2, 8);
 
-Future<void> _show(WidgetTester tester, Widget child) async {
+Future<ValueNotifier<Widget>> _show(WidgetTester tester, Widget child) async {
+  final content = ValueNotifier(child);
+  addTearDown(content.dispose);
   await tester.pumpWidget(MaterialApp(
     theme: bitreeTheme(Brightness.light),
     home: Scaffold(body: Center(child: SizedBox(
-      width: 240, height: 100, child: child,
+      width: 240,
+      height: 100,
+      child: ValueListenableBuilder<Widget>(
+        valueListenable: content,
+        builder: (_, current, _) => current,
+      ),
     ))),
   ));
   await tester.pumpAndSettle();
+  return content;
 }
 
 void main() {
@@ -37,10 +45,11 @@ void main() {
       ),
       onTap: onTap,
     );
-    await _show(tester, card(200, () => tapped = 1));
+    final content = await _show(tester, card(200, () => tapped = 1));
     final title = tester.widget<Text>(find.text(entry.title));
     final state = tester.state(find.byType(AgendaTimelineEntry));
-    await _show(tester, card(230, () => tapped = 2));
+    content.value = card(230, () => tapped = 2);
+    await tester.pumpAndSettle();
     expect(tester.state(find.byType(AgendaTimelineEntry)), same(state));
     expect(tester.widget<Text>(find.text(entry.title)), same(title));
     final surface = tester.widget<AdjustedDeadlineSurface>(
@@ -74,9 +83,10 @@ void main() {
       ),
       onTap: () {},
     );
-    await _show(tester, card(entry, 190));
+    final content = await _show(tester, card(entry, 190));
     final title = tester.widget<Text>(find.text(entry.title));
-    await _show(tester, card(entry, 220));
+    content.value = card(entry, 220);
+    await tester.pumpAndSettle();
     expect(tester.widget<Text>(find.text(entry.title)), same(title));
     EventTimelinePainter painter() => tester.widget<CustomPaint>(
       find.byWidgetPredicate((widget) => widget is CustomPaint &&
@@ -84,7 +94,8 @@ void main() {
     ).painter! as EventTimelinePainter;
     expect(painter().geometry.endX, 220);
     final originalAlpha = painter().fill.a;
-    await _show(tester, card(entry.copyWith(done: true), 220));
+    content.value = card(entry.copyWith(done: true), 220);
+    await tester.pumpAndSettle();
     expect(tester.widget<Text>(find.text(entry.title)), isNot(same(title)));
     expect(painter().fill.a, closeTo(originalAlpha * .5, .001));
     expect(tester.takeException(), isNull);
