@@ -2382,6 +2382,12 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get timetableExpand => '展开早晚时段';
+
+  @override
+  String get timetableCollapse => '收起早晚时段';
+
+  @override
   String get timetableHeight => '课表高度';
 
   @override

@@ -1743,6 +1743,8 @@
       }
     }
   },
+  "timetableExpand": "Show early and late hours",
+  "timetableCollapse": "Hide early and late hours",
   "timetableHeight": "Timetable height",
   "timetableHeightNormal": "Normal height",
   "timetableHeightFit": "Fit to screen",

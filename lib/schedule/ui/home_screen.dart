@@ -34,6 +34,7 @@ class HomeScreen extends StatelessWidget {
       controller.timetable,
       controller.agenda,
       controller.school,
+      controller.settings.timetableExpanded,
     ]),
     builder: (context, _) => _build(context),
   );
@@ -88,6 +89,28 @@ class HomeScreen extends StatelessWidget {
               },
             ),
       actions: [
+        if (schedule != null)
+          IconButton(
+            tooltip: controller.settings.timetableExpanded.value
+                ? l10n.timetableCollapse
+                : l10n.timetableExpand,
+            isSelected: controller.settings.timetableExpanded.value,
+            onPressed: () => controller.settings.setTimetableExpanded(
+              !controller.settings.timetableExpanded.value,
+            ),
+            selectedIcon: Text(
+              '目',
+              style: TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            icon: const Text(
+              '口',
+              style: TextStyle(fontSize: 21, fontWeight: FontWeight.w500),
+            ),
+          ),
         AddButton(
           timetable: controller.timetable,
           agenda: controller.agenda,
@@ -142,6 +165,7 @@ class HomeScreen extends StatelessWidget {
                         timetable: controller.timetable,
                         agenda: controller.agenda,
                         heightMode: controller.settings.timetableHeightMode,
+                        expanded: controller.settings.timetableExpanded.value,
                         active: active,
                       ),
               ),

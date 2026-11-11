@@ -1,22 +1,25 @@
 import '../agenda/calendar.dart';
-import 'section_times.dart';
+import 'timetable_axis.dart';
 
 typedef CalendarBlock = ({List<CalendarItem> items, double start, double end});
 
 /// Overlapping entries share one column without widening the week.
 List<CalendarBlock> groupCalendarItems(
   List<CalendarItem> items,
-  DateTime date,
-) {
-  final length = sectionTimes.length.toDouble();
-  double startOf(CalendarItem item) => timetableOffset(
-    item.startsAt,
-    date,
-  ).clamp(0, item.course == null ? length - 0.6 : length).toDouble();
-  double endOf(CalendarItem item) => timetableOffset(
-    item.endsAt!,
-    date,
-  ).clamp(startOf(item) + (item.course == null ? 0.6 : 0), length).toDouble();
+  DateTime date, {
+  TimetableAxis axis = const TimetableAxis(),
+  double minimumSpan = 0.6,
+}) {
+  final length = axis.length;
+  final minimum = minimumSpan.clamp(0.0, length).toDouble();
+  double startOf(CalendarItem item) => axis
+      .offsetAt(item.startsAt, date)
+      .clamp(0, item.course == null ? length - minimum : length)
+      .toDouble();
+  double endOf(CalendarItem item) => axis
+      .offsetAt(item.endsAt!, date)
+      .clamp(startOf(item) + (item.course == null ? minimum : 0), length)
+      .toDouble();
   final sorted = [...items]
     ..sort((first, second) {
       final time = first.startsAt.compareTo(second.startsAt);

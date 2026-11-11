@@ -2495,6 +2495,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get timetableExpand => 'Show early and late hours';
+
+  @override
+  String get timetableCollapse => 'Hide early and late hours';
+
+  @override
   String get timetableHeight => 'Timetable height';
 
   @override

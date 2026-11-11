@@ -20,6 +20,7 @@ class AddMenu extends StatelessWidget {
     required this.agenda,
     this.menuController,
     this.selection,
+    this.timeRange,
     this.date,
     this.onClose,
     this.builder,
@@ -30,6 +31,7 @@ class AddMenu extends StatelessWidget {
   final AgendaController agenda;
   final MenuController? menuController;
   final TimetableSelection? selection;
+  final ({DateTime start, DateTime end})? timeRange;
   final DateTime? date;
   final VoidCallback? onClose;
   final AppMenuAnchorBuilder? builder;
@@ -44,13 +46,14 @@ class AddMenu extends StatelessWidget {
       controller: menuController,
       onClose: onClose,
       menuChildren: [
-        AppMenuItemButton(
-          onPressed: canAddCourse
-              ? () => editCourse(context, timetable, selection: selection)
-              : null,
-          leadingIcon: const Icon(Icons.school_outlined),
-          child: Text(l10n.addCourse),
-        ),
+        if (timeRange == null || selection != null)
+          AppMenuItemButton(
+            onPressed: canAddCourse
+                ? () => editCourse(context, timetable, selection: selection)
+                : null,
+            leadingIcon: const Icon(Icons.school_outlined),
+            child: Text(l10n.addCourse),
+          ),
         for (final (kind, label, icon) in [
           (AgendaKind.event, l10n.addAgenda, Icons.event_outlined),
           (AgendaKind.deadline, l10n.addDeadline, Icons.flag_outlined),
@@ -62,7 +65,8 @@ class AddMenu extends StatelessWidget {
                     agenda,
                     kind: kind,
                     selection: selection,
-                    date: date,
+                    date: timeRange?.start ?? date,
+                    endsAt: timeRange?.end,
                     term: timetable.schedule?.term,
                   )
                 : null,

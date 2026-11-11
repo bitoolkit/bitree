@@ -14,6 +14,7 @@ import '../controller.dart';
 import '../layout.dart';
 import '../section_times.dart';
 import '../selection.dart';
+import '../timetable_axis.dart';
 import 'course_colors.dart';
 import 'current_time_indicator.dart';
 
@@ -31,6 +32,7 @@ class TimetableGrid extends StatefulWidget {
     required this.todayColumn,
     required this.todayBackground,
     required this.currentTime,
+    this.axis = const TimetableAxis(),
   });
 
   final TimetableController timetable;
@@ -42,6 +44,7 @@ class TimetableGrid extends StatefulWidget {
   final int? todayColumn;
   final Color todayBackground;
   final ValueListenable<DateTime> currentTime;
+  final TimetableAxis axis;
 
   @override
   State<TimetableGrid> createState() => _TimetableGridState();
@@ -51,7 +54,8 @@ class _TimetableGridState extends State<TimetableGrid> {
   final _grid = GlobalKey();
   final _addMenu = MenuController();
   bool _closedMenuOnPointerDown = false;
-  ({int day, int anchor, int end})? _selection;
+  ({int day, int anchorStart, int anchorEnd, int endStart, int endEnd})?
+  _selection;
   Offset? _dragPosition;
   EdgeDraggingAutoScroller? _autoScroller;
 
@@ -63,21 +67,18 @@ class _TimetableGridState extends State<TimetableGrid> {
     super.dispose();
   }
 
-  ({int day, int section}) _cellAt(Offset position) {
+  ({int day, int start, int end}) _cellAt(Offset position) {
     final box = _grid.currentContext!.findRenderObject()! as RenderBox;
     final local = box.globalToLocal(position);
-
-    if (box.size.width <= 0 || widget.rowHeight <= 0) {
-      return (day: 0, section: 1);
-    }
+    final cell = widget.axis.cellAtOffset(
+      widget.rowHeight > 0 ? local.dy / widget.rowHeight : 0,
+    );
     return (
-      day: (local.dx / (box.size.width / 7)).floor().clamp(0, 6),
-      section:
-          (local.dy / widget.rowHeight).floor().clamp(
-            0,
-            sectionTimes.length - 1,
-          ) +
-          1,
+      day: box.size.width > 0
+          ? (local.dx / (box.size.width / 7)).floor().clamp(0, 6)
+          : 0,
+      start: cell.start,
+      end: cell.end,
     );
   }
 
@@ -88,7 +89,13 @@ class _TimetableGridState extends State<TimetableGrid> {
     final cell = _cellAt(position);
 
     setState(() {
-      _selection = (day: cell.day, anchor: cell.section, end: cell.section);
+      _selection = (
+        day: cell.day,
+        anchorStart: cell.start,
+        anchorEnd: cell.end,
+        endStart: cell.start,
+        endEnd: cell.end,
+      );
     });
     return true;
   }
@@ -97,13 +104,15 @@ class _TimetableGridState extends State<TimetableGrid> {
     final selection = _selection;
     if (selection == null) return;
 
-    final target = _cellAt(position).section;
-    if (target != selection.end) {
+    final target = _cellAt(position);
+    if (target.start != selection.endStart || target.end != selection.endEnd) {
       setState(() {
         _selection = (
           day: selection.day,
-          anchor: selection.anchor,
-          end: target,
+          anchorStart: selection.anchorStart,
+          anchorEnd: selection.anchorEnd,
+          endStart: target.start,
+          endEnd: target.end,
         );
       });
     }
@@ -200,14 +209,37 @@ class _TimetableGridState extends State<TimetableGrid> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final rowHeight = widget.rowHeight;
-    final gridHeight = rowHeight * sectionTimes.length;
+    final axis = widget.axis;
+    final gridHeight = rowHeight * axis.length;
     final selection = _selection;
-    final menuSelection = selection == null
+    final startMinute = selection == null
+        ? null
+        : math.min(selection.anchorStart, selection.endStart);
+    final endMinute = selection == null
+        ? null
+        : math.max(selection.anchorEnd, selection.endEnd);
+    final startSection = startMinute == null
+        ? null
+        : TimetableAxis.sectionAtMinute(startMinute);
+    final endSection = endMinute == null
+        ? null
+        : TimetableAxis.sectionAtMinute(endMinute - 1);
+    final date = selection == null
+        ? null
+        : widget.monday.add(Duration(days: selection.day));
+    final menuSelection =
+        date == null || startSection == null || endSection == null
         ? null
         : TimetableSelection(
-            date: widget.monday.add(Duration(days: selection.day)),
-            startSection: math.min(selection.anchor, selection.end),
-            endSection: math.max(selection.anchor, selection.end),
+            date: date,
+            startSection: startSection,
+            endSection: endSection,
+          );
+    final timeRange = date == null
+        ? null
+        : (
+            start: date.add(Duration(minutes: startMinute!)),
+            end: date.add(Duration(minutes: endMinute!)),
           );
 
     return LayoutBuilder(
@@ -258,17 +290,62 @@ class _TimetableGridState extends State<TimetableGrid> {
             children: [
               SizedBox(
                 width: widget.gutterWidth,
-                child: Column(
+                child: Stack(
                   children: [
                     for (
                       var section = 1;
                       section <= sectionTimes.length;
                       section++
                     )
-                      SizedBox(
-                        height: rowHeight,
+                      Positioned(
+                        top: axis.sectionStart(section) * rowHeight,
+                        height:
+                            (axis.sectionEnd(section) -
+                                axis.sectionStart(section)) *
+                            rowHeight,
+                        left: 0,
+                        right: 0,
                         child: _PeriodLabel(section: section),
                       ),
+                    if (axis.expanded) ...[
+                      Positioned(
+                        top: 0,
+                        height:
+                            axis.offsetForMinute(
+                              TimetableAxis.morningEnd.toDouble(),
+                            ) *
+                            rowHeight,
+                        left: 0,
+                        right: 0,
+                        child: _HourLabels(
+                          axis: axis,
+                          rowHeight: rowHeight,
+                          first: 0,
+                          last: 7,
+                        ),
+                      ),
+                      Positioned(
+                        top:
+                            axis.offsetForMinute(
+                              TimetableAxis.eveningStart.toDouble(),
+                            ) *
+                            rowHeight,
+                        height:
+                            (axis.length -
+                                axis.offsetForMinute(
+                                  TimetableAxis.eveningStart.toDouble(),
+                                )) *
+                            rowHeight,
+                        left: 0,
+                        right: 0,
+                        child: _HourLabels(
+                          axis: axis,
+                          rowHeight: rowHeight,
+                          first: 21,
+                          last: 24,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -278,6 +355,7 @@ class _TimetableGridState extends State<TimetableGrid> {
                   agenda: widget.agenda,
                   menuController: _addMenu,
                   selection: menuSelection,
+                  timeRange: timeRange,
                   onClose: _menuClosed,
                   child: GestureDetector(
                     supportedDevices: const {PointerDeviceKind.mouse},
@@ -313,6 +391,7 @@ class _TimetableGridState extends State<TimetableGrid> {
                               child: CustomPaint(
                                 painter: _TimetableBackground(
                                   rowHeight: rowHeight,
+                                  axis: axis,
                                   surfaceColor: scheme.onSurface,
                                   todayColumn: widget.todayColumn,
                                   todayBackground: widget.todayBackground,
@@ -338,13 +417,16 @@ class _TimetableGridState extends State<TimetableGrid> {
                                       if (elapsed != null &&
                                           layout.bounds.height > 0 &&
                                           gridHeight >= 2) {
-                                        final section =
-                                            block.start +
-                                            elapsed * (block.end - block.start);
+                                        final section = axis.expanded
+                                            ? axis.offsetAt(now, item.startsAt)
+                                            : block.start +
+                                                  elapsed *
+                                                      (block.end - block.start);
                                         final center =
                                             CurrentTimeIndicator.centerAt(
                                               section,
                                               rowHeight,
+                                              axis: axis,
                                             );
                                         progress =
                                             (center - layout.bounds.top) /
@@ -370,6 +452,7 @@ class _TimetableGridState extends State<TimetableGrid> {
                                       monday: widget.monday,
                                       columnWidth: columnWidth,
                                       rowHeight: rowHeight,
+                                      axis: axis,
                                       cards: masks,
                                     ),
                               ),
@@ -378,12 +461,8 @@ class _TimetableGridState extends State<TimetableGrid> {
                               Positioned.fromRect(
                                 rect: boundsFor(
                                   selection.day,
-                                  (math.min(selection.anchor, selection.end) -
-                                          1)
-                                      .toDouble(),
-                                  math
-                                      .max(selection.anchor, selection.end)
-                                      .toDouble(),
+                                  axis.offsetForMinute(startMinute!.toDouble()),
+                                  axis.offsetForMinute(endMinute!.toDouble()),
                                 ),
                                 child: IgnorePointer(
                                   child: DecoratedBox(

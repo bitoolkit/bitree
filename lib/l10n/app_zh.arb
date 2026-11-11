@@ -704,6 +704,8 @@
   "releaseNotesUnchanged": "此版本没有代码变更。",
   "releaseNotesUnavailable": "暂时无法读取更新说明。",
   "releaseMoreChanges": "另有 {count} 项变更，[查看完整变更]({url})。",
+  "timetableExpand": "展开早晚时段",
+  "timetableCollapse": "收起早晚时段",
   "timetableHeight": "课表高度",
   "timetableHeightNormal": "正常高度",
   "timetableHeightFit": "适应屏幕",

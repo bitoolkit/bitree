@@ -25,6 +25,7 @@ Future<void> editAgenda(
   AgendaKind kind = AgendaKind.event,
   TimetableSelection? selection,
   DateTime? date,
+  DateTime? endsAt,
   String? term,
 }) => showAppSheet<void>(
   context: context,
@@ -39,7 +40,7 @@ Future<void> editAgenda(
         : localizedAgendaNotes(sheetContext.l10n, entry),
     kind: entry?.kind ?? kind,
     startsAt: selection?.startsAt ?? date ?? campusNow(),
-    endsAt: selection?.endsAt,
+    endsAt: selection?.endsAt ?? endsAt,
     term: term,
   ),
 );

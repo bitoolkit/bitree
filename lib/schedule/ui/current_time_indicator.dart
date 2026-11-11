@@ -2,8 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/time.dart';
-import '../section_times.dart';
 import '../time_position.dart';
+import '../timetable_axis.dart';
 
 /// One non-interactive line over the grid, with a masked current-day segment.
 class CurrentTimeIndicator extends StatelessWidget {
@@ -14,6 +14,7 @@ class CurrentTimeIndicator extends StatelessWidget {
     required this.columnWidth,
     required this.rowHeight,
     required this.cards,
+    this.axis = const TimetableAxis(),
   });
 
   static const _lineHeight = 2.0;
@@ -24,10 +25,15 @@ class CurrentTimeIndicator extends StatelessWidget {
   final double columnWidth;
   final double rowHeight;
   final List<({RRect shape, Color color})> cards;
+  final TimetableAxis axis;
 
   /// Shared grid-space center for the time line and the elapsed course fill.
-  static double centerAt(double section, double rowHeight) {
-    final gridHeight = rowHeight * sectionTimes.length;
+  static double centerAt(
+    double section,
+    double rowHeight, {
+    TimetableAxis axis = const TimetableAxis(),
+  }) {
+    final gridHeight = rowHeight * axis.length;
     return (section * rowHeight - _lineHeight / 2)
             .clamp(0.0, gridHeight - _lineHeight)
             .toDouble() +
@@ -37,11 +43,13 @@ class CurrentTimeIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final position = timeIndicatorPositionAt(now);
+    final position = axis.expanded
+        ? (time: now, section: axis.offsetAt(now, now))
+        : timeIndicatorPositionAt(now);
     final day = calendarDate(position.time)
         .difference(calendarDate(monday))
         .inDays;
-    final gridHeight = rowHeight * sectionTimes.length;
+    final gridHeight = rowHeight * axis.length;
     if (day < 0 ||
         day >= 7 ||
         columnWidth <= _horizontalInset * 2 ||
@@ -53,7 +61,7 @@ class CurrentTimeIndicator extends StatelessWidget {
       child: ExcludeSemantics(
         child: CustomPaint(
           painter: _TimeLinePainter(
-            center: centerAt(position.section, rowHeight),
+            center: centerAt(position.section, rowHeight, axis: axis),
             day: day,
             columnWidth: columnWidth,
             color: theme.colorScheme.primary,

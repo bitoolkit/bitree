@@ -10,8 +10,8 @@ import '../../core/time.dart';
 import '../controller.dart';
 import '../height_mode.dart';
 import '../layout.dart';
-import '../section_times.dart';
 import '../time_position.dart';
+import '../timetable_axis.dart';
 import 'timetable_grid.dart';
 import 'timetable_header.dart';
 
@@ -25,6 +25,7 @@ class Timetable extends StatefulWidget {
     required this.initialScrollOffset,
     required this.onScroll,
     required this.active,
+    this.expanded = false,
   });
 
   final TimetableController timetable;
@@ -34,6 +35,7 @@ class Timetable extends StatefulWidget {
   final double initialScrollOffset;
   final ValueChanged<double> onScroll;
   final bool active;
+  final bool expanded;
 
   @override
   State<Timetable> createState() => _TimetableState();
@@ -50,7 +52,8 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
   bool _restoringScroll = false;
   int _scrollRestoreGeneration = 0;
 
-  bool get _fitToScreen => widget.heightMode.value == TimetableHeightMode.fit;
+  bool get _fitToScreen =>
+      widget.expanded || widget.heightMode.value == TimetableHeightMode.fit;
 
   void _heightModeChanged() {
     _restoringScroll = true;
@@ -104,6 +107,10 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
     if (oldWidget.heightMode != widget.heightMode) {
       oldWidget.heightMode.removeListener(_heightModeChanged);
       widget.heightMode.addListener(_heightModeChanged);
+      _restoringScroll = true;
+      _restoreScrollAfterLayout();
+    }
+    if (oldWidget.expanded != widget.expanded) {
       _restoringScroll = true;
       _restoreScrollAfterLayout();
     }
@@ -265,22 +272,17 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
           widget.agenda.entries,
         ),
     ];
-    final pinned = [
+    final axis = TimetableAxis(expanded: widget.expanded);
+    final items = [
       for (var day = 0; day < 7; day++)
         days[day]
             .where(
               (item) =>
-                  item.pinned ||
-                  outsideTimetable(item, monday.add(Duration(days: day))),
+                  !item.pinned &&
+                  (widget.expanded ||
+                      !outsideTimetable(item, monday.add(Duration(days: day)))),
             )
             .toList(),
-    ];
-    final layouts = [
-      for (var day = 0; day < 7; day++)
-        groupCalendarItems(
-          days[day].where((item) => !pinned[day].contains(item)).toList(),
-          monday.add(Duration(days: day)),
-        ),
     ];
 
     final gutterWidth = 30.0 * scale;
@@ -297,8 +299,7 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final preferredRowHeight = 48.0 * scale;
-              final availableRowHeight =
-                  constraints.maxHeight / sectionTimes.length;
+              final availableRowHeight = constraints.maxHeight / axis.length;
               // A tiny shortfall should compress the grid instead of creating
               // a distracting few-pixel vertical scroll.
               final rowHeight =
@@ -306,6 +307,17 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
                   ? availableRowHeight
                   : preferredRowHeight;
               _rowHeight = rowHeight;
+              final layouts = [
+                for (var day = 0; day < 7; day++)
+                  groupCalendarItems(
+                    items[day],
+                    monday.add(Duration(days: day)),
+                    axis: axis,
+                    minimumSpan: widget.expanded && rowHeight > 0
+                        ? 12 * scale / rowHeight
+                        : 0.6,
+                  ),
+              ];
 
               return NotificationListener<ScrollMetricsNotification>(
                 onNotification: (_) {
@@ -321,6 +333,8 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
                         : null,
                     child: RepaintBoundary(
                       child: TimetableGrid(
+                        key: ValueKey(widget.expanded),
+                        axis: axis,
                         timetable: widget.timetable,
                         agenda: widget.agenda,
                         monday: monday,

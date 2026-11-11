@@ -45,6 +45,7 @@ class AppSettingsController extends ChangeNotifier {
   final SystemPaletteSource _systemPaletteSource;
   final agendaViewMode = ValueNotifier(AgendaViewMode.timeline);
   final timetableHeightMode = ValueNotifier(TimetableHeightMode.normal);
+  final timetableExpanded = ValueNotifier(false);
 
   Future<void>? _paletteSettingsLoad;
   SystemPalette? _systemPalette;
@@ -53,6 +54,7 @@ class AppSettingsController extends ChangeNotifier {
   bool _themeChosen = false;
   bool _agendaViewChosen = false;
   bool _timetableHeightChosen = false;
+  bool _timetableExpandedChosen = false;
   bool _developerMode = false;
   bool _widgetUseSystemPalette = false;
   bool _globalUseSystemPalette = false;
@@ -145,6 +147,14 @@ class AppSettingsController extends ChangeNotifier {
       }
     } on Exception catch (failure, stack) {
       AppDiagnostics.instance.error('读取课表高度设置', failure, stack);
+    }
+    try {
+      final saved = await _preferences.getString('timetableExpanded');
+      if (!_timetableExpandedChosen && !_disposed) {
+        timetableExpanded.value = saved == 'true';
+      }
+    } on Exception catch (failure, stack) {
+      AppDiagnostics.instance.error('读取课表全天设置', failure, stack);
     }
   }
 
@@ -356,6 +366,12 @@ class AppSettingsController extends ChangeNotifier {
     return _writePreference('timetableHeightMode', value.name, '保存课表高度设置');
   }
 
+  Future<void> setTimetableExpanded(bool value) {
+    _timetableExpandedChosen = true;
+    timetableExpanded.value = value;
+    return _writePreference('timetableExpanded', '$value', '保存课表全天设置');
+  }
+
   Future<void> _writePreference(String key, String value, String operation) {
     final previous = _preferenceWrites[key] ?? Future<void>.value();
     final write = previous.then((_) async {
@@ -380,6 +396,7 @@ class AppSettingsController extends ChangeNotifier {
     _systemPaletteSource.dispose();
     agendaViewMode.dispose();
     timetableHeightMode.dispose();
+    timetableExpanded.dispose();
     super.dispose();
   }
 }

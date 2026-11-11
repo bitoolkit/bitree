@@ -115,7 +115,22 @@ class CalendarBlockTile extends StatelessWidget {
                     constraints.maxWidth < 20) {
                   if (constraints.maxHeight < 15 * scale ||
                       constraints.maxWidth < 4) {
-                    return const SizedBox.expand();
+                    return Center(
+                      child: items.length > 1
+                          ? FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                '${items.length}',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  height: 1,
+                                  color: foreground,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            )
+                          : Container(width: 10, height: 2, color: outline),
+                    );
                   }
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 1),

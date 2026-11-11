@@ -4302,6 +4302,18 @@ abstract class AppLocalizations {
   /// **'Plus {count} more changes. [View full changes]({url}).'**
   String releaseMoreChanges(int count, String url);
 
+  /// No description provided for @timetableExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Show early and late hours'**
+  String get timetableExpand;
+
+  /// No description provided for @timetableCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide early and late hours'**
+  String get timetableCollapse;
+
   /// No description provided for @timetableHeight.
   ///
   /// In en, this message translates to:

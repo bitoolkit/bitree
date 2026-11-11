@@ -1,7 +1,6 @@
-import '../core/time.dart';
 import '../schedule/model.dart';
-import '../schedule/section_times.dart';
 import '../schedule/selection.dart';
+import '../schedule/timetable_axis.dart';
 import 'model.dart';
 
 class CalendarItem {
@@ -71,30 +70,8 @@ List<CalendarItem> calendarItemsOn(
   return items;
 }
 
-/// Breaks collapse to the boundary between teaching periods.
-final _sectionMinuteBounds = [
-  for (final period in sectionTimes) (_minutes(period.$1), _minutes(period.$2)),
-];
-
-double timetableOffset(DateTime time, DateTime date) {
-  final day = calendarDate(date);
-  if (time.isBefore(day)) return 0;
-  if (!time.isBefore(day.add(const Duration(days: 1)))) {
-    return sectionTimes.length.toDouble();
-  }
-  final minute = time.hour * 60 + time.minute;
-  for (var i = 0; i < _sectionMinuteBounds.length; i++) {
-    final (start, end) = _sectionMinuteBounds[i];
-    if (minute <= start) return i.toDouble();
-    if (minute < end) return i + (minute - start) / (end - start);
-  }
-  return sectionTimes.length.toDouble();
-}
-
-int _minutes(String clock) {
-  final [hour, minute] = clock.split(':').map(int.parse).toList();
-  return hour * 60 + minute;
-}
+double timetableOffset(DateTime time, DateTime date) =>
+    const TimetableAxis().offsetAt(time, date);
 
 bool outsideTimetable(CalendarItem item, DateTime date) =>
     !item.pinned &&

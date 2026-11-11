@@ -14,12 +14,14 @@ class WeekPager extends StatefulWidget {
     required this.agenda,
     required this.heightMode,
     this.active = true,
+    this.expanded = false,
   });
 
   final TimetableController timetable;
   final AgendaController agenda;
   final ValueListenable<TimetableHeightMode> heightMode;
   final bool active;
+  final bool expanded;
 
   @override
   State<WeekPager> createState() => _WeekPagerState();
@@ -39,6 +41,7 @@ class _WeekPagerState extends State<WeekPager> {
         timetable: widget.timetable,
         agenda: widget.agenda,
         heightMode: widget.heightMode,
+        expanded: widget.expanded,
         week: weeks[page],
         initialScrollOffset: _scrollOffset,
         onScroll: (offset) {
