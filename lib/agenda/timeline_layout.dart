@@ -38,7 +38,8 @@ class AgendaTimelineLayout {
     required this.deadlineCardSpan,
     int layoutDays = AgendaEntry.defaultTailDays,
     this.reserveEventInformation = true,
-  }) : _reservations = _reserveLanes(
+  }) : _layoutDays = layoutDays,
+       _reservations = _reserveLanes(
          entries,
          minimumEventSpan: minimumEventSpan,
          layoutDays: layoutDays,
@@ -46,6 +47,7 @@ class AgendaTimelineLayout {
        );
 
   final Duration deadlineCardSpan;
+  final int _layoutDays;
 
   /// When the event information card is hidden, events reserve and paint only
   /// their real interval instead of an information-width lead on the left.
@@ -56,8 +58,13 @@ class AgendaTimelineLayout {
     if (!zoom.isFinite || zoom < 1) {
       throw RangeError.value(zoom, 'zoom', 'Must be finite and at least one');
     }
-    final fixedWidthSpan = Duration(
-      microseconds: (deadlineCardSpan.inMicroseconds / zoom).ceil(),
+    Duration fixedWidthSpan(AgendaEntry entry) => Duration(
+      microseconds:
+          (deadlineCardSpan.inMicroseconds *
+                  (entry.effectiveLayoutDays(_layoutDays) - .25) /
+                  (_layoutDays - .25) /
+                  zoom)
+              .ceil(),
     );
     return [
       for (final interval in _reservations)
@@ -72,11 +79,11 @@ class AgendaTimelineLayout {
                   (!interval.entry.isDeadline && !reserveEventInformation)
               ? interval.entry.startsAt
               : (interval.entry.isDeadline
-                    ? interval.entry.dueAt
-                    : interval.entry.startsAt)
-                .subtract(fixedWidthSpan),
+                        ? interval.entry.dueAt
+                        : interval.entry.startsAt)
+                    .subtract(fixedWidthSpan(interval.entry)),
           paintEnd: interval.entry.startOnly
-              ? interval.entry.startsAt.add(fixedWidthSpan)
+              ? interval.entry.startsAt.add(fixedWidthSpan(interval.entry))
               : interval.end,
         ),
     ];
@@ -108,27 +115,40 @@ List<_LaneReservation> _reserveLanes(
   required bool reserveEventInformation,
 }) {
   if (layoutDays < 1 || layoutDays > AgendaEntry.maxTailDays) {
-    throw RangeError.range(layoutDays, 1, AgendaEntry.maxTailDays, 'layoutDays');
+    throw RangeError.range(
+      layoutDays,
+      1,
+      AgendaEntry.maxTailDays,
+      'layoutDays',
+    );
   }
   DateTime reservationStart(AgendaEntry entry) =>
       entry.startOnly || (!entry.isDeadline && !reserveEventInformation)
       ? entry.startsAt
-      : (entry.isDeadline ? entry.dueAt : entry.startsAt)
-            .subtract(Duration(days: layoutDays));
+      : (entry.isDeadline ? entry.dueAt : entry.startsAt).subtract(
+          Duration(days: entry.effectiveLayoutDays(layoutDays)),
+        );
   DateTime reservationEnd(AgendaEntry entry) => entry.isDeadline
       ? entry.startOnly
-            ? entry.startsAt.add(Duration(days: layoutDays))
+            ? entry.startsAt.add(
+                Duration(days: entry.effectiveLayoutDays(layoutDays)),
+              )
             : entry.realDueAt
       : entry.endsAt!;
-  final intervals = [
-    for (final entry in entries.where((entry) => !entry.deleted))
-      (entry: entry, start: reservationStart(entry), end: reservationEnd(entry)),
-  ]..sort((a, b) {
-    final byStart = a.start.compareTo(b.start);
-    if (byStart != 0) return byStart;
-    final byEnd = a.end.compareTo(b.end);
-    return byEnd != 0 ? byEnd : a.entry.id.compareTo(b.entry.id);
-  });
+  final intervals =
+      [
+        for (final entry in entries.where((entry) => !entry.deleted))
+          (
+            entry: entry,
+            start: reservationStart(entry),
+            end: reservationEnd(entry),
+          ),
+      ]..sort((a, b) {
+        final byStart = a.start.compareTo(b.start);
+        if (byStart != 0) return byStart;
+        final byEnd = a.end.compareTo(b.end);
+        return byEnd != 0 ? byEnd : a.entry.id.compareTo(b.entry.id);
+      });
   final laneEnds = <DateTime>[];
   final reservations = <_LaneReservation>[];
   for (final interval in intervals) {

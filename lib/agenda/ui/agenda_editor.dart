@@ -74,9 +74,7 @@ class _AgendaEditorState extends State<_AgendaEditor> {
   late final _title = TextEditingController(text: widget.entryTitle);
   late final _location = TextEditingController(text: widget.entry?.location);
   late final _notes = TextEditingController(text: widget.entryNotes);
-  // Preserve legacy per-entry metadata without offering an ineffective override.
-  late final int _tailDays =
-      widget.entry?.tailDays ?? AgendaEntry.defaultTailDays;
+  late int? _tailDays = widget.entry?.tailDays;
   late AgendaKind _kind = widget.kind;
   late DateTime _start = widget.entry?.startsAt ?? widget.startsAt;
   late DateTime _end =
@@ -221,6 +219,10 @@ class _AgendaEditorState extends State<_AgendaEditor> {
         _error = error;
       });
     }
+  }
+
+  void _updateTailDays(int? days) {
+    setState(() => _tailDays = days);
   }
 
   void _updateColor(AgendaColor? color) {

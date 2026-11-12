@@ -180,7 +180,14 @@ void main() {
     expect(restored.tailDays, 14);
     expect(restored.copyWith(done: false, deleted: false).tailDays, 14);
     final legacy = deadline.toJson()..remove('tailDays');
-    expect(AgendaEntry.fromJson(legacy).tailDays, AgendaEntry.defaultTailDays);
+    final inherited = AgendaEntry.fromJson(legacy);
+    expect(inherited.tailDays, isNull);
+    expect(inherited.effectiveLayoutDays(9), 9);
+    expect(
+      AgendaEntry.fromJson({...legacy, 'tailDays': 4}).effectiveLayoutDays(9),
+      4,
+    );
+    expect(AgendaEntry.fromJson(inherited.toJson()).tailDays, isNull);
     for (final invalid in [0, -1, 31, 1.5, '7']) {
       expect(
         () => AgendaEntry.fromJson({...legacy, 'tailDays': invalid}),

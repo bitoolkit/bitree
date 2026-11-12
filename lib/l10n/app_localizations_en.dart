@@ -930,7 +930,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get agendaTailDays => 'Tail length (days)';
 
   @override
-  String get agendaTailDaysHint => '1–30 days; default: 4 days';
+  String get agendaTailDaysHint => '1–30 days; per-item settings take priority';
+
+  @override
+  String get agendaTailDaysDefault => 'Use global default';
 
   @override
   String agendaTailDaysValue(int days) {
@@ -2514,7 +2517,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deadlineCutoffEnabled => 'Enable daily cutoff window';
 
   @override
-  String get deadlineCutoffDescription => 'Move DDLs within this window to its start. Events, exams and open-ended quizzes are unaffected.';
+  String get deadlineCutoffDescription =>
+      'Show DDLs in this window as due at its start. Actual deadlines stay unchanged.';
 
   @override
   String get deadlineCutoffStart => 'Start time';
@@ -2537,14 +2541,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String deadlineCutoffInstant(String time) {
-    return 'Only the instant $time each day (not all day)';
+    return 'Only at $time each day';
   }
 
   @override
-  String get deadlineCutoffBoundaryHint => 'Both endpoints are included. An end before the start crosses midnight; equal times match only one instant.';
+  String get deadlineCutoffBoundaryHint =>
+      'Both endpoints are included. An end before the start crosses midnight; equal times match only one instant.';
 
   @override
-  String get deadlineCutoffPreserveHint => 'Actual deadlines stay unchanged. Turning this off retains your selected start and end times.';
+  String get deadlineCutoffPreserveHint =>
+      'Actual deadlines stay unchanged. Turning this off retains your selected start and end times.';
 
   @override
   String get agendaAdjustedDeadline => 'Adjusted deadline';
@@ -2566,7 +2572,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAgendaLayoutDays => 'DDL layout width';
 
   @override
-  String get agendaLayoutDaysDescription => 'Use one layout width for deadlines, start-only items, and the left side of adjusted deadlines, overriding old per-item tails. Painted tails keep a fixed screen width.';
+  String get agendaLayoutDaysDescription =>
+      'Default layout width. Individual DDL tail lengths take priority.';
 
   @override
   String get agendaLayoutDaysUnit => 'days';
@@ -2578,7 +2585,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAgendaEventInfoBar => 'Event information bar';
 
   @override
-  String get settingsAgendaEventInfoBarDescription => 'Show the left information card for events and exams in the timeline. When off, its layout space is released; boundary lines, the filled interval, and deadlines are unaffected.';
+  String get settingsAgendaEventInfoBarDescription =>
+      'Show details on the left when on, or inside event and exam boxes when off.';
 
   @override
   String releaseVersion(String channel, String version) {

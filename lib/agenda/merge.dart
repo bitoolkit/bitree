@@ -23,6 +23,7 @@ List<AgendaEntry> _mergeDeadlineEntries(
       next.copyWith(
         done: saved.local ? entry.done || saved.done : entry.done,
         deleted: saved.deleted,
+        tailDays: saved.tailDays,
       ),
     );
   }

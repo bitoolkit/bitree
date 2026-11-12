@@ -47,16 +47,18 @@ class _DelayedWritePreferences extends MemoryPreferences {
 AppSettingsController _settings(MemoryPreferences preferences) =>
     AppSettingsController(preferences, coursePaletteLoader: () async => {});
 
-AgendaEntry _entry(String id, {
+AgendaEntry _entry(
+  String id, {
   bool startOnly = false,
   DeadlineCutoffWindow cutoff = const DeadlineCutoffWindow(),
+  int? tailDays,
 }) => AgendaEntry(
   id: id,
   title: id,
   kind: AgendaKind.deadline,
   startsAt: _date,
   startOnly: startOnly,
-  tailDays: id == 'plain' ? 1 : 30,
+  tailDays: tailDays,
   deadlineCutoffWindow: cutoff,
 );
 
@@ -72,21 +74,24 @@ void main() {
     expect(preferences.value(_key), isNull);
   });
 
-  test('Layout days restore, publish immediately and survive restart', () async {
-    final preferences = MemoryPreferences({_key: '7'});
-    final first = _settings(preferences);
-    addTearDown(first.dispose);
-    await first.initialize();
-    expect(first.agendaLayoutDays.value, 7);
-    final writing = first.setAgendaLayoutDays(12);
-    expect(first.agendaLayoutDays.value, 12);
-    await writing;
-    expect(preferences.value(_key), '12');
-    final restarted = _settings(preferences);
-    addTearDown(restarted.dispose);
-    await restarted.initialize();
-    expect(restarted.agendaLayoutDays.value, 12);
-  });
+  test(
+    'Layout days restore, publish immediately and survive restart',
+    () async {
+      final preferences = MemoryPreferences({_key: '7'});
+      final first = _settings(preferences);
+      addTearDown(first.dispose);
+      await first.initialize();
+      expect(first.agendaLayoutDays.value, 7);
+      final writing = first.setAgendaLayoutDays(12);
+      expect(first.agendaLayoutDays.value, 12);
+      await writing;
+      expect(preferences.value(_key), '12');
+      final restarted = _settings(preferences);
+      addTearDown(restarted.dispose);
+      await restarted.initialize();
+      expect(restarted.agendaLayoutDays.value, 12);
+    },
+  );
 
   for (final invalid in ['', '0', '31', '-2', '2.5', 'unknown']) {
     test('Invalid saved width falls back to four: $invalid', () async {
@@ -146,8 +151,40 @@ void main() {
     expect(preferences.value(_key), isNull);
   });
 
+  test(
+    'Sync preserves a saved per-item tail on an imported deadline',
+    () async {
+      final saved = AgendaEntry(
+        id: 'imported',
+        title: 'original',
+        kind: AgendaKind.deadline,
+        startsAt: _date,
+        local: false,
+        tailDays: 14,
+      );
+      final app = TestAppController(entries: [saved]);
+      await app.initialize();
+      expect(
+        await app.agenda.mergeDeadlines([
+          AgendaEntry(
+            id: saved.id,
+            title: 'updated',
+            kind: saved.kind,
+            startsAt: _date,
+            local: false,
+          ),
+        ]),
+        isTrue,
+      );
+      final updated = app.agenda.entries.single;
+      expect(updated.title, 'updated');
+      expect(updated.tailDays, 14);
+      expect(updated.effectiveLayoutDays(8), 14);
+    },
+  );
+
   for (final days in [1, 4, 30]) {
-    test('All DDL reservations use the global $days days, not legacy values', () {
+    test('DDL reservations without overrides follow the global $days days', () {
       const cutoff = DeadlineCutoffWindow(
         enabled: true,
         startMinute: 10 * 60,
@@ -173,118 +210,190 @@ void main() {
           expect(placement.end, entry.realDueAt);
         }
       }
-      expect(entries.map((e) => e.tailDays), [1, 30, 30]);
+      expect(entries.map((e) => e.tailDays), [null, null, null]);
       expect(entries.every((e) => e.startsAt == _date), isTrue);
-      expect(entries.first.toJson()['tailDays'], 1);
-      expect(entries.last.toJson()['tailDays'], 30);
+      expect(entries.every((e) => e.toJson()['tailDays'] == null), isTrue);
     });
   }
 
-  testWidgets('One live width controls plain, open and adjusted DDL bodies', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    final entries = [_entry('plain'), _entry('open', startOnly: true), _entry('adjusted')];
-    final app = TestAppController(entries: entries);
-    await app.initialize();
-    // Plain and adjusted use different clock times so only the latter matches.
-    final adjusted = AgendaEntry(
-      id: 'adjusted', title: 'adjusted', kind: AgendaKind.deadline,
-      startsAt: _date.add(const Duration(hours: 2)), tailDays: 30,
+  test('Per-item tails override the global width for every DDL type', () {
+    const cutoff = DeadlineCutoffWindow(
+      enabled: true,
+      startMinute: 10 * 60,
+      endMinute: 18 * 60,
     );
-    final shown = [entries[0], entries[1], adjusted];
-    await app.settings.setDeadlineCutoff(const DeadlineCutoffWindow(
-      enabled: true, startMinute: 13 * 60, endMinute: 15 * 60,
-    ));
-    await tester.pumpWidget(MaterialApp(
-      theme: bitreeTheme(Brightness.light),
-      home: Scaffold(body: AgendaTimeline(
-        controller: app, entries: shown, now: _date,
-      )),
-    ));
-    await tester.pumpAndSettle();
-    final state = tester.state(find.byType(AgendaTimeline));
+    final entries = [
+      _entry('plain', tailDays: 1),
+      _entry('open', startOnly: true, tailDays: 30),
+      _entry('adjusted', cutoff: cutoff, tailDays: 14),
+    ];
     for (final days in [4, 8]) {
-      await app.settings.setAgendaLayoutDays(days);
-      await tester.pumpAndSettle();
-      for (final entry in shown) {
-        final bar = find.byKey(ValueKey(('agenda-timeline-bar', entry.id)));
-        expect(bar, findsOneWidget);
-        expect(tester.getSize(bar).width, closeTo(48 * (days - .25), .001));
+      final placements = layoutAgendaTimeline(
+        entries,
+        minimumEventSpan: const Duration(minutes: 1),
+        layoutDays: days,
+      );
+      for (final p in placements) {
+        final entry = p.entry;
+        final span = Duration(days: entry.tailDays!);
+        final cardSpan = Duration(
+          microseconds: (Duration.microsecondsPerDay * (entry.tailDays! - .25))
+              .round(),
+        );
+        expect(
+          p.start,
+          entry.startOnly ? entry.startsAt : entry.dueAt.subtract(span),
+        );
+        expect(
+          p.end,
+          entry.startOnly ? entry.startsAt.add(span) : entry.realDueAt,
+        );
+        expect(
+          p.paintStart,
+          entry.startOnly ? entry.startsAt : entry.dueAt.subtract(cardSpan),
+        );
+        expect(
+          p.paintEnd,
+          entry.startOnly ? entry.startsAt.add(cardSpan) : entry.realDueAt,
+        );
       }
-      expect(tester.state(find.byType(AgendaTimeline)), same(state));
     }
-    tester.widget<Slider>(find.byType(Slider)).onChanged!(24);
-    await tester.pumpAndSettle();
-    for (final entry in shown) {
-      final bar = find.byKey(ValueKey(('agenda-timeline-bar', entry.id)));
-      expect(tester.getSize(bar).width, closeTo(48 * (8 - .25), .001));
-    }
-    expect(entries.map((e) => e.tailDays), [1, 30, 30]);
-    expect(adjusted.tailDays, 30);
-    expect(adjusted.startsAt, _date.add(const Duration(hours: 2)));
-    expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox());
   });
 
-  for (final locale in [const Locale('zh'), const Locale('en')]) {
-    testWidgets('Width settings work on a narrow large-text screen in $locale', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(320, 640);
+  testWidgets(
+    'Live global changes respect plain, open and adjusted DDL overrides',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-      final preferences = MemoryPreferences();
-      final settings = _settings(preferences);
-      addTearDown(settings.dispose);
-      await settings.initialize();
-      await tester.pumpWidget(MaterialApp(
-        locale: locale,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        theme: bitreeTheme(Brightness.light),
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(1.8)),
-          child: child!,
+      final entries = [
+        _entry('plain', tailDays: 1),
+        _entry('open', startOnly: true),
+        _entry('custom-open', startOnly: true, tailDays: 6),
+        _entry('inherited'),
+      ];
+      final app = TestAppController(entries: entries);
+      await app.initialize();
+      // Plain and adjusted use different clock times so only the latter matches.
+      final adjusted = AgendaEntry(
+        id: 'adjusted',
+        title: 'adjusted',
+        kind: AgendaKind.deadline,
+        startsAt: _date.add(const Duration(hours: 2)),
+        tailDays: 2,
+      );
+      final shown = [...entries, adjusted];
+      await app.settings.setDeadlineCutoff(
+        const DeadlineCutoffWindow(
+          enabled: true,
+          startMinute: 13 * 60,
+          endMinute: 15 * 60,
         ),
-        home: AgendaLayoutDaysScreen(settings: settings),
-      ));
-      await tester.pumpAndSettle();
-      final field = find.byKey(const ValueKey('agenda-layout-days-input'));
-      await tester.scrollUntilVisible(
-        field, 200, scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: bitreeTheme(Brightness.light),
+          home: Scaffold(
+            body: AgendaTimeline(controller: app, entries: shown, now: _date),
+          ),
+        ),
       );
       await tester.pumpAndSettle();
-      await tester.enterText(field, '7');
-      await tester.testTextInput.receiveAction(TextInputAction.done);
+      final state = tester.state(find.byType(AgendaTimeline));
+      for (final days in [4, 8]) {
+        await app.settings.setAgendaLayoutDays(days);
+        await tester.pumpAndSettle();
+        for (final entry in shown) {
+          final bar = find.byKey(ValueKey(('agenda-timeline-bar', entry.id)));
+          expect(bar, findsOneWidget);
+          expect(
+            tester.getSize(bar).width,
+            closeTo(48 * (entry.effectiveLayoutDays(days) - .25), .001),
+          );
+        }
+        expect(tester.state(find.byType(AgendaTimeline)), same(state));
+      }
+      tester.widget<Slider>(find.byType(Slider)).onChanged!(24);
       await tester.pumpAndSettle();
-      expect(settings.agendaLayoutDays.value, 7);
-      expect(preferences.value(_key), '7');
-      await tester.enterText(field, '31');
-      await tester.testTextInput.receiveAction(TextInputAction.done);
-      await tester.pumpAndSettle();
-      expect(settings.agendaLayoutDays.value, 7);
-      final context = tester.element(find.byType(AgendaLayoutDaysScreen));
-      expect(find.text(context.l10n.agendaLayoutDaysRange), findsWidgets);
-      await settings.setAgendaLayoutDays(12);
-      await tester.pumpAndSettle();
-      final textField = tester.widget<TextFormField>(field);
-      expect(textField.controller!.text, '12');
-      final slider = find.byKey(const ValueKey('agenda-layout-days-slider'));
-      await tester.scrollUntilVisible(
-        slider, 200, scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
-      tester.widget<Slider>(slider).onChanged!(30);
-      await tester.pumpAndSettle();
-      expect(settings.agendaLayoutDays.value, 30);
-      expect(preferences.value(_key), '30');
+      for (final entry in shown) {
+        final bar = find.byKey(ValueKey(('agenda-timeline-bar', entry.id)));
+        expect(
+          tester.getSize(bar).width,
+          closeTo(48 * (entry.effectiveLayoutDays(8) - .25), .001),
+        );
+      }
+      expect(entries.map((e) => e.tailDays), [1, null, 6, null]);
+      expect(adjusted.tailDays, 2);
+      expect(adjusted.startsAt, _date.add(const Duration(hours: 2)));
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
-    });
+    },
+  );
+
+  for (final locale in [const Locale('zh'), const Locale('en')]) {
+    testWidgets(
+      'Width settings work on a narrow large-text screen in $locale',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final preferences = MemoryPreferences();
+        final settings = _settings(preferences);
+        addTearDown(settings.dispose);
+        await settings.initialize();
+        await tester.pumpWidget(
+          MaterialApp(
+            locale: locale,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            theme: bitreeTheme(Brightness.light),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: TextScaler.linear(1.8)),
+              child: child!,
+            ),
+            home: AgendaLayoutDaysScreen(settings: settings),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final field = find.byKey(const ValueKey('agenda-layout-days-input'));
+        await tester.scrollUntilVisible(
+          field,
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
+        await tester.enterText(field, '7');
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await tester.pumpAndSettle();
+        expect(settings.agendaLayoutDays.value, 7);
+        expect(preferences.value(_key), '7');
+        await tester.enterText(field, '31');
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await tester.pumpAndSettle();
+        expect(settings.agendaLayoutDays.value, 7);
+        final context = tester.element(find.byType(AgendaLayoutDaysScreen));
+        expect(find.text(context.l10n.agendaLayoutDaysRange), findsWidgets);
+        await settings.setAgendaLayoutDays(12);
+        await tester.pumpAndSettle();
+        final textField = tester.widget<TextFormField>(field);
+        expect(textField.controller!.text, '12');
+        final slider = find.byKey(const ValueKey('agenda-layout-days-slider'));
+        await tester.scrollUntilVisible(
+          slider,
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
+        tester.widget<Slider>(slider).onChanged!(30);
+        await tester.pumpAndSettle();
+        expect(settings.agendaLayoutDays.value, 30);
+        expect(preferences.value(_key), '30');
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
   }
 }

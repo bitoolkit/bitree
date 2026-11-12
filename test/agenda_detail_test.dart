@@ -25,22 +25,19 @@ void main() {
     bool detailed = false,
     bool allDay = false,
     int tailDays = 4,
-  }) =>
-      AgendaEntry(
-        id: 'assignment',
-        title: detailed ? '第三章作业：线性表与链表的实现、测试和复杂度分析' : '1',
-        kind: AgendaKind.deadline,
-        startsAt: DateTime.utc(2020, 10, 27, 1, 11),
-        allDay: allDay,
-        tailDays: tailDays,
-        course: detailed ? '2026–2027 秋季学期 · 数据结构中文班' : '',
-        source: detailed ? DeadlineSource.lexue : null,
-        url: detailed ? url : null,
-        location: detailed ? '文萃楼F704，计算机实验室' : '',
-        notes: detailed
-            ? List.filled(20, '提交源码和实验报告，说明边界条件与测试结果。').join('\n')
-            : '',
-      );
+  }) => AgendaEntry(
+    id: 'assignment',
+    title: detailed ? '第三章作业：线性表与链表的实现、测试和复杂度分析' : '1',
+    kind: AgendaKind.deadline,
+    startsAt: DateTime.utc(2020, 10, 27, 1, 11),
+    allDay: allDay,
+    tailDays: tailDays,
+    course: detailed ? '2026–2027 秋季学期 · 数据结构中文班' : '',
+    source: detailed ? DeadlineSource.lexue : null,
+    url: detailed ? url : null,
+    location: detailed ? '文萃楼F704，计算机实验室' : '',
+    notes: detailed ? List.filled(20, '提交源码和实验报告，说明边界条件与测试结果。').join('\n') : '',
+  );
 
   Future<TestAppController> open(
     WidgetTester tester,
@@ -225,65 +222,123 @@ void main() {
     expect(find.byType(SheetLayout), findsOneWidget);
   });
 
-  testWidgets('Edit preserves the entry and legacy width without a per-item slider', (
+  testWidgets(
+    'Edit restores the per-item tail slider and preserves its value',
+    (tester) async {
+      final controller = await open(tester, deadline(tailDays: 14));
+      await tester.tap(find.widgetWithText(TextButton, '编辑'));
+      await tester.pumpAndSettle();
+      expect(find.text('编辑DDL'), findsOneWidget);
+      final name = find.byWidgetPredicate(
+        (widget) => widget is TextField && widget.decoration?.labelText == '名称',
+      );
+      expect(tester.widget<TextField>(name).controller!.text, '1');
+      expect(find.byKey(const ValueKey('agenda-start-date')), findsOneWidget);
+      expect(find.byKey(const ValueKey('agenda-start-time')), findsOneWidget);
+      expect(find.text('备注（选填）'), findsNothing);
+      expect(find.byType(OutlinedButton), findsNothing);
+      expect(find.byType(Slider), findsNothing);
+      expect(find.text('拖尾长度（天）'), findsNothing);
+      expect(controller.agenda.entries.single.tailDays, 14);
+      await tester.tap(find.byKey(const ValueKey('agenda-more-options')));
+      await tester.pumpAndSettle();
+      expect(find.text('备注（选填）'), findsOneWidget);
+      final tailSlider = find.byKey(const ValueKey('agenda-tail-days-slider'));
+      expect(tester.widget<Slider>(tailSlider).value, 14);
+      tester.widget<Slider>(tailSlider).onChanged!(9);
+      await tester.pumpAndSettle();
+      await tester.enterText(name, '第二章习题');
+      final colorField = find.byKey(const ValueKey('agenda-color-field'));
+      await tester.ensureVisible(colorField);
+      await tester.tap(colorField);
+      await tester.pumpAndSettle();
+      expect(find.byType(ColorIndicator), findsWidgets);
+      expect(presetColor(AgendaColor.blue), findsOneWidget);
+      final coral = presetColor(AgendaColor.coral);
+      await tester.tap(coral);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, '应用'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, '保存'));
+      await tester.pumpAndSettle();
+      expect(controller.agenda.entries.single.id, 'assignment');
+      expect(controller.agenda.entries.single.title, '第二章习题');
+      expect(controller.agenda.entries.single.color, AgendaColor.coral);
+      expect(controller.agenda.entries.single.tailDays, 9);
+      expect(find.byType(SheetLayout), findsNothing);
+      unawaited(
+        showAgendaEntry(
+          tester.element(find.text('打开详情')),
+          controller.agenda,
+          controller.agenda.entries.single,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, '编辑'));
+      await tester.pumpAndSettle();
+      expect(find.byType(Slider), findsNothing);
+      expect(controller.agenda.entries.single.tailDays, 9);
+      await tester.tap(find.byKey(const ValueKey('agenda-more-options')));
+      await tester.pumpAndSettle();
+      expect(tester.widget<Slider>(tailSlider).value, 9);
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('agenda-color-value')))
+            .data,
+        '珊瑚色',
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('An individual tail can return to following the global default', (
     tester,
   ) async {
     final controller = await open(tester, deadline(tailDays: 14));
     await tester.tap(find.widgetWithText(TextButton, '编辑'));
     await tester.pumpAndSettle();
-    expect(find.text('编辑DDL'), findsOneWidget);
-    final name = find.byWidgetPredicate(
-      (widget) => widget is TextField && widget.decoration?.labelText == '名称',
-    );
-    expect(tester.widget<TextField>(name).controller!.text, '1');
-    expect(find.byKey(const ValueKey('agenda-start-date')), findsOneWidget);
-    expect(find.byKey(const ValueKey('agenda-start-time')), findsOneWidget);
-    expect(find.text('备注（选填）'), findsNothing);
-    expect(find.byType(OutlinedButton), findsNothing);
-    expect(find.byType(Slider), findsNothing);
-    expect(find.text('拖尾长度（天）'), findsNothing);
-    expect(controller.agenda.entries.single.tailDays, 14);
     await tester.tap(find.byKey(const ValueKey('agenda-more-options')));
     await tester.pumpAndSettle();
-    expect(find.text('备注（选填）'), findsOneWidget);
-    expect(find.byType(Slider), findsNothing);
-    await tester.enterText(name, '第二章习题');
-    final colorField = find.byKey(const ValueKey('agenda-color-field'));
-    await tester.ensureVisible(colorField);
-    await tester.tap(colorField);
+    final useDefault = find.byKey(const ValueKey('agenda-tail-days-default'));
+    expect(tester.widget<SwitchListTile>(useDefault).value, isFalse);
+    expect(
+      find.byKey(const ValueKey('agenda-tail-days-slider')),
+      findsOneWidget,
+    );
+    await tester.ensureVisible(useDefault);
+    await tester.tap(useDefault);
     await tester.pumpAndSettle();
-    expect(find.byType(ColorIndicator), findsWidgets);
-    expect(presetColor(AgendaColor.blue), findsOneWidget);
-    final coral = presetColor(AgendaColor.coral);
-    await tester.tap(coral);
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, '应用'));
-    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('agenda-tail-days-slider')), findsNothing);
     await tester.tap(find.widgetWithText(FilledButton, '保存'));
     await tester.pumpAndSettle();
-    expect(controller.agenda.entries.single.id, 'assignment');
-    expect(controller.agenda.entries.single.title, '第二章习题');
-    expect(controller.agenda.entries.single.color, AgendaColor.coral);
-    expect(controller.agenda.entries.single.tailDays, 14);
-    expect(find.byType(SheetLayout), findsNothing);
+    final saved = controller.agenda.entries.single;
+    expect(saved.tailDays, isNull);
+    expect(saved.effectiveLayoutDays(8), 8);
+    expect(AgendaEntry.fromJson(saved.toJson()).tailDays, isNull);
+
     unawaited(
       showAgendaEntry(
         tester.element(find.text('打开详情')),
         controller.agenda,
-        controller.agenda.entries.single,
+        saved,
       ),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(TextButton, '编辑'));
     await tester.pumpAndSettle();
-    expect(find.byType(Slider), findsNothing);
-    expect(controller.agenda.entries.single.tailDays, 14);
-    expect(
-      tester
-          .widget<Text>(find.byKey(const ValueKey('agenda-color-value')))
-          .data,
-      '珊瑚色',
-    );
+    await tester.tap(find.byKey(const ValueKey('agenda-more-options')));
+    await tester.pumpAndSettle();
+    expect(tester.widget<SwitchListTile>(useDefault).value, isTrue);
+    await tester.ensureVisible(useDefault);
+    await tester.tap(useDefault);
+    await tester.pumpAndSettle();
+    final slider = find.byKey(const ValueKey('agenda-tail-days-slider'));
+    tester.widget<Slider>(slider).onChanged!(4);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.pumpAndSettle();
+    expect(controller.agenda.entries.single.tailDays, 4);
+    expect(controller.agenda.entries.single.effectiveLayoutDays(8), 4);
     expect(tester.takeException(), isNull);
   });
 
