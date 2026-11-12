@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:bitree/agenda/deadline_cutoff.dart';
 import 'package:bitree/app/settings_controller.dart';
@@ -98,7 +99,8 @@ Future<void> _showCutoff(
 
 Future<void> _expectSummary(
   WidgetTester tester,
-  String Function(AppLocalizations l10n, MaterialLocalizations material) expected,
+  String Function(AppLocalizations l10n, MaterialLocalizations material)
+  expected,
 ) async {
   final summary = find.byKey(const ValueKey('deadline-cutoff-summary'));
   await tester.ensureVisible(summary);
@@ -117,24 +119,32 @@ String _formattedTime(MaterialLocalizations material, int hour, int minute) =>
     );
 
 Future<void> _selectEndpoint(WidgetTester tester, {required bool start}) async {
-  final context = tester.element(find.byType(DeadlineCutoffScreen));
-  final l10n = AppLocalizations.of(context);
-  final target = find.descendant(
-    of: find.byKey(const ValueKey('deadline-cutoff-endpoint')),
-    matching: find.text(start ? l10n.deadlineCutoffStart : l10n.deadlineCutoffEnd),
+  final target = find.byKey(
+    ValueKey(start ? 'deadline-cutoff-start' : 'deadline-cutoff-end'),
   );
   await tester.ensureVisible(target);
   await tester.tap(target);
   await tester.pumpAndSettle();
 }
 
-Future<void> _nativeInputMode(WidgetTester tester) async {
-  final context = tester.element(find.byType(TimePickerDialog));
-  final button = find.byTooltip(
-    MaterialLocalizations.of(context).inputTimeModeButtonLabel,
+Future<void> _chooseTime(WidgetTester tester, int hour, int minute) async {
+  final dial = find.descendant(
+    of: find.byType(TimePickerDialog),
+    matching: find.byWidgetPredicate(
+      (widget) => widget is GestureDetector && widget.onPanUpdate != null,
+    ),
   );
-  await tester.ensureVisible(button);
-  await tester.tap(button);
+  final rect = tester.getRect(dial);
+  Offset position(int value, int divisions, double radius) {
+    final angle = 2 * math.pi * value / divisions - math.pi / 2;
+    return rect.center + Offset(math.cos(angle), math.sin(angle)) * radius;
+  }
+
+  await tester.tapAt(
+    position(hour % 12, 12, rect.width * (hour >= 12 ? .27 : .4)),
+  );
+  await tester.pumpAndSettle();
+  await tester.tapAt(position(minute, 60, rect.width * .4));
   await tester.pumpAndSettle();
 }
 
@@ -155,72 +165,82 @@ Future<void> _pickerAction(WidgetTester tester, {required bool confirm}) async {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('Cutoff defaults to disabled and retains the overnight preset', () async {
-    final preferences = MemoryPreferences();
-    final settings = _settings(preferences);
-    addTearDown(settings.dispose);
-    expect(settings.deadlineCutoff.value, const DeadlineCutoffWindow());
-    await settings.initialize();
-    expect(settings.deadlineCutoff.value.enabled, isFalse);
-    expect(settings.deadlineCutoff.value.startMinute, 22 * 60);
-    expect(settings.deadlineCutoff.value.endMinute, 8 * 60);
-    expect(preferences.value(_key), isNull);
-  });
+  test(
+    'Cutoff defaults to disabled and retains the overnight preset',
+    () async {
+      final preferences = MemoryPreferences();
+      final settings = _settings(preferences);
+      addTearDown(settings.dispose);
+      expect(settings.deadlineCutoff.value, const DeadlineCutoffWindow());
+      await settings.initialize();
+      expect(settings.deadlineCutoff.value.enabled, isFalse);
+      expect(settings.deadlineCutoff.value.startMinute, 22 * 60);
+      expect(settings.deadlineCutoff.value.endMinute, 8 * 60);
+      expect(preferences.value(_key), isNull);
+    },
+  );
 
-  test('A saved cutoff is restored and a disabled choice survives restart', () async {
-    const saved = DeadlineCutoffWindow(
-      enabled: true,
-      startMinute: 21 * 60 + 30,
-      endMinute: 7 * 60 + 15,
-    );
-    final preferences = MemoryPreferences({_key: jsonEncode(saved.toJson())});
-    final first = _settings(preferences);
-    addTearDown(first.dispose);
-    await first.initialize();
-    expect(first.deadlineCutoff.value, saved);
-    var settingNotifications = 0;
-    var valueNotifications = 0;
-    first.addListener(() => settingNotifications++);
-    first.deadlineCutoff.addListener(() => valueNotifications++);
+  test(
+    'A saved cutoff is restored and a disabled choice survives restart',
+    () async {
+      const saved = DeadlineCutoffWindow(
+        enabled: true,
+        startMinute: 21 * 60 + 30,
+        endMinute: 7 * 60 + 15,
+      );
+      final preferences = MemoryPreferences({_key: jsonEncode(saved.toJson())});
+      final first = _settings(preferences);
+      addTearDown(first.dispose);
+      await first.initialize();
+      expect(first.deadlineCutoff.value, saved);
+      var settingNotifications = 0;
+      var valueNotifications = 0;
+      first.addListener(() => settingNotifications++);
+      first.deadlineCutoff.addListener(() => valueNotifications++);
 
-    final disabled = saved.copyWith(enabled: false);
-    final writing = first.setDeadlineCutoff(disabled);
-    expect(first.deadlineCutoff.value, disabled);
-    expect(settingNotifications, 1);
-    expect(valueNotifications, 1);
-    await writing;
-    expect(jsonDecode(preferences.value(_key)!), disabled.toJson());
+      final disabled = saved.copyWith(enabled: false);
+      final writing = first.setDeadlineCutoff(disabled);
+      expect(first.deadlineCutoff.value, disabled);
+      expect(settingNotifications, 1);
+      expect(valueNotifications, 1);
+      await writing;
+      expect(jsonDecode(preferences.value(_key)!), disabled.toJson());
 
-    final restarted = _settings(preferences);
-    addTearDown(restarted.dispose);
-    await restarted.initialize();
-    expect(restarted.deadlineCutoff.value, disabled);
-    expect(restarted.deadlineCutoff.value.startMinute, saved.startMinute);
-    expect(restarted.deadlineCutoff.value.endMinute, saved.endMinute);
-  });
+      final restarted = _settings(preferences);
+      addTearDown(restarted.dispose);
+      await restarted.initialize();
+      expect(restarted.deadlineCutoff.value, disabled);
+      expect(restarted.deadlineCutoff.value.startMinute, saved.startMinute);
+      expect(restarted.deadlineCutoff.value.endMinute, saved.endMinute);
+    },
+  );
 
-  test('Rapid cutoff changes save in order with the newest value last', () async {
-    final preferences = _DelayedWritePreferences();
-    final settings = _settings(preferences);
-    addTearDown(settings.dispose);
-    await settings.initialize();
-    const enabled = DeadlineCutoffWindow(enabled: true);
-    final first = settings.setDeadlineCutoff(enabled);
-    await preferences.started.future;
-    final changed = enabled.copyWith(startMinute: 20 * 60);
-    final second = settings.setDeadlineCutoff(changed);
-    final disabled = changed.copyWith(enabled: false);
-    final last = settings.setDeadlineCutoff(disabled);
-    expect(settings.deadlineCutoff.value, disabled);
-    expect(preferences.writes, hasLength(1));
-    preferences.release.complete();
-    await Future.wait([first, second, last]);
-    expect(
-      preferences.writes.map(jsonDecode).toList(),
-      [enabled.toJson(), changed.toJson(), disabled.toJson()],
-    );
-    expect(jsonDecode(preferences.value(_key)!), disabled.toJson());
-  });
+  test(
+    'Rapid cutoff changes save in order with the newest value last',
+    () async {
+      final preferences = _DelayedWritePreferences();
+      final settings = _settings(preferences);
+      addTearDown(settings.dispose);
+      await settings.initialize();
+      const enabled = DeadlineCutoffWindow(enabled: true);
+      final first = settings.setDeadlineCutoff(enabled);
+      await preferences.started.future;
+      final changed = enabled.copyWith(startMinute: 20 * 60);
+      final second = settings.setDeadlineCutoff(changed);
+      final disabled = changed.copyWith(enabled: false);
+      final last = settings.setDeadlineCutoff(disabled);
+      expect(settings.deadlineCutoff.value, disabled);
+      expect(preferences.writes, hasLength(1));
+      preferences.release.complete();
+      await Future.wait([first, second, last]);
+      expect(preferences.writes.map(jsonDecode).toList(), [
+        enabled.toJson(),
+        changed.toJson(),
+        disabled.toJson(),
+      ]);
+      expect(jsonDecode(preferences.value(_key)!), disabled.toJson());
+    },
+  );
 
   test('A late initialize read cannot replace a newer cutoff choice', () async {
     final preferences = _DelayedReadPreferences();
@@ -230,7 +250,9 @@ void main() {
     await preferences.started.future;
     const chosen = DeadlineCutoffWindow(enabled: true, startMinute: 600);
     await settings.setDeadlineCutoff(chosen);
-    preferences.result.complete(jsonEncode(const DeadlineCutoffWindow().toJson()));
+    preferences.result.complete(
+      jsonEncode(const DeadlineCutoffWindow().toJson()),
+    );
     await loading;
     expect(settings.deadlineCutoff.value, chosen);
     expect(jsonDecode(preferences.value(_key)!), chosen.toJson());
@@ -290,74 +312,125 @@ void main() {
   });
 
   for (final locale in [const Locale('zh'), const Locale('en')]) {
-    testWidgets('Cutoff settings explain every interval mode in ${locale.languageCode}', (
-      tester,
-    ) async {
+    testWidgets(
+      'Cutoff settings explain every interval mode in ${locale.languageCode}',
+      (tester) async {
+        final preferences = MemoryPreferences();
+        final settings = _settings(preferences);
+        addTearDown(settings.dispose);
+        await settings.initialize();
+        await _showCutoff(
+          tester,
+          settings,
+          locale: locale,
+          size: const Size(320, 640),
+          scale: 1.8,
+        );
+        final context = tester.element(find.byType(DeadlineCutoffScreen));
+        final l10n = AppLocalizations.of(context);
+        expect(find.text(l10n.settingsDeadlineCutoff), findsOneWidget);
+        expect(
+          tester
+              .widget<SwitchListTile>(
+                find.byKey(const ValueKey('deadline-cutoff-enabled')),
+              )
+              .value,
+          isFalse,
+        );
+        expect(find.byType(TimePickerDialog), findsNothing);
+        expect(find.byType(TextField), findsNothing);
+        expect(
+          find.byKey(const ValueKey('deadline-cutoff-start')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('deadline-cutoff-end')),
+          findsOneWidget,
+        );
+        await _expectSummary(
+          tester,
+          (l10n, material) => l10n.deadlineCutoffOvernight(
+            _formattedTime(material, 22, 0),
+            _formattedTime(material, 8, 0),
+          ),
+        );
+        final switcher = find.byKey(const ValueKey('deadline-cutoff-enabled'));
+        await tester.ensureVisible(switcher);
+        await tester.tap(switcher);
+        await tester.pumpAndSettle();
+        expect(settings.deadlineCutoff.value.enabled, isTrue);
+        await tester.tap(switcher);
+        await tester.pumpAndSettle();
+        expect(settings.deadlineCutoff.value.enabled, isFalse);
+        expect(settings.deadlineCutoff.value.startMinute, 22 * 60);
+        expect(settings.deadlineCutoff.value.endMinute, 8 * 60);
+
+        await settings.setDeadlineCutoff(
+          const DeadlineCutoffWindow(startMinute: 600, endMinute: 720),
+        );
+        await tester.pumpAndSettle();
+        await _expectSummary(
+          tester,
+          (l10n, material) => l10n.deadlineCutoffSameDay(
+            _formattedTime(material, 10, 0),
+            _formattedTime(material, 12, 0),
+          ),
+        );
+        await settings.setDeadlineCutoff(
+          const DeadlineCutoffWindow(startMinute: 600, endMinute: 600),
+        );
+        await tester.pumpAndSettle();
+        await _expectSummary(
+          tester,
+          (l10n, material) =>
+              l10n.deadlineCutoffInstant(_formattedTime(material, 10, 0)),
+        );
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
+
+  testWidgets(
+    'Time dials open on tap and cancel either endpoint without saving',
+    (tester) async {
       final preferences = MemoryPreferences();
       final settings = _settings(preferences);
       addTearDown(settings.dispose);
       await settings.initialize();
-      await _showCutoff(
-        tester,
-        settings,
-        locale: locale,
-        size: const Size(320, 640),
-        scale: 1.8,
-      );
-      final context = tester.element(find.byType(DeadlineCutoffScreen));
-      final l10n = AppLocalizations.of(context);
-      expect(find.text(l10n.settingsDeadlineCutoff), findsOneWidget);
-      expect(
-        tester.widget<SwitchListTile>(
-          find.byKey(const ValueKey('deadline-cutoff-enabled')),
-        ).value,
-        isFalse,
-      );
-      expect(find.byType(TimePickerDialog), findsOneWidget);
-      expect(
-        tester.widget<TimePickerDialog>(find.byType(TimePickerDialog))
-            .initialEntryMode,
-        TimePickerEntryMode.dial,
-      );
-      expect(find.byKey(const ValueKey('deadline-cutoff-start')), findsOneWidget);
-      expect(find.byKey(const ValueKey('deadline-cutoff-end')), findsOneWidget);
-      await _expectSummary(tester, (l10n, material) =>
-        l10n.deadlineCutoffOvernight(
-          _formattedTime(material, 22, 0),
-          _formattedTime(material, 8, 0),
-        ));
-      final switcher = find.byKey(const ValueKey('deadline-cutoff-enabled'));
-      await tester.ensureVisible(switcher);
-      await tester.tap(switcher);
-      await tester.pumpAndSettle();
-      expect(settings.deadlineCutoff.value.enabled, isTrue);
-      await tester.tap(switcher);
-      await tester.pumpAndSettle();
-      expect(settings.deadlineCutoff.value.enabled, isFalse);
-      expect(settings.deadlineCutoff.value.startMinute, 22 * 60);
-      expect(settings.deadlineCutoff.value.endMinute, 8 * 60);
-
-      await settings.setDeadlineCutoff(
-        const DeadlineCutoffWindow(startMinute: 600, endMinute: 720),
-      );
-      await tester.pumpAndSettle();
-      await _expectSummary(tester, (l10n, material) =>
-        l10n.deadlineCutoffSameDay(
-          _formattedTime(material, 10, 0),
-          _formattedTime(material, 12, 0),
-        ));
-      await settings.setDeadlineCutoff(
-        const DeadlineCutoffWindow(startMinute: 600, endMinute: 600),
-      );
-      await tester.pumpAndSettle();
-      await _expectSummary(tester, (l10n, material) =>
-        l10n.deadlineCutoffInstant(_formattedTime(material, 10, 0)));
+      await _showCutoff(tester, settings);
+      expect(find.byType(TimePickerDialog), findsNothing);
+      expect(find.byType(TextField), findsNothing);
+      for (final start in [true, false]) {
+        await _selectEndpoint(tester, start: start);
+        final picker = tester.widget<TimePickerDialog>(
+          find.byType(TimePickerDialog),
+        );
+        expect(picker.initialEntryMode, TimePickerEntryMode.dial);
+        expect(
+          find.byTooltip(
+            MaterialLocalizations.of(
+              tester.element(find.byType(TimePickerDialog)),
+            ).inputTimeModeButtonLabel,
+          ),
+          findsOneWidget,
+        );
+        expect(picker.initialTime, TimeOfDay(hour: start ? 22 : 8, minute: 0));
+        expect(find.byType(TextField), findsNothing);
+        await _chooseTime(tester, 3, 45);
+        expect(preferences.value(_key), isNull);
+        await _pickerAction(tester, confirm: false);
+        expect(find.byType(DeadlineCutoffScreen), findsOneWidget);
+        expect(find.byType(TimePickerDialog), findsNothing);
+        expect(settings.deadlineCutoff.value, const DeadlineCutoffWindow());
+        expect(preferences.value(_key), isNull);
+      }
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
-    });
-  }
+    },
+  );
 
-  testWidgets('Cancel resets either resident Material picker without saving', (
+  testWidgets('A dial confirms only its endpoint using the latest settings', (
     tester,
   ) async {
     final preferences = MemoryPreferences();
@@ -365,51 +438,9 @@ void main() {
     addTearDown(settings.dispose);
     await settings.initialize();
     await _showCutoff(tester, settings);
-    // The native component exists immediately, before any field/button tap.
-    expect(find.byType(TimePickerDialog), findsOneWidget);
-    for (final start in [true, false]) {
-      await _selectEndpoint(tester, start: start);
-      await _nativeInputMode(tester);
-      final inputs = find.descendant(
-        of: find.byType(TimePickerDialog),
-        matching: find.byType(TextField),
-      );
-      expect(inputs, findsNWidgets(2));
-      await tester.enterText(inputs.first, '03');
-      await tester.enterText(inputs.last, '45');
-      expect(preferences.value(_key), isNull);
-      await _pickerAction(tester, confirm: false);
-      expect(find.byType(DeadlineCutoffScreen), findsOneWidget);
-      expect(find.byType(TimePickerDialog), findsOneWidget);
-      expect(
-        tester.widget<TimePickerDialog>(find.byType(TimePickerDialog)).initialTime,
-        TimeOfDay(hour: start ? 22 : 8, minute: 0),
-      );
-      expect(settings.deadlineCutoff.value, const DeadlineCutoffWindow());
-      expect(preferences.value(_key), isNull);
-    }
-    expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox());
-  });
-
-  testWidgets('Resident picker confirms only its endpoint using latest settings', (
-    tester,
-  ) async {
-    final preferences = MemoryPreferences();
-    final settings = _settings(preferences);
-    addTearDown(settings.dispose);
-    await settings.initialize();
-    await _showCutoff(tester, settings);
-    await _nativeInputMode(tester);
+    await _selectEndpoint(tester, start: true);
+    await _chooseTime(tester, 21, 15);
     final pickerElement = tester.element(find.byType(TimePickerDialog));
-    final inputs = find.descendant(
-      of: find.byType(TimePickerDialog),
-      matching: find.byType(TextField),
-    );
-    expect(inputs, findsNWidgets(2));
-    await tester.enterText(inputs.first, '21');
-    await tester.enterText(inputs.last, '15');
-    // Enabled/opposite-endpoint updates preserve the native picker's draft.
     await settings.setDeadlineCutoff(
       const DeadlineCutoffWindow(enabled: true, endMinute: 600),
     );
@@ -419,137 +450,102 @@ void main() {
     expect(settings.deadlineCutoff.value.startMinute, 21 * 60 + 15);
     expect(settings.deadlineCutoff.value.endMinute, 600);
     expect(settings.deadlineCutoff.value.enabled, isTrue);
-    expect(jsonDecode(preferences.value(_key)!), settings.deadlineCutoff.value.toJson());
+    expect(
+      jsonDecode(preferences.value(_key)!),
+      settings.deadlineCutoff.value.toJson(),
+    );
     expect(find.byType(DeadlineCutoffScreen), findsOneWidget);
-    expect(find.byType(TimePickerDialog), findsOneWidget);
-    expect(
-      tester.widget<TextField>(find.byKey(const ValueKey('deadline-cutoff-start')))
-          .controller!.text,
-      '21:15',
-    );
-    expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox());
-  });
+    expect(find.byType(TimePickerDialog), findsNothing);
+    expect(find.text('21:15'), findsOneWidget);
 
-  testWidgets('Resident text fields validate before saving and reset the dial', (
-    tester,
-  ) async {
-    final preferences = MemoryPreferences();
-    final settings = _settings(preferences);
-    addTearDown(settings.dispose);
-    await settings.initialize();
-    await _showCutoff(tester, settings);
-    final input = find.byKey(const ValueKey('deadline-cutoff-start'));
-    await tester.ensureVisible(input);
-    await tester.enterText(input, '25:10');
-    await tester.testTextInput.receiveAction(TextInputAction.done);
-    await tester.pumpAndSettle();
-    final material = MaterialLocalizations.of(tester.element(input));
-    expect(find.text(material.invalidTimeLabel), findsOneWidget);
-    expect(settings.deadlineCutoff.value.startMinute, 22 * 60);
-    expect(preferences.value(_key), isNull);
-
-    await tester.enterText(input, '21:');
-    await tester.pump();
-    expect(preferences.value(_key), isNull);
-    await tester.enterText(input, '21:15');
-    await tester.testTextInput.receiveAction(TextInputAction.done);
-    await tester.pumpAndSettle();
+    await _selectEndpoint(tester, start: false);
+    await _chooseTime(tester, 3, 45);
+    await _pickerAction(tester, confirm: true);
     expect(settings.deadlineCutoff.value.startMinute, 21 * 60 + 15);
-    expect(settings.deadlineCutoff.value.enabled, isFalse);
-    expect(settings.deadlineCutoff.value.endMinute, 8 * 60);
-    expect(find.text(material.invalidTimeLabel), findsNothing);
+    expect(settings.deadlineCutoff.value.endMinute, 3 * 60 + 45);
+    expect(settings.deadlineCutoff.value.enabled, isTrue);
     expect(
-      tester.widget<TimePickerDialog>(find.byType(TimePickerDialog)).initialTime,
-      const TimeOfDay(hour: 21, minute: 15),
+      jsonDecode(preferences.value(_key)!),
+      settings.deadlineCutoff.value.toJson(),
     );
-    expect(find.byType(TimePickerDialog), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('The same native picker can switch between dial and input modes', (
-    tester,
-  ) async {
-    final settings = _settings(MemoryPreferences());
-    addTearDown(settings.dispose);
-    await settings.initialize();
-    await _showCutoff(tester, settings);
-    final pickerElement = tester.element(find.byType(TimePickerDialog));
-    await _nativeInputMode(tester);
-    expect(tester.element(find.byType(TimePickerDialog)), same(pickerElement));
-    expect(
-      find.descendant(
-        of: find.byType(TimePickerDialog),
-        matching: find.byType(TextField),
-      ),
-      findsNWidgets(2),
+  for (final locale in [const Locale('zh'), const Locale('en')]) {
+    testWidgets(
+      'The dial fits a narrow screen with large text in ${locale.languageCode}',
+      (tester) async {
+        final settings = _settings(MemoryPreferences());
+        addTearDown(settings.dispose);
+        await settings.initialize();
+        await _showCutoff(
+          tester,
+          settings,
+          locale: locale,
+          size: const Size(320, 640),
+          scale: 1.8,
+        );
+        await _selectEndpoint(tester, start: false);
+        expect(find.byType(TimePickerDialog), findsOneWidget);
+        expect(find.byType(TextField), findsNothing);
+        await _pickerAction(tester, confirm: false);
+        expect(find.byType(DeadlineCutoffScreen), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
     );
-    final context = tester.element(find.byType(TimePickerDialog));
-    final dialButton = find.byTooltip(
-      MaterialLocalizations.of(context).dialModeButtonLabel,
-    );
-    await tester.ensureVisible(dialButton);
-    await tester.tap(dialButton);
-    await tester.pumpAndSettle();
-    expect(tester.element(find.byType(TimePickerDialog)), same(pickerElement));
-    expect(
-      find.descendant(
-        of: find.byType(TimePickerDialog),
-        matching: find.byType(TextField),
-      ),
-      findsNothing,
-    );
-    expect(find.byKey(const ValueKey('deadline-cutoff-start')), findsOneWidget);
-    expect(find.byKey(const ValueKey('deadline-cutoff-end')), findsOneWidget);
-    expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox());
-  });
+  }
 
-  testWidgets('Native picker actions never pop the surrounding settings route', (
-    tester,
-  ) async {
-    final settings = _settings(MemoryPreferences());
-    addTearDown(settings.dispose);
-    await settings.initialize();
-    await tester.pumpWidget(MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      locale: const Locale('zh'),
-      theme: bitreeTheme(Brightness.light),
-      home: Scaffold(
-        body: Builder(
-          builder: (context) => Center(
-            child: TextButton(
-              onPressed: () => Navigator.of(context).push<void>(
-                MaterialPageRoute(
-                  builder: (_) => DeadlineCutoffScreen(settings: settings),
+  testWidgets(
+    'Native picker actions never pop the surrounding settings route',
+    (tester) async {
+      final settings = _settings(MemoryPreferences());
+      addTearDown(settings.dispose);
+      await settings.initialize();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          theme: bitreeTheme(Brightness.light),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => Center(
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute(
+                      builder: (_) => DeadlineCutoffScreen(settings: settings),
+                    ),
+                  ),
+                  child: const Text('打开设置'),
                 ),
               ),
-              child: const Text('打开设置'),
             ),
           ),
         ),
-      ),
-    ));
-    await tester.tap(find.text('打开设置'));
-    await tester.pumpAndSettle();
-    expect(find.byType(TimePickerDialog), findsOneWidget);
-    await _pickerAction(tester, confirm: false);
-    expect(find.byType(DeadlineCutoffScreen), findsOneWidget);
-    expect(find.byType(TimePickerDialog), findsOneWidget);
-    await _pickerAction(tester, confirm: true);
-    expect(find.byType(DeadlineCutoffScreen), findsOneWidget);
-    expect(find.byType(TimePickerDialog), findsOneWidget);
-    final back = find.byType(BackButton);
-    await tester.ensureVisible(back);
-    await tester.tap(back);
-    await tester.pumpAndSettle();
-    expect(find.byType(DeadlineCutoffScreen), findsNothing);
-    expect(find.text('打开设置'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox());
-  });
+      );
+      await tester.tap(find.text('打开设置'));
+      await tester.pumpAndSettle();
+      expect(find.byType(TimePickerDialog), findsNothing);
+      await _selectEndpoint(tester, start: true);
+      await _pickerAction(tester, confirm: false);
+      expect(find.byType(DeadlineCutoffScreen), findsOneWidget);
+      expect(find.byType(TimePickerDialog), findsNothing);
+      await _selectEndpoint(tester, start: false);
+      await _pickerAction(tester, confirm: true);
+      expect(find.byType(DeadlineCutoffScreen), findsOneWidget);
+      expect(find.byType(TimePickerDialog), findsNothing);
+      final back = find.byType(BackButton);
+      await tester.ensureVisible(back);
+      await tester.tap(back);
+      await tester.pumpAndSettle();
+      expect(find.byType(DeadlineCutoffScreen), findsNothing);
+      expect(find.text('打开设置'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 
   testWidgets('Settings expose cutoff without a timetable or school account', (
     tester,

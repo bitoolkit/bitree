@@ -79,26 +79,26 @@ Future<ByteData> _pixels(WidgetTester tester, GlobalKey key) async =>
       final boundary =
           key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
       final image = await boundary.toImage(pixelRatio: 1);
-      final data = await image.toByteData(
-        format: ui.ImageByteFormat.rawRgba,
-      );
+      final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
       image.dispose();
       return data!;
     }))!;
 
 void main() {
-  test('Adjusted reservations use four days and include the real interval', () {
-    final entry = _deadline(tailDays: 14);
-    final placement = layoutAgendaTimeline(
-      [entry],
-      minimumEventSpan: const Duration(minutes: 1),
-    ).single;
-    expect(placement.start, entry.dueAt.subtract(const Duration(days: 4)));
-    expect(placement.end, entry.realDueAt);
-    expect(placement.layoutEnd, entry.realDueAt);
-    expect(entry.startsAt, _date.add(const Duration(hours: 14)));
-    expect(entry.tailDays, 14);
-  });
+  test(
+    'Adjusted reservations use the per-item tail and include the real interval',
+    () {
+      final entry = _deadline(tailDays: 14);
+      final placement = layoutAgendaTimeline([
+        entry,
+      ], minimumEventSpan: const Duration(minutes: 1)).single;
+      expect(placement.start, entry.dueAt.subtract(const Duration(days: 14)));
+      expect(placement.end, entry.realDueAt);
+      expect(placement.layoutEnd, entry.realDueAt);
+      expect(entry.startsAt, _date.add(const Duration(hours: 14)));
+      expect(entry.tailDays, 14);
+    },
+  );
 
   test('An event inside the extension must occupy another lane', () {
     final ddl = _deadline();
@@ -109,39 +109,42 @@ void main() {
       startsAt: _date.add(const Duration(hours: 11)),
       endsAt: _date.add(const Duration(hours: 12)),
     );
-    final placements = layoutAgendaTimeline(
-      [ddl, event],
-      minimumEventSpan: const Duration(minutes: 1),
-    );
+    final placements = layoutAgendaTimeline([
+      ddl,
+      event,
+    ], minimumEventSpan: const Duration(minutes: 1));
     expect(placements.map((p) => p.lane).toSet(), hasLength(2));
   });
 
-  test('Unadjusted and start-only reservations use the global width', () {
-    for (final startOnly in [false, true]) {
-      final entry = _deadline(
-        tailDays: 14,
-        startOnly: startOnly,
-        window: const DeadlineCutoffWindow(),
-      );
-      final placement = layoutAgendaTimeline(
-        [entry],
-        minimumEventSpan: const Duration(minutes: 1),
-        layoutDays: 14,
-      ).single;
-      expect(
-        placement.start,
-        startOnly
-            ? entry.startsAt
-            : entry.dueAt.subtract(const Duration(days: 14)),
-      );
-      expect(
-        placement.end,
-        startOnly
-            ? entry.startsAt.add(const Duration(days: 14))
-            : entry.realDueAt,
-      );
-    }
-  });
+  test(
+    'Unadjusted and start-only reservations prioritize the per-item width',
+    () {
+      for (final startOnly in [false, true]) {
+        final entry = _deadline(
+          tailDays: 14,
+          startOnly: startOnly,
+          window: const DeadlineCutoffWindow(),
+        );
+        final placement = layoutAgendaTimeline(
+          [entry],
+          minimumEventSpan: const Duration(minutes: 1),
+          layoutDays: 8,
+        ).single;
+        expect(
+          placement.start,
+          startOnly
+              ? entry.startsAt
+              : entry.dueAt.subtract(const Duration(days: 14)),
+        );
+        expect(
+          placement.end,
+          startOnly
+              ? entry.startsAt.add(const Duration(days: 14))
+              : entry.realDueAt,
+        );
+      }
+    },
+  );
 
   testWidgets('Adjusted DDL cards use the compact Chinese deadline label', (
     tester,
@@ -165,24 +168,25 @@ void main() {
     final entry = _deadline(tailDays: 14);
     await _showTimeline(tester, [entry]);
     final before = tester.getRect(_body(entry));
-    final geometryBefore =
-        tester.widget<AdjustedDeadlineSurface>(_surface(entry)).geometry;
-    expect(before.width, closeTo(48 * 3.75, .001));
-    expect(
-      geometryBefore.realX - geometryBefore.effectiveX,
-      closeTo(8, .001),
-    );
+    final geometryBefore = tester
+        .widget<AdjustedDeadlineSurface>(_surface(entry))
+        .geometry;
+    expect(before.width, closeTo(48 * 13.75, .001));
+    expect(geometryBefore.realX - geometryBefore.effectiveX, closeTo(8, .001));
     expect(
       before.right,
-      closeTo(tester.getTopLeft(_surface(entry)).dx +
-          geometryBefore.effectiveX, .001),
+      closeTo(
+        tester.getTopLeft(_surface(entry)).dx + geometryBefore.effectiveX,
+        .001,
+      ),
     );
 
     tester.widget<Slider>(find.byType(Slider)).onChanged!(24);
     await tester.pumpAndSettle();
     final after = tester.getRect(_body(entry));
-    final geometryAfter =
-        tester.widget<AdjustedDeadlineSurface>(_surface(entry)).geometry;
+    final geometryAfter = tester
+        .widget<AdjustedDeadlineSurface>(_surface(entry))
+        .geometry;
     expect(after.width, closeTo(before.width, .001));
     expect(
       geometryAfter.realX - geometryAfter.effectiveX,
@@ -192,7 +196,8 @@ void main() {
       find.descendant(
         of: _surface(entry),
         matching: find.byWidgetPredicate(
-          (widget) => widget is CustomPaint &&
+          (widget) =>
+              widget is CustomPaint &&
               widget.painter is AdjustedDeadlineExtensionPainter,
         ),
       ),
@@ -221,12 +226,11 @@ void main() {
     final surface = tester.widget<AdjustedDeadlineSurface>(_surface(entry));
     expect(surface.geometry.realX, surface.geometry.effectiveX);
     expect(surface.realMarkerColor.a, closeTo(.5, .001));
-    expect(tester.getRect(_body(entry)).width, closeTo(48 * 3.75, .001));
-    final placement = layoutAgendaTimeline(
-      [entry],
-      minimumEventSpan: const Duration(minutes: 1),
-    ).single;
-    expect(placement.start, entry.dueAt.subtract(const Duration(days: 4)));
+    expect(tester.getRect(_body(entry)).width, closeTo(48 * 13.75, .001));
+    final placement = layoutAgendaTimeline([
+      entry,
+    ], minimumEventSpan: const Duration(minutes: 1)).single;
+    expect(placement.start, entry.dueAt.subtract(const Duration(days: 14)));
     await tester.pumpWidget(const SizedBox());
   });
 
@@ -234,11 +238,9 @@ void main() {
     tester,
   ) async {
     final raw = _deadline(window: const DeadlineCutoffWindow());
-    final app = await _showTimeline(
-      tester,
-      [raw],
-      window: const DeadlineCutoffWindow(),
-    );
+    final app = await _showTimeline(tester, [
+      raw,
+    ], window: const DeadlineCutoffWindow());
     expect(_surface(raw), findsNothing);
     final initialRight = tester.getRect(_body(raw)).right;
     await app.settings.setDeadlineCutoff(_window);
@@ -265,11 +267,9 @@ void main() {
     tester,
   ) async {
     final projected = _deadline();
-    await _showTimeline(
-      tester,
-      [projected],
-      window: const DeadlineCutoffWindow(),
-    );
+    await _showTimeline(tester, [
+      projected,
+    ], window: const DeadlineCutoffWindow());
     expect(_surface(projected), findsNothing);
     expect(projected.hasAdjustedDeadline, isTrue);
     await tester.pumpWidget(const SizedBox());
@@ -282,11 +282,9 @@ void main() {
       at: _date.add(const Duration(hours: 8)),
       window: const DeadlineCutoffWindow(enabled: true),
     );
-    await _showTimeline(
-      tester,
-      [entry],
-      window: const DeadlineCutoffWindow(enabled: true),
-    );
+    await _showTimeline(tester, [
+      entry,
+    ], window: const DeadlineCutoffWindow(enabled: true));
     tester.widget<Slider>(find.byType(Slider)).onChanged!(24);
     await tester.pumpAndSettle();
     final surface = tester.getRect(_surface(entry));

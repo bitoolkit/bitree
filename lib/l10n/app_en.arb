@@ -658,7 +658,8 @@
   "agendaColorPresets": "Quick colors",
   "agendaColorCustomSection": "Custom color",
   "agendaTailDays": "Tail length (days)",
-  "agendaTailDaysHint": "1–30 days; default: 4 days",
+  "agendaTailDaysHint": "1–30 days; per-item settings take priority",
+  "agendaTailDaysDefault": "Use global default",
   "agendaTailDaysValue": "{days, plural, =1{1 day} other{{days} days}}",
   "@agendaTailDaysValue": {
     "placeholders": {
@@ -1749,7 +1750,7 @@
   "timetableHeightHint": "Fit to screen shows every period at once. Normal height keeps comfortable rows and vertical scrolling.",
   "settingsDeadlineCutoff": "Deadline cutoff window",
   "deadlineCutoffEnabled": "Enable daily cutoff window",
-  "deadlineCutoffDescription": "Move DDLs within this window to its start. Events, exams and open-ended quizzes are unaffected.",
+  "deadlineCutoffDescription": "Show DDLs in this window as due at its start. Actual deadlines stay unchanged.",
   "deadlineCutoffStart": "Start time",
   "deadlineCutoffEnd": "End time",
   "deadlineCutoffDisabled": "Not enabled",
@@ -1775,7 +1776,7 @@
       }
     }
   },
-  "deadlineCutoffInstant": "Only the instant {time} each day (not all day)",
+  "deadlineCutoffInstant": "Only at {time} each day",
   "@deadlineCutoffInstant": {
     "placeholders": {
       "time": {
@@ -1804,11 +1805,11 @@
     }
   },
   "settingsAgendaLayoutDays": "DDL layout width",
-  "agendaLayoutDaysDescription": "Use one layout width for deadlines, start-only items, and the left side of adjusted deadlines, overriding old per-item tails. Painted tails keep a fixed screen width.",
+  "agendaLayoutDaysDescription": "Default layout width. Individual DDL tail lengths take priority.",
   "agendaLayoutDaysUnit": "days",
   "agendaLayoutDaysRange": "Enter a whole number from 1 to 30",
   "settingsAgendaEventInfoBar": "Event information bar",
-  "settingsAgendaEventInfoBarDescription": "Show the left information card for events and exams in the timeline. When off, its layout space is released; boundary lines, the filled interval, and deadlines are unaffected.",
+  "settingsAgendaEventInfoBarDescription": "Show details on the left when on, or inside event and exam boxes when off.",
   "releaseVersion": "{channel} {version}",
   "@releaseVersion": {
     "placeholders": {

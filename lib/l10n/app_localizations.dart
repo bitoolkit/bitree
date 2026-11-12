@@ -1634,8 +1634,14 @@ abstract class AppLocalizations {
   /// No description provided for @agendaTailDaysHint.
   ///
   /// In en, this message translates to:
-  /// **'1–30 days; default: 4 days'**
+  /// **'1–30 days; per-item settings take priority'**
   String get agendaTailDaysHint;
+
+  /// No description provided for @agendaTailDaysDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Use global default'**
+  String get agendaTailDaysDefault;
 
   /// No description provided for @agendaTailDaysValue.
   ///
@@ -4341,7 +4347,7 @@ abstract class AppLocalizations {
   /// No description provided for @deadlineCutoffDescription.
   ///
   /// In en, this message translates to:
-  /// **'Move DDLs within this window to its start. Events, exams and open-ended quizzes are unaffected.'**
+  /// **'Show DDLs in this window as due at its start. Actual deadlines stay unchanged.'**
   String get deadlineCutoffDescription;
 
   /// No description provided for @deadlineCutoffStart.
@@ -4377,7 +4383,7 @@ abstract class AppLocalizations {
   /// No description provided for @deadlineCutoffInstant.
   ///
   /// In en, this message translates to:
-  /// **'Only the instant {time} each day (not all day)'**
+  /// **'Only at {time} each day'**
   String deadlineCutoffInstant(String time);
 
   /// No description provided for @deadlineCutoffBoundaryHint.
@@ -4425,7 +4431,7 @@ abstract class AppLocalizations {
   /// No description provided for @agendaLayoutDaysDescription.
   ///
   /// In en, this message translates to:
-  /// **'Use one layout width for deadlines, start-only items, and the left side of adjusted deadlines, overriding old per-item tails. Painted tails keep a fixed screen width.'**
+  /// **'Default layout width. Individual DDL tail lengths take priority.'**
   String get agendaLayoutDaysDescription;
 
   /// No description provided for @agendaLayoutDaysUnit.
@@ -4449,7 +4455,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAgendaEventInfoBarDescription.
   ///
   /// In en, this message translates to:
-  /// **'Show the left information card for events and exams in the timeline. When off, its layout space is released; boundary lines, the filled interval, and deadlines are unaffected.'**
+  /// **'Show details on the left when on, or inside event and exam boxes when off.'**
   String get settingsAgendaEventInfoBarDescription;
 
   /// No description provided for @releaseVersion.

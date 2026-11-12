@@ -134,6 +134,40 @@ extension _AgendaEditorSections on _AgendaEditorState {
       leading: const Icon(Icons.tune_rounded, size: 20),
       title: Text(l10n.agendaMoreOptions),
       children: [
+        if (_kind == AgendaKind.deadline) ...[
+          Text(l10n.agendaTailDays),
+          SwitchListTile(
+            key: const ValueKey('agenda-tail-days-default'),
+            contentPadding: EdgeInsets.zero,
+            title: Text(l10n.agendaTailDaysDefault),
+            value: _tailDays == null,
+            onChanged: _saving
+                ? null
+                : (useDefault) => _updateTailDays(
+                    useDefault ? null : AgendaEntry.defaultTailDays,
+                  ),
+          ),
+          if (_tailDays case final days?) ...[
+            Semantics(
+              label: l10n.agendaTailDays,
+              child: Slider(
+                key: const ValueKey('agenda-tail-days-slider'),
+                value: days.toDouble(),
+                min: 1,
+                max: AgendaEntry.maxTailDays.toDouble(),
+                divisions: AgendaEntry.maxTailDays - 1,
+                label: l10n.agendaTailDaysValue(days),
+                semanticFormatterCallback: (value) =>
+                    l10n.agendaTailDaysValue(value.round()),
+                onChanged: _saving
+                    ? null
+                    : (value) => _updateTailDays(value.round()),
+              ),
+            ),
+            Text(l10n.agendaTailDaysValue(days), textAlign: TextAlign.center),
+          ],
+          const SizedBox(height: 12),
+        ],
         if (_kind != AgendaKind.deadline) ...[
           TextFormField(
             controller: _location,

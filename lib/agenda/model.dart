@@ -32,7 +32,7 @@ class AgendaEntry {
     this.url,
     this.color,
     this.details,
-    this.tailDays = defaultTailDays,
+    this.tailDays,
     this.startOnly = false,
     this.deadlineCutoffWindow = const DeadlineCutoffWindow(),
   }) {
@@ -46,7 +46,7 @@ class AgendaEntry {
         (endsAt == null || !endsAt!.isAfter(startsAt))) {
       throw const FormatException('结束时间必须晚于开始时间');
     }
-    if (tailDays < 1 || tailDays > maxTailDays) {
+    if (tailDays case final days? when days < 1 || days > maxTailDays) {
       throw const FormatException('拖尾长度必须为 1–30 天');
     }
     if (color != null && kind == AgendaKind.exam) {
@@ -107,9 +107,11 @@ class AgendaEntry {
   final AgendaColor? color;
   final AgendaEntryDetails? details;
 
-  /// Legacy per-entry width retained for storage compatibility. Timeline layout
-  /// and fixed-screen information widths use the global layout-days setting.
-  final int tailDays;
+  /// An explicit per-entry width. Null follows the global layout-days setting.
+  final int? tailDays;
+
+  int effectiveLayoutDays(int defaultDays) =>
+      isDeadline ? tailDays ?? defaultDays : defaultDays;
 
   /// A deadline that only knows when it opened, with no due date at all —
   /// an open-ended quiz, for instance. It can never be overdue, and the
@@ -159,9 +161,8 @@ class AgendaEntry {
 
   /// Time passing and completion are separate. In particular, reopening an
   /// ended exam must not make it completed again during a widget rebuild.
-  bool hasEnded(DateTime now) => isDeadline
-      ? !startOnly && !dueAt.isAfter(now)
-      : !endsAt!.isAfter(now);
+  bool hasEnded(DateTime now) =>
+      isDeadline ? !startOnly && !dueAt.isAfter(now) : !endsAt!.isAfter(now);
 
   bool isFinished(DateTime now) => done;
 
@@ -177,6 +178,7 @@ class AgendaEntry {
     bool? examAutoCompletionHandled,
     int? completionSchemaVersion,
     bool? deleted,
+    int? tailDays,
     DeadlineCutoffWindow? deadlineCutoffWindow,
   }) => AgendaEntry(
     id: id,
@@ -200,7 +202,7 @@ class AgendaEntry {
     url: url,
     color: color,
     details: details,
-    tailDays: tailDays,
+    tailDays: tailDays ?? this.tailDays,
     startOnly: startOnly,
     deadlineCutoffWindow: deadlineCutoffWindow ?? this.deadlineCutoffWindow,
   );
@@ -271,8 +273,11 @@ class AgendaEntry {
       location: jsonStringField(json, 'location'),
       notes: jsonStringField(json, 'notes'),
       done: jsonBoolField(json, 'done'),
-      examAutoCompletionHandled:
-          jsonBoolField(json, 'examAutoCompletionHandled', fallback: false),
+      examAutoCompletionHandled: jsonBoolField(
+        json,
+        'examAutoCompletionHandled',
+        fallback: false,
+      ),
       completionSchemaVersion:
           jsonIntFieldOrNull(json, 'completionSchemaVersion') ?? 0,
       deleted: jsonBoolField(json, 'deleted', fallback: false),
@@ -284,7 +289,7 @@ class AgendaEntry {
           ? null
           : Uri.tryParse(rawUrl) ?? (throw FormatException('url 格式不正确')),
       color: color,
-      tailDays: jsonIntFieldOrNull(json, 'tailDays') ?? defaultTailDays,
+      tailDays: jsonIntFieldOrNull(json, 'tailDays'),
       // Entries written before this flag existed simply had no open-ended
       // deadlines, so a missing key means an ordinary deadline.
       startOnly: jsonBoolField(json, 'startOnly', fallback: false),

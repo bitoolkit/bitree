@@ -880,7 +880,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get agendaTailDays => '拖尾长度（天）';
 
   @override
-  String get agendaTailDaysHint => '1–30 天，默认 4 天';
+  String get agendaTailDaysHint => '1–30 天，单条设置优先';
+
+  @override
+  String get agendaTailDaysDefault => '跟随全局设置';
 
   @override
   String agendaTailDaysValue(int days) {
@@ -2400,7 +2403,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get deadlineCutoffEnabled => '启用每日伪提前';
 
   @override
-  String get deadlineCutoffDescription => '将时间段内的 DDL 伪提前至该段起点；不影响普通日程、考试或无截止日期测验。';
+  String get deadlineCutoffDescription => '将时段内的 DDL 提前至开始时间，真实截止时间不变。';
 
   @override
   String get deadlineCutoffStart => '开始时间';
@@ -2423,14 +2426,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String deadlineCutoffInstant(String time) {
-    return '仅每天 $time 这一时刻（不是全天）';
+    return '仅每天 $time';
   }
 
   @override
-  String get deadlineCutoffBoundaryHint => '开始和结束时刻均包含在区间内。结束早于开始时表示跨日；两者相同时仅匹配单个时刻。';
+  String get deadlineCutoffBoundaryHint =>
+      '开始和结束时刻均包含在区间内。结束早于开始时表示跨日；两者相同时仅匹配单个时刻。';
 
   @override
-  String get deadlineCutoffPreserveHint => '真实截止时间保持不变。关闭后不再伪提前，但会保留已选择的开始和结束时间。';
+  String get deadlineCutoffPreserveHint =>
+      '真实截止时间保持不变。关闭后不再伪提前，但会保留已选择的开始和结束时间。';
 
   @override
   String get agendaAdjustedDeadline => '伪截止';
@@ -2452,7 +2457,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAgendaLayoutDays => 'DDL 排版宽度';
 
   @override
-  String get agendaLayoutDaysDescription => '统一控制 DDL、仅开始时间项目及伪提前 DDL 左侧信息区的排版宽度，覆盖原单条拖尾设置；渲染仍保持屏幕定宽。';
+  String get agendaLayoutDaysDescription => '默认排版宽度；单个 DDL 的拖尾长度优先。';
 
   @override
   String get agendaLayoutDaysUnit => '天';
@@ -2464,7 +2469,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAgendaEventInfoBar => '日程与考试信息栏';
 
   @override
-  String get settingsAgendaEventInfoBarDescription => '控制泳道图中普通日程和考试左侧的信息栏是否显示；关闭后不再预留排版空间，开始与结束标线及中间时段不受影响。DDL 不受此开关影响。';
+  String get settingsAgendaEventInfoBarDescription => '开启显示左侧信息栏，关闭使用方框样式。';
 
   @override
   String releaseVersion(String channel, String version) {
