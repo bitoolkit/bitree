@@ -48,8 +48,9 @@ class AgendaEntry {
         (endsAt == null || !endsAt!.isAfter(startsAt))) {
       throw const FormatException('结束时间必须晚于开始时间');
     }
-    if (tailDays case final days? when days < 1 || days > maxTailDays) {
-      throw const FormatException('拖尾长度必须为 1–30 天');
+    if (tailDays case final days?
+        when days < minTailDays || days > maxTailDays) {
+      throw FormatException('拖尾长度必须为 $minTailDays–$maxTailDays 天');
     }
     if (color != null && kind == AgendaKind.exam) {
       throw const FormatException('考试颜色由状态决定');
@@ -81,6 +82,7 @@ class AgendaEntry {
 
   static const currentCompletionSchemaVersion = 1;
   static const defaultTailDays = 4;
+  static const minTailDays = 1;
   static const maxTailDays = 30;
 
   final String id;
