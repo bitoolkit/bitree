@@ -10,6 +10,8 @@ export 'details.dart';
 
 enum AgendaKind { event, deadline, exam }
 
+const _copyUnset = Object();
+
 /// Times use the same Beijing wall-clock convention as campusNow().
 class AgendaEntry {
   AgendaEntry({
@@ -155,7 +157,7 @@ class AgendaEntry {
   AgendaEntry copyWith({
     bool? done,
     bool? deleted,
-    int? tailDays,
+    Object? tailDays = _copyUnset,
     DeadlineCutoffWindow? deadlineCutoffWindow,
   }) => AgendaEntry(
     id: id,
@@ -175,7 +177,9 @@ class AgendaEntry {
     url: url,
     color: color,
     details: details,
-    tailDays: tailDays ?? this.tailDays,
+    tailDays: identical(tailDays, _copyUnset)
+        ? this.tailDays
+        : tailDays as int?,
     startOnly: startOnly,
     deadlineCutoffWindow: deadlineCutoffWindow ?? this.deadlineCutoffWindow,
   );

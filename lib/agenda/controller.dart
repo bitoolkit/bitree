@@ -42,8 +42,9 @@ class AgendaController extends ChangeNotifier {
   Iterable<AgendaEntry> get entries =>
       _entries.where((entry) => !entry.deleted).map(_present);
 
-  Iterable<AgendaEntry> get deletedDeadlines =>
-      _entries.where((entry) => entry.deleted && entry.isDeadline).map(_present);
+  Iterable<AgendaEntry> get deletedDeadlines => _entries
+      .where((entry) => entry.deleted && entry.isDeadline)
+      .map(_present);
 
   List<AgendaEntry> pendingOn(DateTime date, {required DateTime now}) =>
       entries
@@ -70,6 +71,29 @@ class AgendaController extends ChangeNotifier {
   Future<bool> save(AgendaEntry entry) => _write(
     (entries) => [...entries.where((item) => item.id != entry.id), entry],
   );
+
+  /// Manually migrate old four-day DDL tails, including recycled entries.
+  /// Returns zero without writing when repeated, or null if persistence fails.
+  Future<int?> resetDefaultDeadlineTails() => _operations.run(() async {
+    if (_disposed) return null;
+    if (!_ready) {
+      _reportNotReady();
+      return null;
+    }
+    var count = 0;
+    final next = <AgendaEntry>[];
+    for (final entry in _entries) {
+      if (entry.isDeadline && entry.tailDays == AgendaEntry.defaultTailDays) {
+        count++;
+        next.add(entry.copyWith(tailDays: null));
+      } else {
+        next.add(entry);
+      }
+    }
+    if (count == 0) return 0;
+    final saved = await _commit(next);
+    return saved ? count : null;
+  });
 
   Future<bool> restore(AgendaEntry entry) => restoreEntries([entry]);
 

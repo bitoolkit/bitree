@@ -14,6 +14,15 @@
   "aboutIconSemantics": "BITree icon",
   "aboutLicenseSummary": "Made by BIToolkit with ♥️. Released under the Unlicense.",
   "developerModeEnabled": "Developer mode enabled",
+  "settingsDeveloperOptions": "Developer options",
+  "settingsResetDefaultDeadlineTails": "Set default tail lengths to null",
+  "settingsResetDefaultDeadlineTailsDescription": "Make all four-day DDL tails follow the global setting.",
+  "settingsResetDefaultDeadlineTailsResult": "{count, plural, =1{1 DDL now follows the global setting.} other{{count} DDLs now follow the global setting.}}",
+  "@settingsResetDefaultDeadlineTailsResult": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "widgetUsesSystemPalette": "Use system palette for widget",
   "globalSystemPaletteExperimental": "Use system palette throughout app (experimental)",
   "importPalette": "Import palette",

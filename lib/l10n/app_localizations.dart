@@ -182,6 +182,30 @@ abstract class AppLocalizations {
   /// **'Developer mode enabled'**
   String get developerModeEnabled;
 
+  /// No description provided for @settingsDeveloperOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Developer options'**
+  String get settingsDeveloperOptions;
+
+  /// No description provided for @settingsResetDefaultDeadlineTails.
+  ///
+  /// In en, this message translates to:
+  /// **'Set default tail lengths to null'**
+  String get settingsResetDefaultDeadlineTails;
+
+  /// No description provided for @settingsResetDefaultDeadlineTailsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Make all four-day DDL tails follow the global setting.'**
+  String get settingsResetDefaultDeadlineTailsDescription;
+
+  /// No description provided for @settingsResetDefaultDeadlineTailsResult.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 DDL now follows the global setting.} other{{count} DDLs now follow the global setting.}}'**
+  String settingsResetDefaultDeadlineTailsResult(int count);
+
   /// No description provided for @widgetUsesSystemPalette.
   ///
   /// In en, this message translates to:

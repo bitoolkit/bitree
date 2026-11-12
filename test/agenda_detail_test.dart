@@ -5,6 +5,7 @@ import 'package:bitree/agenda/controller.dart';
 import 'package:bitree/agenda/deadline_source.dart';
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/ui/agenda_detail.dart';
+import 'package:bitree/agenda/ui/agenda_editor.dart';
 import 'package:bitree/agenda/ui/completion_text.dart';
 import 'package:bitree/l10n/app_localizations_zh.dart';
 import 'package:bitree/l10n/formats.dart';
@@ -24,7 +25,7 @@ void main() {
   AgendaEntry deadline({
     bool detailed = false,
     bool allDay = false,
-    int tailDays = 4,
+    int? tailDays,
   }) => AgendaEntry(
     id: 'assignment',
     title: detailed ? '第三章作业：线性表与链表的实现、测试和复杂度分析' : '1',
@@ -290,6 +291,78 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets(
+    'New DDLs follow the global tail default before and after saving',
+    (tester) async {
+      final controller = await open(tester, deadline());
+      await controller.settings.setAgendaLayoutDays(8);
+      await tester.tap(find.byTooltip('关闭'));
+      await tester.pumpAndSettle();
+      unawaited(
+        editAgenda(
+          tester.element(find.text('打开详情')),
+          controller.agenda,
+          kind: AgendaKind.deadline,
+        ),
+      );
+      await tester.pumpAndSettle();
+      final name = find.byWidgetPredicate(
+        (widget) => widget is TextField && widget.decoration?.labelText == '名称',
+      );
+      await tester.enterText(name, '默认拖尾');
+      await tester.tap(find.byKey(const ValueKey('agenda-more-options')));
+      await tester.pumpAndSettle();
+      final useDefault = find.byKey(const ValueKey('agenda-tail-days-default'));
+      expect(tester.widget<SwitchListTile>(useDefault).value, isTrue);
+      expect(
+        find.byKey(const ValueKey('agenda-tail-days-slider')),
+        findsNothing,
+      );
+      await tester.tap(find.widgetWithText(FilledButton, '保存'));
+      await tester.pumpAndSettle();
+      final saved = controller.agenda.entries.singleWhere(
+        (entry) => entry.title == '默认拖尾',
+      );
+      expect(saved.tailDays, isNull);
+      expect(
+        saved.effectiveLayoutDays(controller.settings.agendaLayoutDays.value),
+        8,
+      );
+      expect(AgendaEntry.fromJson(saved.toJson()).tailDays, isNull);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  for (final missingField in [false, true]) {
+    testWidgets(
+      'Unset tail stays inherited when editing, missingField=$missingField',
+      (tester) async {
+        final raw = deadline().toJson();
+        if (missingField) raw.remove('tailDays');
+        final controller = await open(tester, AgendaEntry.fromJson(raw));
+        await tester.tap(find.widgetWithText(TextButton, '编辑'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('agenda-more-options')));
+        await tester.pumpAndSettle();
+        final useDefault = find.byKey(
+          const ValueKey('agenda-tail-days-default'),
+        );
+        expect(tester.widget<SwitchListTile>(useDefault).value, isTrue);
+        expect(
+          find.byKey(const ValueKey('agenda-tail-days-slider')),
+          findsNothing,
+        );
+        await tester.tap(find.widgetWithText(FilledButton, '保存'));
+        await tester.pumpAndSettle();
+        final saved = controller.agenda.entries.single;
+        expect(saved.tailDays, isNull);
+        expect(saved.toJson()['tailDays'], isNull);
+        expect(saved.effectiveLayoutDays(8), 8);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   testWidgets('An individual tail can return to following the global default', (
     tester,

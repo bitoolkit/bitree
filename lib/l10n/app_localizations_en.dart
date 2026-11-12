@@ -54,6 +54,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get developerModeEnabled => 'Developer mode enabled';
 
   @override
+  String get settingsDeveloperOptions => 'Developer options';
+
+  @override
+  String get settingsResetDefaultDeadlineTails =>
+      'Set default tail lengths to null';
+
+  @override
+  String get settingsResetDefaultDeadlineTailsDescription =>
+      'Make all four-day DDL tails follow the global setting.';
+
+  @override
+  String settingsResetDefaultDeadlineTailsResult(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count DDLs now follow the global setting.',
+      one: '1 DDL now follows the global setting.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get widgetUsesSystemPalette => 'Use system palette for widget';
 
   @override
