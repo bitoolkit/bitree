@@ -291,33 +291,40 @@ class AppMenuItemButton extends StatelessWidget {
     required this.child,
     this.leadingIcon,
     this.trailingIcon,
+    this.selected,
     this.style,
     this.autofocus = false,
-    this.overflowAxis = Axis.vertical,
-  });
+  }) : assert(selected == null || trailingIcon == null);
 
   final VoidCallback? onPressed;
   final Widget child;
   final Widget? leadingIcon;
   final Widget? trailingIcon;
+  final bool? selected;
   final ButtonStyle? style;
   final bool autofocus;
-  final Axis overflowAxis;
 
   @override
-  Widget build(BuildContext context) => MenuItemButton(
-    onPressed: onPressed == null
-        ? null
-        : () {
-            MenuController.maybeOf(context)!.close();
-            onPressed!();
-          },
-    closeOnActivate: false,
-    leadingIcon: leadingIcon,
-    trailingIcon: trailingIcon,
-    style: style,
-    autofocus: autofocus,
-    overflowAxis: overflowAxis,
-    child: child,
+  Widget build(BuildContext context) => Semantics(
+    selected: selected,
+    child: MenuItemButton(
+      onPressed: onPressed == null
+          ? null
+          : () {
+              MenuController.maybeOf(context)!.close();
+              onPressed!();
+            },
+      closeOnActivate: false,
+      leadingIcon: leadingIcon,
+      trailingIcon: switch (selected) {
+        true => const Icon(Icons.check_rounded, size: 18),
+        false => const SizedBox(width: 18),
+        null => trailingIcon,
+      },
+      style: style,
+      autofocus: autofocus,
+      overflowAxis: Axis.vertical,
+      child: child,
+    ),
   );
 }

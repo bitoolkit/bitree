@@ -131,18 +131,13 @@ class _GradeSimulationScreenState extends State<GradeSimulationScreen> {
             style: theme.textTheme.bodySmall,
           ),
           const SizedBox(height: 16),
-          SegmentedButton<bool>(
-            segments: [
-              ButtonSegment(value: false, label: Text(l10n.simulateByCourse)),
-              ButtonSegment(
-                value: true,
-                label: Text(l10n.targetBackCalculation),
-              ),
-            ],
-            selected: {_targetMode},
-            showSelectedIcon: false,
-            onSelectionChanged: (value) =>
-                setState(() => _targetMode = value.first),
+          AppSegmentedControl<bool>(
+            options: {
+              false: l10n.simulateByCourse,
+              true: l10n.targetBackCalculation,
+            },
+            value: _targetMode,
+            onChanged: (value) => setState(() => _targetMode = value),
           ),
           if (_targetMode) ...[
             const SizedBox(height: 20),

@@ -56,6 +56,34 @@ ThemeData bitreeTheme(
             : const Color(0xFFDDDDDD),
         surfaceTint: Colors.transparent,
       );
+  final panelTitle = TextStyle(
+    fontSize: 20,
+    height: 1.35,
+    fontWeight: FontWeight.w600,
+    color: scheme.onSurface,
+  );
+  final dialogTheme = DialogThemeData(
+    constraints: const BoxConstraints.tightFor(width: 360),
+    insetPadding: const EdgeInsets.all(AppSpacing.xl),
+    backgroundColor: scheme.surfaceContainerLow,
+    surfaceTintColor: Colors.transparent,
+    barrierColor: Colors.black54,
+    elevation: 6,
+    shape: appPanelShape,
+    titleTextStyle: panelTitle,
+    actionsPadding: const EdgeInsets.fromLTRB(
+      AppSpacing.xl,
+      0,
+      AppSpacing.xl,
+      AppSpacing.xl,
+    ),
+  );
+  final pickerConfirmStyle = TextButton.styleFrom(
+    backgroundColor: scheme.primary,
+    foregroundColor: scheme.onPrimary,
+    disabledBackgroundColor: scheme.onSurface.withValues(alpha: .12),
+    disabledForegroundColor: scheme.onSurface.withValues(alpha: .38),
+  );
   return ThemeData(
     useMaterial3: true,
     extensions: [
@@ -73,12 +101,7 @@ ThemeData bitreeTheme(
     ],
     visualDensity: VisualDensity.standard,
     textTheme: TextTheme(
-      titleLarge: TextStyle(
-        fontSize: 20,
-        height: 1.35,
-        fontWeight: FontWeight.w600,
-        color: scheme.onSurface,
-      ),
+      titleLarge: panelTitle,
       titleMedium: TextStyle(
         fontSize: 16,
         height: 1.4,
@@ -259,23 +282,29 @@ ThemeData bitreeTheme(
       showDragHandle: true,
       shape: const RoundedRectangleBorder(borderRadius: AppCorners.sheet),
     ),
-    dialogTheme: DialogThemeData(
-      constraints: const BoxConstraints.tightFor(width: 360),
-      insetPadding: const EdgeInsets.all(24),
-      backgroundColor: scheme.surfaceContainerLow,
-      surfaceTintColor: Colors.transparent,
-      shape: appPanelShape,
+    dialogTheme: dialogTheme,
+    datePickerTheme: DatePickerThemeData(
+      backgroundColor: dialogTheme.backgroundColor,
+      surfaceTintColor: dialogTheme.surfaceTintColor,
+      elevation: dialogTheme.elevation,
+      shape: dialogTheme.shape,
+      headerHelpStyle: panelTitle,
+      confirmButtonStyle: pickerConfirmStyle,
+      dayShape: const WidgetStatePropertyAll(appControlShape),
+      yearShape: const WidgetStatePropertyAll(appControlShape),
     ),
-    datePickerTheme: const DatePickerThemeData(
-      shape: appPanelShape,
-      dayShape: WidgetStatePropertyAll(appControlShape),
-      yearShape: WidgetStatePropertyAll(appControlShape),
-    ),
-    timePickerTheme: const TimePickerThemeData(
-      shape: appPanelShape,
+    timePickerTheme: TimePickerThemeData(
+      backgroundColor: dialogTheme.backgroundColor,
+      elevation: dialogTheme.elevation,
+      shape: dialogTheme.shape,
+      helpTextStyle: panelTitle,
+      confirmButtonStyle: pickerConfirmStyle,
       hourMinuteShape: appControlShape,
       dayPeriodShape: appControlShape,
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.xl,
+      ),
     ),
     tooltipTheme: TooltipThemeData(
       waitDuration: const Duration(milliseconds: 500),

@@ -32,14 +32,16 @@ void main() {
                   selectedCount: selected,
                   totalCount: 3,
                   summary: context.l10n.selectedItems(selected),
-                  onSelectAll: () {
-                    selectAllCalls++;
-                    setState(() => selected = 3);
+                  onToggleAll: (value) {
+                    if (value) selectAllCalls++;
+                    setState(() => selected = value ? 3 : 0);
                   },
-                  onClear: () {
-                    clearCalls++;
-                    setState(() => selected = 0);
-                  },
+                  onClear: selected == 0
+                      ? null
+                      : () {
+                          clearCalls++;
+                          setState(() => selected = 0);
+                        },
                 ),
               ),
             ),

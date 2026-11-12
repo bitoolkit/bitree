@@ -11,6 +11,7 @@ import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_menu_trigger.dart';
 import '../../ui/app_page.dart';
 import '../../ui/pull_to_reveal_list.dart';
+import '../../ui/selection_controls.dart';
 import '../../ui/semester_dropdown.dart';
 import '../controller.dart';
 import '../model.dart';
@@ -118,26 +119,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: SegmentedButton<int>(
-            showSelectedIcon: false,
-            segments: [
-              ButtonSegment(
-                value: 0,
-                label: Text(
-                  l10n.agendaPendingTab(entries.length - doneCount),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              ButtonSegment(
-                value: 1,
-                label: Text(
-                  l10n.agendaCompletedTab(doneCount),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-            selected: {_status},
-            onSelectionChanged: (selection) => _setStatus(selection.single),
+          child: AppSegmentedControl<int>(
+            options: {
+              0: l10n.agendaPendingTab(entries.length - doneCount),
+              1: l10n.agendaCompletedTab(doneCount),
+            },
+            value: _status,
+            onChanged: _setStatus,
           ),
         ),
         loadStatus(),

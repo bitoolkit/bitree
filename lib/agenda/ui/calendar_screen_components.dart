@@ -49,16 +49,11 @@ class _AgendaOverflowMenu extends StatelessWidget {
           ),
         const Divider(height: 9),
         for (final term in values)
-          Semantics(
+          AppMenuItemButton(
             selected: selectedTerm == term,
-            child: AppMenuItemButton(
-              onPressed: () => onTermChanged(term),
-              trailingIcon: selectedTerm == term
-                  ? const Icon(Icons.check_rounded, size: 18)
-                  : const SizedBox(width: 18),
-              child: Text(
-                term == null ? l10n.allSemesters : localizedTerm(l10n, term),
-              ),
+            onPressed: () => onTermChanged(term),
+            child: Text(
+              term == null ? l10n.allSemesters : localizedTerm(l10n, term),
             ),
           ),
       ],
@@ -170,15 +165,10 @@ class _AgendaKindFilter extends StatelessWidget {
           AgendaKind.event,
           AgendaKind.exam,
         ])
-          Semantics(
+          AppMenuItemButton(
             selected: value == kind,
-            child: AppMenuItemButton(
-              onPressed: () => onChanged(kind),
-              trailingIcon: value == kind
-                  ? const Icon(Icons.check_rounded, size: 18)
-                  : const SizedBox(width: 18),
-              child: Text(kind?.localizedLabel(l10n) ?? l10n.all),
-            ),
+            onPressed: () => onChanged(kind),
+            child: Text(kind?.localizedLabel(l10n) ?? l10n.all),
           ),
       ],
       builder: (context, menu, isOpen) => AppMenuTrigger(

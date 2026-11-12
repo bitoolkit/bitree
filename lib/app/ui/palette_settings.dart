@@ -57,16 +57,10 @@ class _PaletteSettingsState extends State<PaletteSettings> {
         menuWidth: constraints.maxWidth,
         menuChildren: [
           for (final entry in choices.entries)
-            Semantics(
+            AppMenuItemButton(
               selected: selected == entry.key,
-              child: AppMenuItemButton(
-                onPressed: () =>
-                    settings.setCoursePalette(brightness, entry.key),
-                trailingIcon: selected == entry.key
-                    ? const Icon(Icons.check_rounded, size: 18)
-                    : const SizedBox(width: 18),
-                child: Text(entry.value),
-              ),
+              onPressed: () => settings.setCoursePalette(brightness, entry.key),
+              child: Text(entry.value),
             ),
         ],
         builder: (context, menu, isOpen) => ListTile(

@@ -174,8 +174,7 @@ class _WeekRangeDialogState extends State<_WeekRangeDialog> {
 
     return PopScope(
       canPop: !_saving,
-      child: AlertDialog(
-        scrollable: true,
+      child: AppDialog(
         title: Text(l10n.weekRangeDialogTitle),
         content: LayoutBuilder(
           builder: (context, constraints) => Form(

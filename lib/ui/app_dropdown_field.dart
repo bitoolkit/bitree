@@ -63,23 +63,17 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
         ),
         menuChildren: [
           for (final entry in widget.entries)
-            Semantics(
+            AppMenuItemButton(
               selected: entry.value == widget.value,
-              child: AppMenuItemButton(
-                overflowAxis: Axis.vertical,
-                key: entry.value == widget.value ? _selectedItem : null,
-                autofocus: entry.value == widget.value,
-                onPressed: enabled && entry.enabled
-                    ? () => widget.onChanged?.call(entry.value)
-                    : null,
-                leadingIcon: entry.leadingIcon,
-                trailingIcon: entry.value == widget.value
-                    ? const Icon(Icons.check_rounded, size: 18)
-                    : const SizedBox(width: 18),
-                child: DefaultTextStyle.merge(
-                  style: textStyle,
-                  child: entry.labelWidget ?? Text(entry.label),
-                ),
+              key: entry.value == widget.value ? _selectedItem : null,
+              autofocus: entry.value == widget.value,
+              onPressed: enabled && entry.enabled
+                  ? () => widget.onChanged?.call(entry.value)
+                  : null,
+              leadingIcon: entry.leadingIcon,
+              child: DefaultTextStyle.merge(
+                style: textStyle,
+                child: entry.labelWidget ?? Text(entry.label),
               ),
             ),
         ],

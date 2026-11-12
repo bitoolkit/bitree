@@ -180,20 +180,24 @@ class HomeScreen extends StatelessWidget {
 
   Future<void> _unscheduled(BuildContext context) => showAppDialog<void>(
     context: context,
-    builder: (dialogContext) => SimpleDialog(
+    builder: (dialogContext) => AppDialog(
       title: Text(context.l10n.timedCourses),
-      children: [
-        for (final course in controller.timetable.schedule!.courses.where(
-          (course) => !course.isScheduled,
-        ))
-          SimpleDialogOption(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              showCourse(context, controller.timetable, course);
-            },
-            child: Text(course.name),
-          ),
-      ],
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final course in controller.timetable.schedule!.courses.where(
+            (course) => !course.isScheduled,
+          ))
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(course.name),
+              onTap: () {
+                Navigator.pop(dialogContext);
+                showCourse(context, controller.timetable, course);
+              },
+            ),
+        ],
+      ),
     ),
   );
 }
