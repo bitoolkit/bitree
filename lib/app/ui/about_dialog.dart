@@ -55,11 +55,13 @@ Future<void> showBitreeAboutDialog(
                   });
                   iconTaps++;
                   if (iconTaps < 5) return;
+                  resetTaps?.cancel();
+                  resetTaps = null;
+                  iconTaps = 0;
                   settings.unlockDeveloperMode();
-                  Navigator.pop(dialogContext);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l10n.developerModeEnabled)),
-                  );
+                  // The dialog stays open on purpose: taps that keep coming
+                  // after the unlock would otherwise land on the settings page
+                  // behind it. The unlock is confirmed inside the dialog.
                 },
                 child: SizedBox(
                   width: 48,
@@ -97,6 +99,24 @@ Future<void> showBitreeAboutDialog(
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
+                  ),
+                  ListenableBuilder(
+                    listenable: settings,
+                    builder: (context, _) {
+                      if (!settings.developerMode) {
+                        return const SizedBox.shrink();
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          l10n.developerModeEnabled,
+                          key: const ValueKey('about-developer-mode-note'),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
