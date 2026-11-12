@@ -188,6 +188,17 @@ void main() {
       AgendaEntry.fromJson({...legacy, 'tailDays': 4}).effectiveLayoutDays(9),
       4,
     );
+    expect(
+      AgendaEntry.fromJson({...legacy, 'tailDays': 14}).effectiveLayoutDays(9),
+      14,
+    );
+    final explicitFour = deadline.copyWith(tailDays: 4);
+    expect(
+      AgendaEntry.fromJson(explicitFour.toJson()).effectiveLayoutDays(9),
+      4,
+    );
+    expect(explicitFour.copyWith(tailDays: null).tailDays, isNull);
+    expect(explicitFour.copyWith().tailDays, 4);
     expect(AgendaEntry.fromJson(inherited.toJson()).tailDays, isNull);
     for (final invalid in [0, -1, 31, 1.5, '7']) {
       expect(

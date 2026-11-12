@@ -52,6 +52,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get developerModeEnabled => '已开启开发者模式';
 
   @override
+  String get settingsDeveloperOptions => '开发者选项';
+
+  @override
+  String get settingsResetDefaultDeadlineTails => '将默认拖尾长度设为 null';
+
+  @override
+  String get settingsResetDefaultDeadlineTailsDescription =>
+      '将所有 4 天的 DDL 拖尾改为跟随全局设置。';
+
+  @override
+  String settingsResetDefaultDeadlineTailsResult(int count) {
+    return '已将 $count 个 DDL 改为跟随全局设置。';
+  }
+
+  @override
   String get widgetUsesSystemPalette => '小组件使用系统调色板';
 
   @override

@@ -66,6 +66,17 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _resetDefaultDeadlineTails(BuildContext context) async {
+    final count = await controller.agenda.resetDefaultDeadlineTails();
+    if (!context.mounted) return;
+    showAppNotice(
+      context,
+      count == null
+          ? context.l10n.operationSaveFailed
+          : context.l10n.settingsResetDefaultDeadlineTailsResult(count),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: Listenable.merge([
@@ -278,6 +289,21 @@ class SettingsScreen extends StatelessWidget {
               onTap: () => showBitreeAboutDialog(context, controller.settings),
             ),
           ]),
+          if (controller.settings.developerMode)
+            section(l10n.settingsDeveloperOptions, [
+              ListTile(
+                key: const ValueKey('reset-default-deadline-tails'),
+                contentPadding: tilePadding,
+                leading: const Icon(Icons.restart_alt_rounded),
+                title: Text(l10n.settingsResetDefaultDeadlineTails),
+                subtitle: Text(
+                  l10n.settingsResetDefaultDeadlineTailsDescription,
+                ),
+                onTap: !controller.agenda.ready || controller.agenda.busy
+                    ? null
+                    : () => _resetDefaultDeadlineTails(context),
+              ),
+            ]),
         ],
       ),
     );

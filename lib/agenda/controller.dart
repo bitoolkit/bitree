@@ -49,8 +49,9 @@ class AgendaController extends ChangeNotifier {
   Iterable<AgendaEntry> get entries =>
       _entries.where((entry) => !entry.deleted).map(_present);
 
-  Iterable<AgendaEntry> get deletedDeadlines =>
-      _entries.where((entry) => entry.deleted && entry.isDeadline).map(_present);
+  Iterable<AgendaEntry> get deletedDeadlines => _entries
+      .where((entry) => entry.deleted && entry.isDeadline)
+      .map(_present);
 
   List<AgendaEntry> pendingOn(DateTime date, {required DateTime now}) =>
       entries
@@ -120,13 +121,16 @@ class AgendaController extends ChangeNotifier {
   /// sheet snapshot. Any manual exam choice consumes its automatic opportunity.
   Future<bool> setDone(String id, bool done) => _operations.run(() async {
     if (_disposed || !_ready) return false;
-    final index = _entries.indexWhere((entry) => entry.id == id && !entry.deleted);
+    final index = _entries.indexWhere(
+      (entry) => entry.id == id && !entry.deleted,
+    );
     if (index < 0) return false;
     final current = _entries[index];
     final handled = current.kind == AgendaKind.exam
         ? true
         : current.examAutoCompletionHandled;
-    final version = current.completionSchemaVersion <
+    final version =
+        current.completionSchemaVersion <
             AgendaEntry.currentCompletionSchemaVersion
         ? AgendaEntry.currentCompletionSchemaVersion
         : current.completionSchemaVersion;
@@ -196,6 +200,29 @@ class AgendaController extends ChangeNotifier {
     });
   }
 
+  /// Manually migrate old four-day DDL tails, including recycled entries.
+  /// Returns zero without writing when repeated, or null if persistence fails.
+  Future<int?> resetDefaultDeadlineTails() => _operations.run(() async {
+    if (_disposed) return null;
+    if (!_ready) {
+      _reportNotReady();
+      return null;
+    }
+    var count = 0;
+    final next = <AgendaEntry>[];
+    for (final entry in _entries) {
+      if (entry.isDeadline && entry.tailDays == AgendaEntry.defaultTailDays) {
+        count++;
+        next.add(entry.copyWith(tailDays: null));
+      } else {
+        next.add(entry);
+      }
+    }
+    if (count == 0) return 0;
+    final saved = await _commit(next);
+    return saved ? count : null;
+  });
+
   Future<bool> restore(AgendaEntry entry) => restoreEntries([entry]);
 
   /// Restores saved entries in one write and re-inserts records that were
@@ -242,7 +269,8 @@ class AgendaController extends ChangeNotifier {
   }) => _write((entries) {
     final savedById = {
       for (final entry in entries)
-        if (entry.kind == AgendaKind.exam && entry.term == term) entry.id: entry,
+        if (entry.kind == AgendaKind.exam && entry.term == term)
+          entry.id: entry,
     };
     final edited = {
       for (final entry in savedById.values)
@@ -420,7 +448,9 @@ class AgendaController extends ChangeNotifier {
     if (version < AgendaEntry.currentCompletionSchemaVersion) {
       // Old events were presented as finished solely because time elapsed.
       // Preserve that history exactly once, never again after an explicit undo.
-      if (entry.kind == AgendaKind.event && !entry.deleted && entry.hasEnded(now)) {
+      if (entry.kind == AgendaKind.event &&
+          !entry.deleted &&
+          entry.hasEnded(now)) {
         done = true;
       }
       version = AgendaEntry.currentCompletionSchemaVersion;
@@ -437,11 +467,13 @@ class AgendaController extends ChangeNotifier {
         handled != entry.examAutoCompletionHandled ||
         version != entry.completionSchemaVersion) {
       changed = true;
-      next.add(entry.copyWith(
-        done: done,
-        examAutoCompletionHandled: handled,
-        completionSchemaVersion: version,
-      ));
+      next.add(
+        entry.copyWith(
+          done: done,
+          examAutoCompletionHandled: handled,
+          completionSchemaVersion: version,
+        ),
+      );
     } else {
       next.add(entry);
     }
