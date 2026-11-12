@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../agenda/deadline_cutoff.dart';
+import '../agenda/model.dart';
 import '../agenda/view_mode.dart';
 import '../core/async/serial_queue.dart';
 import '../core/diagnostics.dart';
@@ -47,7 +47,7 @@ class AppSettingsController extends ChangeNotifier {
   final agendaViewMode = ValueNotifier(AgendaViewMode.timeline);
   final timetableHeightMode = ValueNotifier(TimetableHeightMode.normal);
   final deadlineCutoff = ValueNotifier(const DeadlineCutoffWindow());
-  final agendaLayoutDays = ValueNotifier(4);
+  final agendaLayoutDays = ValueNotifier(AgendaEntry.defaultTailDays);
   final agendaEventInfoBar = ValueNotifier(true);
 
   Future<void>? _paletteSettingsLoad;
@@ -170,8 +170,13 @@ class AppSettingsController extends ChangeNotifier {
       final saved = await _preferences.getString('agendaLayoutDays');
       if (!_agendaLayoutDaysChosen && !_disposed && saved != null) {
         final days = int.tryParse(saved);
-        if (days == null || days < 1 || days > 30) {
-          throw const FormatException('DDL 排版宽度必须为 1–30 天');
+        if (days == null ||
+            days < AgendaEntry.minTailDays ||
+            days > AgendaEntry.maxTailDays) {
+          throw FormatException(
+            'DDL 排版宽度必须为 ${AgendaEntry.minTailDays}–'
+            '${AgendaEntry.maxTailDays} 天',
+          );
         }
         agendaLayoutDays.value = days;
         _notify();
@@ -415,8 +420,13 @@ class AppSettingsController extends ChangeNotifier {
 
   Future<void> setAgendaLayoutDays(int value) {
     if (_disposed) return Future<void>.value();
-    if (value < 1 || value > 30) {
-      throw RangeError.range(value, 1, 30, 'agendaLayoutDays');
+    if (value < AgendaEntry.minTailDays || value > AgendaEntry.maxTailDays) {
+      throw RangeError.range(
+        value,
+        AgendaEntry.minTailDays,
+        AgendaEntry.maxTailDays,
+        'agendaLayoutDays',
+      );
     }
     _agendaLayoutDaysChosen = true;
     agendaLayoutDays.value = value;

@@ -7,6 +7,7 @@ import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../model.dart';
 import 'adjusted_deadline_painter.dart';
+import 'timeline_caption.dart';
 import 'timeline_colors.dart';
 
 /// Renders entry content independently of timeline coordinates and lane packing.
@@ -89,7 +90,7 @@ class _AgendaTimelineEntryState extends State<AgendaTimelineEntry> {
       MediaQuery.textScalerOf(context).scale(14) / 14,
     );
     final date = entry.scheduledAt;
-    final caption = _caption(l10n, entry);
+    final caption = agendaTimelineCaption(l10n, entry);
     final overdueCaption = l10n.agendaReminderOverdue(
       entry.effectiveAllDay ? l10n.allDay : clockText(entry.dueAt),
     );
@@ -355,35 +356,6 @@ class _OverdueStatusBadge extends StatelessWidget {
       ),
     );
   }
-}
-
-String _day(DateTime date) => '${date.month}/${date.day}';
-
-String _caption(AppLocalizations l10n, AgendaEntry entry) {
-  if (entry.isDeadline) {
-    // An open-ended deadline has no due time, so it reports when it opened.
-    if (entry.startOnly) {
-      return l10n.agendaTimelineStarts(clockText(entry.startsAt));
-    }
-    if (entry.hasAdjustedDeadline) {
-      return '${clockText(entry.dueAt)} ${l10n.agendaAdjustedDeadline}';
-    }
-    return entry.effectiveAllDay
-        ? l10n.allDayUntil
-        : l10n.dueAt(clockText(entry.dueAt));
-  }
-  final end = entry.endsAt!;
-  if (entry.allDay) {
-    final lastDay = end.subtract(const Duration(days: 1));
-    return calendarDate(lastDay) == calendarDate(entry.startsAt)
-        ? l10n.allDay
-        : '${_day(entry.startsAt)}–${_day(lastDay)}\n${l10n.allDay}';
-  }
-  if (calendarDate(entry.startsAt) == calendarDate(end)) {
-    return '${clockText(entry.startsAt)}–${clockText(end)}';
-  }
-  return '${_day(entry.startsAt)} ${clockText(entry.startsAt)}\n'
-      '→ ${_day(end)} ${clockText(end)}';
 }
 
 String _fullDate(AppLocalizations l10n, DateTime date) =>

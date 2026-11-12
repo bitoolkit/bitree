@@ -171,7 +171,7 @@ class _TimelineGridPainter extends CustomPainter {
       if (header && dayOrdinal % dayStride == 0) {
         final dayCenter = (dayX + x(nextDay)) / 2;
         final weekday = localizedShortWeekday(l10n, day.weekday);
-        final date = '${day.month}/${day.day}';
+        final date = agendaTimelineShortDate(day);
         _label(
           canvas,
           size,

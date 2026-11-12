@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../agenda/model.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_page.dart';
 import '../settings_controller.dart';
@@ -60,7 +61,9 @@ class _AgendaLayoutDaysScreenState extends State<AgendaLayoutDaysScreen> {
 
   Future<void> _saveText(String text) async {
     final value = int.tryParse(text);
-    if (value == null || value < 1 || value > 30) {
+    if (value == null ||
+        value < AgendaEntry.minTailDays ||
+        value > AgendaEntry.maxTailDays) {
       setState(() => _invalid = true);
       return;
     }
@@ -116,9 +119,9 @@ class _AgendaLayoutDaysScreenState extends State<AgendaLayoutDaysScreen> {
               label: l10n.settingsAgendaLayoutDays,
               child: Slider(
                 key: const ValueKey('agenda-layout-days-slider'),
-                min: 1,
-                max: 30,
-                divisions: 29,
+                min: AgendaEntry.minTailDays.toDouble(),
+                max: AgendaEntry.maxTailDays.toDouble(),
+                divisions: AgendaEntry.maxTailDays - AgendaEntry.minTailDays,
                 value: days.toDouble(),
                 label: l10n.agendaTailDaysValue(days),
                 semanticFormatterCallback: (value) =>

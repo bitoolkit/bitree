@@ -14,6 +14,7 @@ import '../timeline_layout.dart';
 import 'adjusted_deadline_painter.dart';
 import 'agenda_detail.dart';
 import 'event_timeline_entry.dart';
+import 'timeline_caption.dart';
 import 'timeline_entry.dart';
 
 part 'agenda_timeline_painters.dart';

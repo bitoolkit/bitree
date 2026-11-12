@@ -114,10 +114,11 @@ List<_LaneReservation> _reserveLanes(
   required int layoutDays,
   required bool reserveEventInformation,
 }) {
-  if (layoutDays < 1 || layoutDays > AgendaEntry.maxTailDays) {
+  if (layoutDays < AgendaEntry.minTailDays ||
+      layoutDays > AgendaEntry.maxTailDays) {
     throw RangeError.range(
       layoutDays,
-      1,
+      AgendaEntry.minTailDays,
       AgendaEntry.maxTailDays,
       'layoutDays',
     );

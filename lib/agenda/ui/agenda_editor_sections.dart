@@ -153,9 +153,9 @@ extension _AgendaEditorSections on _AgendaEditorState {
               child: Slider(
                 key: const ValueKey('agenda-tail-days-slider'),
                 value: days.toDouble(),
-                min: 1,
+                min: AgendaEntry.minTailDays.toDouble(),
                 max: AgendaEntry.maxTailDays.toDouble(),
-                divisions: AgendaEntry.maxTailDays - 1,
+                divisions: AgendaEntry.maxTailDays - AgendaEntry.minTailDays,
                 label: l10n.agendaTailDaysValue(days),
                 semanticFormatterCallback: (value) =>
                     l10n.agendaTailDaysValue(value.round()),

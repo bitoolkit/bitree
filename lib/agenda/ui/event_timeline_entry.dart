@@ -5,6 +5,7 @@ import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../model.dart';
 import 'adjusted_deadline_painter.dart';
+import 'timeline_caption.dart';
 import 'timeline_colors.dart';
 
 /// All coordinates are relative to a viewport-bounded card surface.
@@ -163,14 +164,15 @@ class _EventTimelineEntryState extends State<EventTimelineEntry> {
       if (entry.done) l10n.agendaTimelineStatusCompleted
       else if (overdue) l10n.agendaTimelineStatusOverdue,
     ].join('\n');
+    final span = agendaTimelineCaption(l10n, entry);
     final caption = overdue
         ? l10n.agendaReminderOverdue(clockText(entry.endsAt!))
-        : _eventCaption(l10n, entry);
+        : span;
     final semantics = l10n.agendaTimelineSemanticsEntry(
       entry.kind.localizedLabel(l10n),
       title,
       '${localizedAgendaDateTime(l10n, entry.startsAt)} '
-          '${_eventCaption(l10n, entry).replaceAll('\n', ' ')}',
+          '${span.replaceAll('\n', ' ')}',
       entry.course.isEmpty ? '' : l10n.listSeparator + entry.course,
       entry.location.isEmpty ? '' : l10n.listSeparator + entry.location,
       entry.done
@@ -261,20 +263,4 @@ class _EventTimelineEntryState extends State<EventTimelineEntry> {
       ),
     );
   }
-}
-
-String _eventCaption(AppLocalizations l10n, AgendaEntry entry) {
-  String day(DateTime value) => '${value.month}/${value.day}';
-  final end = entry.endsAt!;
-  if (entry.allDay) {
-    final last = end.subtract(const Duration(days: 1));
-    return calendarDate(last) == calendarDate(entry.startsAt)
-        ? l10n.allDay
-        : '${day(entry.startsAt)}–${day(last)}\n${l10n.allDay}';
-  }
-  if (calendarDate(entry.startsAt) == calendarDate(end)) {
-    return '${clockText(entry.startsAt)}–${clockText(end)}';
-  }
-  return '${day(entry.startsAt)} ${clockText(entry.startsAt)}\n'
-      '→ ${day(end)} ${clockText(end)}';
 }
