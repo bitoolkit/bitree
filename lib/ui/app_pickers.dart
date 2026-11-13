@@ -20,9 +20,11 @@ Future<DateTime?> showAppDatePicker({
 Future<TimeOfDay?> showAppTimePicker({
   required BuildContext context,
   required TimeOfDay initialTime,
+  String? helpText,
 }) => showTimePicker(
   context: context,
   initialTime: initialTime,
+  helpText: helpText,
   // The app's dialog width fits the portrait dial even in a short window.
   orientation: Orientation.portrait,
   builder: _pickerDialogBuilder,

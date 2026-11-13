@@ -406,6 +406,13 @@ void main() {
         final picker = tester.widget<TimePickerDialog>(
           find.byType(TimePickerDialog),
         );
+        final l10n = AppLocalizations.of(
+          tester.element(find.byType(DeadlineCutoffScreen)),
+        );
+        expect(
+          picker.helpText,
+          start ? l10n.deadlineCutoffStart : l10n.deadlineCutoffEnd,
+        );
         expect(picker.initialEntryMode, TimePickerEntryMode.dial);
         expect(
           find.byTooltip(

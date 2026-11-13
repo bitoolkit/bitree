@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../agenda/deadline_cutoff.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_page.dart';
-import '../../ui/dialog_layout.dart';
+import '../../ui/app_pickers.dart';
 import '../settings_controller.dart';
 
 String _clock(BuildContext context, int minute) =>
@@ -60,9 +60,8 @@ class DeadlineCutoffScreen extends StatelessWidget {
   Future<void> _selectTime(BuildContext context, {required bool start}) async {
     final window = settings.deadlineCutoff.value;
     final minute = start ? window.startMinute : window.endMinute;
-    final selected = await showTimePicker(
+    final selected = await showAppTimePicker(
       context: context,
-      builder: appPickerDialogBuilder,
       initialTime: TimeOfDay(hour: minute ~/ 60, minute: minute % 60),
       helpText: start
           ? context.l10n.deadlineCutoffStart
