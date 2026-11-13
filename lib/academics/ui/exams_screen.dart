@@ -52,7 +52,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
           .toList();
       final exams =
           selected
-              .where((entry) => _showPast || !entry.isFinished(now))
+              .where((entry) => _showPast || !entry.hasEnded(now))
               .toList()
             ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
       final conflicts = findExamConflicts(
@@ -156,7 +156,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
                 term: term,
               ),
             ),
-          if (selected.any((exam) => exam.isFinished(now)))
+          if (selected.any((exam) => exam.hasEnded(now)))
             TextButton(
               onPressed: () => setState(() => _showPast = !_showPast),
               child: Text(
@@ -243,7 +243,7 @@ class _ExamConflictsScreen extends StatelessWidget {
           (entry) =>
               entry.kind == AgendaKind.exam &&
               (term == null || entry.term == term) &&
-              (showPast || !entry.isFinished(now)),
+              (showPast || !entry.hasEnded(now)),
         ),
         controller.timetable.schedules,
         includeClasses: includeClasses,

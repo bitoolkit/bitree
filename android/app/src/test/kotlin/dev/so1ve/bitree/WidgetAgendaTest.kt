@@ -5,6 +5,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -88,6 +89,80 @@ class WidgetAgendaTest {
             readWidgetContent(context).emptyMessage,
         )
     }
+
+    @Test
+    fun versionedAgendaRetainsOverdueEventsAndReopenedExamsWithoutWriting() {
+        val now = timestamp("2026-11-09T12:00:00.000Z")
+        val entries = JSONArray()
+            .put(timed("逾期日程", "event", 1))
+            .put(timed("已撤销考试", "exam", 1).put("examAutoCompletionHandled", true))
+            .put(timed("尚未补账考试", "exam", 1))
+            .put(timed("旧历史日程", "event", 0))
+            .put(timed("已完成日程", "event", 1).put("done", true))
+            .put(timed("已删除日程", "event", 1).put("deleted", true))
+        val original = JSONObject().put("schemaVersion", 2)
+            .put("entries", entries).toString()
+        agendaFile.writeText(original)
+
+        val content = readWidgetContent(context, now)
+
+        assertEquals(setOf("逾期日程", "已撤销考试"), content.entries.map { it.title }.toSet())
+        assertTrue(content.nextUpdate > now)
+        assertEquals(original, agendaFile.readText())
+    }
+
+    @Test
+    fun overdueAgendaDoesNotChangeCourseFilteringOrScheduleRefreshesInThePast() {
+        val now = timestamp("2026-11-09T12:00:00.000Z")
+        val courses = JSONArray()
+            .put(course("已下课", 1))
+            .put(course("下午课", 6))
+        val term = JSONObject()
+            .put("firstMonday", "2026-11-09")
+            .put("courses", courses)
+        File(context.filesDir, "schedule.json").writeText(
+            JSONObject().put("schemaVersion", 2).put("selectedTerm", "term")
+                .put("semesters", JSONObject().put("term", term)).toString(),
+        )
+        agendaFile.writeText(
+            JSONObject().put("schemaVersion", 2)
+                .put("entries", JSONArray().put(timed("逾期日程", "event", 1)))
+                .toString(),
+        )
+
+        val content = readWidgetContent(context, now)
+
+        assertEquals(listOf("逾期日程", "下午课"), content.entries.map { it.title })
+        assertEquals(timestamp("2026-11-09T14:05:00.000Z"), content.nextUpdate)
+        assertTrue(content.nextUpdate > now)
+    }
+
+    private fun timed(title: String, kind: String, version: Int): JSONObject = JSONObject()
+        .put("id", title)
+        .put("title", title)
+        .put("kind", kind)
+        .put("startsAt", "2026-11-09T09:00:00.000Z")
+        .put("endsAt", "2026-11-09T11:00:00.000Z")
+        .put("allDay", false)
+        .put("location", "")
+        .put("done", false)
+        .put("deleted", false)
+        .put("completionSchemaVersion", version)
+        .put("examAutoCompletionHandled", false)
+
+    private fun course(name: String, section: Int): JSONObject = JSONObject()
+        .put("name", name)
+        .put("room", "")
+        .put("campus", "")
+        .put("weekday", 1)
+        .put("startSection", section)
+        .put("endSection", section)
+        .put("weeks", JSONArray().put(1))
+
+    private fun timestamp(value: String): Long =
+        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ROOT)
+            .apply { timeZone = TimeZone.getTimeZone("Asia/Shanghai") }
+            .parse(value)!!.time
 
     private fun deadline(title: String): JSONObject {
         val zone = TimeZone.getTimeZone("Asia/Shanghai")

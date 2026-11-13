@@ -144,7 +144,7 @@ class _DeletedDeadlinesScreenState extends State<DeletedDeadlinesScreen> {
     final controller = widget.controller;
     final entries = controller.deletedDeadlines.toList()
       ..sort((a, b) {
-        final time = b.startsAt.compareTo(a.startsAt);
+        final time = b.scheduledAt.compareTo(a.scheduledAt);
         return time == 0 ? a.id.compareTo(b.id) : time;
       });
     final query = _search.text.trim().toLowerCase();
@@ -158,7 +158,7 @@ class _DeletedDeadlinesScreenState extends State<DeletedDeadlinesScreen> {
         !_restoring && !_emptying && controller.ready && !controller.busy;
     final groups = <DateTime, List<AgendaEntry>>{};
     for (final entry in visible) {
-      groups.putIfAbsent(calendarDate(entry.startsAt), () => []).add(entry);
+      groups.putIfAbsent(calendarDate(entry.scheduledAt), () => []).add(entry);
     }
     final rows = <({DateTime? day, AgendaEntry? entry})>[
       for (final group in groups.entries) ...[

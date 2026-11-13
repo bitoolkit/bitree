@@ -379,21 +379,74 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('A schedule has only a left swipe delete action', (tester) async {
-    final app = await showAgenda(tester, kind: AgendaKind.event);
-    final row = find.byKey(const ValueKey('task'));
-    await swipeRow(tester, row, const Offset(250, 0));
-    await tester.pumpAndSettle();
-    expect(app.agenda.entries.single.kind, AgendaKind.event);
-    expect(app.agenda.entries.single.done, isFalse);
-    expect(find.text('完成'), findsNothing);
-    await swipeRow(tester, row, const Offset(-90, 0));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('删除'));
-    await tester.pumpAndSettle();
-    expect(app.agenda.entries, isEmpty);
-    expect(tester.takeException(), isNull);
-  });
+  for (final kind in [AgendaKind.event, AgendaKind.exam]) {
+    testWidgets('$kind completes and restores by swipe, and still deletes left', (
+      tester,
+    ) async {
+      final app = await showAgenda(tester, kind: kind);
+      var row = find.byKey(const ValueKey('task')).hitTestable();
+      expect(
+        find.descendant(of: row, matching: find.byType(Checkbox)),
+        findsOneWidget,
+      );
+      await swipeRow(tester, row, const Offset(250, 0));
+      await tester.pumpAndSettle();
+      expect(app.agenda.entries.single.kind, kind);
+      expect(app.agenda.entries.single.done, isTrue);
+      if (kind == AgendaKind.exam) {
+        expect(app.agenda.entries.single.examAutoCompletionHandled, isTrue);
+      }
+      await tester.tap(find.text('已完成 1'));
+      await tester.pumpAndSettle();
+      row = find.byKey(const ValueKey('task')).hitTestable();
+      expect(row, findsOneWidget);
+      await swipeRow(tester, row, const Offset(250, 0));
+      await tester.pumpAndSettle();
+      expect(app.agenda.entries.single.done, isFalse);
+      if (kind == AgendaKind.exam) {
+        expect(app.agenda.entries.single.examAutoCompletionHandled, isTrue);
+      }
+      await tester.tap(find.text('未完成 1'));
+      await tester.pumpAndSettle();
+      row = find.byKey(const ValueKey('task')).hitTestable();
+      expect(row, findsOneWidget);
+      await swipeRow(tester, row, const Offset(-90, 0));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('删除'));
+      await tester.pumpAndSettle();
+      expect(app.agenda.entries, isEmpty);
+      // The DDL recycle bin remains DDL-only despite sharing completion UI.
+      expect(app.agenda.deletedDeadlines, isEmpty);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final kind in [AgendaKind.event, AgendaKind.exam]) {
+    testWidgets('$kind completion checkbox works in both status lists', (
+      tester,
+    ) async {
+      final app = await showAgenda(tester, kind: kind);
+      Finder checkbox() => find.descendant(
+        of: find.byKey(const ValueKey('task')).hitTestable(),
+        matching: find.byType(Checkbox),
+      );
+      expect(tester.widget<Checkbox>(checkbox()).value, isFalse);
+      await tester.tap(checkbox());
+      await tester.pumpAndSettle();
+      expect(app.agenda.entries.single.done, isTrue);
+      await tester.tap(find.text('已完成 1'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<Checkbox>(checkbox()).value, isTrue);
+      await tester.tap(checkbox());
+      await tester.pumpAndSettle();
+      expect(app.agenda.entries.single.done, isFalse);
+      expect(find.text('未完成 1'), findsOneWidget);
+      if (kind == AgendaKind.exam) {
+        expect(app.agenda.entries.single.examAutoCompletionHandled, isTrue);
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('Swiping away deletion feedback keeps the deadline deleted', (
     tester,
