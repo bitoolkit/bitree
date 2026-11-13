@@ -9,6 +9,7 @@ import '../controller.dart';
 import '../model.dart';
 import 'agenda_detail.dart';
 import 'agenda_operations.dart';
+import 'calendar_list.dart';
 import 'completion_text.dart';
 import 'timeline_colors.dart';
 
@@ -81,16 +82,20 @@ class AgendaListTile extends StatelessWidget {
           onInvoke: () =>
               deleteAgendaEntry(context, controller, entry, confirm: false),
         ),
-        rightAction: TileSwipeAction(
-          label: entry.done ? l10n.agendaSwipeRestore : l10n.agendaSwipeDone,
-          releaseLabel: entry.done
-              ? l10n.agendaSwipeRestoreRelease
-              : l10n.agendaSwipeDoneRelease,
-          icon: entry.done ? Icons.undo_rounded : Icons.check_rounded,
-          background: scheme.primaryContainer,
-          foreground: scheme.onPrimaryContainer,
-          onInvoke: () => _complete(context),
-        ),
+        rightAction: entry.isDeadline
+            ? TileSwipeAction(
+                label: entry.done
+                    ? l10n.agendaSwipeRestore
+                    : l10n.agendaSwipeDone,
+                releaseLabel: entry.done
+                    ? l10n.agendaSwipeRestoreRelease
+                    : l10n.agendaSwipeDoneRelease,
+                icon: entry.done ? Icons.undo_rounded : Icons.check_rounded,
+                background: scheme.primaryContainer,
+                foreground: scheme.onPrimaryContainer,
+                onInvoke: () => _complete(context),
+              )
+            : null,
         child: Material(
           type: MaterialType.transparency,
           child: InkWell(
@@ -105,18 +110,24 @@ class AgendaListTile extends StatelessWidget {
                 children: [
                   SizedBox.square(
                     dimension: 44,
-                    child: Tooltip(
-                      message: entry.done
-                          ? l10n.agendaMarkUndone
-                          : l10n.agendaMarkDone,
-                      child: Checkbox(
-                        value: entry.done,
-                        shape: const CircleBorder(),
-                        onChanged: controller.busy
-                            ? null
-                            : (_) => _complete(context, haptic: true),
-                      ),
-                    ),
+                    child: entry.isDeadline
+                        ? Tooltip(
+                            message: entry.done
+                                ? l10n.agendaMarkUndone
+                                : l10n.agendaMarkDone,
+                            child: Checkbox(
+                              value: entry.done,
+                              shape: const CircleBorder(),
+                              onChanged: controller.busy
+                                  ? null
+                                  : (_) => _complete(context, haptic: true),
+                            ),
+                          )
+                        : Icon(
+                            agendaIcon(entry.kind),
+                            size: 22,
+                            color: scheme.onSurfaceVariant,
+                          ),
                   ),
                   const SizedBox(width: 4),
                   if (entryColors != null) ...[

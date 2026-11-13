@@ -164,7 +164,7 @@ class _EventTimelineEntryState extends State<EventTimelineEntry> {
       else if (overdue) l10n.agendaTimelineStatusOverdue,
     ].join('\n');
     final caption = overdue
-        ? l10n.agendaReminderOverdue(localizedAgendaOverdueClock(l10n, entry))
+        ? l10n.agendaReminderOverdue(clockText(entry.endsAt!))
         : _eventCaption(l10n, entry);
     final semantics = l10n.agendaTimelineSemanticsEntry(
       entry.kind.localizedLabel(l10n),

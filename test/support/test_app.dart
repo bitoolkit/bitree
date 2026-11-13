@@ -138,7 +138,6 @@ class TestAppController extends AppController {
     AcademicStore? academicStore,
     super.systemPaletteSource,
   }) : super(
-         manageAgendaCompletionClock: false,
          coursePaletteLoader: () async => testPalettes(),
          store:
              scheduleStore ??

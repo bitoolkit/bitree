@@ -332,9 +332,7 @@ void main() {
         expect(shown.scheduledAt, raw.startsAt);
         expect(shown.hasDeadlineCutoff, isFalse);
         expect(shown.hasAdjustedDeadline, isFalse);
-        final later = DateTime.utc(2030);
-        expect(shown.overdue(later), raw.overdue(later));
-        expect(shown.overdue(later), raw.kind == AgendaKind.event);
+        expect(shown.overdue(DateTime.utc(2030)), isFalse);
       }
     });
   });

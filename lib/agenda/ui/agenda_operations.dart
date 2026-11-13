@@ -13,7 +13,7 @@ Future<bool> toggleAgendaDone(
   AgendaEntry entry, {
   bool haptic = true,
 }) async {
-  final saved = await controller.setDone(entry.id, !entry.done);
+  final saved = await controller.save(entry.copyWith(done: !entry.done));
   if (saved && haptic) {
     HapticFeedback.selectionClick();
   }

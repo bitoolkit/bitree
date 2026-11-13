@@ -49,7 +49,7 @@ Future<TestAppController> _showHeader(
   addTearDown(tester.view.resetDevicePixelRatio);
   addTearDown(tester.view.resetPhysicalSize);
   final app = TestAppController(
-    agenda: AgendaController(MemoryAgendaStore(entries), now: () => _now),
+    agenda: AgendaController(MemoryAgendaStore(entries)),
   );
   await app.initialize();
   await tester.pumpWidget(

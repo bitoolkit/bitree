@@ -91,28 +91,7 @@ class WidgetAgendaTest {
     }
 
     @Test
-    fun versionedAgendaRetainsOverdueEventsAndReopenedExamsWithoutWriting() {
-        val now = timestamp("2026-11-09T12:00:00.000Z")
-        val entries = JSONArray()
-            .put(timed("逾期日程", "event", 1))
-            .put(timed("已撤销考试", "exam", 1).put("examAutoCompletionHandled", true))
-            .put(timed("尚未补账考试", "exam", 1))
-            .put(timed("旧历史日程", "event", 0))
-            .put(timed("已完成日程", "event", 1).put("done", true))
-            .put(timed("已删除日程", "event", 1).put("deleted", true))
-        val original = JSONObject().put("schemaVersion", 2)
-            .put("entries", entries).toString()
-        agendaFile.writeText(original)
-
-        val content = readWidgetContent(context, now)
-
-        assertEquals(setOf("逾期日程", "已撤销考试"), content.entries.map { it.title }.toSet())
-        assertTrue(content.nextUpdate > now)
-        assertEquals(original, agendaFile.readText())
-    }
-
-    @Test
-    fun overdueAgendaDoesNotChangeCourseFilteringOrScheduleRefreshesInThePast() {
+    fun endedAgendaEntriesStayHiddenAndCoursesStillDriveNextUpdate() {
         val now = timestamp("2026-11-09T12:00:00.000Z")
         val courses = JSONArray()
             .put(course("已下课", 1))
@@ -126,18 +105,18 @@ class WidgetAgendaTest {
         )
         agendaFile.writeText(
             JSONObject().put("schemaVersion", 2)
-                .put("entries", JSONArray().put(timed("逾期日程", "event", 1)))
+                .put("entries", JSONArray().put(timed("已结束日程", "event")))
                 .toString(),
         )
 
         val content = readWidgetContent(context, now)
 
-        assertEquals(listOf("逾期日程", "下午课"), content.entries.map { it.title })
+        assertEquals(listOf("下午课"), content.entries.map { it.title })
         assertEquals(timestamp("2026-11-09T14:05:00.000Z"), content.nextUpdate)
         assertTrue(content.nextUpdate > now)
     }
 
-    private fun timed(title: String, kind: String, version: Int): JSONObject = JSONObject()
+    private fun timed(title: String, kind: String): JSONObject = JSONObject()
         .put("id", title)
         .put("title", title)
         .put("kind", kind)
@@ -147,8 +126,6 @@ class WidgetAgendaTest {
         .put("location", "")
         .put("done", false)
         .put("deleted", false)
-        .put("completionSchemaVersion", version)
-        .put("examAutoCompletionHandled", false)
 
     private fun course(name: String, section: Int): JSONObject = JSONObject()
         .put("name", name)

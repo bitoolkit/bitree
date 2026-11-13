@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../academics/controller.dart';
@@ -18,7 +18,7 @@ import 'settings_controller.dart';
 
 /// Composes feature state and owns application startup.
 /// Feature changes are observed by their views, not relayed through this object.
-class AppController extends ChangeNotifier with WidgetsBindingObserver {
+class AppController extends ChangeNotifier {
   AppController({
     required ScheduleStore store,
     required SchoolService school,
@@ -29,7 +29,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     SystemPaletteSource? systemPaletteSource,
     Future<Map<String, CoursePalette>> Function()? coursePaletteLoader,
     MoocStorage? moocStorage,
-    this.manageAgendaCompletionClock = true,
   }) : settings = AppSettingsController(
          preferences,
          systemPaletteSource: systemPaletteSource,
@@ -56,18 +55,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     );
     settings.deadlineCutoff.addListener(_updateDeadlineCutoff);
     _updateDeadlineCutoff();
-    if (manageAgendaCompletionClock) {
-      WidgetsBinding.instance.addObserver(this);
-    }
-  }
-
-  final bool manageAgendaCompletionClock;
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (manageAgendaCompletionClock && _ready) {
-      agenda.setCompletionClockActive(state == AppLifecycleState.resumed);
-    }
   }
 
   void _updateDeadlineCutoff() =>
@@ -93,21 +80,11 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     await mooc.load();
     await academics.load(school.username);
     _ready = true;
-    if (manageAgendaCompletionClock) {
-      final lifecycle = WidgetsBinding.instance.lifecycleState;
-      agenda.setCompletionClockActive(
-        lifecycle == null || lifecycle == AppLifecycleState.resumed,
-      );
-    }
     notifyListeners();
   }
 
   @override
   void dispose() {
-    if (manageAgendaCompletionClock) {
-      WidgetsBinding.instance.removeObserver(this);
-    }
-    agenda.setCompletionClockActive(false);
     settings.deadlineCutoff.removeListener(_updateDeadlineCutoff);
     settings.dispose();
     sync.dispose();

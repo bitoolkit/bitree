@@ -37,6 +37,8 @@ Future<void> showAgendaEntry(
           ? l10n.completed
           : overdue
           ? l10n.overdue
+          : current.isFinished(now)
+          ? l10n.ended
           : null;
       final notes = localizedAgendaNotes(l10n, current);
       final statusColor = overdue ? scheme.error : scheme.onSurfaceVariant;
@@ -189,39 +191,52 @@ Future<void> showAgendaEntry(
             ],
           ),
         ),
-        actions: SheetActionBar.split(
-          leading: TextButton.icon(
-            onPressed: controller.busy ? null : edit,
-            icon: const Icon(Icons.edit_outlined, size: 18),
-            label: Text(l10n.edit),
-          ),
-          primary: FilledButton.icon(
-            style: current.done
-                ? FilledButton.styleFrom(
-                    backgroundColor: scheme.secondaryContainer,
-                    foregroundColor: scheme.onSecondaryContainer,
-                  )
-                : null,
-            onPressed: controller.busy
-                ? null
-                : () async {
-                    final saved = await toggleAgendaDone(
-                      controller,
-                      current,
-                    );
-                    if (!saved && context.mounted) {
-                      showAppNotice(context, context.l10n.operationSaveFailed);
-                    }
-                  },
-            icon: Icon(
-              current.done ? Icons.undo_rounded : Icons.check_rounded,
-              size: 20,
-            ),
-            label: Text(
-              current.done ? l10n.agendaMarkUndone : l10n.agendaMarkDone,
-            ),
-          ),
-        ),
+        actions: current.isDeadline
+            ? SheetActionBar.split(
+                leading: TextButton.icon(
+                  onPressed: controller.busy ? null : edit,
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  label: Text(l10n.edit),
+                ),
+                primary: FilledButton.icon(
+                  style: current.done
+                      ? FilledButton.styleFrom(
+                          backgroundColor: scheme.secondaryContainer,
+                          foregroundColor: scheme.onSecondaryContainer,
+                        )
+                      : null,
+                  onPressed: controller.busy
+                      ? null
+                      : () async {
+                          final saved = await toggleAgendaDone(
+                            controller,
+                            current,
+                          );
+                          if (!saved && context.mounted) {
+                            showAppNotice(
+                              context,
+                              context.l10n.operationSaveFailed,
+                            );
+                          }
+                        },
+                  icon: Icon(
+                    current.done ? Icons.undo_rounded : Icons.check_rounded,
+                    size: 20,
+                  ),
+                  label: Text(
+                    current.done
+                        ? l10n.agendaMarkUndone
+                        : l10n.agendaMarkDone,
+                  ),
+                ),
+              )
+            : SheetActionBar.primary(
+                primary: FilledButton.icon(
+                  onPressed: controller.busy ? null : edit,
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  label: Text(l10n.edit),
+                ),
+              ),
       );
     },
   ),
