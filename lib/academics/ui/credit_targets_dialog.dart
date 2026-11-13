@@ -96,8 +96,7 @@ class _CreditTargetsDialogState extends State<_CreditTargetsDialog> {
     final theme = Theme.of(context);
     return PopScope(
       canPop: !_saving,
-      child: AlertDialog(
-        scrollable: true,
+      child: AppDialog(
         title: Text(l10n.reviewCreditTargets),
         content: Form(
           key: _form,

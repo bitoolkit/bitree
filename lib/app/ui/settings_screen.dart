@@ -15,6 +15,7 @@ import '../../ui/app_menu_trigger.dart';
 import '../../ui/app_notice.dart';
 import '../../ui/app_page.dart';
 import '../../ui/section_label.dart';
+import '../../ui/selection_controls.dart';
 import '../controller.dart';
 import '../settings_controller.dart';
 import 'about_dialog.dart';
@@ -131,30 +132,14 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           section(l10n.language, [
-            SegmentedButton<AppLanguage>(
-              expandedInsets: EdgeInsets.zero,
-              showSelectedIcon: false,
-              segments: [
-                ButtonSegment(
-                  value: AppLanguage.system,
-                  label: Text(
-                    l10n.followSystem,
-                    maxLines: 2,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                ButtonSegment(
-                  value: AppLanguage.chinese,
-                  label: Text(l10n.languageChinese),
-                ),
-                ButtonSegment(
-                  value: AppLanguage.english,
-                  label: Text(l10n.languageEnglish),
-                ),
-              ],
-              selected: {controller.settings.language},
-              onSelectionChanged: (selection) =>
-                  controller.settings.setLanguage(selection.single),
+            AppSegmentedControl<AppLanguage>(
+              options: {
+                AppLanguage.system: l10n.followSystem,
+                AppLanguage.chinese: l10n.languageChinese,
+                AppLanguage.english: l10n.languageEnglish,
+              },
+              value: controller.settings.language,
+              onChanged: controller.settings.setLanguage,
             ),
           ]),
           if (controller.timetable.schedule != null)
@@ -164,19 +149,12 @@ class SettingsScreen extends StatelessWidget {
                   menuWidth: constraints.maxWidth,
                   menuChildren: [
                     for (final term in controller.timetable.terms)
-                      Semantics(
+                      AppMenuItemButton(
                         selected: controller.timetable.schedule!.term == term,
-                        child: AppMenuItemButton(
-                          onPressed: controller.timetable.busy
-                              ? null
-                              : () => _selectTerm(context, term),
-                          trailingIcon:
-                              controller.timetable.schedule!.term == term
-                              ? const Icon(Icons.check_rounded, size: 18)
-                              : const SizedBox(width: 18),
-                          overflowAxis: Axis.vertical,
-                          child: Text(term),
-                        ),
+                        onPressed: controller.timetable.busy
+                            ? null
+                            : () => _selectTerm(context, term),
+                        child: Text(localizedTerm(l10n, term)),
                       ),
                   ],
                   builder: (context, menu, isOpen) => ListTile(

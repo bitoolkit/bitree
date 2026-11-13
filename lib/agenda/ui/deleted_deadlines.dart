@@ -8,6 +8,7 @@ import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_notice.dart';
 import '../../ui/app_page.dart';
 import '../../ui/design.dart';
+import '../../ui/selection_controls.dart';
 import '../controller.dart';
 import '../model.dart';
 
@@ -121,13 +122,13 @@ class _DeletedDeadlinesScreenState extends State<DeletedDeadlinesScreen> {
     });
   }
 
-  void _toggleVisible(List<AgendaEntry> entries) {
+  void _selectVisible(List<AgendaEntry> entries, bool selected) {
     final ids = {for (final entry in entries) entry.id};
     setState(() {
-      if (ids.isNotEmpty && ids.every(_selected.contains)) {
-        _selected.removeAll(ids);
-      } else {
+      if (selected) {
         _selected.addAll(ids);
+      } else {
+        _selected.removeAll(ids);
       }
     });
   }
@@ -234,14 +235,26 @@ class _DeletedDeadlinesScreenState extends State<DeletedDeadlinesScreen> {
                     ),
                   ),
                 ),
-                _RecoverySelectionBar(
-                  selectedCount: selectedEntries.length,
-                  totalCount: entries.length,
-                  visible: visible,
-                  selected: _selected,
-                  enabled: enabled,
-                  onToggleVisible: () => _toggleVisible(visible),
-                  onClear: () => setState(_selected.clear),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                  ),
+                  child: AppSelectionBar(
+                    selectedCount: visible
+                        .where((entry) => _selected.contains(entry.id))
+                        .length,
+                    totalCount: visible.length,
+                    summary: l10n.deletedDeadlinesSelectionCount(
+                      selectedEntries.length,
+                      entries.length,
+                    ),
+                    onToggleAll: enabled
+                        ? (selected) => _selectVisible(visible, selected)
+                        : null,
+                    onClear: enabled && selectedEntries.isNotEmpty
+                        ? () => setState(_selected.clear)
+                        : null,
+                  ),
                 ),
                 Expanded(
                   child: visible.isEmpty

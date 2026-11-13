@@ -5,7 +5,8 @@ import 'package:bitree/classrooms/ui/classroom_time_field.dart';
 import 'package:bitree/schedule/ui/week_range_dialog.dart';
 import 'package:bitree/school/ui/school_verification_dialog.dart';
 import 'package:bitree/school/verification.dart';
-import 'package:bitree/ui/dialog_layout.dart';
+import 'package:bitree/ui/app_dialog.dart';
+import 'package:bitree/ui/app_pickers.dart';
 import 'package:bitree/ui/external_link.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flex_color_picker/flex_color_picker.dart';
@@ -23,6 +24,7 @@ Future<void> _host(
   Widget Function(BuildContext context) child, {
   double textScale = 1,
   TargetPlatform? platform,
+  Brightness brightness = Brightness.light,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
@@ -31,7 +33,7 @@ Future<void> _host(
   addTearDown(tester.view.resetViewInsets);
   await tester.pumpWidget(
     MaterialApp(
-      theme: bitreeTheme(Brightness.light).copyWith(platform: platform),
+      theme: bitreeTheme(brightness).copyWith(platform: platform),
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context)
             .copyWith(textScaler: TextScaler.linear(textScale)),
@@ -42,8 +44,13 @@ Future<void> _host(
   );
 }
 
-void _expectWidth(WidgetTester tester, Size size) {
-  expect(tester.getSize(_surface).width, math.min(360, size.width - 48));
+void _expectDialogSurface(WidgetTester tester, Size size, Finder surface) {
+  final material = tester.widget<Material>(surface);
+  final context = tester.element(surface);
+  expect(tester.getSize(surface).width, math.min(360, size.width - 48));
+  expect(material.color, Theme.of(context).colorScheme.surfaceContainerLow);
+  expect(material.shape, DialogTheme.of(context).shape);
+  expect(ModalRoute.of(context)?.barrierColor, Colors.black54);
   expect(tester.takeException(), isNull);
 }
 
@@ -66,6 +73,9 @@ void main() {
         ),
         textScale: scale,
         platform: platform,
+        brightness: platform == TargetPlatform.linux
+            ? Brightness.dark
+            : Brightness.light,
       );
       await tester.tap(find.text('打开'));
       await tester.pumpAndSettle();
@@ -74,8 +84,8 @@ void main() {
         matching: _surface,
       );
       expect(surface, findsOneWidget);
+      _expectDialogSurface(tester, size, surface);
       final dialog = tester.getRect(surface);
-      expect(dialog.width, math.min(360, size.width - 48));
       final title = tester.getRect(find.text('选择颜色'));
       expect(title.left - dialog.left, greaterThanOrEqualTo(8));
       expect(title.top - dialog.top, greaterThanOrEqualTo(8));
@@ -122,10 +132,13 @@ void main() {
   for (final size in [
     const Size(320, 640),
     const Size(390, 844),
+    const Size(844, 390),
     const Size(1440, 900),
   ]) {
     for (final picker in ['date', 'time']) {
-      testWidgets('$picker picker uses shared width at $size', (tester) async {
+      testWidgets('$picker picker uses the shared surface at $size', (
+        tester,
+      ) async {
         Object? picked;
         await _host(
           tester,
@@ -133,27 +146,26 @@ void main() {
           (context) => TextButton(
             onPressed: () async {
               if (picker == 'date') {
-                picked = await showDatePicker(
+                picked = await showAppDatePicker(
                   context: context,
                   initialDate: DateTime(2026, 10, 27),
                   firstDate: DateTime(2026),
                   lastDate: DateTime(2027),
-                  builder: appPickerDialogBuilder,
                 );
               } else {
-                picked = await showTimePicker(
+                picked = await showAppTimePicker(
                   context: context,
                   initialTime: const TimeOfDay(hour: 18, minute: 30),
-                  builder: appPickerDialogBuilder,
                 );
               }
             },
             child: const Text('打开'),
           ),
+          brightness: size.width == 1440 ? Brightness.dark : Brightness.light,
         );
         await tester.tap(find.text('打开'));
         await tester.pumpAndSettle();
-        _expectWidth(tester, size);
+        _expectDialogSurface(tester, size, _surface);
         if (picker == 'time') {
           for (final element in find.byType(Scrollable).evaluate()) {
             final state = (element as StatefulElement).state as ScrollableState;
@@ -165,13 +177,25 @@ void main() {
         } else {
           await tester.tap(find.text('28').hitTestable());
         }
-        await tester.tap(find.text('OK'));
+        final useKeyboard = picker == 'time' && size.width == 390;
+        if (useKeyboard) {
+          await tester.tap(find.byIcon(Icons.keyboard_outlined));
+          await tester.pumpAndSettle();
+          await tester.enterText(find.byType(TextFormField).last, '45');
+          tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+          await tester.pumpAndSettle();
+        }
+        final confirm = find.text('OK');
+        await tester.ensureVisible(confirm);
+        await tester.pumpAndSettle();
+        expect(confirm.hitTestable(), findsOneWidget);
+        await tester.tap(confirm);
         await tester.pumpAndSettle();
         expect(
           picked,
           picker == 'date'
               ? DateTime(2026, 10, 28)
-              : const TimeOfDay(hour: 18, minute: 30),
+              : TimeOfDay(hour: 18, minute: useKeyboard ? 45 : 30),
         );
         expect(tester.takeException(), isNull);
       });
@@ -235,44 +259,32 @@ void main() {
     });
   }
 
-  testWidgets('Short alerts and choice dialogs share the same width', (
-    tester,
-  ) async {
-    const size = Size(390, 844);
-    await _host(
-      tester,
-      size,
-      (context) => Column(
-        children: [
-          TextButton(
-            onPressed: () => showDialog<void>(
-              context: context,
-              builder: (_) =>
-                  const AlertDialog(title: Text('确认'), content: Text('内容')),
-            ),
-            child: const Text('提示'),
+  testWidgets(
+    'Confirmations use the shared surface and dismiss on outside tap',
+    (tester) async {
+      const size = Size(390, 844);
+      bool? confirmed;
+      await _host(
+        tester,
+        size,
+        (context) => TextButton(
+          onPressed: () async => confirmed = await showAppConfirmDialog(
+            context,
+            title: '确认',
+            body: '内容',
+            confirmLabel: '确定',
           ),
-          TextButton(
-            onPressed: () => showDialog<void>(
-              context: context,
-              builder: (_) => const SimpleDialog(
-                title: Text('选择课程'),
-                children: [SimpleDialogOption(child: Text('课程'))],
-              ),
-            ),
-            child: const Text('选择'),
-          ),
-        ],
-      ),
-    );
-    for (final label in ['提示', '选择']) {
-      await tester.tap(find.text(label));
+          child: const Text('提示'),
+        ),
+      );
+      await tester.tap(find.text('提示'));
       await tester.pumpAndSettle();
-      _expectWidth(tester, size);
+      _expectDialogSurface(tester, size, _surface);
       await tester.tapAt(const Offset(5, 5));
       await tester.pumpAndSettle();
-    }
-  });
+      expect(confirmed, isFalse);
+    },
+  );
 
   testWidgets('School verification uses the shared dialog with large text', (
     tester,

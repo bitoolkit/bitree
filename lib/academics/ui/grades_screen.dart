@@ -6,6 +6,7 @@ import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../sync/controller.dart';
 import '../../sync/ui/sync.dart';
+import '../../ui/selection_controls.dart';
 import '../model.dart';
 import 'academic_common.dart';
 import 'credit_progress_screen.dart';
@@ -132,15 +133,10 @@ class _GradesScreenState extends State<GradesScreen> {
                 (label: l10n.atLeast80Ratio, value: atLeast80),
               ],
             ),
-            SegmentedButton<bool>(
-              segments: [
-                ButtonSegment(value: false, label: Text(l10n.courseGrades)),
-                ButtonSegment(value: true, label: Text(l10n.termPerformance)),
-              ],
-              selected: {_byTerm},
-              showSelectedIcon: false,
-              onSelectionChanged: (value) =>
-                  setState(() => _byTerm = value.first),
+            AppSegmentedControl<bool>(
+              options: {false: l10n.courseGrades, true: l10n.termPerformance},
+              value: _byTerm,
+              onChanged: (value) => setState(() => _byTerm = value),
             ),
             const SizedBox(height: 12),
             if (_byTerm)

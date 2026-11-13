@@ -11,9 +11,9 @@ import '../../school/ui/school_screen.dart';
 import '../../school/ui/school_verification_dialog.dart';
 import '../../ui/app_dropdown_field.dart';
 import '../../ui/app_page.dart';
+import '../../ui/app_pickers.dart';
 import '../../ui/campus_time_builder.dart';
 import '../../ui/design.dart';
-import '../../ui/dialog_layout.dart';
 import '../../ui/sheet_layout.dart';
 import '../../wencui/place.dart';
 import '../../wencui/ui/wencui_map_screen.dart';
@@ -67,9 +67,8 @@ class _ClassroomScreenState extends State<ClassroomScreen> {
   }
 
   Future<void> _pickDate() async {
-    final date = await showDatePicker(
+    final date = await showAppDatePicker(
       context: context,
-      builder: appPickerDialogBuilder,
       initialDate: _queryState.date,
       firstDate: DateTime(_queryState.date.year - 1),
       lastDate: DateTime(_queryState.date.year + 1, 12, 31),

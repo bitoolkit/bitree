@@ -4,7 +4,7 @@ import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_dropdown_field.dart';
-import '../../ui/dialog_layout.dart';
+import '../../ui/app_pickers.dart';
 import '../../ui/editor_sheet.dart';
 import '../../ui/sheet_layout.dart';
 import '../controller.dart';
@@ -183,9 +183,8 @@ class _CourseEditorState extends State<_CourseEditor> {
               onPressed: _saving
                   ? null
                   : () async {
-                      final date = await showDatePicker(
+                      final date = await showAppDatePicker(
                         context: context,
-                        builder: appPickerDialogBuilder,
                         initialDate: _monday,
                         firstDate: DateTime(2000),
                         lastDate: DateTime(2100),

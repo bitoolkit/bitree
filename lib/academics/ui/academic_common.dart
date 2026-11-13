@@ -187,8 +187,7 @@ Future<void> showGpaRules(BuildContext context) => showAppDialog<void>(
   context: context,
   builder: (dialogContext) {
     final l10n = dialogContext.l10n;
-    return AlertDialog(
-      scrollable: true,
+    return AppDialog(
       title: Text(l10n.gpaRulesTitle),
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
