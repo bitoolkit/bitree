@@ -185,6 +185,16 @@ void main() {
       await tester.tap(find.text('作业 1'));
       await tester.pump();
       expect(find.text('已选 1 / 3'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), '作业 2');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(Checkbox).first);
+      await tester.pump();
+      expect(find.text('已选 2 / 3'), findsOneWidget);
+      await tester.tap(find.byType(Checkbox).first);
+      await tester.pump();
+      expect(find.text('已选 1 / 3'), findsOneWidget);
+
       await tester.tap(find.text('恢复所选'));
       await tester.pumpAndSettle();
 

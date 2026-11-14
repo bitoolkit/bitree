@@ -6,6 +6,7 @@ import '../../l10n/l10n.dart';
 import '../../ui/app_dialog.dart';
 import '../../ui/design.dart';
 import '../../ui/external_link.dart';
+import '../../ui/selection_controls.dart';
 import '../release.dart';
 
 Future<void> showUpdateDialog(
@@ -76,30 +77,22 @@ class _UpdateDialogState extends State<UpdateDialog> {
       ),
     );
 
-    return AlertDialog(
+    return AppDialog(
       title: Text(l10n.updateAvailable),
-      scrollable: true,
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (widget.releases.length > 1) ...[
-            SegmentedButton<int>(
-              showSelectedIcon: false,
-              segments: [
+            AppSegmentedControl<int>(
+              options: {
                 for (final (index, release) in widget.releases.indexed)
-                  ButtonSegment(
-                    value: index,
-                    label: Text(
-                      release.isDevelopment
-                          ? l10n.developmentBuild
-                          : l10n.stableBuild,
-                    ),
-                  ),
-              ],
-              selected: {_selected},
-              onSelectionChanged: (selection) =>
-                  setState(() => _selected = selection.single),
+                  index: release.isDevelopment
+                      ? l10n.developmentBuild
+                      : l10n.stableBuild,
+              },
+              value: _selected,
+              onChanged: (value) => setState(() => _selected = value),
             ),
             const SizedBox(height: AppSpacing.md),
           ],
@@ -127,7 +120,6 @@ class _UpdateDialogState extends State<UpdateDialog> {
           ],
         ],
       ),
-      actionsOverflowButtonSpacing: AppSpacing.sm,
       actions: [
         TextButton(
           style: actionStyle,

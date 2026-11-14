@@ -139,6 +139,18 @@ void main() {
       await tester.tap(icon);
       await tester.pumpAndSettle();
       expect(controller.settings.developerMode, isTrue);
+      // The dialog stays open so extra taps cannot hit the page behind it.
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('about-developer-mode-note')),
+        findsOneWidget,
+      );
+      await tester.tap(icon);
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsOneWidget);
+      // A barrier tap is the only way out, and it closes the dialog.
+      await tester.tapAt(const Offset(8, 8));
+      await tester.pumpAndSettle();
       expect(find.byType(AlertDialog), findsNothing);
       expect(find.text('更多设置'), findsNothing);
       expect(find.text('深色模式调色板'), findsNothing);

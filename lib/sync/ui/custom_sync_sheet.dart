@@ -10,7 +10,6 @@ class _CustomSyncSheet extends StatefulWidget {
 class _CustomSyncSheetState extends State<_CustomSyncSheet> {
   late final _availableTargets = widget.app.sync.bulkTargets;
   late final _selected = widget.app.sync.defaultTargets;
-  late final String? _currentTerm;
   late final List<String> _terms;
   String? _term;
 
@@ -21,16 +20,16 @@ class _CustomSyncSheetState extends State<_CustomSyncSheet> {
   @override
   void initState() {
     super.initState();
-    _currentTerm = semesterAt(
+    final currentTerm = semesterAt(
       widget.app.timetable.schedules,
       campusNow(),
     )?.term;
     _terms = orderedSemesterTerms(
       widget.app.timetable.terms,
-      currentTerm: _currentTerm,
+      currentTerm: currentTerm,
     );
     _term =
-        _currentTerm ??
+        currentTerm ??
         widget.app.timetable.schedule?.term ??
         _terms.firstOrNull;
   }
@@ -49,9 +48,11 @@ class _CustomSyncSheetState extends State<_CustomSyncSheet> {
           selectedCount: _selected.length,
           totalCount: _availableTargets.length,
           summary: context.l10n.selectedItems(_selected.length),
-          onSelectAll: () =>
-              setState(() => _selected.addAll(_availableTargets)),
-          onClear: () => setState(_selected.clear),
+          onToggleAll: (selected) => setState(() {
+            _selected.clear();
+            if (selected) _selected.addAll(_availableTargets);
+          }),
+          onClear: _selected.isEmpty ? null : () => setState(_selected.clear),
         ),
         const SizedBox(height: AppSpacing.md),
         AppSectionHeader(context.l10n.syncSchoolData),
@@ -60,10 +61,7 @@ class _CustomSyncSheetState extends State<_CustomSyncSheet> {
             label: context.l10n.syncTerm,
             value: _term,
             terms: _terms,
-            currentTerm: _currentTerm,
-            onChanged: (term) {
-              if (term != null) setState(() => _term = term);
-            },
+            onChanged: (term) => setState(() => _term = term),
           ),
           const SizedBox(height: AppSpacing.sm),
         ],

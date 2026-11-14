@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
+import '../../ui/app_dialog.dart';
 import '../agenda_color.dart';
 
 class AgendaColorPickerResult {
@@ -28,13 +29,16 @@ Future<AgendaColorPickerResult?> showAgendaColorPicker(
         l10n,
       ),
   };
-  final confirmed =
-      await ColorPicker(
+  final confirmed = await showAppDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AppDialog(
+      semanticLabel: l10n.agendaColorPickerTitle,
+      content: ColorPicker(
         color: initial,
         onColorChanged: (color) => selected = color,
         title: Text(
           l10n.agendaColorPickerTitle,
-          style: Theme.of(context).textTheme.titleLarge,
+          style: DialogTheme.of(dialogContext).titleTextStyle,
         ),
         mainAxisSize: MainAxisSize.min,
         padding: EdgeInsets.zero,
@@ -69,19 +73,20 @@ Future<AgendaColorPickerResult?> showAgendaColorPicker(
           longPressMenu: true,
           secondaryMenu: true,
         ),
-        actionButtons: ColorPickerActionButtons(
-          dialogOkButtonLabel: l10n.apply,
-          dialogOkButtonType: ColorPickerActionButtonType.filled,
-          dialogCancelButtonLabel: l10n.cancel,
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: Text(l10n.cancel),
         ),
-      ).showPickerDialog(
-        context,
-        semanticLabel: l10n.agendaColorPickerTitle,
-        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-        actionsPadding: const EdgeInsets.all(24),
-        insetPadding: DialogTheme.of(context).insetPadding!,
-      );
-  if (!confirmed) return null;
+        FilledButton(
+          onPressed: () => Navigator.pop(dialogContext, true),
+          child: Text(l10n.apply),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true) return null;
 
   final value = selected.withValues(alpha: 1).toARGB32();
   if (value == defaultColor.withValues(alpha: 1).toARGB32()) {

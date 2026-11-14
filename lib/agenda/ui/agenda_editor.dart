@@ -4,10 +4,11 @@ import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../schedule/selection.dart';
+import '../../ui/app_pickers.dart';
 import '../../ui/design.dart';
-import '../../ui/dialog_layout.dart';
 import '../../ui/editor_sheet.dart';
 import '../../ui/external_link.dart';
+import '../../ui/selection_controls.dart';
 import '../../ui/sheet_layout.dart';
 import '../agenda_color.dart';
 import '../controller.dart';
@@ -98,9 +99,8 @@ class _AgendaEditorState extends State<_AgendaEditor> {
 
   Future<void> _pickDate(bool start) async {
     final current = start ? _start : _end;
-    final date = await showDatePicker(
+    final date = await showAppDatePicker(
       context: context,
-      builder: appPickerDialogBuilder,
       initialDate: current,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
@@ -125,9 +125,8 @@ class _AgendaEditorState extends State<_AgendaEditor> {
 
   Future<void> _pickTime(bool start) async {
     final current = start ? _start : _end;
-    final time = await showTimePicker(
+    final time = await showAppTimePicker(
       context: context,
-      builder: appPickerDialogBuilder,
       initialTime: TimeOfDay.fromDateTime(current),
     );
     if (time == null || !mounted) return;
@@ -257,19 +256,15 @@ class _AgendaEditorState extends State<_AgendaEditor> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (widget.entry == null) ...[
-            SegmentedButton<AgendaKind>(
-              segments: [
-                ButtonSegment(
-                  value: AgendaKind.event,
-                  label: Text(l10n.agenda),
-                ),
-                ButtonSegment(value: AgendaKind.deadline, label: Text('DDL')),
-              ],
-              selected: {_kind},
-              showSelectedIcon: false,
-              onSelectionChanged: _saving
+            AppSegmentedControl<AgendaKind>(
+              options: {
+                AgendaKind.event: l10n.agenda,
+                AgendaKind.deadline: 'DDL',
+              },
+              value: _kind,
+              onChanged: _saving
                   ? null
-                  : (values) => setState(() => _kind = values.single),
+                  : (value) => setState(() => _kind = value),
             ),
             const SizedBox(height: 16),
           ],

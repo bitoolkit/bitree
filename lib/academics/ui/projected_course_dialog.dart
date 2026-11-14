@@ -91,8 +91,7 @@ class _ProjectedCourseDialogState extends State<_ProjectedCourseDialog> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final choices = _choices;
-    return AlertDialog(
-      scrollable: true,
+    return AppDialog(
       title: Text(
         widget.course == null
             ? l10n.addProjectedCourse

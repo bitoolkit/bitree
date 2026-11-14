@@ -144,10 +144,7 @@ class _ClassroomTimeDialogState extends State<_ClassroomTimeDialog> {
 
     return ScrollConfiguration(
       behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-      child: AlertDialog(
-        titlePadding: const EdgeInsets.fromLTRB(24, 12, 12, 0),
-        contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
-        scrollable: true,
+      child: AppDialog(
         title: Row(
           children: [
             Expanded(child: Text(l10n.chooseFreePeriod)),
