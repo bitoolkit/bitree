@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:code_assets/code_assets.dart';
@@ -58,8 +59,12 @@ void main(List<String> arguments) async {
       language: Language.cpp,
       std: 'c++17',
       libraries: [if (needsLibm) 'm'],
-      // Fail the build instead of shipping a library that dlopen cannot load.
-      flags: [if (needsLibm) '-Wl,-z,defs'],
+      flags: [
+        // Fail the build instead of shipping a library that dlopen cannot load.
+        if (needsLibm) '-Wl,-z,defs',
+        // Lua uses C++ exceptions, and native error messages are UTF-8.
+        if (targetOS == OS.windows) ...['/EHsc', '/utf-8'],
+      ],
       cppLinkStdLib: targetOS == OS.android ? 'c++_static' : null,
     );
     await builder.run(input: input, output: output);
@@ -78,21 +83,23 @@ $dkjson
 end)()
 
 $prelude''';
-  const delimiter = 'BTLUA';
-  if (source.contains(')$delimiter"')) {
-    throw StateError('Lua source contains the raw string delimiter.');
+  // A single string literal exceeds MSVC's limit with the bundled dkjson.
+  final bytes = utf8.encode('\n$source\n');
+  final initializer = StringBuffer();
+  for (var index = 0; index < bytes.length; index++) {
+    if (index % 16 == 0) initializer.write('\n  ');
+    initializer.write('${bytes[index]},');
   }
   final generated =
       '''
 #include <cstddef>
 
-extern const char kPrelude[];
+extern const unsigned char kPrelude[];
 extern const size_t kPreludeLength;
 
-const char kPrelude[] = R"$delimiter(
-$source
-)$delimiter";
-const size_t kPreludeLength = sizeof(kPrelude) - 1;
+const unsigned char kPrelude[] = {$initializer
+};
+const size_t kPreludeLength = sizeof(kPrelude);
 ''';
   final file = File.fromUri(output);
   if (!file.existsSync() || file.readAsStringSync() != generated) {

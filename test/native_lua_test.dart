@@ -75,6 +75,24 @@ function filter(data) return data end
     );
   });
 
+  test('embedded Lua prelude preserves UTF-8 error messages', () {
+    expect(
+      () => library.executeFilter(
+        source: 'function filter(data) collectgarbage("collect") end',
+        data: {},
+      ),
+      throwsA(
+        isA<NativeLuaError>()
+            .having((error) => error.code, 'code', 'script_error')
+            .having(
+              (error) => error.message,
+              'message',
+              'collectgarbage 只允许查询内存用量',
+            ),
+      ),
+    );
+  });
+
   test('C Lua enforces its memory limit and recovers on the next call', () {
     expect(
       () => library.executeFilter(
@@ -127,11 +145,9 @@ end
         cancellation: cancellation,
       ),
       throwsA(
-        isA<NativeLuaError>().having(
-          (error) => error.code,
-          'code',
-          'cancelled',
-        ),
+        isA<NativeLuaError>()
+            .having((error) => error.code, 'code', 'cancelled')
+            .having((error) => error.message, 'message', 'Lua 执行已取消'),
       ),
     );
   });

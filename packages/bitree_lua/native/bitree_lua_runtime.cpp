@@ -10,7 +10,7 @@
 #include <cstring>
 #include <string>
 
-extern const char kPrelude[];
+extern const unsigned char kPrelude[];
 extern const size_t kPreludeLength;
 
 namespace {
@@ -113,7 +113,8 @@ int initialize(lua_State* lua) {
     lua_pop(lua, 1);
   }
   if (luaL_loadbufferx(
-          lua, kPrelude, kPreludeLength, "@bitree-prelude.lua", "t") != LUA_OK) {
+          lua, reinterpret_cast<const char*>(kPrelude), kPreludeLength,
+          "@bitree-prelude.lua", "t") != LUA_OK) {
     return lua_error(lua);
   }
   lua_call(lua, 0, 0);
