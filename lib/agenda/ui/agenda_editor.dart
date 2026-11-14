@@ -75,7 +75,7 @@ class _AgendaEditorState extends State<_AgendaEditor> {
   late final _title = TextEditingController(text: widget.entryTitle);
   late final _location = TextEditingController(text: widget.entry?.location);
   late final _notes = TextEditingController(text: widget.entryNotes);
-  late int _tailDays = widget.entry?.tailDays ?? AgendaEntry.defaultTailDays;
+  late int? _tailDays = widget.entry?.tailDays;
   late AgendaKind _kind = widget.kind;
   late DateTime _start = widget.entry?.startsAt ?? widget.startsAt;
   late DateTime _end =
@@ -220,12 +220,12 @@ class _AgendaEditorState extends State<_AgendaEditor> {
     }
   }
 
-  void _updateColor(AgendaColor? color) {
-    setState(() => _color = color);
+  void _updateTailDays(int? days) {
+    setState(() => _tailDays = days);
   }
 
-  void _updateTailDays(int value) {
-    setState(() => _tailDays = value);
+  void _updateColor(AgendaColor? color) {
+    setState(() => _color = color);
   }
 
   @override
@@ -349,7 +349,7 @@ class _AgendaEditorState extends State<_AgendaEditor> {
           ),
           const SizedBox(height: 8),
           if (_kind != AgendaKind.exam) _colorSelector(),
-          _moreOptions(theme),
+          _moreOptions(),
         ],
       ),
     );

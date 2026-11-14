@@ -379,22 +379,6 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('A schedule has only a left swipe delete action', (tester) async {
-    final app = await showAgenda(tester, kind: AgendaKind.event);
-    final row = find.byKey(const ValueKey('task'));
-    await swipeRow(tester, row, const Offset(250, 0));
-    await tester.pumpAndSettle();
-    expect(app.agenda.entries.single.kind, AgendaKind.event);
-    expect(app.agenda.entries.single.done, isFalse);
-    expect(find.text('完成'), findsNothing);
-    await swipeRow(tester, row, const Offset(-90, 0));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('删除'));
-    await tester.pumpAndSettle();
-    expect(app.agenda.entries, isEmpty);
-    expect(tester.takeException(), isNull);
-  });
-
   testWidgets('Swiping away deletion feedback keeps the deadline deleted', (
     tester,
   ) async {

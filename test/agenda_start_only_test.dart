@@ -73,16 +73,16 @@ void main() {
 
     test('Only a deadline can be open-ended', () {
       expect(
-        () => AgendaEntry(
-          id: 'exam',
-          title: '期中考试',
-          kind: AgendaKind.exam,
-          startsAt: _opens,
-          endsAt: _opens.add(const Duration(hours: 2)),
-          startOnly: true,
-        ),
-        throwsA(isA<FormatException>()),
-      );
+            () => AgendaEntry(
+              id: 'exam',
+              title: '期中考试',
+              kind: AgendaKind.exam,
+              startsAt: _opens,
+              endsAt: _opens.add(const Duration(hours: 2)),
+              startOnly: true,
+            ),
+            throwsA(isA<FormatException>()),
+          );
     });
   });
 
@@ -94,7 +94,10 @@ void main() {
         _openEnded(startsAt: DateTime.utc(2020, 5, 1, 8)).overdue(now),
         isFalse,
       );
-      expect(_due(startsAt: DateTime.utc(2020, 5, 1, 8)).overdue(now), isTrue);
+      expect(
+        _due(startsAt: DateTime.utc(2020, 5, 1, 8)).overdue(now),
+        isTrue,
+      );
     });
 
     test('An open-ended deadline stays unfinished until it is ticked off', () {
@@ -106,73 +109,32 @@ void main() {
   });
 
   group('layout', () {
-    test('The rightward tail yields to the next card in its lane', () {
-      final open = _openEnded(tailDays: 6);
-      final next = AgendaEntry(
-        id: 'next',
-        title: '日程',
-        kind: AgendaKind.event,
-        startsAt: _opens.add(const Duration(hours: 12)),
-        endsAt: _opens.add(const Duration(hours: 14)),
-      );
-      final layout = AgendaTimelineLayout(
-        [open, next],
+    test('The reservation grows right from the opening time', () {
+      final placement = layoutAgendaTimeline(
+        [_openEnded(tailDays: 6)],
         minimumEventSpan: const Duration(hours: 1),
-        deadlineCardSpan: const Duration(hours: 6),
-      );
-      for (final zoom in [1.0, 4.0, 24.0]) {
-        final placements = layout.atZoom(zoom);
-        expect(placements.map((placement) => placement.lane), [0, 0]);
-        expect(placements.first.paintEnd, next.startsAt);
-        expect(
-          placements.first.layoutEnd,
-          _opens.add(Duration(minutes: (360 / zoom).round())),
-        );
-      }
+        layoutDays: 6,
+      ).single;
+
+      expect(placement.start, _opens);
+      expect(placement.end, _opens.add(const Duration(days: 6)));
+      expect(placement.layoutEnd, _opens.add(const Duration(days: 6)));
     });
 
-    test(
-      'The card grows right from the opening time, followed by its tail',
-      () {
-        final placement = AgendaTimelineLayout(
-          [_openEnded(tailDays: 6)],
-          minimumEventSpan: const Duration(hours: 1),
-          deadlineCardSpan: const Duration(hours: 6),
-        ).atZoom(1).single;
-
-        expect(placement.start, _opens);
-        expect(placement.end, _opens.add(const Duration(hours: 6)));
-        expect(placement.layoutEnd, _opens.add(const Duration(hours: 6)));
-        expect(placement.paintStart, _opens);
-        expect(
-          placement.paintEnd,
-          _opens.add(const Duration(days: 5, hours: 18)),
-        );
-      },
-    );
-
-    test('A deadline with a due date keeps its tail on the left', () {
-      final placement = AgendaTimelineLayout(
+    test('A deadline with a due date still reserves its tail on the left', () {
+      final placement = layoutAgendaTimeline(
         [_due(tailDays: 6)],
         minimumEventSpan: const Duration(hours: 1),
-        deadlineCardSpan: const Duration(hours: 6),
-      ).atZoom(1).single;
+        layoutDays: 6,
+      ).single;
 
-      expect(placement.start, _opens.subtract(const Duration(hours: 6)));
-      expect(
-        placement.paintStart,
-        _opens.subtract(const Duration(days: 5, hours: 18)),
-      );
-      expect(placement.paintEnd, _opens);
+      expect(placement.start, _opens.subtract(const Duration(days: 6)));
       expect(placement.end, _opens);
     });
   });
 
   group('labels', () {
-    final localized = <AppLocalizations>[
-      AppLocalizationsZh(),
-      AppLocalizationsEn(),
-    ];
+    final localized = <AppLocalizations>[AppLocalizationsZh(), AppLocalizationsEn()];
 
     test('An open-ended deadline is never presented as due', () {
       for (final l10n in localized) {
@@ -209,7 +171,7 @@ void main() {
                   entry: entry,
                   now: _date,
                   barWidth: 240,
-                  cardWidth: 144,
+                  deadlineWidth: 240,
                   onTap: () {},
                 ),
               ),
@@ -224,18 +186,10 @@ void main() {
         find.byKey(ValueKey(('agenda-timeline-bar', entry.id)));
 
     LinearGradient fill(WidgetTester tester, AgendaEntry entry) {
-      final tail = tester.widget<DecoratedBox>(
-        find.descendant(
-          of: bar(entry),
-          matching: find.byWidgetPredicate(
-            (widget) =>
-                widget is DecoratedBox &&
-                widget.decoration is BoxDecoration &&
-                (widget.decoration as BoxDecoration).gradient != null,
-          ),
-        ),
+      final ink = tester.widget<Ink>(
+        find.descendant(of: bar(entry), matching: find.byType(Ink)),
       );
-      return (tail.decoration as BoxDecoration).gradient! as LinearGradient;
+      return (ink.decoration! as BoxDecoration).gradient! as LinearGradient;
     }
 
     Border outline(WidgetTester tester, AgendaEntry entry) {
@@ -275,13 +229,16 @@ void main() {
       final gradient = fill(tester, open);
 
       expect(gradient.colors.first.a, 1);
+      expect(gradient.colors[1].a, 1);
       expect(gradient.colors.last.a, 0);
+      expect(gradient.stops, [0.0, 0.82, 1.0]);
 
       final due = _due();
       await showCard(tester, due);
       final standard = fill(tester, due);
       expect(standard.colors.first.a, 0);
       expect(standard.colors.last.a, 1);
+      expect(standard.stops, [0.0, 0.18, 1.0]);
     });
 
     testWidgets('Text hugs the line on the left', (tester) async {
@@ -304,20 +261,22 @@ void main() {
   group('timeline', () {
     Future<void> showTimeline(
       WidgetTester tester,
-      List<AgendaEntry> entries,
-    ) async {
+      List<AgendaEntry> entries, {
+      int layoutDays = 4,
+    }) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       final app = TestAppController(entries: entries);
       await app.initialize();
+      await app.settings.setAgendaLayoutDays(layoutDays);
       await tester.pumpWidget(
         MaterialApp(
           theme: bitreeTheme(Brightness.light),
           home: Scaffold(
             body: AgendaTimeline(
-              controller: app.agenda,
+              controller: app,
               entries: entries,
               now: _date.add(const Duration(hours: 12)),
             ),
@@ -327,15 +286,16 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    Rect bar(WidgetTester tester, AgendaEntry entry) =>
-        tester.getRect(find.byKey(ValueKey(('agenda-timeline-bar', entry.id))));
+    Rect bar(WidgetTester tester, AgendaEntry entry) => tester.getRect(
+      find.byKey(ValueKey(('agenda-timeline-bar', entry.id))),
+    );
 
     testWidgets('The card keeps the deadline width and grows rightwards', (
       tester,
     ) async {
       final due = _due(tailDays: 6);
       final open = _openEnded(tailDays: 6);
-      await showTimeline(tester, [due, open]);
+      await showTimeline(tester, [due, open], layoutDays: 6);
       final dueRect = bar(tester, due);
       final openRect = bar(tester, open);
 
@@ -351,19 +311,20 @@ void main() {
 
     testWidgets('The card stays painted as the view zooms in', (tester) async {
       final open = _openEnded(tailDays: 12);
-      await showTimeline(tester, [open]);
+      await showTimeline(tester, [open], layoutDays: 12);
       final before = bar(tester, open);
       expect(before.width, closeTo(48 * (12 - .25), .001));
       tester.widget<Slider>(find.byType(Slider)).onChanged!(24);
       await tester.pumpAndSettle();
       final after = bar(tester, open);
 
-      // The tail keeps its calendar span as the time axis expands.
+      // The painted width is set by the minimum zoom, so the card keeps its
+      // screen width while the lane reservation behind it stretches.
       expect(
         find.byKey(ValueKey(('agenda-timeline-bar', open.id))),
         findsOneWidget,
       );
-      expect(after.width, closeTo(before.width * 24, .001));
+      expect(after.width, closeTo(before.width, .001));
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     });

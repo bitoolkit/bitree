@@ -74,7 +74,7 @@ void main() {
   });
 
   testWidgets(
-    'Five consecutive About icon taps keep developer mode without revealing options',
+    'Five consecutive About icon taps reveal developer migration options',
     (tester) async {
       PackageInfo.setMockInitialValues(
         appName: 'BITree',
@@ -156,6 +156,14 @@ void main() {
       expect(find.text('深色模式调色板'), findsNothing);
       expect(find.text('小组件使用系统调色板'), findsNothing);
       expect(find.text('全局系统调色板（实验性）'), findsNothing);
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('reset-default-deadline-tails')),
+        200,
+        scrollable: scrollable,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('开发者选项'), findsOneWidget);
+      expect(find.text('将默认拖尾长度设为 null'), findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('外观'),
         -200,

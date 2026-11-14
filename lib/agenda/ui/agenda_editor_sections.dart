@@ -119,57 +119,53 @@ extension _AgendaEditorSections on _AgendaEditorState {
     );
   }
 
-  Widget _moreOptions(ThemeData theme) {
+  Widget _moreOptions() {
     final l10n = context.l10n;
     final hasLocation = _location.text.trim().isNotEmpty;
     final hasNotes = _notes.text.trim().isNotEmpty;
-    final hasCustomTail =
-        _kind == AgendaKind.deadline &&
-        _tailDays != AgendaEntry.defaultTailDays;
     return ExpansionTile(
       key: const ValueKey('agenda-more-options'),
       initiallyExpanded:
-          hasNotes ||
-          hasCustomTail ||
-          (_kind != AgendaKind.deadline && hasLocation),
+          hasNotes || (_kind != AgendaKind.deadline && hasLocation),
       tilePadding: EdgeInsets.zero,
-      childrenPadding: const EdgeInsets.only(bottom: 8),
+      childrenPadding: const EdgeInsets.only(top: 12, bottom: 8),
       shape: const Border(),
       collapsedShape: const Border(),
       leading: const Icon(Icons.tune_rounded, size: 20),
       title: Text(l10n.agendaMoreOptions),
       children: [
         if (_kind == AgendaKind.deadline) ...[
-          Row(
-            children: [
-              Expanded(child: Text(l10n.agendaTailDays)),
-              Text(l10n.agendaTailDaysValue(_tailDays)),
-            ],
+          Text(l10n.agendaTailDays),
+          SwitchListTile(
+            key: const ValueKey('agenda-tail-days-default'),
+            contentPadding: EdgeInsets.zero,
+            title: Text(l10n.agendaTailDaysDefault),
+            value: _tailDays == null,
+            onChanged: _saving
+                ? null
+                : (useDefault) => _updateTailDays(
+                    useDefault ? null : AgendaEntry.defaultTailDays,
+                  ),
           ),
-          Semantics(
-            label: l10n.agendaTailDays,
-            child: Slider(
-              value: _tailDays.toDouble(),
-              min: 1,
-              max: AgendaEntry.maxTailDays.toDouble(),
-              divisions: AgendaEntry.maxTailDays - 1,
-              label: l10n.agendaTailDaysValue(_tailDays),
-              semanticFormatterCallback: (value) =>
-                  l10n.agendaTailDaysValue(value.round()),
-              onChanged: _saving
-                  ? null
-                  : (value) => _updateTailDays(value.round()),
-            ),
-          ),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(
-              l10n.agendaTailDaysHint,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+          if (_tailDays case final days?) ...[
+            Semantics(
+              label: l10n.agendaTailDays,
+              child: Slider(
+                key: const ValueKey('agenda-tail-days-slider'),
+                value: days.toDouble(),
+                min: AgendaEntry.minTailDays.toDouble(),
+                max: AgendaEntry.maxTailDays.toDouble(),
+                divisions: AgendaEntry.maxTailDays - AgendaEntry.minTailDays,
+                label: l10n.agendaTailDaysValue(days),
+                semanticFormatterCallback: (value) =>
+                    l10n.agendaTailDaysValue(value.round()),
+                onChanged: _saving
+                    ? null
+                    : (value) => _updateTailDays(value.round()),
               ),
             ),
-          ),
+            Text(l10n.agendaTailDaysValue(days), textAlign: TextAlign.center),
+          ],
           const SizedBox(height: 12),
         ],
         if (_kind != AgendaKind.deadline) ...[

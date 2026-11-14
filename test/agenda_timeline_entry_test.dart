@@ -1,4 +1,4 @@
-import 'package:bitree/agenda/deadline_source.dart';
+﻿import 'package:bitree/agenda/deadline_source.dart';
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/ui/timeline_entry.dart';
 import 'package:bitree/ui/theme.dart';
@@ -38,7 +38,7 @@ void main() {
                         entry: value,
                         now: now,
                         barWidth: 180,
-                        cardWidth: 144,
+                        deadlineWidth: 180,
                         onTap: () {},
                       ),
                     ),
@@ -60,22 +60,8 @@ void main() {
             return ink.decoration! as BoxDecoration;
           }
 
-          List<Color> tailFill() {
-            final tail = tester.widget<DecoratedBox>(
-              find.descendant(
-                of: bar,
-                matching: find.byWidgetPredicate(
-                  (widget) =>
-                      widget is DecoratedBox &&
-                      widget.decoration is BoxDecoration &&
-                      (widget.decoration as BoxDecoration).gradient != null,
-                ),
-              ),
-            );
-            return ((tail.decoration as BoxDecoration).gradient!
-                    as LinearGradient)
-                .colors;
-          }
+          List<Color> fill() =>
+              (fillDecoration().gradient! as LinearGradient).colors;
 
           Border border() {
             final foreground = find.descendant(
@@ -116,7 +102,7 @@ void main() {
           }
 
           await show(entry, due.subtract(const Duration(minutes: 1)));
-          final originalFill = fillDecoration().color!;
+          final originalFill = fill();
           final originalText = titleColor();
           final originalCaption = captionColor('13:00 截止');
           final originalBorder = border().right;
@@ -130,9 +116,14 @@ void main() {
           await show(entry, due.add(const Duration(minutes: 1)));
           final warningBackground = theme.colorScheme.errorContainer;
           final warningForeground = theme.colorScheme.onErrorContainer;
-          expect(fillDecoration().color, warningBackground);
-          expect(tailFill().first.a, 0);
-          expect(tailFill().last, warningBackground);
+          expect(fillDecoration().color, isNull);
+          expect((fillDecoration().gradient! as LinearGradient).stops, const [
+            0,
+            0.18,
+            1,
+          ]);
+          expect(fill().first.a, 0);
+          expect(fill().last, warningBackground);
           expect(titleColor(), warningForeground);
           expect(
             border().right,
@@ -160,7 +151,7 @@ void main() {
             entry.copyWith(done: true),
             due.add(const Duration(minutes: 1)),
           );
-          expect(fillDecoration().color, originalFill.withValues(alpha: 0.5));
+          expect(fill().last, originalFill.last.withValues(alpha: 0.5));
           expect(titleColor(), originalText.withValues(alpha: 0.5));
           expect(
             captionColor('13:00 截止'),

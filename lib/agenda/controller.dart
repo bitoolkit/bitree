@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 
 import '../core/async/cancelable_request.dart';
@@ -15,29 +13,44 @@ import 'store.dart';
 part 'merge.dart';
 
 class AgendaController extends ChangeNotifier {
-  AgendaController(this._store);
+  AgendaController(
+    this._store, {
+    void Function(String, Object, StackTrace)? reportError,
+  }) : _reportError = reportError ?? AppDiagnostics.instance.report;
 
   final AgendaStore _store;
+  final void Function(String, Object, StackTrace) _reportError;
   List<AgendaEntry> _entries = const [];
   final _operations = SerialQueue();
   bool _ready = false;
   bool _busy = false;
   bool _disposed = false;
+  DeadlineCutoffWindow _deadlineCutoffWindow = const DeadlineCutoffWindow();
+
+  void setDeadlineCutoff(DeadlineCutoffWindow window) {
+    if (_deadlineCutoffWindow == window) return;
+    _deadlineCutoffWindow = window;
+    _notify();
+  }
+
+  AgendaEntry _present(AgendaEntry entry) =>
+      entry.withDeadlineCutoff(_deadlineCutoffWindow);
 
   bool get ready => _ready;
   bool get busy => _busy;
 
   Iterable<AgendaEntry> get entries =>
-      _entries.where((entry) => !entry.deleted);
+      _entries.where((entry) => !entry.deleted).map(_present);
 
-  Iterable<AgendaEntry> get deletedDeadlines =>
-      _entries.where((entry) => entry.deleted && entry.isDeadline);
+  Iterable<AgendaEntry> get deletedDeadlines => _entries
+      .where((entry) => entry.deleted && entry.isDeadline)
+      .map(_present);
 
   List<AgendaEntry> pendingOn(DateTime date, {required DateTime now}) =>
       entries
           .where((entry) => !entry.isFinished(now) && entry.occursOn(date))
           .toList()
-        ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+        ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
 
   Future<void> load() => _operations.run(() async {
     if (_disposed) return;
@@ -48,7 +61,7 @@ class AgendaController extends ChangeNotifier {
       _entries = List.unmodifiable(await _store.readAndMigrate());
       _ready = true;
     } on Exception catch (failure, stack) {
-      AppDiagnostics.instance.report('读取日程', failure, stack);
+      _reportError('读取日程', failure, stack);
     } finally {
       _busy = false;
       _notify();
@@ -58,6 +71,29 @@ class AgendaController extends ChangeNotifier {
   Future<bool> save(AgendaEntry entry) => _write(
     (entries) => [...entries.where((item) => item.id != entry.id), entry],
   );
+
+  /// Manually migrate old four-day DDL tails, including recycled entries.
+  /// Returns zero without writing when repeated, or null if persistence fails.
+  Future<int?> resetDefaultDeadlineTails() => _operations.run(() async {
+    if (_disposed) return null;
+    if (!_ready) {
+      _reportNotReady();
+      return null;
+    }
+    var count = 0;
+    final next = <AgendaEntry>[];
+    for (final entry in _entries) {
+      if (entry.isDeadline && entry.tailDays == AgendaEntry.defaultTailDays) {
+        count++;
+        next.add(entry.copyWith(tailDays: null));
+      } else {
+        next.add(entry);
+      }
+    }
+    if (count == 0) return 0;
+    final saved = await _commit(next);
+    return saved ? count : null;
+  });
 
   Future<bool> restore(AgendaEntry entry) => restoreEntries([entry]);
 
@@ -204,6 +240,7 @@ class AgendaController extends ChangeNotifier {
     List<AgendaEntry>? Function(List<AgendaEntry> entries) transform, {
     void Function()? checkActive,
   }) => _operations.run(() async {
+    if (_disposed) return false;
     if (!_ready) {
       _reportNotReady();
       return false;
@@ -228,7 +265,7 @@ class AgendaController extends ChangeNotifier {
     } on RequestCancelled {
       rethrow;
     } on Exception catch (failure, stack) {
-      AppDiagnostics.instance.report('保存日程', failure, stack);
+      _reportError('保存日程', failure, stack);
       return false;
     } finally {
       _busy = false;

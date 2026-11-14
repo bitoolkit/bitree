@@ -1,12 +1,16 @@
 import '../core/json.dart';
 import '../core/time.dart';
 import 'agenda_color.dart';
+import 'deadline_cutoff.dart';
 import 'deadline_source.dart';
 import 'details.dart';
 
+export 'deadline_cutoff.dart';
 export 'details.dart';
 
 enum AgendaKind { event, deadline, exam }
+
+const _copyUnset = Object();
 
 /// Times use the same Beijing wall-clock convention as campusNow().
 class AgendaEntry {
@@ -28,8 +32,9 @@ class AgendaEntry {
     this.url,
     this.color,
     this.details,
-    this.tailDays = defaultTailDays,
+    this.tailDays,
     this.startOnly = false,
+    this.deadlineCutoffWindow = const DeadlineCutoffWindow(),
   }) {
     if (id.isEmpty || title.trim().isEmpty) {
       throw const FormatException('日程标题或编号缺失');
@@ -41,8 +46,9 @@ class AgendaEntry {
         (endsAt == null || !endsAt!.isAfter(startsAt))) {
       throw const FormatException('结束时间必须晚于开始时间');
     }
-    if (tailDays < 1 || tailDays > maxTailDays) {
-      throw const FormatException('拖尾长度必须为 1–30 天');
+    if (tailDays case final days?
+        when days < minTailDays || days > maxTailDays) {
+      throw FormatException('拖尾长度必须为 $minTailDays–$maxTailDays 天');
     }
     if (color != null && kind == AgendaKind.exam) {
       throw const FormatException('考试颜色由状态决定');
@@ -73,6 +79,7 @@ class AgendaEntry {
   }
 
   static const defaultTailDays = 4;
+  static const minTailDays = 1;
   static const maxTailDays = 30;
 
   final String id;
@@ -93,9 +100,11 @@ class AgendaEntry {
   final AgendaColor? color;
   final AgendaEntryDetails? details;
 
-  /// Maximum gradient tail in calendar days. Other cards can shorten the tail;
-  /// it follows the timeline's time scale when zooming.
-  final int tailDays;
+  /// An explicit per-entry width. Null follows the global layout-days setting.
+  final int? tailDays;
+
+  int effectiveLayoutDays(int defaultDays) =>
+      isDeadline ? tailDays ?? defaultDays : defaultDays;
 
   /// A deadline that only knows when it opened, with no due date at all —
   /// an open-ended quiz, for instance. It can never be overdue, and the
@@ -104,10 +113,36 @@ class AgendaEntry {
   /// as due.
   final bool startOnly;
 
+  /// Presentation-only state. It is deliberately absent from [toJson], so
+  /// changing the window or syncing can never overwrite the original deadline.
+  final DeadlineCutoffWindow deadlineCutoffWindow;
+
   bool get isDeadline => kind == AgendaKind.deadline;
 
-  DateTime get dueAt =>
+  DateTime get realDueAt =>
       allDay ? calendarDate(startsAt).add(const Duration(days: 1)) : startsAt;
+
+  DateTime get dueAt => isDeadline && !startOnly
+      ? deadlineCutoffWindow.apply(realDueAt)
+      : realDueAt;
+
+  /// Includes a deadline exactly at the window start: its two markers still
+  /// overlap and the real marker must paint above the effective one.
+  bool get hasDeadlineCutoff =>
+      isDeadline && !startOnly && deadlineCutoffWindow.contains(realDueAt);
+
+  bool get hasAdjustedDeadline =>
+      hasDeadlineCutoff && dueAt.isBefore(realDueAt);
+
+  /// Day grouping and labels follow the derived deadline only when adjusted.
+  /// Keep unadjusted all-day entries on their original calendar date.
+  DateTime get scheduledAt => hasAdjustedDeadline ? dueAt : startsAt;
+  bool get effectiveAllDay => allDay && !hasAdjustedDeadline;
+
+  AgendaEntry withDeadlineCutoff(DeadlineCutoffWindow window) =>
+      window == deadlineCutoffWindow
+      ? this
+      : copyWith(deadlineCutoffWindow: window);
 
   bool overdue(DateTime now) =>
       isDeadline && !startOnly && !done && dueAt.isBefore(now);
@@ -116,12 +151,17 @@ class AgendaEntry {
 
   bool occursOn(DateTime date) {
     final day = calendarDate(date);
-    if (isDeadline) return calendarDate(startsAt) == day;
+    if (isDeadline) return calendarDate(scheduledAt) == day;
     return startsAt.isBefore(day.add(const Duration(days: 1))) &&
         endsAt!.isAfter(day);
   }
 
-  AgendaEntry copyWith({bool? done, bool? deleted}) => AgendaEntry(
+  AgendaEntry copyWith({
+    bool? done,
+    bool? deleted,
+    Object? tailDays = _copyUnset,
+    DeadlineCutoffWindow? deadlineCutoffWindow,
+  }) => AgendaEntry(
     id: id,
     title: title,
     kind: kind,
@@ -139,8 +179,11 @@ class AgendaEntry {
     url: url,
     color: color,
     details: details,
-    tailDays: tailDays,
+    tailDays: identical(tailDays, _copyUnset)
+        ? this.tailDays
+        : tailDays as int?,
     startOnly: startOnly,
+    deadlineCutoffWindow: deadlineCutoffWindow ?? this.deadlineCutoffWindow,
   );
 
   Map<String, dynamic> toJson() => {
@@ -216,7 +259,7 @@ class AgendaEntry {
           ? null
           : Uri.tryParse(rawUrl) ?? (throw FormatException('url 格式不正确')),
       color: color,
-      tailDays: jsonIntFieldOrNull(json, 'tailDays') ?? defaultTailDays,
+      tailDays: jsonIntFieldOrNull(json, 'tailDays'),
       // Entries written before this flag existed simply had no open-ended
       // deadlines, so a missing key means an ordinary deadline.
       startOnly: jsonBoolField(json, 'startOnly', fallback: false),

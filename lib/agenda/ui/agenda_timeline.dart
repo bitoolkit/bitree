@@ -5,19 +5,53 @@ import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
 
+import '../../app/controller.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
-import '../controller.dart';
 import '../model.dart';
 import '../timeline_layout.dart';
+import 'adjusted_deadline_painter.dart';
 import 'agenda_detail.dart';
+import 'event_timeline_entry.dart';
+import 'timeline_caption.dart';
 import 'timeline_entry.dart';
 
 part 'agenda_timeline_painters.dart';
 
 const _microsecondsPerHour = Duration.microsecondsPerSecond * 3600;
 const _minimumEventWidth = 2.0;
+
+/// Keep genuine user overscroll, but retire an in-range position immediately
+/// when filtering or resizing makes its old content range invalid.
+class _TimelineScrollPhysics extends BouncingScrollPhysics {
+  const _TimelineScrollPhysics({super.parent});
+
+  @override
+  _TimelineScrollPhysics applyTo(ScrollPhysics? ancestor) =>
+      _TimelineScrollPhysics(parent: buildParent(ancestor));
+
+  @override
+  double adjustPositionForNewDimensions({
+    required ScrollMetrics oldPosition,
+    required ScrollMetrics newPosition,
+    required bool isScrolling,
+    required double velocity,
+  }) {
+    if (newPosition.maxScrollExtent < oldPosition.maxScrollExtent &&
+        !oldPosition.outOfRange) {
+      return newPosition.pixels
+          .clamp(newPosition.minScrollExtent, newPosition.maxScrollExtent)
+          .toDouble();
+    }
+    return super.adjustPositionForNewDimensions(
+      oldPosition: oldPosition,
+      newPosition: newPosition,
+      isScrolling: isScrolling,
+      velocity: velocity,
+    );
+  }
+}
 
 /// A viewport-sized timeline: panning changes a date, not a giant scroll offset.
 class AgendaTimeline extends StatefulWidget {
@@ -31,7 +65,7 @@ class AgendaTimeline extends StatefulWidget {
     this.visible = true,
   });
 
-  final AgendaController controller;
+  final AppController controller;
   final List<AgendaEntry> entries;
   final DateTime now;
 
@@ -54,8 +88,8 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   late final AnimationController _horizontalFling;
   Drag? _verticalDrag;
   ScrollHoldController? _verticalHold;
-  double? _retainedLaneExtent;
-  double? _laneViewportHeight;
+  double? _lastContentExtent;
+  double? _lastViewportHeight;
   double _lastHorizontal = 0;
   double _flingPixelsPerHour = 1;
   bool _gestureHadMultiplePointers = false;
@@ -70,13 +104,16 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   int _gesturePointers = 0;
   DateTime? _gestureAnchor;
   List<AgendaEntry>? _cachedEntries;
+  DeadlineCutoffWindow? _cachedCutoff;
+  int? _cachedLayoutDays;
+  bool? _cachedEventInfoBar;
   Duration? _cachedMinimumEventSpan;
   Duration? _cachedDeadlineCardSpan;
   double? _cachedZoom;
   AgendaTimelineLayout? _laneLayout;
   List<AgendaTimelinePlacement> _cachedPlacements = const [];
-  final Map<String, DateTime> _nextStartById = {};
-  final Map<String, AgendaTimelineEntry> _cards = {};
+  final Map<String, AgendaTimelineEntry> _plainCards = {};
+
   _TimelineText? _gridText;
   late double _fontScale;
   late double _headerHeight;
@@ -86,30 +123,34 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     Duration minimumEventSpan,
     Duration deadlineCardSpan,
   ) {
+    final cutoff = widget.controller.settings.deadlineCutoff.value;
+    final layoutDays = widget.controller.settings.agendaLayoutDays.value;
+    final eventInfoBar = widget.controller.settings.agendaEventInfoBar.value;
     if (!identical(_cachedEntries, widget.entries) ||
+        _cachedCutoff != cutoff ||
+        _cachedLayoutDays != layoutDays ||
+        _cachedEventInfoBar != eventInfoBar ||
         _cachedMinimumEventSpan != minimumEventSpan ||
         _cachedDeadlineCardSpan != deadlineCardSpan) {
       _cachedEntries = widget.entries;
+      _cachedCutoff = cutoff;
+      _cachedLayoutDays = layoutDays;
+      _cachedEventInfoBar = eventInfoBar;
       _cachedMinimumEventSpan = minimumEventSpan;
       _cachedDeadlineCardSpan = deadlineCardSpan;
       _cachedZoom = null;
-      _cards.clear();
+      _plainCards.clear();
       _laneLayout = AgendaTimelineLayout(
-        widget.entries,
+        widget.entries.map((entry) => entry.withDeadlineCutoff(cutoff)),
         minimumEventSpan: minimumEventSpan,
         deadlineCardSpan: deadlineCardSpan,
+        layoutDays: layoutDays,
+        reserveEventInformation: eventInfoBar,
       );
     }
     if (_cachedZoom != _zoom) {
       _cachedZoom = _zoom;
       _cachedPlacements = _laneLayout!.atZoom(_zoom);
-      _nextStartById.clear();
-      final nextByLane = <int, DateTime>{};
-      for (final placement in _cachedPlacements.reversed) {
-        final next = nextByLane[placement.lane];
-        if (next != null) _nextStartById[placement.entry.id] = next;
-        nextByLane[placement.lane] = placement.start;
-      }
     }
     return _cachedPlacements;
   }
@@ -120,6 +161,9 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     _visibleCenter = ValueNotifier(
       calendarDate(widget.now).add(const Duration(hours: 12)),
     );
+    widget.controller.settings.deadlineCutoff.addListener(_settingsChanged);
+    widget.controller.settings.agendaLayoutDays.addListener(_settingsChanged);
+    widget.controller.settings.agendaEventInfoBar.addListener(_settingsChanged);
     _horizontalFling = AnimationController.unbounded(vsync: this)
       ..addListener(_tickHorizontal);
   }
@@ -218,8 +262,25 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   @override
   void didUpdateWidget(covariant AgendaTimeline oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.settings.deadlineCutoff.removeListener(
+        _settingsChanged,
+      );
+      oldWidget.controller.settings.agendaLayoutDays.removeListener(
+        _settingsChanged,
+      );
+      oldWidget.controller.settings.agendaEventInfoBar.removeListener(
+        _settingsChanged,
+      );
+      widget.controller.settings.deadlineCutoff.addListener(_settingsChanged);
+      widget.controller.settings.agendaLayoutDays.addListener(_settingsChanged);
+      widget.controller.settings.agendaEventInfoBar.addListener(
+        _settingsChanged,
+      );
+      _cachedEntries = null;
+    }
     if (oldWidget.filter != widget.filter) {
-      _retainedLaneExtent = null;
+      _cachedEntries = null;
     }
     if (oldWidget.visible != widget.visible) {
       _stopMotion(holdVertical: true);
@@ -245,6 +306,12 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     }
   }
 
+  void _settingsChanged() {
+    if (!mounted) return;
+    _stopMotion();
+    setState(() => _cachedEntries = null);
+  }
+
   @override
   void deactivate() {
     _stopMotion(holdVertical: true);
@@ -257,6 +324,13 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   @override
   void dispose() {
     _stopMotion(holdVertical: true);
+    widget.controller.settings.deadlineCutoff.removeListener(_settingsChanged);
+    widget.controller.settings.agendaLayoutDays.removeListener(
+      _settingsChanged,
+    );
+    widget.controller.settings.agendaEventInfoBar.removeListener(
+      _settingsChanged,
+    );
     _horizontalFling.dispose();
     _releaseVerticalHold();
     _lanes.dispose();
@@ -308,7 +382,9 @@ class _AgendaTimelineState extends State<AgendaTimeline>
             : _zoom == 24
             ? l10n.agendaTimelineOneHour
             : l10n.agendaTimelineHours(hoursPerCell.toStringAsFixed(1));
-        final deadlineCardWidth = 144.0 * _fontScale;
+        final deadlineCardWidth =
+            cellWidth *
+            (widget.controller.settings.agendaLayoutDays.value - .25);
         final deadlineCardSpan = Duration(
           microseconds: (deadlineCardWidth / baseline * _microsecondsPerHour)
               .ceil(),
@@ -574,12 +650,14 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     final left = _timeAt(0, width, pixelsPerHour);
     final right = _timeAt(width, width, pixelsPerHour);
     final placementsInTime = <AgendaTimelinePlacement>[];
-    var displayedLaneCount = 0;
+    final laneCount = placements.fold<int>(
+      0,
+      (count, placement) => math.max(count, placement.lane + 1),
+    );
     for (final placement in placements) {
       if (placement.paintEnd.isAfter(left) &&
           placement.paintStart.isBefore(right)) {
         placementsInTime.add(placement);
-        displayedLaneCount = math.max(displayedLaneCount, placement.lane + 1);
       }
     }
     final painter = _TimelineGridPainter(
@@ -612,32 +690,24 @@ class _AgendaTimelineState extends State<AgendaTimeline>
               builder: (context, _) => LayoutBuilder(
                 builder: (context, laneConstraints) {
                   final height = laneConstraints.maxHeight;
-                  if (_laneViewportHeight != height) {
-                    _laneViewportHeight = height;
-                    _retainedLaneExtent = null;
-                  }
+                  final contentHeight = math.max(
+                    height,
+                    laneCount * laneHeight + 12,
+                  );
+                  final extent = contentHeight - height;
                   final previousOffset = _lanes.hasClients
                       ? _lanes.offset
                       : 0.0;
-                  final contentExtent = math.max(
-                    0.0,
-                    (displayedLaneCount + 1) * laneHeight + 12 - height,
-                  );
-                  // Keep an old lower position when the date changes.
-                  // Scrolling up releases it, leaving one spare lane.
-                  _retainedLaneExtent = math.max(
-                    contentExtent,
-                    math.min(
-                      _retainedLaneExtent ?? contentExtent,
-                      math.max(0.0, previousOffset),
-                    ),
-                  );
-                  final contentHeight = height + _retainedLaneExtent!;
-                  // Filtering and resizing may clamp the offset
-                  // in this frame. Cull at that new position.
-                  final offset = previousOffset
-                      .clamp(0.0, _retainedLaneExtent!)
-                      .toDouble();
+                  // Bounce overscroll belongs to ScrollPosition. Only a changed
+                  // range/viewport invalidates a previously valid culling offset.
+                  final dimensionsChanged =
+                      _lastContentExtent != extent ||
+                      _lastViewportHeight != height;
+                  _lastContentExtent = extent;
+                  _lastViewportHeight = height;
+                  final offset = dimensionsChanged
+                      ? previousOffset.clamp(0.0, extent).toDouble()
+                      : previousOffset;
                   final visible = placementsInTime.where(
                     (placement) =>
                         (placement.lane + 1) * laneHeight >= offset &&
@@ -666,7 +736,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                         child: CustomScrollView(
                           key: const ValueKey('agenda-timeline-lanes'),
                           controller: _lanes,
-                          physics: const BouncingScrollPhysics(
+                          physics: const _TimelineScrollPhysics(
                             parent: NeverScrollableScrollPhysics(),
                           ),
                           slivers: [
@@ -726,51 +796,105 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     double laneHeight,
   ) {
     final entry = placement.entry;
+    final cellWidth = (width / 5).clamp(80.0, 140.0).toDouble() * .6;
+    final deadlineWidth =
+        cellWidth *
+        (entry.effectiveLayoutDays(
+              widget.controller.settings.agendaLayoutDays.value,
+            ) -
+            .25);
     double x(DateTime time) =>
         width / 2 +
         time.difference(_center).inMicroseconds /
             _microsecondsPerHour *
             pixelsPerHour;
-    final actualRight = x(placement.paintEnd);
-    final actualLeft = x(placement.paintStart);
+    if (!entry.isDeadline &&
+        widget.controller.settings.agendaEventInfoBar.value) {
+      final start = x(entry.startsAt);
+      final end = x(entry.endsAt!);
+      final informationLeft = start - deadlineWidth;
+      final left = math.max(0.0, informationLeft);
+      final right = math.min(width, end);
+      return Positioned(
+        key: ValueKey(('agenda-timeline-entry', entry.id)),
+        left: left,
+        top: placement.lane * laneHeight + 12,
+        width: math.max(0.0, right - left),
+        height: laneHeight - 12,
+        child: EventTimelineEntry(
+          entry: entry,
+          now: widget.now,
+          informationWidth: deadlineWidth,
+          geometry: EventTimelineGeometry(
+            informationLeft: informationLeft - left,
+            startX: start - left,
+            endX: end - left,
+          ),
+          onTap: () =>
+              showAgendaEntry(context, widget.controller.agenda, entry),
+        ),
+      );
+    }
+    if (entry.hasDeadlineCutoff) {
+      final effective = x(entry.dueAt);
+      final real = x(entry.realDueAt);
+      final bodyLeft = effective - deadlineWidth;
+      // The extension may be enormous in time coordinates. Only allocate its
+      // intersection with this viewport, while retaining the body's true origin.
+      final left = math.max(0.0, bodyLeft);
+      final right = math.min(width, real);
+      return Positioned(
+        key: ValueKey(('agenda-timeline-entry', entry.id)),
+        left: left,
+        top: placement.lane * laneHeight + 12,
+        width: math.max(0.0, right - left),
+        height: laneHeight - 12,
+        child: AgendaTimelineEntry(
+          entry: entry,
+          now: widget.now,
+          barWidth: deadlineWidth,
+          deadlineWidth: deadlineWidth,
+          adjustedGeometry: AdjustedDeadlineGeometry(
+            bodyLeft: bodyLeft - left,
+            effectiveX: effective - left,
+            realX: real - left,
+          ),
+          onTap: () =>
+              showAgendaEntry(context, widget.controller.agenda, entry),
+        ),
+      );
+    }
+    // A start-only deadline keeps the usual painted width but grows rightwards
+    // from its opening time, so its right edge is derived instead of its left.
+    final actualRight = entry.isDeadline && entry.startOnly
+        ? x(placement.start) + deadlineWidth
+        : x(placement.layoutEnd);
+    final actualLeft = entry.isDeadline
+        ? actualRight - deadlineWidth
+        : x(placement.start);
     // Crop long ordinary events before creating widgets; no huge canvas/boxes.
     final left = entry.isDeadline ? actualLeft : math.max(0.0, actualLeft);
-    final right = entry.isDeadline ? actualRight : math.min(width, actualRight);
-    double spanWidth(DateTime start, DateTime end) =>
-        end.difference(start).inMicroseconds /
-        _microsecondsPerHour *
-        pixelsPerHour;
     final barWidth = entry.isDeadline
-        ? spanWidth(placement.paintStart, placement.paintEnd)
-        : math.max(0.0, right - left);
-    final cardWidth = entry.isDeadline ? 144.0 * _fontScale : barWidth;
-    final nextStart = _nextStartById[entry.id];
-    final availableWidth = nextStart == null
-        ? double.infinity
-        : math.max(
-            0.0,
-            entry.isDeadline
-                ? spanWidth(placement.paintStart, nextStart)
-                : x(nextStart) - left,
-          );
-    final tapWidth = math.min(math.max(24.0, barWidth), availableWidth);
-    var card = _cards[entry.id];
+        ? deadlineWidth
+        : math.max(0.0, math.min(width, actualRight) - left);
+    final tapWidth = math.max(24.0, barWidth);
+    var card = _plainCards[entry.id];
     if (card == null ||
         card.entry != entry ||
         card.now != widget.now ||
         card.barWidth != barWidth ||
-        card.cardWidth != cardWidth) {
+        card.deadlineWidth != deadlineWidth) {
       card = AgendaTimelineEntry(
         entry: entry,
         now: widget.now,
         barWidth: barWidth,
-        cardWidth: cardWidth,
-        onTap: () => showAgendaEntry(context, widget.controller, entry),
+        deadlineWidth: deadlineWidth,
+        onTap: () => showAgendaEntry(context, widget.controller.agenda, entry),
       );
-      _cards[entry.id] = card;
+      _plainCards[entry.id] = card;
     }
     return Positioned(
-      key: ValueKey(entry.id),
+      key: ValueKey(('agenda-timeline-entry', entry.id)),
       left: left,
       top: placement.lane * laneHeight + 12,
       width: tapWidth,

@@ -19,7 +19,9 @@ import '../../ui/selection_controls.dart';
 import '../controller.dart';
 import '../settings_controller.dart';
 import 'about_dialog.dart';
+import 'agenda_layout_days_settings.dart';
 import 'appearance_screen.dart';
+import 'deadline_cutoff_settings.dart';
 import 'logs_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -63,6 +65,17 @@ class SettingsScreen extends StatelessWidget {
     if (!cleared && context.mounted) {
       showAppNotice(context, context.l10n.operationDeleteFailed);
     }
+  }
+
+  Future<void> _resetDefaultDeadlineTails(BuildContext context) async {
+    final count = await controller.agenda.resetDefaultDeadlineTails();
+    if (!context.mounted) return;
+    showAppNotice(
+      context,
+      count == null
+          ? context.l10n.operationSaveFailed
+          : context.l10n.settingsResetDefaultDeadlineTailsResult(count),
+    );
   }
 
   @override
@@ -189,6 +202,20 @@ class SettingsScreen extends StatelessWidget {
               ),
             ]),
           section(l10n.settingsLocalAgenda, [
+            AgendaLayoutDaysSettingsTile(settings: controller.settings),
+            DeadlineCutoffSettingsTile(settings: controller.settings),
+            ValueListenableBuilder(
+              valueListenable: controller.settings.agendaEventInfoBar,
+              builder: (context, infoBar, _) => SwitchListTile(
+                key: const ValueKey('agenda-event-info-bar-settings'),
+                contentPadding: tilePadding,
+                secondary: const Icon(Icons.article_outlined),
+                title: Text(l10n.settingsAgendaEventInfoBar),
+                subtitle: Text(l10n.settingsAgendaEventInfoBarDescription),
+                value: infoBar,
+                onChanged: controller.settings.setAgendaEventInfoBar,
+              ),
+            ),
             ListTile(
               contentPadding: tilePadding,
               leading: Icon(Icons.delete_outline_rounded, color: scheme.error),
@@ -240,6 +267,21 @@ class SettingsScreen extends StatelessWidget {
               onTap: () => showBitreeAboutDialog(context, controller.settings),
             ),
           ]),
+          if (controller.settings.developerMode)
+            section(l10n.settingsDeveloperOptions, [
+              ListTile(
+                key: const ValueKey('reset-default-deadline-tails'),
+                contentPadding: tilePadding,
+                leading: const Icon(Icons.restart_alt_rounded),
+                title: Text(l10n.settingsResetDefaultDeadlineTails),
+                subtitle: Text(
+                  l10n.settingsResetDefaultDeadlineTailsDescription,
+                ),
+                onTap: !controller.agenda.ready || controller.agenda.busy
+                    ? null
+                    : () => _resetDefaultDeadlineTails(context),
+              ),
+            ]),
         ],
       ),
     );

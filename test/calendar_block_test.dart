@@ -201,7 +201,7 @@ void main() {
                 event,
                 startsAt.add(const Duration(hours: 2)),
               );
-              expect(finished.fill, fill.withValues(alpha: 0.55));
+              expect(finished.fill, fill.withValues(alpha: fill.a * 0.5));
               final deadline = AgendaEntry(
                 id: 'manual-ddl',
                 title: '自建 DDL',

@@ -71,8 +71,11 @@ internal data class WidgetContent(
     val nextUpdate: Long,
 )
 
-internal fun readWidgetContent(context: Context): WidgetContent {
-    val now = Calendar.getInstance(campusZone)
+internal fun readWidgetContent(
+    context: Context,
+    nowMillis: Long = System.currentTimeMillis(),
+): WidgetContent {
+    val now = Calendar.getInstance(campusZone).apply { timeInMillis = nowMillis }
     val today = dayStart(now.timeInMillis)
     val tomorrow = (today.clone() as Calendar).apply { add(Calendar.DATE, 1) }
     val evening = (today.clone() as Calendar).apply { set(Calendar.HOUR_OF_DAY, 21) }
