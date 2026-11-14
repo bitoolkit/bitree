@@ -146,9 +146,6 @@ class _MoocCaptchaDialogState extends State<_MoocCaptchaDialog> {
         ),
         baseUrl: MoocCredentials.origin.resolve('/member/login.htm').toString(),
       );
-      if (mounted && generation == _generation) {
-        _startPolling(generation);
-      }
     } on Exception catch (error, stack) {
       if (generation != _generation) return;
       AppDiagnostics.instance.error('打开 MOOC 人机验证', error, stack);
@@ -379,7 +376,9 @@ String _captchaHtml({required int? captchaType, required int width}) {
             onReady: ready,
             onVerify: function (error, data) {
               if (error) {
-                fail('verify');
+                // The SDK displays failed attempts and lets the user retry.
+                var code = typeof error.code === 'number' ? error.code : 'unknown';
+                console.warn('$_captchaLogPrefix verify code=' + code);
                 return;
               }
               if (!data || !data.validate) {

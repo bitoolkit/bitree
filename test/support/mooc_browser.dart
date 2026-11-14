@@ -6,11 +6,12 @@ import 'package:webview_platform_interface/webview_platform_interface.dart';
 class TestMoocBrowser extends WebViewPlatform {
   late TestMoocWebView controller;
   final cookies = <WebViewCookie>[];
+  bool finishHtmlLoads = true;
 
   @override
   PlatformWebViewController createPlatformWebViewController(
     PlatformWebViewControllerCreationParams params,
-  ) => controller = TestMoocWebView(params);
+  ) => controller = TestMoocWebView(params, finishHtmlLoads: finishHtmlLoads);
 
   @override
   PlatformWebViewCookieManager createPlatformCookieManager(
@@ -29,7 +30,9 @@ class TestMoocBrowser extends WebViewPlatform {
 }
 
 class TestMoocWebView extends PlatformWebViewController {
-  TestMoocWebView(super.params) : super.implementation();
+  TestMoocWebView(super.params, {required this.finishHtmlLoads})
+    : super.implementation();
+  final bool finishHtmlLoads;
   late _Navigation _navigation;
   Uri? url;
   String? html;
@@ -68,7 +71,7 @@ class TestMoocWebView extends PlatformWebViewController {
   Future<void> loadHtmlString(String html, {String? baseUrl}) async {
     this.html = html;
     this.baseUrl = baseUrl;
-    finishLoading();
+    if (finishHtmlLoads) finishLoading();
   }
 
   @override

@@ -333,6 +333,7 @@ void main() {
   testWidgets('Sending an SMS code can verify and retry in place', (
     tester,
   ) async {
+    browser.finishHtmlLoads = false;
     final server = await startLoginServer(tester);
     server.smsSendResult = {'ret': 445};
     final model = TestAppController();
@@ -343,16 +344,22 @@ void main() {
     await tester.enterText(find.byType(TextFormField).at(0), '13800138000');
     await tester.tap(find.text('获取验证码'));
     await waitFor(tester, () => find.text('完成人机验证').evaluate().isNotEmpty);
+    await waitFor(tester, () => browser.controller.html != null);
 
     expect(find.byType(BottomSheet), findsOneWidget);
     expect(server.smsSendAttempts, 1);
     server.smsSendResult = {'ret': 201, 'cd': 2};
     browser.controller.snapshot = {'ready': true, 'solution': 'sms-send-token'};
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(server.smsSendAttempts, 1);
+    expect(find.byKey(const ValueKey('mooc-captcha-dialog')), findsOneWidget);
     browser.controller.finishLoading();
     await waitFor(
       tester,
       () => find.textContaining('秒后重发').evaluate().isNotEmpty,
     );
+    await tester.pumpAndSettle();
 
     expect(server.smsSendAttempts, 2);
     expect(find.byKey(const ValueKey('mooc-captcha-dialog')), findsNothing);
