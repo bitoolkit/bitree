@@ -184,7 +184,10 @@ void main() {
               name: '测试账号',
               credentials: MoocCredentials(
                 userAgent: 'test',
-                cookies: [Cookie('NTESSTUDYSI', 'csrf')],
+                cookies: [
+                  Cookie('NTESSTUDYSI', 'csrf'),
+                  Cookie('STUDY_SESS', 'session'),
+                ],
               ),
             ))
         : null,
@@ -775,13 +778,10 @@ void main() {
       await tester.tap(find.text('网页登录'));
       await tester.pumpAndSettle();
       moocAuthenticated = true;
-      browser.cookies.add(
-        const WebViewCookie(
-          name: 'NTESSTUDYSI',
-          value: 'test',
-          domain: '.icourse163.org',
-        ),
-      );
+      browser.cookies.addAll([
+        for (final name in ['NTESSTUDYSI', 'STUDY_SESS'])
+          WebViewCookie(name: name, value: 'test', domain: '.icourse163.org'),
+      ]);
       browser.controller.snapshot = {
         'id': '8',
         'name': '测试账号',

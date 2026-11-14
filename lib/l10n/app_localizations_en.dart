@@ -1423,6 +1423,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get exitAction => 'Exit';
 
   @override
+  String get moocPasswordLogin => 'Account and password';
+
+  @override
+  String get moocSmsLogin => 'SMS verification code';
+
+  @override
   String get webLogin => 'Web sign-in';
 
   @override
@@ -1451,10 +1457,99 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get moocCookieInstructions =>
-      'Copy the Cookie from developer tools while signed in. Use this only if web sign-in does not work.';
+      'Paste the Cookie from a browser request header.';
 
   @override
   String get moocPasteCookie => 'Paste a Cookie';
+
+  @override
+  String get moocPhoneOrEmail => 'Phone number or email';
+
+  @override
+  String get moocPassword => 'Password';
+
+  @override
+  String get moocEnterAccount => 'Enter a phone number or email';
+
+  @override
+  String get moocEnterPassword => 'Enter your password';
+
+  @override
+  String get moocShowPassword => 'Show password';
+
+  @override
+  String get moocHidePassword => 'Hide password';
+
+  @override
+  String get moocPhone => 'Phone number';
+
+  @override
+  String get moocEnterPhone => 'Enter your phone number';
+
+  @override
+  String get moocInvalidPhone => 'Enter a valid phone number';
+
+  @override
+  String get moocSmsCode => 'SMS verification code';
+
+  @override
+  String get moocEnterSmsCode => 'Enter the SMS verification code';
+
+  @override
+  String get moocSendCode => 'Send code';
+
+  @override
+  String get moocSendingCode => 'Sending…';
+
+  @override
+  String moocResendIn(int seconds) {
+    return 'Resend in ${seconds}s';
+  }
+
+  @override
+  String get moocSignIn => 'Sign in';
+
+  @override
+  String get moocSigningIn => 'Signing in…';
+
+  @override
+  String get moocVerificationTitle => 'Complete verification';
+
+  @override
+  String get moocVerifyNow => 'Verify';
+
+  @override
+  String get moocVerificationLoadFailed => 'Could not load verification';
+
+  @override
+  String get moocWrongCredentials => 'Incorrect account or password';
+
+  @override
+  String get moocSmsLoginFailed =>
+      'Incorrect phone number or verification code';
+
+  @override
+  String get moocTooFrequent => 'Too many requests. Try again later.';
+
+  @override
+  String get moocGetCodeFirst => 'Get an SMS code first';
+
+  @override
+  String get moocInvalidSmsCode => 'The code is incorrect or expired';
+
+  @override
+  String get moocNetworkFailed =>
+      'Network request failed. Check your connection.';
+
+  @override
+  String get moocLoginUnavailable =>
+      'Sign-in is temporarily unavailable. Try again later.';
+
+  @override
+  String get moocLoginChallenge => 'Complete the human verification to sign in';
+
+  @override
+  String get moocLoginFailed => 'Sign-in failed. Try again.';
 
   @override
   String get openMoocFailed => 'Could not open MOOC';
