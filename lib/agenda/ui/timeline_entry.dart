@@ -6,10 +6,12 @@ import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../model.dart';
+import 'adjusted_deadline_painter.dart';
+import 'timeline_caption.dart';
 import 'timeline_colors.dart';
 
 /// Renders entry content independently of timeline coordinates and lane packing.
-class AgendaTimelineEntry extends StatelessWidget {
+class AgendaTimelineEntry extends StatefulWidget {
   const AgendaTimelineEntry({
     super.key,
     required this.entry,
@@ -17,6 +19,7 @@ class AgendaTimelineEntry extends StatelessWidget {
     required this.barWidth,
     required this.deadlineWidth,
     required this.onTap,
+    this.adjustedGeometry,
   });
 
   final AgendaEntry entry;
@@ -24,9 +27,60 @@ class AgendaTimelineEntry extends StatelessWidget {
   final double barWidth;
   final double deadlineWidth;
   final VoidCallback onTap;
+  final AdjustedDeadlineGeometry? adjustedGeometry;
+
+  @override
+  State<AgendaTimelineEntry> createState() => _AgendaTimelineEntryState();
+}
+
+class _AgendaTimelineEntryState extends State<AgendaTimelineEntry> {
+  Widget? _body;
+
+  AgendaEntry get entry => widget.entry;
+  DateTime get now => widget.now;
+  double get barWidth => widget.barWidth;
+  double get deadlineWidth => widget.deadlineWidth;
+  void _open() => widget.onTap();
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _body = null;
+  }
+
+  @override
+  void didUpdateWidget(covariant AgendaTimelineEntry oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.entry != widget.entry ||
+        oldWidget.now != widget.now ||
+        oldWidget.barWidth != widget.barWidth ||
+        oldWidget.deadlineWidth != widget.deadlineWidth) {
+      _body = null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Geometry belongs to the fresh outer wrapper, never the cached text layer.
+    final body = _body ??= RepaintBoundary(child: _buildBody(context));
+    final geometry = widget.adjustedGeometry;
+    if (geometry == null) return body;
+    final colors = agendaTimelineColors(context, entry, now);
+    return AdjustedDeadlineSurface(
+      key: ValueKey(('agenda-timeline-adjusted', entry.id)),
+      geometry: geometry,
+      bodyWidth: deadlineWidth,
+      fill: colors.fill,
+      // colors.accent already includes the ordinary completed alpha. Applying
+      // another half gives 0.5 when pending and 0.25 when completed.
+      realMarkerColor: colors.accent.withValues(alpha: colors.accent.a * 0.5),
+      body: body,
+      onTap: _open,
+      semanticsLabel: _preview(context.l10n, entry, now),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final colors = agendaTimelineColors(context, entry, now);
@@ -35,16 +89,24 @@ class AgendaTimelineEntry extends StatelessWidget {
       1.0,
       MediaQuery.textScalerOf(context).scale(14) / 14,
     );
-    final date = entry.startsAt;
-    final caption = _caption(l10n, entry);
+    final date = entry.scheduledAt;
+    final caption = agendaTimelineCaption(l10n, entry);
     final overdueCaption = l10n.agendaReminderOverdue(
-      entry.allDay ? l10n.allDay : clockText(entry.dueAt),
+      entry.effectiveAllDay ? l10n.allDay : clockText(entry.dueAt),
     );
     final warningBackground = scheme.errorContainer;
     final warningForeground = scheme.onErrorContainer;
     final deadlineFill = overdue ? warningBackground : colors.fill;
     final contentColor = overdue ? warningForeground : colors.text;
     final titleText = localizedAgendaTitle(l10n, entry);
+    // An open-ended deadline mirrors the ordinary deadline card: the accent
+    // line becomes its left edge, the fill fades out towards the right, and
+    // the text hugs the line on the left instead of the right.
+    final openEnded = entry.isDeadline && entry.startOnly;
+    final accentEdge = BorderSide(
+      color: overdue ? scheme.error : colors.accent,
+      width: 3,
+    );
     final radius = entry.isDeadline ? null : BorderRadius.circular(8);
     final description = l10n.agendaTimelineSemanticsEntry(
       entry.kind.localizedLabel(l10n),
@@ -67,7 +129,9 @@ class AgendaTimelineEntry extends StatelessWidget {
       titleText,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      textAlign: entry.isDeadline ? TextAlign.right : TextAlign.left,
+      textAlign: entry.isDeadline && !openEnded
+          ? TextAlign.right
+          : TextAlign.left,
       style: TextStyle(
         fontSize: 14,
         height: 1.2,
@@ -80,14 +144,14 @@ class AgendaTimelineEntry extends StatelessWidget {
     return Semantics(
       button: true,
       label: description,
-      onTap: onTap,
+      onTap: _open,
       child: ExcludeSemantics(
         child: Tooltip(
           message: _preview(l10n, entry, now),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: onTap,
+              onTap: _open,
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: SizedBox(
@@ -99,12 +163,20 @@ class AgendaTimelineEntry extends StatelessWidget {
                       color: entry.isDeadline ? null : colors.fill,
                       gradient: entry.isDeadline
                           ? LinearGradient(
-                              colors: [
-                                deadlineFill.withValues(alpha: 0),
-                                deadlineFill,
-                                deadlineFill,
-                              ],
-                              stops: const [0, 0.18, 1],
+                              colors: openEnded
+                                  ? [
+                                      deadlineFill,
+                                      deadlineFill,
+                                      deadlineFill.withValues(alpha: 0),
+                                    ]
+                                  : [
+                                      deadlineFill.withValues(alpha: 0),
+                                      deadlineFill,
+                                      deadlineFill,
+                                    ],
+                              stops: openEnded
+                                  ? const [0, 0.82, 1]
+                                  : const [0, 0.18, 1],
                             )
                           : null,
                       borderRadius: radius,
@@ -116,12 +188,9 @@ class AgendaTimelineEntry extends StatelessWidget {
                       decoration: BoxDecoration(
                         borderRadius: radius,
                         border: entry.isDeadline
-                            ? Border(
-                                right: BorderSide(
-                                  color: overdue ? scheme.error : colors.accent,
-                                  width: 3,
-                                ),
-                              )
+                            ? openEnded
+                                  ? Border(left: accentEdge)
+                                  : Border(right: accentEdge)
                             : Border.all(color: colors.accent),
                       ),
                       child: Stack(
@@ -147,8 +216,10 @@ class AgendaTimelineEntry extends StatelessWidget {
                             ),
                           Padding(
                             padding: EdgeInsets.only(
-                              left: entry.isDeadline ? deadlineWidth * 0.37 : 8,
-                              right: 8,
+                              left: entry.isDeadline && !openEnded
+                                  ? deadlineWidth * 0.37
+                                  : 8,
+                              right: openEnded ? deadlineWidth * 0.37 : 8,
                               top: 4,
                               bottom: 4,
                             ),
@@ -156,7 +227,8 @@ class AgendaTimelineEntry extends StatelessWidget {
                                 ? const SizedBox.shrink()
                                 : Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment: entry.isDeadline
+                                    crossAxisAlignment:
+                                        entry.isDeadline && !openEnded
                                         ? CrossAxisAlignment.end
                                         : CrossAxisAlignment.start,
                                     children: [
@@ -214,7 +286,8 @@ class AgendaTimelineEntry extends StatelessWidget {
                                           caption,
                                           maxLines: entry.isDeadline ? 1 : 2,
                                           overflow: TextOverflow.ellipsis,
-                                          textAlign: entry.isDeadline
+                                          textAlign:
+                                              entry.isDeadline && !openEnded
                                               ? TextAlign.right
                                               : TextAlign.left,
                                           style: TextStyle(
@@ -285,40 +358,39 @@ class _OverdueStatusBadge extends StatelessWidget {
   }
 }
 
-String _day(DateTime date) => '${date.month}/${date.day}';
-
-String _caption(AppLocalizations l10n, AgendaEntry entry) {
-  if (entry.isDeadline) {
-    return entry.allDay ? l10n.allDayUntil : l10n.dueAt(clockText(entry.dueAt));
-  }
-  final end = entry.endsAt!;
-  if (entry.allDay) {
-    final lastDay = end.subtract(const Duration(days: 1));
-    return calendarDate(lastDay) == calendarDate(entry.startsAt)
-        ? l10n.allDay
-        : '${_day(entry.startsAt)}–${_day(lastDay)}\n${l10n.allDay}';
-  }
-  if (calendarDate(entry.startsAt) == calendarDate(end)) {
-    return '${clockText(entry.startsAt)}–${clockText(end)}';
-  }
-  return '${_day(entry.startsAt)} ${clockText(entry.startsAt)}\n'
-      '→ ${_day(end)} ${clockText(end)}';
-}
-
 String _fullDate(AppLocalizations l10n, DateTime date) =>
     '${dateText(date)} ${localizedShortWeekday(l10n, date.weekday)}';
 String _fullTime(AppLocalizations l10n, DateTime date) =>
     '${_fullDate(l10n, date)} ${clockText(date)}';
 
+/// The date line of a deadline preview. Open-ended deadlines never claim a
+/// time is due; they state when the task opened instead.
+String _previewDeadlineLine(AppLocalizations l10n, AgendaEntry entry) {
+  if (entry.hasDeadlineCutoff) {
+    return [
+      l10n.agendaCutoffAdjusted(_fullTime(l10n, entry.dueAt)),
+      l10n.agendaCutoffOriginal(_fullTime(l10n, entry.realDueAt)),
+    ].join('\n');
+  }
+  if (entry.startOnly) {
+    return l10n.agendaTimelineStarts(
+      entry.allDay
+          ? '${_fullDate(l10n, entry.startsAt)} ${l10n.allDay}'
+          : _fullTime(l10n, entry.startsAt),
+    );
+  }
+  if (entry.allDay) {
+    return l10n.agendaTimelineDue(
+      '${_fullDate(l10n, entry.startsAt)} ${l10n.agendaDueBeforeEndOfDay}',
+    );
+  }
+  return l10n.agendaTimelineDue(_fullTime(l10n, entry.dueAt));
+}
+
 String _preview(AppLocalizations l10n, AgendaEntry entry, DateTime now) => [
   '${entry.kind.localizedLabel(l10n)} · ${localizedAgendaTitle(l10n, entry)}',
   if (entry.isDeadline)
-    entry.allDay
-        ? l10n.agendaTimelineDue(
-            '${_fullDate(l10n, entry.startsAt)} '
-            '${l10n.agendaDueBeforeEndOfDay}',
-          )
-        : l10n.agendaTimelineDue(_fullTime(l10n, entry.dueAt))
+    _previewDeadlineLine(l10n, entry)
   else if (entry.allDay) ...[
     l10n.agendaTimelineStarts(
       '${_fullDate(l10n, entry.startsAt)} ${l10n.allDay}',

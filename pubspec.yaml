@@ -25,10 +25,12 @@ dependencies:
   file_picker: ^13.2.0
   ffi: ^2.2.0
   package_info_plus: ^10.2.2
+  path: ^1.9.1
   pub_semver: ^2.2.1
   flutter_markdown_plus: ^1.0.12
   webview_all: ^1.4.7
   webview_all_android: ^1.4.7
+  flex_color_picker: ^3.8.0
 
 dev_dependencies:
   flutter_test:

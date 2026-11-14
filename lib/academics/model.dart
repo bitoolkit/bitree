@@ -227,6 +227,8 @@ class StudyPlan {
 }
 
 class AcademicRecord {
+  static const _copyUnset = Object();
+
   const AcademicRecord({
     this.grades = const [],
     this.plan,
@@ -256,32 +258,32 @@ class AcademicRecord {
 
   AcademicRecord copyWith({
     List<CourseGrade>? grades,
-    StudyPlan? plan,
-    DateTime? gradesUpdatedAt,
-    DateTime? planUpdatedAt,
+    Object? plan = _copyUnset,
+    Object? gradesUpdatedAt = _copyUnset,
+    Object? planUpdatedAt = _copyUnset,
+    Object? targetCredits = _copyUnset,
+    Map<String, double>? categoryTargets,
     Map<String, String>? categoryOverrides,
   }) => AcademicRecord(
     grades: grades ?? this.grades,
-    plan: plan ?? this.plan,
-    gradesUpdatedAt: gradesUpdatedAt ?? this.gradesUpdatedAt,
-    planUpdatedAt: planUpdatedAt ?? this.planUpdatedAt,
-    targetCredits: targetCredits,
-    categoryTargets: categoryTargets,
+    plan: identical(plan, _copyUnset) ? this.plan : plan as StudyPlan?,
+    gradesUpdatedAt: identical(gradesUpdatedAt, _copyUnset)
+        ? this.gradesUpdatedAt
+        : gradesUpdatedAt as DateTime?,
+    planUpdatedAt: identical(planUpdatedAt, _copyUnset)
+        ? this.planUpdatedAt
+        : planUpdatedAt as DateTime?,
+    targetCredits: identical(targetCredits, _copyUnset)
+        ? this.targetCredits
+        : targetCredits as double?,
+    categoryTargets: categoryTargets ?? this.categoryTargets,
     categoryOverrides: categoryOverrides ?? this.categoryOverrides,
   );
 
   AcademicRecord withCreditTargets({
     required double? total,
     required Map<String, double> categories,
-  }) => AcademicRecord(
-    grades: grades,
-    plan: plan,
-    gradesUpdatedAt: gradesUpdatedAt,
-    planUpdatedAt: planUpdatedAt,
-    targetCredits: total,
-    categoryTargets: categories,
-    categoryOverrides: categoryOverrides,
-  );
+  }) => copyWith(targetCredits: total, categoryTargets: categories);
 
   Map<String, Object?> toJson() => {
     'grades': grades.map((grade) => grade.toJson()).toList(),

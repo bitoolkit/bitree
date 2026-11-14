@@ -1,11 +1,14 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import '../../agenda/calendar.dart';
-import '../../app/controller.dart';
+import '../../agenda/controller.dart';
+import '../../automation/controller.dart';
 import '../../core/time.dart';
+import '../controller.dart';
 import '../height_mode.dart';
 import '../layout.dart';
 import '../section_times.dart';
@@ -16,14 +19,20 @@ import 'timetable_header.dart';
 class Timetable extends StatefulWidget {
   const Timetable({
     super.key,
-    required this.controller,
+    required this.timetable,
+    required this.agenda,
+    this.automation,
+    required this.heightMode,
     required this.week,
     required this.initialScrollOffset,
     required this.onScroll,
     required this.active,
   });
 
-  final AppController controller;
+  final TimetableController timetable;
+  final AgendaController agenda;
+  final AutomationController? automation;
+  final ValueListenable<TimetableHeightMode> heightMode;
   final int week;
   final double initialScrollOffset;
   final ValueChanged<double> onScroll;
@@ -44,9 +53,7 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
   bool _restoringScroll = false;
   int _scrollRestoreGeneration = 0;
 
-  bool get _fitToScreen =>
-      widget.controller.settings.timetableHeightMode.value ==
-      TimetableHeightMode.fit;
+  bool get _fitToScreen => widget.heightMode.value == TimetableHeightMode.fit;
 
   void _heightModeChanged() {
     _restoringScroll = true;
@@ -85,9 +92,7 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     _normalScrollOffset = widget.initialScrollOffset;
-    widget.controller.settings.timetableHeightMode.addListener(
-      _heightModeChanged,
-    );
+    widget.heightMode.addListener(_heightModeChanged);
     _vertical = ScrollController(
       initialScrollOffset: _fitToScreen ? 0 : widget.initialScrollOffset,
       keepScrollOffset: false,
@@ -99,14 +104,9 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
   @override
   void didUpdateWidget(covariant Timetable oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.controller.settings.timetableHeightMode !=
-        widget.controller.settings.timetableHeightMode) {
-      oldWidget.controller.settings.timetableHeightMode.removeListener(
-        _heightModeChanged,
-      );
-      widget.controller.settings.timetableHeightMode.addListener(
-        _heightModeChanged,
-      );
+    if (oldWidget.heightMode != widget.heightMode) {
+      oldWidget.heightMode.removeListener(_heightModeChanged);
+      widget.heightMode.addListener(_heightModeChanged);
       _restoringScroll = true;
       _restoreScrollAfterLayout();
     }
@@ -160,7 +160,7 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
   }
 
   Future<void> _revealCurrentTime({bool force = false}) async {
-    final schedule = widget.controller.automation.schedule;
+    final schedule = widget.automation?.schedule ?? widget.timetable.schedule;
     final now = _currentTime.value;
     if (_fitToScreen ||
         _restoringScroll ||
@@ -241,9 +241,7 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
   void dispose() {
     _timer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
-    widget.controller.settings.timetableHeightMode.removeListener(
-      _heightModeChanged,
-    );
+    widget.heightMode.removeListener(_heightModeChanged);
     _currentTime.dispose();
     _vertical.dispose();
     super.dispose();
@@ -251,8 +249,8 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final controller = widget.controller;
-    final schedule = controller.automation.schedule!;
+    final schedule =
+        (widget.automation?.schedule ?? widget.timetable.schedule)!;
     final monday = schedule.mondayAt(widget.week);
     final today = calendarDate(_currentTime.value);
     final currentWeek = schedule.weekAt(today) == widget.week;
@@ -268,7 +266,7 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
         calendarItemsOn(
           monday.add(Duration(days: day)),
           schedule,
-          controller.automation.entries,
+          widget.automation?.entries ?? widget.agenda.entries,
         ),
     ];
     final pinned = [
@@ -293,7 +291,8 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
     return Column(
       children: [
         TimetableHeader(
-          controller: controller,
+          controller: widget.agenda,
+          automation: widget.automation,
           monday: monday,
           now: _currentTime.value,
           gutterWidth: gutterWidth,
@@ -327,7 +326,9 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
                         : null,
                     child: RepaintBoundary(
                       child: TimetableGrid(
-                        controller: controller,
+                        timetable: widget.timetable,
+                        agenda: widget.agenda,
+                        automation: widget.automation,
                         monday: monday,
                         layouts: layouts,
                         gutterWidth: gutterWidth,

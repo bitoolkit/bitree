@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 
 import '../core/async/cancelable_request.dart';
@@ -12,30 +10,48 @@ import 'model.dart';
 import 'physics_lab_deadlines.dart';
 import 'store.dart';
 
+part 'merge.dart';
+
 class AgendaController extends ChangeNotifier {
-  AgendaController(this._store);
+  AgendaController(
+    this._store, {
+    void Function(String, Object, StackTrace)? reportError,
+  }) : _reportError = reportError ?? AppDiagnostics.instance.report;
 
   final AgendaStore _store;
+  final void Function(String, Object, StackTrace) _reportError;
   List<AgendaEntry> _entries = const [];
   final _operations = SerialQueue();
   bool _ready = false;
   bool _busy = false;
   bool _disposed = false;
+  DeadlineCutoffWindow _deadlineCutoffWindow = const DeadlineCutoffWindow();
+
+  void setDeadlineCutoff(DeadlineCutoffWindow window) {
+    if (_deadlineCutoffWindow == window) return;
+    _deadlineCutoffWindow = window;
+    _notify();
+  }
+
+  AgendaEntry _present(AgendaEntry entry) =>
+      entry.withDeadlineCutoff(_deadlineCutoffWindow);
 
   bool get ready => _ready;
+  DeadlineCutoffWindow get deadlineCutoffWindow => _deadlineCutoffWindow;
   bool get busy => _busy;
 
   Iterable<AgendaEntry> get entries =>
-      _entries.where((entry) => !entry.deleted);
+      _entries.where((entry) => !entry.deleted).map(_present);
 
-  Iterable<AgendaEntry> get deletedDeadlines =>
-      _entries.where((entry) => entry.deleted && entry.isDeadline);
+  Iterable<AgendaEntry> get deletedDeadlines => _entries
+      .where((entry) => entry.deleted && entry.isDeadline)
+      .map(_present);
 
   List<AgendaEntry> pendingOn(DateTime date, {required DateTime now}) =>
       entries
           .where((entry) => !entry.isFinished(now) && entry.occursOn(date))
           .toList()
-        ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+        ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
 
   Future<void> load() => _operations.run(() async {
     if (_disposed) return;
@@ -43,10 +59,10 @@ class AgendaController extends ChangeNotifier {
     _ready = false;
     _notify();
     try {
-      _entries = List.unmodifiable(await _store.read());
+      _entries = List.unmodifiable(await _store.readAndMigrate());
       _ready = true;
     } on Exception catch (failure, stack) {
-      AppDiagnostics.instance.report('读取日程', failure, stack);
+      _reportError('读取日程', failure, stack);
     } finally {
       _busy = false;
       _notify();
@@ -56,6 +72,29 @@ class AgendaController extends ChangeNotifier {
   Future<bool> save(AgendaEntry entry) => _write(
     (entries) => [...entries.where((item) => item.id != entry.id), entry],
   );
+
+  /// Manually migrate old four-day DDL tails, including recycled entries.
+  /// Returns zero without writing when repeated, or null if persistence fails.
+  Future<int?> resetDefaultDeadlineTails() => _operations.run(() async {
+    if (_disposed) return null;
+    if (!_ready) {
+      _reportNotReady();
+      return null;
+    }
+    var count = 0;
+    final next = <AgendaEntry>[];
+    for (final entry in _entries) {
+      if (entry.isDeadline && entry.tailDays == AgendaEntry.defaultTailDays) {
+        count++;
+        next.add(entry.copyWith(tailDays: null));
+      } else {
+        next.add(entry);
+      }
+    }
+    if (count == 0) return 0;
+    final saved = await _commit(next);
+    return saved ? count : null;
+  });
 
   Future<bool> restore(AgendaEntry entry) => restoreEntries([entry]);
 
@@ -118,31 +157,10 @@ class AgendaController extends ChangeNotifier {
   Future<bool> mergeDeadlines(
     List<AgendaEntry> incoming, {
     void Function()? checkActive,
-  }) => _write((entries) {
-    final unmatched = [...incoming];
-    final matched = <AgendaEntry>[];
-    final merged = <AgendaEntry>[];
-    for (final saved in entries) {
-      final index = unmatched.indexWhere(
-        (entry) => _sameRemoteEntry(saved, entry),
-      );
-      if (index < 0) {
-        if (matched.any((entry) => _sameRemoteEntry(saved, entry))) continue;
-        merged.add(saved);
-        continue;
-      }
-      final entry = unmatched.removeAt(index);
-      matched.add(entry);
-      final next = saved.local ? saved : entry;
-      merged.add(
-        next.copyWith(
-          done: saved.local ? entry.done || saved.done : entry.done,
-          deleted: saved.deleted,
-        ),
-      );
-    }
-    return [...merged, ...unmatched];
-  }, checkActive: checkActive);
+  }) => _write(
+    (entries) => _mergeDeadlineEntries(entries, incoming),
+    checkActive: checkActive,
+  );
 
   int countDeadlines(DeadlineClearScope scope) =>
       _entries.where(scope.includes).length;
@@ -223,6 +241,7 @@ class AgendaController extends ChangeNotifier {
     List<AgendaEntry>? Function(List<AgendaEntry> entries) transform, {
     void Function()? checkActive,
   }) => _operations.run(() async {
+    if (_disposed) return false;
     if (!_ready) {
       _reportNotReady();
       return false;
@@ -247,7 +266,7 @@ class AgendaController extends ChangeNotifier {
     } on RequestCancelled {
       rethrow;
     } on Exception catch (failure, stack) {
-      AppDiagnostics.instance.report('保存日程', failure, stack);
+      _reportError('保存日程', failure, stack);
       return false;
     } finally {
       _busy = false;
@@ -270,43 +289,4 @@ class AgendaController extends ChangeNotifier {
     _disposed = true;
     super.dispose();
   }
-}
-
-bool _sameRemoteEntry(AgendaEntry left, AgendaEntry right) {
-  if (left.id == right.id && left.source == right.source) return true;
-  if (left.kind != AgendaKind.deadline ||
-      right.kind != AgendaKind.deadline ||
-      left.source == null ||
-      left.source != right.source) {
-    return false;
-  }
-
-  final leftUrl = left.url;
-  final rightUrl = right.url;
-  if (leftUrl != null && rightUrl != null) {
-    if (leftUrl.scheme != rightUrl.scheme ||
-        leftUrl.host != rightUrl.host ||
-        leftUrl.path != rightUrl.path) {
-      return false;
-    }
-    final leftId = leftUrl.queryParameters['id'];
-    final rightId = rightUrl.queryParameters['id'];
-    if (leftId != null || rightId != null) return leftId == rightId;
-    final leftActivity = leftUrl.fragment;
-    final rightActivity = rightUrl.fragment;
-    if (leftActivity.isNotEmpty && rightActivity.isNotEmpty) {
-      return leftActivity == rightActivity;
-    }
-    return leftUrl.replace(fragment: '') == rightUrl.replace(fragment: '') &&
-        _sameDeadlineMetadata(left, right);
-  }
-
-  return _sameDeadlineMetadata(left, right);
-}
-
-bool _sameDeadlineMetadata(AgendaEntry left, AgendaEntry right) {
-  return left.course == right.course &&
-      left.title == right.title &&
-      left.startsAt == right.startsAt &&
-      left.allDay == right.allDay;
 }

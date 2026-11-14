@@ -25,19 +25,52 @@
   "automationApply": "保存并应用",
   "automationSaved": "已保存并应用脚本。",
   "automationExecutionTime": "运行耗时：{milliseconds} ms",
-  "@automationExecutionTime": {"placeholders": {"milliseconds": {"type": "String"}}},
+  "@automationExecutionTime": {
+    "placeholders": {
+      "milliseconds": {
+        "type": "String"
+      }
+    }
+  },
   "automationResult": "运行结果",
   "automationFallback": "脚本未能应用，当前展示原始数据。",
   "automationRunning": "正在运行脚本…",
   "automationDisabled": "脚本已停用，展示原始数据。",
   "automationApplied": "{milliseconds}ms · {changes}",
-  "@automationApplied": {"placeholders": {"milliseconds": {"type": "String"}, "changes": {"type": "String"}}},
+  "@automationApplied": {
+    "placeholders": {
+      "milliseconds": {
+        "type": "String"
+      },
+      "changes": {
+        "type": "String"
+      }
+    }
+  },
   "automationAdded": "增 {count}",
-  "@automationAdded": {"placeholders": {"count": {"type": "int"}}},
+  "@automationAdded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "automationDeleted": "删 {count}",
-  "@automationDeleted": {"placeholders": {"count": {"type": "int"}}},
+  "@automationDeleted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "automationModified": "改 {count}",
-  "@automationModified": {"placeholders": {"count": {"type": "int"}}},
+  "@automationModified": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "automationUnchanged": "无变更",
   "automationContractTitle": "脚本接口",
   "automationContract": "定义 filter(data)，返回含 courses、deadlines、events、exams 的 table。省略 id 可新增展示项，移除项目或设置 hidden = true 可隐藏；已有项目保留身份和状态。",
@@ -264,7 +297,7 @@
   "agendaLocationOptional": "地点（选填）",
   "agendaNotesOptional": "备注（选填）",
   "agendaTailDays": "拖尾长度（天）",
-  "agendaTailDaysHint": "1–30 天，默认 4 天",
+  "agendaTailDaysHint": "1–30 天，单条设置优先",
   "agendaTailDaysValue": "{days} 天",
   "agendaEndAfterStart": "结束时间需要晚于开始时间",
   "agendaReminderOverdue": "{time} 已逾期",
@@ -712,5 +745,54 @@
   "timetableHeightNormal": "正常高度",
   "timetableHeightFit": "适应屏幕",
   "timetableHeightHint": "适应屏幕可一屏总览全部节次；正常高度保留舒适行高和纵向滚动。",
-  "releaseVersion": "{channel} {version}"
+  "releaseVersion": "{channel} {version}",
+  "settingsDeveloperOptions": "开发者选项",
+  "settingsResetDefaultDeadlineTails": "将默认拖尾长度设为 null",
+  "settingsResetDefaultDeadlineTailsDescription": "将所有 4 天的 DDL 拖尾改为跟随全局设置。",
+  "settingsResetDefaultDeadlineTailsResult": "已将 {count} 个 DDL 改为跟随全局设置。",
+  "agendaTime": "时间",
+  "agendaMoreOptions": "更多选项",
+  "agendaColor": "日程颜色",
+  "agendaColorDefault": "默认",
+  "agendaColorBlue": "蓝色",
+  "agendaColorCoral": "珊瑚色",
+  "agendaColorViolet": "紫色",
+  "agendaColorGreen": "绿色",
+  "agendaColorAmber": "琥珀色",
+  "agendaColorTeal": "青色",
+  "agendaColorRose": "玫红",
+  "agendaColorSlate": "灰色",
+  "agendaColorCustom": "自定义 {value}",
+  "@agendaColorCustom": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "agendaColorPickerTitle": "选择颜色",
+  "agendaColorPresets": "快捷颜色",
+  "agendaColorCustomSection": "自定义颜色",
+  "agendaTailDaysDefault": "跟随全局设置",
+  "settingsDeadlineCutoff": "DDL 伪提前",
+  "deadlineCutoffEnabled": "启用每日伪提前",
+  "deadlineCutoffDescription": "将时段内的 DDL 提前至开始时间，真实截止时间不变。",
+  "deadlineCutoffStart": "开始时间",
+  "deadlineCutoffEnd": "结束时间",
+  "deadlineCutoffDisabled": "未启用",
+  "deadlineCutoffSameDay": "每天 {start}–{end}",
+  "deadlineCutoffOvernight": "每天 {start} 至次日 {end}",
+  "deadlineCutoffInstant": "仅每天 {time}",
+  "deadlineCutoffBoundaryHint": "开始和结束时刻均包含在区间内。结束早于开始时表示跨日；两者相同时仅匹配单个时刻。",
+  "deadlineCutoffPreserveHint": "真实截止时间保持不变。关闭后不再伪提前，但会保留已选择的开始和结束时间。",
+  "agendaAdjustedDeadline": "伪截止",
+  "agendaRealDeadline": "真实截止时间",
+  "agendaCutoffOriginal": "真实截止：{time}",
+  "agendaCutoffAdjusted": "伪截止：{time}",
+  "settingsAgendaLayoutDays": "DDL 排版宽度",
+  "agendaLayoutDaysDescription": "默认排版宽度；单个 DDL 的拖尾长度优先。",
+  "agendaLayoutDaysUnit": "天",
+  "agendaLayoutDaysRange": "请输入 1–30 的整数",
+  "settingsAgendaEventInfoBar": "日程与考试信息栏",
+  "settingsAgendaEventInfoBarDescription": "开启显示左侧信息栏，关闭使用方框样式。"
 }

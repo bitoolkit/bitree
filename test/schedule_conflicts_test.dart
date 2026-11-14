@@ -89,7 +89,7 @@ void main() {
                 height: 448,
                 child: ConflictingCourses(
                   courses: courses,
-                  controller: app,
+                  controller: app.timetable,
                   isToday: true,
                   date: date,
                 ),
@@ -149,7 +149,7 @@ void main() {
                 height: 180,
                 child: ConflictingCourses(
                   courses: courses,
-                  controller: app,
+                  controller: app.timetable,
                   isToday: false,
                   date: date,
                 ),

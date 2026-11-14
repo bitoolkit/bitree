@@ -72,8 +72,11 @@ internal data class WidgetContent(
     val nextUpdate: Long,
 )
 
-internal fun readWidgetContent(context: Context): WidgetContent {
-    val now = Calendar.getInstance(campusZone)
+internal fun readWidgetContent(
+    context: Context,
+    nowMillis: Long = System.currentTimeMillis(),
+): WidgetContent {
+    val now = Calendar.getInstance(campusZone).apply { timeInMillis = nowMillis }
     val today = dayStart(now.timeInMillis)
     val tomorrow = (today.clone() as Calendar).apply { add(Calendar.DATE, 1) }
     val evening = (today.clone() as Calendar).apply { set(Calendar.HOUR_OF_DAY, 21) }
@@ -126,7 +129,8 @@ private fun readWidgetData(context: Context): JSONObject {
     val library = if (scheduleFile.exists()) JSONObject(scheduleFile.readText()) else null
     val schedule = if (library == null || library.isNull("selectedTerm")) null else
         library.getJSONObject("semesters").getJSONObject(library.getString("selectedTerm"))
-    val agenda = if (agendaFile.exists()) JSONArray(agendaFile.readText()) else JSONArray()
+    val agenda = if (agendaFile.exists())
+        JSONObject(agendaFile.readText()).getJSONArray("entries") else JSONArray()
     return JSONObject().put("schedule", schedule ?: JSONObject.NULL).put("entries", agenda)
 }
 

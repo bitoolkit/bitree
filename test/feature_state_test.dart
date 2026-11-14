@@ -16,8 +16,8 @@ class _DelayedAcademicStore extends MemoryAcademicStore {
   final started = Completer<void>();
   final old = Completer<AcademicRecord>();
   @override
-  Future<AcademicRecord> read(String account) {
-    if (account != 'old') return super.read(account);
+  Future<AcademicRecord> readAndMigrate(String account) {
+    if (account != 'old') return super.readAndMigrate(account);
     started.complete();
     return old.future;
   }
@@ -36,6 +36,18 @@ class _SlowScheduleStore extends MemoryScheduleStore {
       await release.future;
     }
     await super.write(library);
+  }
+}
+
+class _FailingScheduleStore extends MemoryScheduleStore {
+  _FailingScheduleStore({required super.selected});
+
+  bool failReads = true;
+
+  @override
+  Future<ScheduleLibrary> readAndMigrate() {
+    if (failReads) throw const FormatException('damaged schedule');
+    return super.readAndMigrate();
   }
 }
 
@@ -123,7 +135,7 @@ void main() {
       expect(reloaded.weeks.last, 20);
       await controller.clear();
       expect(controller.schedule, isNull);
-      expect((await store.read()).schedules, isEmpty);
+      expect((await store.readAndMigrate()).schedules, isEmpty);
     },
   );
 
@@ -172,7 +184,7 @@ void main() {
     );
     expect(controller.schedule!.courses, hasLength(2));
     expect(
-      (await store.read()).schedules[semester.term]!.courses,
+      (await store.readAndMigrate()).schedules[semester.term]!.courses,
       hasLength(2),
     );
   });
@@ -216,6 +228,50 @@ void main() {
         controller.schedule!.courses.map((course) => course.id),
         containsAll(['remote', 'local']),
       );
+    },
+  );
+
+  test('Schedule writes and clearing are refused when loading fails', () async {
+    final store = _FailingScheduleStore(selected: semester);
+    final controller = TimetableController(store);
+    addTearDown(controller.dispose);
+
+    await controller.load();
+    expect(controller.ready, isFalse);
+    expect(await controller.importSchedule(semester, [semester.term]), isFalse);
+    expect(await controller.clear(), isFalse);
+    expect(store.schedules[semester.term], same(semester));
+    expect(store.selectedTerm, semester.term);
+  });
+
+  test(
+    'A failed reload blocks later writes even after a successful load',
+    () async {
+      final store = _FailingScheduleStore(selected: semester);
+      final controller = TimetableController(store);
+      addTearDown(controller.dispose);
+      store.failReads = false;
+      await controller.load();
+      expect(controller.ready, isTrue);
+
+      store.failReads = true;
+      await controller.load();
+      expect(controller.ready, isFalse);
+      expect(
+        await controller.saveCourse(
+          Course(
+            id: 'unsafe',
+            name: '不应保存',
+            weekday: 1,
+            startSection: 1,
+            endSection: 2,
+            weeks: [1],
+            local: true,
+          ),
+        ),
+        isFalse,
+      );
+      expect(store.schedules[semester.term], same(semester));
     },
   );
 

@@ -1,5 +1,7 @@
+import 'package:bitree/agenda/agenda_color.dart';
 import 'package:bitree/agenda/deadline_source.dart';
 import 'package:bitree/agenda/model.dart';
+import 'package:bitree/agenda/ui/agenda_color_palette.dart';
 import 'package:bitree/agenda/ui/timeline_colors.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
@@ -59,6 +61,48 @@ void main() {
           agendaTimelineColors(context, entry, now).fill.toARGB32(),
       ];
       expect(fills.toSet(), hasLength(entries.length));
+
+      for (final color in AgendaColor.presets) {
+        final custom = AgendaEntry(
+          id: color.id!,
+          title: color.id!,
+          kind: AgendaKind.deadline,
+          startsAt: start,
+          source: DeadlineSource.lexue,
+          color: color,
+        );
+        final values = agendaColorValues(Theme.of(context).colorScheme, color);
+        expect(agendaTimelineColors(context, custom, now), (
+          fill: values.fill,
+          text: values.text,
+          accent: values.accent,
+        ));
+      }
+    });
+
+    testWidgets('Custom translucent colors keep multiplicative completion alpha in $brightness', (
+      tester,
+    ) async {
+      late BuildContext context;
+      await tester.pumpWidget(MaterialApp(
+        theme: bitreeTheme(brightness),
+        home: Builder(builder: (value) {
+          context = value;
+          return const SizedBox();
+        }),
+      ));
+      final entry = AgendaEntry(
+        id: 'translucent', title: '半透明', kind: AgendaKind.deadline,
+        startsAt: start, color: const AgendaColor(0x803366CC),
+      );
+      final pending = agendaTimelineColors(context, entry, now);
+      final completed = agendaTimelineColors(
+        context, entry.copyWith(done: true), now,
+      );
+      expect(pending.accent.a, closeTo(128 / 255, .001));
+      expect(completed.accent.a, closeTo(pending.accent.a * .5, .001));
+      expect(completed.fill.a, closeTo(pending.fill.a * .5, .001));
+      expect(completed.text.a, closeTo(pending.text.a * .5, .001));
     });
 
     testWidgets('Overdue DDLs use error semantic colors in $brightness', (
@@ -85,15 +129,47 @@ void main() {
         expect(colors.accent, scheme.error);
 
         final completed = entry.copyWith(done: true);
-        final finishedColors = agendaTimelineColors(context, completed, pastDue);
-        expect(
-          finishedColors,
-          agendaTimelineColors(context, completed, now),
+        final finishedColors = agendaTimelineColors(
+          context,
+          completed,
+          pastDue,
         );
+        expect(finishedColors, agendaTimelineColors(context, completed, now));
         expect(finishedColors.fill.a, closeTo(0.5, 0.01));
         expect(finishedColors.text.a, closeTo(0.5, 0.01));
         expect(finishedColors.accent.a, closeTo(0.5, 0.01));
       }
+    });
+
+    testWidgets('Completed events and exams fade fill, text and accent in $brightness', (
+      tester,
+    ) async {
+      late BuildContext context;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: bitreeTheme(brightness),
+          home: Builder(
+            builder: (value) {
+              context = value;
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+      for (final entry in entries.where((entry) => !entry.isDeadline)) {
+        // Keep the test clock before the event starts: this verifies the
+        // completed palette, not automatic completion or overdue transitions.
+        final pending = agendaTimelineColors(context, entry, now);
+        final completed = agendaTimelineColors(
+          context,
+          entry.copyWith(done: true),
+          now,
+        );
+        expect(completed.fill.a, closeTo(pending.fill.a * .5, .01));
+        expect(completed.text.a, closeTo(pending.text.a * .5, .01));
+        expect(completed.accent.a, closeTo(pending.accent.a * .5, .01));
+      }
+      expect(tester.takeException(), isNull);
     });
   }
 }

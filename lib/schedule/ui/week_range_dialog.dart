@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 
-import '../../app/controller.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_dialog.dart';
 import '../../ui/design.dart';
+import '../controller.dart';
 import '../model.dart';
 
 Future<({int first, int last})?> showWeekRangeDialog(
   BuildContext context, {
   required int first,
   required int last,
-  AppController? controller,
+  TimetableController? controller,
 }) => showAppDialog<({int first, int last})>(
   context: context,
   builder: (_) =>
@@ -19,9 +19,9 @@ Future<({int first, int last})?> showWeekRangeDialog(
 
 Future<void> manageTermWeeks(
   BuildContext context,
-  AppController controller,
+  TimetableController controller,
 ) async {
-  final schedule = controller.timetable.schedule!;
+  final schedule = controller.schedule!;
   await showWeekRangeDialog(
     context,
     first: schedule.firstWeek,
@@ -39,7 +39,7 @@ class _WeekRangeDialog extends StatefulWidget {
 
   final int first;
   final int last;
-  final AppController? controller;
+  final TimetableController? controller;
 
   @override
   State<_WeekRangeDialog> createState() => _WeekRangeDialogState();
@@ -90,7 +90,7 @@ class _WeekRangeDialogState extends State<_WeekRangeDialog> {
         _error = null;
       });
       final error = context.l10n.operationSaveFailed;
-      final saved = await controller.timetable.setWeekRange(
+      final saved = await controller.setWeekRange(
         first: range.first,
         last: range.last,
       );
@@ -174,8 +174,7 @@ class _WeekRangeDialogState extends State<_WeekRangeDialog> {
 
     return PopScope(
       canPop: !_saving,
-      child: AlertDialog(
-        scrollable: true,
+      child: AppDialog(
         title: Text(l10n.weekRangeDialogTitle),
         content: LayoutBuilder(
           builder: (context, constraints) => Form(

@@ -39,6 +39,12 @@ class _ClearDeadlinesSheetState extends State<_ClearDeadlinesSheet> {
   bool _saving = false;
   String? _error;
 
+  void _selectAll(bool selected) => setState(() {
+    _selected.clear();
+    if (selected) _selected.addAll(DeadlineClearScope.values);
+    _error = null;
+  });
+
   Future<void> _clear(
     Set<DeadlineClearScope> scopes,
     Set<String> expectedIds,
@@ -92,15 +98,10 @@ class _ClearDeadlinesSheetState extends State<_ClearDeadlinesSheet> {
                 selectedCount: scopes.length,
                 totalCount: DeadlineClearScope.values.length,
                 summary: l10n.clearDeadlinesSelection(scopes.length, count),
-                enabled: enabled,
-                onSelectAll: () => setState(() {
-                  _selected.addAll(DeadlineClearScope.values);
-                  _error = null;
-                }),
-                onClear: () => setState(() {
-                  _selected.clear();
-                  _error = null;
-                }),
+                onToggleAll: enabled ? _selectAll : null,
+                onClear: enabled && scopes.isNotEmpty
+                    ? () => _selectAll(false)
+                    : null,
               ),
               for (final scope in DeadlineClearScope.values)
                 AppSelectionTile(

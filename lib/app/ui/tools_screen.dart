@@ -65,7 +65,11 @@ class ToolsScreen extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => Navigator.of(context).push<void>(
               MaterialPageRoute(
-                builder: (_) => ClassroomScreen(controller: controller),
+                builder: (_) => ClassroomScreen(
+                  repository: controller.classroomRepository,
+                  school: controller.school,
+                  timetable: controller.timetable,
+                ),
               ),
             ),
           ),
@@ -76,7 +80,8 @@ class ToolsScreen extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => Navigator.of(context).push<void>(
               MaterialPageRoute(
-                builder: (_) => WencuiMapScreen(controller: controller),
+                builder: (_) =>
+                    WencuiMapScreen(timetable: controller.timetable),
               ),
             ),
           ),

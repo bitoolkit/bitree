@@ -73,7 +73,7 @@ class AutomationController extends ChangeNotifier {
       entries
           .where((entry) => !entry.isFinished(now) && entry.occursOn(date))
           .toList()
-        ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+        ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
 
   int get hiddenCourses => _projection == null
       ? 0
@@ -165,7 +165,7 @@ class AutomationController extends ChangeNotifier {
     final schedules = _timetable.schedules.toList();
     final entries = _agenda.entries.toList();
     final data = AutomationProjection.snapshot(schedules, entries);
-    final snapshot = jsonEncode(data);
+    final snapshot = jsonEncode([data, _agenda.deadlineCutoffWindow.toJson()]);
     if (_snapshot == snapshot) {
       if (!_running) _pending = _publishWidget();
       return;
@@ -204,7 +204,12 @@ class AutomationController extends ChangeNotifier {
     try {
       final result = await _executor.run(_source, data);
       if (_disposed || revision != _revision) return;
-      _projection = AutomationProjection.fromResult(result, schedules, entries);
+      _projection = AutomationProjection.fromResult(
+        result,
+        schedules,
+        entries,
+        deadlineCutoffWindow: _agenda.deadlineCutoffWindow,
+      );
     } on LuaFilterCancelled {
       return;
     } catch (failure) {

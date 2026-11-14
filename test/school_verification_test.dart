@@ -9,9 +9,13 @@ import 'package:bitree/app/ui/settings_screen.dart';
 import 'package:bitree/core/diagnostics.dart';
 import 'package:bitree/schedule/model.dart';
 import 'package:bitree/school/controller.dart';
+import 'package:bitree/school/errors.dart';
 import 'package:bitree/school/network.dart';
+import 'package:bitree/school/service.dart';
+import 'package:bitree/school/session.dart';
 import 'package:bitree/school/storage.dart';
 import 'package:bitree/school/verification.dart';
+import 'package:bitree/sync/controller.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -111,6 +115,29 @@ class _LoginServer {
   }
 }
 
+class _ExpiredSchoolService extends SchoolService {
+  int synchronizeCalls = 0;
+
+  @override
+  Future<({SemesterSchedule schedule, List<String> terms})> synchronize(
+    SchoolSession session, {
+    required String account,
+    String? term,
+  }) async {
+    synchronizeCalls++;
+    if (synchronizeCalls <= 2) throw const SessionExpired();
+    const selected = '2026-2027-1';
+    return (
+      schedule: SemesterSchedule(
+        term: selected,
+        firstMonday: DateTime.utc(2026, 9, 21),
+        courses: const [],
+      ),
+      terms: const [selected],
+    );
+  }
+}
+
 Future<TestAppController> _app() async {
   final app = TestAppController(
     schedule: SemesterSchedule(
@@ -176,6 +203,26 @@ void main() {
       await app.initialize();
       expect(await app.school.restoreAccount(), isFalse);
       expect(app.school.accountStatus, AccountStatus.signedOut);
+    },
+  );
+
+  test(
+    'Silent restore keeps a valid service session without forcing SSO',
+    () async {
+      final server = await _LoginServer.start(SchoolVerificationKind.image);
+      addTearDown(() => server.server.close(force: true));
+      final app = await _app();
+      server.serviceSessionValid = true;
+
+      final success = await HttpOverrides.runWithHttpOverrides(
+        app.school.restoreAccount,
+        server.network,
+      );
+
+      expect(success, isTrue);
+      expect(app.school.accountStatus, AccountStatus.signedIn);
+      expect(server.paths, isNot(contains('/sso.bit.edu.cn/cas/login')));
+      expect(server.unexpected, isEmpty);
     },
   );
 
@@ -253,6 +300,10 @@ void main() {
     }, server.network);
     expect(app.school.accountStatus, AccountStatus.signedIn);
     expect(app.school.verificationRequired, isFalse);
+    expect(
+      server.paths,
+      contains('/jxzxehall.bit.edu.cn/auth-protocol-core/login'),
+    );
     expect(server.unexpected, isEmpty);
     expect(app.timetable.schedule, same(schedule));
     expect(app.agenda.entries.single, same(deadline));
@@ -385,4 +436,51 @@ void main() {
       },
     );
   }
+
+  test(
+    'Retrying an incomplete sync verifies the failed target directly',
+    () async {
+      final server = await _LoginServer.start(SchoolVerificationKind.image);
+      addTearDown(() => server.server.close(force: true));
+      final service = _ExpiredSchoolService();
+      final app = TestAppController(
+        school: service,
+        schoolStorage: MemorySchoolStorage(
+          credentials: const SchoolCredentials(
+            username: '202526100123',
+            password: 'test',
+          ),
+        ),
+      );
+      await app.initialize();
+
+      await HttpOverrides.runWithHttpOverrides(() async {
+        expect(await app.sync.synchronize({SyncTarget.schedule}), isFalse);
+        expect(app.school.accountStatus, AccountStatus.imageRequired);
+        expect(
+          app.sync.results[SyncTarget.schedule]?.outcome,
+          SyncOutcome.needsVerification,
+        );
+
+        expect(
+          await app.sync.synchronize(
+            {SyncTarget.schedule},
+            verify: (request) async {
+              expect(request, isA<SchoolImageVerification>());
+              return '1234';
+            },
+          ),
+          isTrue,
+        );
+      }, server.network);
+
+      expect(app.school.accountStatus, AccountStatus.signedIn);
+      expect(
+        app.sync.results[SyncTarget.schedule]?.outcome,
+        SyncOutcome.synced,
+      );
+      expect(service.synchronizeCalls, 3);
+      expect(server.unexpected, isEmpty);
+    },
+  );
 }

@@ -10,18 +10,16 @@ class AppSelectionBar extends StatelessWidget {
     required this.selectedCount,
     required this.totalCount,
     required this.summary,
-    required this.onSelectAll,
+    required this.onToggleAll,
     required this.onClear,
-    this.enabled = true,
   }) : assert(selectedCount >= 0),
        assert(totalCount >= selectedCount);
 
   final int selectedCount;
   final int totalCount;
   final String summary;
-  final VoidCallback onSelectAll;
-  final VoidCallback onClear;
-  final bool enabled;
+  final ValueChanged<bool>? onToggleAll;
+  final VoidCallback? onClear;
 
   @override
   Widget build(BuildContext context) {
@@ -29,15 +27,9 @@ class AppSelectionBar extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final allSelected = totalCount > 0 && selectedCount == totalCount;
     final noneSelected = selectedCount == 0;
-    final canToggle = enabled && totalCount > 0;
-
-    void toggleAll() {
-      if (allSelected) {
-        onClear();
-      } else {
-        onSelectAll();
-      }
-    }
+    final toggleAll = totalCount > 0 && onToggleAll != null
+        ? () => onToggleAll!(!allSelected)
+        : null;
 
     return Material(
       color: scheme.surfaceContainerLow,
@@ -52,35 +44,28 @@ class AppSelectionBar extends StatelessWidget {
             Checkbox(
               value: allSelected ? true : (noneSelected ? false : null),
               tristate: true,
-              onChanged: canToggle ? (_) => toggleAll() : null,
+              onChanged: toggleAll == null ? null : (_) => toggleAll(),
             ),
             Expanded(
               child: InkWell(
-                onTap: canToggle ? toggleAll : null,
+                onTap: toggleAll,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.xs,
                     vertical: AppSpacing.sm,
                   ),
-                  child: Row(
+                  child: Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.xxs,
                     children: [
-                      Flexible(
-                        child: Text(
-                          l10n.selectAll,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelLarge,
-                        ),
+                      Text(
+                        l10n.selectAll,
+                        style: Theme.of(context).textTheme.labelLarge,
                       ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Flexible(
-                        flex: 2,
-                        child: Text(
-                          summary,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
+                      Text(
+                        summary,
+                        style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
                   ),
@@ -90,7 +75,7 @@ class AppSelectionBar extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(right: AppSpacing.xs),
               child: TextButton(
-                onPressed: enabled && !noneSelected ? onClear : null,
+                onPressed: onClear,
                 style: TextButton.styleFrom(
                   minimumSize: appControlSize,
                   padding: const EdgeInsets.symmetric(
@@ -105,6 +90,41 @@ class AppSelectionBar extends StatelessWidget {
       ),
     );
   }
+}
+
+class AppSegmentedControl<T> extends StatelessWidget {
+  const AppSegmentedControl({
+    super.key,
+    required this.options,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final Map<T, String> options;
+  final T value;
+  final ValueChanged<T>? onChanged;
+
+  @override
+  Widget build(BuildContext context) => SegmentedButton<T>(
+    expandedInsets: EdgeInsets.zero,
+    showSelectedIcon: false,
+    segments: [
+      for (final option in options.entries)
+        ButtonSegment(
+          value: option.key,
+          label: Text(
+            option.value,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+    ],
+    selected: {value},
+    onSelectionChanged: onChanged == null
+        ? null
+        : (selection) => onChanged!(selection.single),
+  );
 }
 
 /// A compact, consistently aligned row for a single checkbox choice.
@@ -152,12 +172,14 @@ class AppToggleTile extends StatelessWidget {
     required this.title,
     required this.onChanged,
     this.subtitle,
+    this.leading,
     this.enabled = true,
   });
 
   final bool value;
   final Widget title;
   final Widget? subtitle;
+  final Widget? leading;
   final ValueChanged<bool>? onChanged;
   final bool enabled;
 
@@ -170,6 +192,7 @@ class AppToggleTile extends StatelessWidget {
     minVerticalPadding: 0,
     title: title,
     subtitle: subtitle,
+    secondary: leading,
     value: value,
     onChanged: enabled ? onChanged : null,
   );

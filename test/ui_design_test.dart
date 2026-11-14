@@ -12,7 +12,7 @@ import 'support/test_app.dart';
 
 class _Store extends MemoryAgendaStore {
   @override
-  Future<List<AgendaEntry>> read() async => [
+  Future<List<AgendaEntry>> readAndMigrate() async => [
     AgendaEntry(
       id: 'ddl',
       title: '第五章作业',

@@ -1,4 +1,4 @@
-import 'package:bitree/agenda/deadline_source.dart';
+﻿import 'package:bitree/agenda/deadline_source.dart';
 import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/ui/timeline_entry.dart';
 import 'package:bitree/ui/theme.dart';

@@ -70,8 +70,9 @@ class AutomationProjection {
   factory AutomationProjection.fromResult(
     Map<String, dynamic> result,
     Iterable<SemesterSchedule> schedules,
-    Iterable<AgendaEntry> entries,
-  ) {
+    Iterable<AgendaEntry> entries, {
+    DeadlineCutoffWindow? deadlineCutoffWindow,
+  }) {
     final originals = {
       for (final schedule in schedules)
         schedule.term: {
@@ -211,20 +212,25 @@ class AutomationProjection {
           'url',
         ]);
         _checkHidden(row);
-        final projected = AgendaEntry.fromJson({
-          ...json,
-          for (final key in [
-            'title',
-            'course',
-            'location',
-            'notes',
-            'startsAt',
-            'endsAt',
-            'allDay',
-            if (original == null) 'term',
-          ])
-            if (row.containsKey(key)) key: row[key],
-        });
+        final projected =
+            AgendaEntry.fromJson({
+              ...json,
+              for (final key in [
+                'title',
+                'course',
+                'location',
+                'notes',
+                'startsAt',
+                'endsAt',
+                'allDay',
+                if (original == null) 'term',
+              ])
+                if (row.containsKey(key)) key: row[key],
+            }).withDeadlineCutoff(
+              deadlineCutoffWindow ??
+                  original?.deadlineCutoffWindow ??
+                  const DeadlineCutoffWindow(),
+            );
         if (row['hidden'] == true) continue;
         projectedEntries[id] = original == null
             ? ScriptAgendaEntry(projected)

@@ -960,7 +960,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get agendaTailDays => 'Tail length (days)';
 
   @override
-  String get agendaTailDaysHint => '1–30 days; default: 4 days';
+  String get agendaTailDaysHint => '1–30 days; per-item settings take priority';
 
   @override
   String agendaTailDaysValue(int days) {
@@ -2541,4 +2541,157 @@ class AppLocalizationsEn extends AppLocalizations {
   String releaseVersion(String channel, String version) {
     return '$channel $version';
   }
+
+  @override
+  String get settingsDeveloperOptions => 'Developer options';
+
+  @override
+  String get settingsResetDefaultDeadlineTails =>
+      'Set default tail lengths to null';
+
+  @override
+  String get settingsResetDefaultDeadlineTailsDescription =>
+      'Make all four-day DDL tails follow the global setting.';
+
+  @override
+  String settingsResetDefaultDeadlineTailsResult(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count DDLs now follow the global setting.',
+      one: '1 DDL now follows the global setting.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get agendaTime => 'Time';
+
+  @override
+  String get agendaMoreOptions => 'More options';
+
+  @override
+  String get agendaColor => 'Agenda color';
+
+  @override
+  String get agendaColorDefault => 'Default';
+
+  @override
+  String get agendaColorBlue => 'Blue';
+
+  @override
+  String get agendaColorCoral => 'Coral';
+
+  @override
+  String get agendaColorViolet => 'Violet';
+
+  @override
+  String get agendaColorGreen => 'Green';
+
+  @override
+  String get agendaColorAmber => 'Amber';
+
+  @override
+  String get agendaColorTeal => 'Teal';
+
+  @override
+  String get agendaColorRose => 'Rose';
+
+  @override
+  String get agendaColorSlate => 'Slate';
+
+  @override
+  String agendaColorCustom(String value) {
+    return 'Custom $value';
+  }
+
+  @override
+  String get agendaColorPickerTitle => 'Choose color';
+
+  @override
+  String get agendaColorPresets => 'Quick colors';
+
+  @override
+  String get agendaColorCustomSection => 'Custom color';
+
+  @override
+  String get agendaTailDaysDefault => 'Use global default';
+
+  @override
+  String get settingsDeadlineCutoff => 'Deadline cutoff window';
+
+  @override
+  String get deadlineCutoffEnabled => 'Enable daily cutoff window';
+
+  @override
+  String get deadlineCutoffDescription =>
+      'Show DDLs in this window as due at its start. Actual deadlines stay unchanged.';
+
+  @override
+  String get deadlineCutoffStart => 'Start time';
+
+  @override
+  String get deadlineCutoffEnd => 'End time';
+
+  @override
+  String get deadlineCutoffDisabled => 'Not enabled';
+
+  @override
+  String deadlineCutoffSameDay(String start, String end) {
+    return 'Daily, $start–$end';
+  }
+
+  @override
+  String deadlineCutoffOvernight(String start, String end) {
+    return 'Daily, $start to $end the next day';
+  }
+
+  @override
+  String deadlineCutoffInstant(String time) {
+    return 'Only at $time each day';
+  }
+
+  @override
+  String get deadlineCutoffBoundaryHint =>
+      'Both endpoints are included. An end before the start crosses midnight; equal times match only one instant.';
+
+  @override
+  String get deadlineCutoffPreserveHint =>
+      'Actual deadlines stay unchanged. Turning this off retains your selected start and end times.';
+
+  @override
+  String get agendaAdjustedDeadline => 'Adjusted deadline';
+
+  @override
+  String get agendaRealDeadline => 'Actual deadline';
+
+  @override
+  String agendaCutoffOriginal(String time) {
+    return 'Actual deadline: $time';
+  }
+
+  @override
+  String agendaCutoffAdjusted(String time) {
+    return 'Adjusted deadline: $time';
+  }
+
+  @override
+  String get settingsAgendaLayoutDays => 'DDL layout width';
+
+  @override
+  String get agendaLayoutDaysDescription =>
+      'Default layout width. Individual DDL tail lengths take priority.';
+
+  @override
+  String get agendaLayoutDaysUnit => 'days';
+
+  @override
+  String get agendaLayoutDaysRange => 'Enter a whole number from 1 to 30';
+
+  @override
+  String get settingsAgendaEventInfoBar => 'Event information bar';
+
+  @override
+  String get settingsAgendaEventInfoBarDescription =>
+      'Show details on the left when on, or inside event and exam boxes when off.';
 }

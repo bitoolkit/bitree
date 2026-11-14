@@ -113,8 +113,7 @@ class _VerificationDialogState extends State<_VerificationDialog> {
   Widget build(BuildContext context) {
     final sms = widget.request is SchoolSmsVerification;
     final l10n = context.l10n;
-    return AlertDialog(
-      scrollable: true,
+    return AppDialog(
       title: Text(
         sms ? l10n.schoolSmsVerification : l10n.schoolImageVerification,
       ),

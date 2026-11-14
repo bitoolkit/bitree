@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart' show ThemeMode;
 
+import '../agenda/agenda_color.dart';
 import '../agenda/calendar.dart';
 import '../agenda/deadline_clear_scope.dart';
 import '../agenda/deadline_source.dart';
@@ -7,12 +8,12 @@ import '../agenda/model.dart';
 import '../agenda/presentation.dart';
 import '../classrooms/model.dart';
 import '../core/time.dart';
-import '../mooc/controller.dart';
 import '../mooc/errors.dart';
+import '../mooc/status.dart';
 import '../schedule/model.dart';
 import '../schedule/section_times.dart';
-import '../school/controller.dart';
-import '../sync/controller.dart';
+import '../school/account_status.dart';
+import '../sync/model.dart';
 import '../updates/release.dart';
 import '../wencui/atlas.dart';
 import '../wencui/place.dart';
@@ -147,6 +148,23 @@ extension LocalizedDeadlineSource on DeadlineSource {
   };
 }
 
+extension LocalizedAgendaColor on AgendaColor {
+  String localizedLabel(AppLocalizations l10n) => switch (id) {
+    'blue' => l10n.agendaColorBlue,
+    'coral' => l10n.agendaColorCoral,
+    'violet' => l10n.agendaColorViolet,
+    'green' => l10n.agendaColorGreen,
+    'amber' => l10n.agendaColorAmber,
+    'teal' => l10n.agendaColorTeal,
+    'rose' => l10n.agendaColorRose,
+    'slate' => l10n.agendaColorSlate,
+    _ => l10n.agendaColorCustom(_colorHex(value)),
+  };
+}
+
+String _colorHex(int value) =>
+    '#${(value & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
+
 extension LocalizedDeadlineScope on DeadlineClearScope {
   String localizedLabel(AppLocalizations l10n) => switch (this) {
     DeadlineClearScope.manual => l10n.deadlineManualScope,
@@ -158,8 +176,17 @@ extension LocalizedDeadlineScope on DeadlineClearScope {
 }
 
 String localizedAgendaTime(AppLocalizations l10n, AgendaEntry entry) {
-  if (entry.allDay) return l10n.allDay;
-  if (entry.isDeadline) return l10n.dueAt(clockText(entry.startsAt));
+  if (entry.effectiveAllDay) return l10n.allDay;
+  if (entry.isDeadline) {
+    // Without a due date there is nothing to be due at; the opening time is
+    // all this entry knows.
+    if (entry.startOnly) {
+      return l10n.agendaTimelineStarts(clockText(entry.startsAt));
+    }
+    return entry.hasAdjustedDeadline
+        ? l10n.agendaCutoffAdjusted(clockText(entry.dueAt))
+        : l10n.dueAt(clockText(entry.startsAt));
+  }
   final end = entry.endsAt!;
   final endTime = calendarDate(entry.startsAt) == calendarDate(end)
       ? clockText(end)
@@ -258,7 +285,7 @@ String localizedCalendarItemTitle(AppLocalizations l10n, CalendarItem item) =>
     : localizedAgendaTitle(l10n, item.entry!);
 
 String localizedAgendaClock(AppLocalizations l10n, AgendaEntry entry) =>
-    entry.allDay ? l10n.allDay : clockText(entry.startsAt);
+    entry.effectiveAllDay ? l10n.allDay : clockText(entry.scheduledAt);
 
 String localizedAgendaTimeCaption(
   AppLocalizations l10n,
@@ -267,6 +294,9 @@ String localizedAgendaTimeCaption(
 ) {
   if (entry.isDeadline) {
     if (entry.done) return l10n.completed;
+    // Overdue is impossible without a due date, and calling the opening time
+    // a due date would be wrong.
+    if (entry.startOnly) return l10n.start;
     return entry.overdue(now) ? l10n.overdue : l10n.due;
   }
   if (entry.isFinished(now)) return l10n.ended;

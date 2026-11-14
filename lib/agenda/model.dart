@@ -1,11 +1,16 @@
 import '../core/json.dart';
 import '../core/time.dart';
+import 'agenda_color.dart';
+import 'deadline_cutoff.dart';
 import 'deadline_source.dart';
 import 'details.dart';
 
+export 'deadline_cutoff.dart';
 export 'details.dart';
 
 enum AgendaKind { event, deadline, exam }
+
+const _copyUnset = Object();
 
 /// Times use the same Beijing wall-clock convention as campusNow().
 class AgendaEntry {
@@ -25,18 +30,28 @@ class AgendaEntry {
     this.source,
     this.course = '',
     this.url,
+    this.color,
     this.details,
-    this.tailDays = defaultTailDays,
+    this.tailDays,
+    this.startOnly = false,
+    this.deadlineCutoffWindow = const DeadlineCutoffWindow(),
   }) {
     if (id.isEmpty || title.trim().isEmpty) {
       throw const FormatException('日程标题或编号缺失');
+    }
+    if (startOnly && kind != AgendaKind.deadline) {
+      throw const FormatException('只有截止日期可以只标记开放时间');
     }
     if (kind != AgendaKind.deadline &&
         (endsAt == null || !endsAt!.isAfter(startsAt))) {
       throw const FormatException('结束时间必须晚于开始时间');
     }
-    if (tailDays < 1 || tailDays > maxTailDays) {
-      throw const FormatException('拖尾长度必须为 1–30 天');
+    if (tailDays case final days?
+        when days < minTailDays || days > maxTailDays) {
+      throw FormatException('拖尾长度必须为 $minTailDays–$maxTailDays 天');
+    }
+    if (color != null && kind == AgendaKind.exam) {
+      throw const FormatException('考试颜色由状态决定');
     }
     final entryUrl = url;
     final entrySource = source;
@@ -64,6 +79,7 @@ class AgendaEntry {
   }
 
   static const defaultTailDays = 4;
+  static const minTailDays = 1;
   static const maxTailDays = 30;
 
   final String id;
@@ -81,29 +97,71 @@ class AgendaEntry {
   final DeadlineSource? source;
   final String course;
   final Uri? url;
+  final AgendaColor? color;
   final AgendaEntryDetails? details;
 
-  /// Timeline reservation in days; the painted tail leaves a quarter-day gap
-  /// at minimum zoom and keeps its screen width as the view zooms in.
-  final int tailDays;
+  /// An explicit per-entry width. Null follows the global layout-days setting.
+  final int? tailDays;
+
+  int effectiveLayoutDays(int defaultDays) =>
+      isDeadline ? tailDays ?? defaultDays : defaultDays;
+
+  /// A deadline that only knows when it opened, with no due date at all —
+  /// an open-ended quiz, for instance. It can never be overdue, and the
+  /// timeline anchors its card at [startsAt] and grows it to the right instead
+  /// of hanging a tail to the left of a due time. Labels must not present it
+  /// as due.
+  final bool startOnly;
+
+  /// Presentation-only state. It is deliberately absent from [toJson], so
+  /// changing the window or syncing can never overwrite the original deadline.
+  final DeadlineCutoffWindow deadlineCutoffWindow;
 
   bool get isDeadline => kind == AgendaKind.deadline;
 
-  DateTime get dueAt =>
+  DateTime get realDueAt =>
       allDay ? calendarDate(startsAt).add(const Duration(days: 1)) : startsAt;
 
-  bool overdue(DateTime now) => isDeadline && !done && dueAt.isBefore(now);
+  DateTime get dueAt => isDeadline && !startOnly
+      ? deadlineCutoffWindow.apply(realDueAt)
+      : realDueAt;
+
+  /// Includes a deadline exactly at the window start: its two markers still
+  /// overlap and the real marker must paint above the effective one.
+  bool get hasDeadlineCutoff =>
+      isDeadline && !startOnly && deadlineCutoffWindow.contains(realDueAt);
+
+  bool get hasAdjustedDeadline =>
+      hasDeadlineCutoff && dueAt.isBefore(realDueAt);
+
+  /// Day grouping and labels follow the derived deadline only when adjusted.
+  /// Keep unadjusted all-day entries on their original calendar date.
+  DateTime get scheduledAt => hasAdjustedDeadline ? dueAt : startsAt;
+  bool get effectiveAllDay => allDay && !hasAdjustedDeadline;
+
+  AgendaEntry withDeadlineCutoff(DeadlineCutoffWindow window) =>
+      window == deadlineCutoffWindow
+      ? this
+      : copyWith(deadlineCutoffWindow: window);
+
+  bool overdue(DateTime now) =>
+      isDeadline && !startOnly && !done && dueAt.isBefore(now);
 
   bool isFinished(DateTime now) => isDeadline ? done : !endsAt!.isAfter(now);
 
   bool occursOn(DateTime date) {
     final day = calendarDate(date);
-    if (isDeadline) return calendarDate(startsAt) == day;
+    if (isDeadline) return calendarDate(scheduledAt) == day;
     return startsAt.isBefore(day.add(const Duration(days: 1))) &&
         endsAt!.isAfter(day);
   }
 
-  AgendaEntry copyWith({bool? done, bool? deleted}) => AgendaEntry(
+  AgendaEntry copyWith({
+    bool? done,
+    bool? deleted,
+    Object? tailDays = _copyUnset,
+    DeadlineCutoffWindow? deadlineCutoffWindow,
+  }) => AgendaEntry(
     id: id,
     title: title,
     kind: kind,
@@ -119,8 +177,13 @@ class AgendaEntry {
     source: source,
     course: course,
     url: url,
+    color: color,
     details: details,
-    tailDays: tailDays,
+    tailDays: identical(tailDays, _copyUnset)
+        ? this.tailDays
+        : tailDays as int?,
+    startOnly: startOnly,
+    deadlineCutoffWindow: deadlineCutoffWindow ?? this.deadlineCutoffWindow,
   );
 
   Map<String, dynamic> toJson() => {
@@ -139,8 +202,14 @@ class AgendaEntry {
     'source': source?.name,
     'course': course,
     'url': url?.toString(),
+    'color': switch (color) {
+      AgendaColor(id: final id?) => id,
+      final value? => value.value,
+      null => null,
+    },
     'details': details?.toJson(),
     'tailDays': tailDays,
+    'startOnly': startOnly,
   };
 
   factory AgendaEntry.fromJson(Map<String, dynamic> json) {
@@ -161,6 +230,15 @@ class AgendaEntry {
     }
 
     final rawUrl = jsonStringFieldOrNull(json, 'url');
+    final rawColor = json['color'];
+    final color = switch (rawColor) {
+      null => null,
+      int value when value >= 0 && value <= 0xFFFFFFFF =>
+        AgendaColor.presetByValue(value) ?? AgendaColor(value),
+      String id =>
+        AgendaColor.presetNamed(id) ?? (throw FormatException('color 格式不正确')),
+      _ => throw FormatException('color 格式不正确'),
+    };
     final rawDetails = json['details'];
     return AgendaEntry(
       id: jsonStringField(json, 'id'),
@@ -180,7 +258,11 @@ class AgendaEntry {
       url: rawUrl == null
           ? null
           : Uri.tryParse(rawUrl) ?? (throw FormatException('url 格式不正确')),
-      tailDays: jsonIntFieldOrNull(json, 'tailDays') ?? defaultTailDays,
+      color: color,
+      tailDays: jsonIntFieldOrNull(json, 'tailDays'),
+      // Entries written before this flag existed simply had no open-ended
+      // deadlines, so a missing key means an ordinary deadline.
+      startOnly: jsonBoolField(json, 'startOnly', fallback: false),
       details: rawDetails == null
           ? null
           : AgendaEntryDetails.fromJson(jsonObject(rawDetails, 'details')),

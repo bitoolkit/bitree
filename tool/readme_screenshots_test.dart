@@ -134,7 +134,15 @@ Future<void> main() async {
     );
     await classrooms.initialize();
     await tester.pumpWidget(
-      _capture(_app(ClassroomScreen(controller: classrooms))),
+      _capture(
+        _app(
+          ClassroomScreen(
+            repository: classrooms.classroomRepository,
+            school: classrooms.school,
+            timetable: classrooms.timetable,
+          ),
+        ),
+      ),
     );
     await _pumpUi(tester);
     await _captureScreenshot(tester, 'classrooms.png');
@@ -147,7 +155,9 @@ Future<void> main() async {
     await map.initialize();
     await tester.runAsync(WencuiAtlas.load);
     await tester.pumpWidget(
-      _capture(_app(WencuiMapScreen(controller: map, initialRoom: 'F704'))),
+      _capture(
+        _app(WencuiMapScreen(timetable: map.timetable, initialRoom: 'F704')),
+      ),
     );
     await tester.runAsync(
       () => precacheImage(
@@ -652,7 +662,7 @@ class _ClassroomScreenshotController extends _ScreenshotController {
       _MockClassroomRepository(school);
 
   @override
-  ClassroomRepository get classrooms => _mockClassrooms;
+  ClassroomRepository get classroomRepository => _mockClassrooms;
 }
 
 class _MockClassroomRepository extends ClassroomRepository {

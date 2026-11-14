@@ -44,7 +44,7 @@ class AppController extends ChangeNotifier {
       agenda: agenda,
       academics: academics,
     );
-    classrooms = ClassroomRepository(this.school);
+    classroomRepository = ClassroomRepository(this.school);
     mooc = MoocController(
       storage: moocStorage ?? MoocStorage(),
       agenda: agenda,
@@ -55,13 +55,18 @@ class AppController extends ChangeNotifier {
       timetable: timetable,
       agenda: agenda,
     );
+    settings.deadlineCutoff.addListener(_updateDeadlineCutoff);
+    _updateDeadlineCutoff();
   }
+
+  void _updateDeadlineCutoff() =>
+      agenda.setDeadlineCutoff(settings.deadlineCutoff.value);
 
   final AppSettingsController settings;
   final TimetableController timetable;
   late final AutomationController automation;
   late final SchoolController school;
-  late final ClassroomRepository classrooms;
+  late final ClassroomRepository classroomRepository;
   final AgendaController agenda;
   final AcademicController academics;
   late final MoocController mooc;
@@ -85,9 +90,10 @@ class AppController extends ChangeNotifier {
   @override
   void dispose() {
     automation.dispose();
+    settings.deadlineCutoff.removeListener(_updateDeadlineCutoff);
     settings.dispose();
     sync.dispose();
-    classrooms.dispose();
+    classroomRepository.dispose();
     school.dispose();
     mooc.dispose();
     timetable.dispose();

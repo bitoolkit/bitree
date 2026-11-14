@@ -66,7 +66,7 @@ Future<TestAppController> _open(
         body: Builder(
           builder: (context) => picker == null
               ? TimetableHeader(
-                  controller: controller,
+                  controller: controller.agenda,
                   monday: mondayOf(_date),
                   now: campusNow(),
                   gutterWidth: 40,
@@ -76,7 +76,8 @@ Future<TestAppController> _open(
                   child: TextButton(
                     onPressed: () => showCalendarItems(
                       context,
-                      controller,
+                      controller.timetable,
+                      controller.agenda,
                       '选择安排',
                       picker,
                       showDates: true,

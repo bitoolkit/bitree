@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../app/controller.dart';
+import '../../automation/controller.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/design.dart';
 import '../../ui/sheet_layout.dart';
+import '../controller.dart';
 import '../model.dart';
 import 'course_colors.dart';
 import 'course_detail.dart';
@@ -14,12 +15,14 @@ class ConflictingCourses extends StatelessWidget {
     super.key,
     required this.courses,
     required this.controller,
+    this.automation,
     required this.isToday,
     this.date,
   });
 
   final List<Course> courses;
-  final AppController controller;
+  final TimetableController controller;
+  final AutomationController? automation;
   final bool isToday;
   final DateTime? date;
 
@@ -67,7 +70,13 @@ class ConflictingCourses extends StatelessWidget {
       ),
     );
     if (selected != null && context.mounted) {
-      await showCourse(context, controller, selected, date: date);
+      await showCourse(
+        context,
+        controller,
+        selected,
+        date: date,
+        automation: automation,
+      );
     }
   }
 
@@ -106,7 +115,8 @@ class ConflictingCourses extends StatelessWidget {
                     constraints.maxWidth < 20) {
                   return Tooltip(
                     message: summary,
-                    child: constraints.maxHeight < 10 || constraints.maxWidth < 10
+                    child:
+                        constraints.maxHeight < 10 || constraints.maxWidth < 10
                         ? const SizedBox.expand()
                         : FittedBox(
                             fit: BoxFit.scaleDown,
@@ -114,13 +124,17 @@ class ConflictingCourses extends StatelessWidget {
                               padding: const EdgeInsets.all(2),
                               child: Text(
                                 l10n.courseOverlapCount(courses.length),
-                                style: TextStyle(fontSize: 10, color: scheme.primary),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: scheme.primary,
+                                ),
                               ),
                             ),
                           ),
                   );
                 }
-                final showHeader = constraints.maxWidth >= 24 &&
+                final showHeader =
+                    constraints.maxWidth >= 24 &&
                     constraints.maxHeight >= 30 * scale &&
                     constraints.maxHeight >=
                         18 * scale + courses.length * 12 * scale;

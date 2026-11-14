@@ -47,7 +47,7 @@ void main() {
                 height: height,
                 child: CourseTile(
                   course: shownCourse ?? course,
-                  controller: TestAppController(),
+                  controller: TestAppController().timetable,
                   isToday: false,
                 ),
               ),
@@ -73,6 +73,7 @@ void main() {
     tester,
   ) async {
     final today = calendarDate(campusNow());
+    final controller = TestAppController();
     for (final brightness in Brightness.values) {
       for (final dayOffset in [0, 7]) {
         for (final section in [1, sectionTimes.length]) {
@@ -97,7 +98,8 @@ void main() {
                     height: 160,
                     child: CalendarBlockTile(
                       items: [CalendarItem.course(shownCourse, date)],
-                      controller: TestAppController(),
+                      timetable: controller.timetable,
+                      agenda: controller.agenda,
                       isToday: dayOffset == 0,
                     ),
                   ),

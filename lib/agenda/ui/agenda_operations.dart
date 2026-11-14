@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../app/controller.dart';
 import '../../automation/presentation.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
@@ -15,6 +14,7 @@ Future<bool> toggleAgendaDone(
   AgendaEntry entry, {
   bool haptic = true,
 }) async {
+  if (entry is ScriptGenerated) return false;
   final original = controller.entries
       .where((saved) => saved.id == entry.id)
       .firstOrNull;
@@ -28,16 +28,14 @@ Future<bool> toggleAgendaDone(
 
 Future<bool> deleteAgendaEntry(
   BuildContext context,
-  AppController controller,
+  AgendaController controller,
   AgendaEntry entry, {
   bool confirm = true,
 }) async {
   if (entry is ScriptGenerated) return false;
   final l10n = context.l10n;
   final original =
-      controller.agenda.entries
-          .where((saved) => saved.id == entry.id)
-          .firstOrNull ??
+      controller.entries.where((saved) => saved.id == entry.id).firstOrNull ??
       entry;
   final title = localizedAgendaTitle(l10n, entry);
   // The originating sheet can close while the undo action remains visible.
@@ -52,7 +50,7 @@ Future<bool> deleteAgendaEntry(
     );
     if (!confirmed) return false;
   }
-  final deleted = await controller.agenda.delete(entry);
+  final deleted = await controller.delete(entry);
   if (!overlay.mounted) return deleted;
   if (!deleted) {
     showOverlayNotice(overlay, l10n.operationDeleteFailed);
@@ -60,7 +58,7 @@ Future<bool> deleteAgendaEntry(
   }
 
   Future<void> restore() async {
-    final restored = await controller.agenda.restore(original);
+    final restored = await controller.restore(original);
     if (!overlay.mounted) return;
     if (restored) {
       showOverlayNotice(overlay, l10n.agendaRestored(title));

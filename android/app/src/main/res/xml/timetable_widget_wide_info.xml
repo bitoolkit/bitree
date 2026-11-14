@@ -10,4 +10,4 @@
     android:description="@string/widget_description"
     android:updatePeriodMillis="0"
     android:resizeMode="vertical"
-    android:widgetCategory="home_screen" />
+    android:widgetCategory="home_screen|keyguard" />

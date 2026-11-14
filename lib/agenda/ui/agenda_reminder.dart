@@ -2,11 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../app/controller.dart';
+import '../../automation/controller.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/design.dart';
+import '../controller.dart';
 import '../model.dart';
 import 'calendar_list.dart';
 
@@ -14,12 +15,14 @@ class AgendaReminder extends StatefulWidget {
   const AgendaReminder({
     super.key,
     required this.controller,
+    this.automation,
     required this.entries,
     required this.now,
     required this.active,
   });
 
-  final AppController controller;
+  final AgendaController controller;
+  final AutomationController? automation;
   final List<AgendaEntry> entries;
   final DateTime now;
   final bool active;
@@ -97,7 +100,12 @@ class _AgendaReminderState extends State<AgendaReminder>
 
   Future<void> _open() async {
     _dismiss();
-    await showAgendaDay(context, widget.controller, calendarDate(widget.now));
+    await showAgendaDay(
+      context,
+      widget.controller,
+      calendarDate(widget.now),
+      automation: widget.automation,
+    );
   }
 
   @override

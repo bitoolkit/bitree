@@ -23,8 +23,11 @@ class AgendaPresentation extends AgendaEntry {
          source: entry.source,
          course: entry.course,
          url: entry.url,
+         color: entry.color,
          details: entry.details,
          tailDays: entry.tailDays,
+         startOnly: entry.startOnly,
+         deadlineCutoffWindow: entry.deadlineCutoffWindow,
        );
 
   final String? titleOverride;

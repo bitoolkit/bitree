@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../app/controller.dart';
+import '../../automation/controller.dart';
 import '../../automation/presentation.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
@@ -14,6 +14,7 @@ import '../../wencui/place.dart';
 import '../../wencui/ui/location_card.dart';
 import '../../wencui/ui/wencui_map_screen.dart';
 import '../building_palette.dart';
+import '../controller.dart';
 import '../model.dart';
 import '../section_times.dart';
 import '../selection.dart';
@@ -22,17 +23,18 @@ import 'course_editor.dart';
 
 Future<void> showCourse(
   BuildContext context,
-  AppController controller,
+  TimetableController controller,
   Course course, {
   DateTime? date,
+  AutomationController? automation,
 }) {
   var selected = course;
-  final schedule = controller.automation.schedule;
+  final schedule = automation?.schedule ?? controller.schedule;
   final occurrence =
       date ??
       (schedule != null && course.weekday != null
           ? schedule
-                .mondayAt(controller.timetable.week)
+                .mondayAt(controller.week)
                 .add(Duration(days: course.weekday! - 1))
           : null);
   return showAppSheet<void>(
@@ -41,14 +43,12 @@ Future<void> showCourse(
       builder: (_, selectCourse) => CampusTimeBuilder(
         active: true,
         builder: (_, now) => ListenableBuilder(
-          listenable: Listenable.merge([
-            controller.timetable,
-            controller.automation,
-          ]),
+          listenable: Listenable.merge([controller, ?automation]),
           builder: (_, _) => _CourseDetails(
             controller: controller,
+            automation: automation,
             course:
-                controller.automation.schedule?.courses
+                automation?.schedule?.courses
                     .where((current) => current.id == selected.id)
                     .firstOrNull ??
                 selected,
@@ -64,7 +64,7 @@ Future<void> showCourse(
                     Navigator.of(context).push<void>(
                       MaterialPageRoute(
                         builder: (_) => WencuiMapScreen(
-                          controller: controller,
+                          timetable: controller,
                           initialCourse: selected,
                           initialOverview: true,
                         ),
@@ -85,6 +85,7 @@ Future<void> showCourse(
 class _CourseDetails extends StatelessWidget {
   const _CourseDetails({
     required this.controller,
+    required this.automation,
     required this.course,
     required this.onEdit,
     required this.onMap,
@@ -93,7 +94,8 @@ class _CourseDetails extends StatelessWidget {
     required this.onNext,
   });
 
-  final AppController controller;
+  final TimetableController controller;
+  final AutomationController? automation;
   final Course course;
   final VoidCallback onEdit;
   final VoidCallback? onMap;
@@ -119,7 +121,7 @@ class _CourseDetails extends StatelessWidget {
         : occurrence != null && !now.isBefore(occurrence.endsAt)
         ? l10n.ended
         : l10n.course;
-    final schedule = controller.automation.schedule;
+    final schedule = automation?.schedule ?? controller.schedule;
     final next = date == null || course.endSection == null || schedule == null
         ? null
         : schedule
@@ -184,7 +186,7 @@ class _CourseDetails extends StatelessWidget {
             ),
           ],
         ),
-        actions: [SheetCloseButton(enabled: !controller.timetable.busy)],
+        actions: [SheetCloseButton(enabled: !controller.busy)],
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -247,14 +249,14 @@ class _CourseDetails extends StatelessWidget {
                     color: theme.colorScheme.error.withValues(alpha: 0.4),
                   ),
                 ),
-                onPressed: controller.timetable.busy
+                onPressed: controller.busy
                     ? null
                     : () => _deleteCourse(context, controller, course),
                 icon: const Icon(Icons.delete_outline_rounded, size: 18),
                 label: Text(l10n.delete),
               ),
               primary: FilledButton(
-                onPressed: controller.timetable.busy ? null : onEdit,
+                onPressed: controller.busy ? null : onEdit,
                 child: Text(l10n.courseEditorEditTitle),
               ),
             ),
@@ -398,7 +400,7 @@ class _CopyableCourseName extends StatelessWidget {
 
 Future<void> _deleteCourse(
   BuildContext context,
-  AppController controller,
+  TimetableController controller,
   Course course,
 ) async {
   if (course is ScriptGenerated) return;
@@ -412,7 +414,7 @@ Future<void> _deleteCourse(
   );
   if (!confirmed || !context.mounted) return;
 
-  final success = await controller.timetable.deleteCourse(course);
+  final success = await controller.deleteCourse(course);
   if (!context.mounted) return;
 
   if (success) {

@@ -1,3 +1,4 @@
+import 'package:bitree/agenda/agenda_color.dart';
 import 'package:bitree/agenda/controller.dart';
 import 'package:bitree/agenda/deadline_source.dart';
 import 'package:bitree/agenda/model.dart';
@@ -111,6 +112,69 @@ end
     expect(projected.details, isA<PhysicsLabDeadlineDetails>());
     expect(projected.tailDays, 10);
   });
+
+  test(
+    'filters preserve new agenda metadata and follow cutoff changes',
+    () async {
+      final due = DateTime.utc(2026, 9, 8, 2);
+      const color = AgendaColor(0xff336699);
+      final controller = TestAppController(
+        entries: [
+          AgendaEntry(
+            id: 'due',
+            title: '作业',
+            kind: AgendaKind.deadline,
+            startsAt: due,
+            color: color,
+            tailDays: 7,
+          ),
+          AgendaEntry(
+            id: 'open',
+            title: '开放测验',
+            kind: AgendaKind.deadline,
+            startsAt: due,
+            startOnly: true,
+            color: color,
+          ),
+        ],
+      );
+        await controller.initialize();
+      await controller.automation.saveScript('''
+function filter(data)
+    for _, ddl in ipairs(data.deadlines) do ddl.title = ddl.title .. "!" end
+    table.insert(data.deadlines, {title = "临时作业", startsAt = "2026-09-08T02:00:00.000Z"})
+    return data
+end
+''');
+      const window = DeadlineCutoffWindow(enabled: true);
+      await controller.settings.setDeadlineCutoff(window);
+      await controller.automation.settled;
+      final entries = controller.automation.entries;
+      final deadline = entries.firstWhere((entry) => entry.id == 'due');
+      final opening = entries.firstWhere((entry) => entry.id == 'open');
+      expect(controller.automation.error, isNull);
+      expect(deadline.title, '作业!');
+      expect(deadline.color, color);
+      expect(deadline.tailDays, 7);
+      expect(deadline.dueAt, DateTime.utc(2026, 9, 7, 22));
+      expect(opening.startOnly, isTrue);
+      expect(opening.color, color);
+      expect(opening.scheduledAt, due);
+      expect(entries.last.dueAt, deadline.dueAt);
+      expect(
+        controller.automation.pendingOn(DateTime.utc(2026, 9, 7), now: due),
+        hasLength(2),
+      );
+
+      await controller.settings.setDeadlineCutoff(
+        window.copyWith(enabled: false),
+      );
+      await controller.automation.settled;
+      expect(controller.automation.entries.first.scheduledAt, due);
+      expect(controller.agenda.entries.first.title, '作业');
+      expect(controller.agenda.entries.first.startsAt, due);
+    },
+  );
 
   test(
     'saved filters persist, apply to every term and leave originals intact',

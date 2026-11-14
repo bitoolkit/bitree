@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 
-import '../../app/controller.dart';
+import '../../automation/controller.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
+import '../../schedule/controller.dart';
 import '../../schedule/ui/course_detail.dart';
 import '../../ui/campus_time_builder.dart';
 import '../../ui/design.dart';
 import '../../ui/sheet_layout.dart';
 import '../calendar.dart';
+import '../controller.dart';
 import '../model.dart';
 import 'agenda_detail.dart';
 import 'agenda_list_tile.dart';
@@ -22,26 +24,26 @@ IconData agendaIcon(AgendaKind kind) => switch (kind) {
 
 Future<void> showAgendaDay(
   BuildContext context,
-  AppController controller,
-  DateTime date,
-) async {
+  AgendaController controller,
+  DateTime date, {
+  AutomationController? automation,
+}) async {
   final l10n = context.l10n;
   final selected = await showAppSheet<AgendaEntry>(
     context: context,
     builder: (context) => CampusTimeBuilder(
       active: true,
       builder: (context, now) => ListenableBuilder(
-        listenable: Listenable.merge([
-          controller.agenda,
-          controller.automation,
-        ]),
+        listenable: Listenable.merge([controller, ?automation]),
         builder: (context, _) {
-          final pending = controller.automation.pendingOn(date, now: now);
+          final pending =
+              automation?.pendingOn(date, now: now) ??
+              controller.pendingOn(date, now: now);
           final completed =
-              controller.automation.entries
+              (automation?.entries ?? controller.entries)
                   .where((entry) => entry.done && entry.occursOn(date))
                   .toList()
-                ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+                ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
           Widget row(AgendaEntry entry) => AgendaListTile(
             key: ValueKey(entry.id),
             controller: controller,
@@ -100,24 +102,39 @@ Future<void> showAgendaDay(
     ),
   );
   if (selected != null && context.mounted) {
-    await showAgendaEntry(context, controller, selected);
+    await showAgendaEntry(
+      context,
+      controller,
+      selected,
+      automation: automation,
+    );
   }
 }
 
 Future<void> openCalendarItem(
   BuildContext context,
-  AppController controller,
-  CalendarItem item,
-) => item.course != null
-    ? showCourse(context, controller, item.course!, date: item.startsAt)
-    : showAgendaEntry(context, controller, item.entry!);
+  TimetableController timetable,
+  AgendaController agenda,
+  CalendarItem item, {
+  AutomationController? automation,
+}) => item.course != null
+    ? showCourse(
+        context,
+        timetable,
+        item.course!,
+        date: item.startsAt,
+        automation: automation,
+      )
+    : showAgendaEntry(context, agenda, item.entry!, automation: automation);
 
 Future<void> showCalendarItems(
   BuildContext context,
-  AppController controller,
+  TimetableController timetable,
+  AgendaController agenda,
   String title,
   List<CalendarItem> items, {
   bool showDates = false,
+  AutomationController? automation,
   String? emptyMessage,
 }) async {
   final l10n = context.l10n;
@@ -173,7 +190,13 @@ Future<void> showCalendarItems(
     ),
   );
   if (selected != null && context.mounted) {
-    await openCalendarItem(context, controller, selected);
+    await openCalendarItem(
+      context,
+      timetable,
+      agenda,
+      selected,
+      automation: automation,
+    );
   }
 }
 

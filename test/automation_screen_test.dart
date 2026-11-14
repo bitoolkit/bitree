@@ -123,13 +123,23 @@ end
         (entry) => entry.isDeadline,
       );
       final context = tester.element(find.byType(AutomationScreen));
-      final sheet = showAgendaEntry(context, controller, entry);
+      final sheet = showAgendaEntry(
+        context,
+        controller.agenda,
+        entry,
+        automation: controller.automation,
+      );
       await tester.pumpAndSettle();
       expect(find.text('脚本作业'), findsWidgets);
       expect(find.byTooltip('删除'), findsNothing);
       expect(find.byType(SheetActionBar), findsNothing);
       expect(
-        await deleteAgendaEntry(context, controller, entry, confirm: false),
+        await deleteAgendaEntry(
+          context,
+          controller.agenda,
+          entry,
+          confirm: false,
+        ),
         isFalse,
       );
       expect(controller.agenda.entries, hasLength(2));
@@ -286,7 +296,7 @@ end
                 TextButton(
                   onPressed: () => editCourse(
                     context,
-                    controller,
+                    controller.timetable,
                     course: controller.automation.schedule!.courses.single,
                   ),
                   child: const Text('课程编辑'),
@@ -294,7 +304,7 @@ end
                 TextButton(
                   onPressed: () => editAgenda(
                     context,
-                    controller,
+                    controller.agenda,
                     entry: controller.automation.entries.single,
                   ),
                   child: const Text('DDL 编辑'),

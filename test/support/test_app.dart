@@ -31,7 +31,7 @@ class MemoryScheduleStore extends ScheduleStore {
   String? selectedTerm;
 
   @override
-  Future<ScheduleLibrary> read() async =>
+  Future<ScheduleLibrary> readAndMigrate() async =>
       (selectedTerm: selectedTerm, schedules: Map.of(schedules));
 
   @override
@@ -53,7 +53,7 @@ class MemoryAgendaStore extends AgendaStore {
   MemoryAgendaStore([this.entries = const []]);
   List<AgendaEntry> entries;
   @override
-  Future<List<AgendaEntry>> read() async => entries;
+  Future<List<AgendaEntry>> readAndMigrate() async => entries;
   @override
   Future<void> write(List<AgendaEntry> entries) async =>
       this.entries = List.of(entries);
@@ -62,7 +62,7 @@ class MemoryAgendaStore extends AgendaStore {
 class MemoryAcademicStore extends AcademicStore {
   final accounts = <String, AcademicRecord>{};
   @override
-  Future<AcademicRecord> read(String account) async =>
+  Future<AcademicRecord> readAndMigrate(String account) async =>
       accounts[account] ?? const AcademicRecord();
   @override
   Future<void> write(String account, AcademicRecord record) async =>
@@ -86,6 +86,8 @@ class MemoryPreferences extends Fake implements SharedPreferencesAsync {
   Future<bool?> getBool(String key) async => _values[key] as bool?;
   @override
   Future<void> setBool(String key, bool value) async => _values[key] = value;
+  @override
+  Future<void> remove(String key) async => _values.remove(key);
 }
 
 class MemorySchoolStorage extends SchoolStorage {

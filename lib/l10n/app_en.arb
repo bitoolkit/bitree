@@ -25,19 +25,52 @@
   "automationApply": "Save and apply",
   "automationSaved": "Script saved and applied.",
   "automationExecutionTime": "Execution time: {milliseconds} ms",
-  "@automationExecutionTime": {"placeholders": {"milliseconds": {"type": "String"}}},
+  "@automationExecutionTime": {
+    "placeholders": {
+      "milliseconds": {
+        "type": "String"
+      }
+    }
+  },
   "automationResult": "Result",
   "automationFallback": "The script could not be applied. Original data is being displayed.",
   "automationRunning": "Running script…",
   "automationDisabled": "Script disabled. Original data is displayed.",
   "automationApplied": "{milliseconds}ms · {changes}",
-  "@automationApplied": {"placeholders": {"milliseconds": {"type": "String"}, "changes": {"type": "String"}}},
+  "@automationApplied": {
+    "placeholders": {
+      "milliseconds": {
+        "type": "String"
+      },
+      "changes": {
+        "type": "String"
+      }
+    }
+  },
   "automationAdded": "{count} added",
-  "@automationAdded": {"placeholders": {"count": {"type": "int"}}},
+  "@automationAdded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "automationDeleted": "{count} deleted",
-  "@automationDeleted": {"placeholders": {"count": {"type": "int"}}},
+  "@automationDeleted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "automationModified": "{count} modified",
-  "@automationModified": {"placeholders": {"count": {"type": "int"}}},
+  "@automationModified": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "automationUnchanged": "No changes",
   "automationContractTitle": "Script interface",
   "automationContract": "Define filter(data) and return a table with courses, deadlines, events and exams. Omit id to add a display item; remove items or set hidden = true to hide them. Keep existing identities and status unchanged.",
@@ -662,7 +695,7 @@
   "agendaLocationOptional": "Location (optional)",
   "agendaNotesOptional": "Notes (optional)",
   "agendaTailDays": "Tail length (days)",
-  "agendaTailDaysHint": "1–30 days; default: 4 days",
+  "agendaTailDaysHint": "1–30 days; per-item settings take priority",
   "agendaTailDaysValue": "{days, plural, =1{1 day} other{{days} days}}",
   "@agendaTailDaysValue": {
     "placeholders": {
@@ -1761,5 +1794,102 @@
         "type": "String"
       }
     }
-  }
+  },
+  "settingsDeveloperOptions": "Developer options",
+  "settingsResetDefaultDeadlineTails": "Set default tail lengths to null",
+  "settingsResetDefaultDeadlineTailsDescription": "Make all four-day DDL tails follow the global setting.",
+  "settingsResetDefaultDeadlineTailsResult": "{count, plural, =1{1 DDL now follows the global setting.} other{{count} DDLs now follow the global setting.}}",
+  "@settingsResetDefaultDeadlineTailsResult": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "agendaTime": "Time",
+  "agendaMoreOptions": "More options",
+  "agendaColor": "Agenda color",
+  "agendaColorDefault": "Default",
+  "agendaColorBlue": "Blue",
+  "agendaColorCoral": "Coral",
+  "agendaColorViolet": "Violet",
+  "agendaColorGreen": "Green",
+  "agendaColorAmber": "Amber",
+  "agendaColorTeal": "Teal",
+  "agendaColorRose": "Rose",
+  "agendaColorSlate": "Slate",
+  "agendaColorCustom": "Custom {value}",
+  "@agendaColorCustom": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "agendaColorPickerTitle": "Choose color",
+  "agendaColorPresets": "Quick colors",
+  "agendaColorCustomSection": "Custom color",
+  "agendaTailDaysDefault": "Use global default",
+  "settingsDeadlineCutoff": "Deadline cutoff window",
+  "deadlineCutoffEnabled": "Enable daily cutoff window",
+  "deadlineCutoffDescription": "Show DDLs in this window as due at its start. Actual deadlines stay unchanged.",
+  "deadlineCutoffStart": "Start time",
+  "deadlineCutoffEnd": "End time",
+  "deadlineCutoffDisabled": "Not enabled",
+  "deadlineCutoffSameDay": "Daily, {start}–{end}",
+  "@deadlineCutoffSameDay": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "deadlineCutoffOvernight": "Daily, {start} to {end} the next day",
+  "@deadlineCutoffOvernight": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "deadlineCutoffInstant": "Only at {time} each day",
+  "@deadlineCutoffInstant": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "deadlineCutoffBoundaryHint": "Both endpoints are included. An end before the start crosses midnight; equal times match only one instant.",
+  "deadlineCutoffPreserveHint": "Actual deadlines stay unchanged. Turning this off retains your selected start and end times.",
+  "agendaAdjustedDeadline": "Adjusted deadline",
+  "agendaRealDeadline": "Actual deadline",
+  "agendaCutoffOriginal": "Actual deadline: {time}",
+  "@agendaCutoffOriginal": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "agendaCutoffAdjusted": "Adjusted deadline: {time}",
+  "@agendaCutoffAdjusted": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsAgendaLayoutDays": "DDL layout width",
+  "agendaLayoutDaysDescription": "Default layout width. Individual DDL tail lengths take priority.",
+  "agendaLayoutDaysUnit": "days",
+  "agendaLayoutDaysRange": "Enter a whole number from 1 to 30",
+  "settingsAgendaEventInfoBar": "Event information bar",
+  "settingsAgendaEventInfoBarDescription": "Show details on the left when on, or inside event and exam boxes when off."
 }

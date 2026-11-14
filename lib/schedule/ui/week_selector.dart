@@ -2,30 +2,30 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../../app/controller.dart';
 import '../../core/time.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_menu_anchor.dart';
 import '../../ui/app_menu_trigger.dart';
 import '../../ui/design.dart';
+import '../controller.dart';
 
 class WeekSelector extends StatelessWidget {
   const WeekSelector({super.key, required this.controller});
 
-  final AppController controller;
+  final TimetableController controller;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
-    final schedule = controller.timetable.schedule;
+    final schedule = controller.schedule;
     final screen = MediaQuery.sizeOf(context);
     final cellSize = math.max(
       48.0,
       MediaQuery.textScalerOf(context).scale(14) * 2 + 16,
     );
     final columns = ((screen.width - 32) / (cellSize + 4)).floor().clamp(1, 5);
-    final weeks = controller.timetable.weeks;
+    final weeks = controller.weeks;
     final currentWeek = schedule?.weekAt(campusNow());
     return AppMenuAnchor(
       style: MenuStyle(
@@ -42,15 +42,15 @@ class WeekSelector extends StatelessWidget {
                   child: SizedBox.square(
                     dimension: cellSize,
                     child: Semantics(
-                      selected: controller.timetable.week == week,
+                      selected: controller.week == week,
                       child: AppMenuItemButton(
-                        onPressed: () => controller.timetable.selectWeek(week),
+                        onPressed: () => controller.selectWeek(week),
                         style: MenuItemButton.styleFrom(
                           padding: EdgeInsets.zero,
-                          backgroundColor: controller.timetable.week == week
+                          backgroundColor: controller.week == week
                               ? scheme.primary
                               : Colors.transparent,
-                          foregroundColor: controller.timetable.week == week
+                          foregroundColor: controller.week == week
                               ? scheme.onPrimary
                               : week == currentWeek
                               ? scheme.primary
@@ -60,8 +60,7 @@ class WeekSelector extends StatelessWidget {
                               : BorderSide.none,
                           textStyle: TextStyle(
                             fontWeight:
-                                controller.timetable.week == week ||
-                                    week == currentWeek
+                                controller.week == week || week == currentWeek
                                 ? FontWeight.w600
                                 : FontWeight.w400,
                           ),
@@ -85,7 +84,7 @@ class WeekSelector extends StatelessWidget {
       builder: (context, menu, isOpen) => AppMenuTrigger(
         label: schedule == null
             ? l10n.schoolWeek
-            : l10n.weekNumberCompact(controller.timetable.week),
+            : l10n.weekNumberCompact(controller.week),
         semanticsLabel: l10n.chooseWeek,
         isOpen: isOpen,
         foregroundColor: scheme.onSurface,

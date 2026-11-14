@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 
 import '../../agenda/deadline_source.dart';
-import '../../app/controller.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_page.dart';
+import '../controller.dart';
 import '../storage.dart';
 import '../verification.dart';
 import 'school_verification_dialog.dart';
 
 Future<bool?> openSchoolLogin(
   BuildContext context,
-  AppController controller, {
+  SchoolController controller, {
   DeadlineSource? source,
 }) async {
-  if (controller.school.busy) return null;
+  if (controller.busy) return null;
   return Navigator.of(context).push<bool>(
     MaterialPageRoute(
       builder: (_) => _SchoolScreen(controller: controller, source: source),
@@ -24,7 +24,7 @@ Future<bool?> openSchoolLogin(
 class _SchoolScreen extends StatefulWidget {
   const _SchoolScreen({required this.controller, this.source});
 
-  final AppController controller;
+  final SchoolController controller;
   final DeadlineSource? source;
 
   @override
@@ -34,7 +34,7 @@ class _SchoolScreen extends StatefulWidget {
 class _SchoolScreenState extends State<_SchoolScreen> {
   final _form = GlobalKey<FormState>();
   late final _username = TextEditingController(
-    text: widget.controller.school.username,
+    text: widget.controller.username,
   );
   final _password = TextEditingController();
   bool _running = false;
@@ -50,14 +50,13 @@ class _SchoolScreenState extends State<_SchoolScreen> {
     Future<String?> verify(SchoolVerification request) =>
         verifySchoolLogin(context, request);
     try {
-      final signedIn = await controller.school.signIn(
+      final signedIn = await controller.signIn(
         SchoolCredentials(username: _username.text, password: _password.text),
         verify,
         source: widget.source,
       );
       if (!mounted) return;
       if (!signedIn) return;
-      _password.clear();
       _running = false;
       Navigator.of(context).pop(true);
     } finally {
@@ -67,7 +66,7 @@ class _SchoolScreenState extends State<_SchoolScreen> {
 
   @override
   void dispose() {
-    if (_running) widget.controller.school.cancel();
+    if (_running) widget.controller.cancel();
     _username.dispose();
     _password.dispose();
     super.dispose();
@@ -99,7 +98,7 @@ class _SchoolScreenState extends State<_SchoolScreen> {
           TextFormField(
             controller: _username,
             enabled: !_running,
-            readOnly: widget.controller.school.username != null,
+            readOnly: widget.controller.username != null,
             decoration: InputDecoration(
               labelText: context.l10n.schoolStudentId,
             ),
@@ -116,7 +115,7 @@ class _SchoolScreenState extends State<_SchoolScreen> {
           TextFormField(
             controller: _password,
             enabled: !_running,
-            autofocus: widget.controller.school.username != null,
+            autofocus: widget.controller.username != null,
             obscureText: _hidePassword,
             decoration: InputDecoration(
               labelText: context.l10n.schoolPassword,

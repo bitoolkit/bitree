@@ -183,9 +183,10 @@ class _CourseWeekPickerState extends State<CourseWeekPicker> {
           selectedCount: selectedCount,
           totalCount: weeks.length,
           summary: l10n.selectedItems(selectedCount),
-          enabled: enabled,
-          onSelectAll: () => onChanged(weeks.toSet()),
-          onClear: () => onChanged({}),
+          onToggleAll: enabled
+              ? (selected) => onChanged(selected ? weeks.toSet() : {})
+              : null,
+          onClear: enabled && selectedCount > 0 ? () => onChanged({}) : null,
         ),
         if (hasSummerWeeks || hasRegularWeeks) ...[
           const SizedBox(height: AppSpacing.sm),

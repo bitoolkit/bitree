@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 
-import '../../app/controller.dart';
+import '../../automation/controller.dart';
 import '../../automation/presentation.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_notice.dart';
 import '../../ui/swipe_action_tile.dart';
+import '../controller.dart';
 import '../model.dart';
 import 'agenda_detail.dart';
 import 'agenda_operations.dart';
 import 'calendar_list.dart';
 import 'completion_text.dart';
+import 'timeline_colors.dart';
 
 class AgendaListTile extends StatelessWidget {
   const AgendaListTile({
@@ -20,19 +22,17 @@ class AgendaListTile extends StatelessWidget {
     required this.entry,
     required this.now,
     this.onTap,
+    this.automation,
   });
 
-  final AppController controller;
+  final AgendaController controller;
   final AgendaEntry entry;
   final DateTime now;
   final VoidCallback? onTap;
+  final AutomationController? automation;
 
   Future<bool> _complete(BuildContext context, {bool haptic = false}) async {
-    final saved = await toggleAgendaDone(
-      controller.agenda,
-      entry,
-      haptic: haptic,
-    );
+    final saved = await toggleAgendaDone(controller, entry, haptic: haptic);
     if (!saved && context.mounted) {
       showAppNotice(context, context.l10n.operationSaveFailed);
     }
@@ -50,13 +50,20 @@ class AgendaListTile extends StatelessWidget {
       else if (entry.source != null)
         entry.source!.localizedLabel(l10n),
       if (entry.location.isNotEmpty) entry.location,
+      if (entry.hasAdjustedDeadline)
+        l10n.agendaCutoffOriginal(
+          localizedAgendaDateTime(l10n, entry.realDueAt),
+        ),
     ].join('  ');
     final description = localizedAgendaNotes(l10n, entry).trim();
     final hasDetails = description.isNotEmpty || subtitle.isNotEmpty;
+    final entryColors = entry.kind == AgendaKind.exam
+        ? null
+        : agendaTimelineColors(context, entry, now);
     final dueToday =
         entry.isDeadline &&
         !entry.done &&
-        calendarDate(entry.startsAt) == calendarDate(now);
+        calendarDate(entry.scheduledAt) == calendarDate(now);
     final timeColor = entry.overdue(now)
         ? scheme.error
         : dueToday
@@ -69,7 +76,7 @@ class AgendaListTile extends StatelessWidget {
         border: Border(bottom: BorderSide(color: scheme.outlineVariant)),
       ),
       child: SwipeActionTile(
-        enabled: !controller.agenda.busy && entry is! ScriptGenerated,
+        enabled: !controller.busy && entry is! ScriptGenerated,
         leftAction: TileSwipeAction(
           label: l10n.agendaSwipeDelete,
           releaseLabel: l10n.agendaSwipeDeleteRelease,
@@ -97,7 +104,14 @@ class AgendaListTile extends StatelessWidget {
           type: MaterialType.transparency,
           child: InkWell(
             hoverColor: Colors.transparent,
-            onTap: onTap ?? () => showAgendaEntry(context, controller, entry),
+            onTap:
+                onTap ??
+                () => showAgendaEntry(
+                  context,
+                  controller,
+                  entry,
+                  automation: automation,
+                ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
@@ -116,8 +130,7 @@ class AgendaListTile extends StatelessWidget {
                               value: entry.done,
                               shape: const CircleBorder(),
                               onChanged:
-                                  controller.agenda.busy ||
-                                      entry is ScriptGenerated
+                                  controller.busy || entry is ScriptGenerated
                                   ? null
                                   : (_) => _complete(context, haptic: true),
                             ),
@@ -129,6 +142,22 @@ class AgendaListTile extends StatelessWidget {
                           ),
                   ),
                   const SizedBox(width: 4),
+                  if (entryColors != null) ...[
+                    Tooltip(
+                      message: l10n.agendaColor,
+                      child: Container(
+                        key: ValueKey(('agenda-color', entry.id)),
+                        width: 9,
+                        height: 9,
+                        margin: const EdgeInsets.only(top: 8),
+                        decoration: BoxDecoration(
+                          color: entryColors.accent,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

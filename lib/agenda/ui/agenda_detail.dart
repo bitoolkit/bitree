@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../app/controller.dart';
+import '../../automation/controller.dart';
 import '../../automation/presentation.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
@@ -8,27 +8,30 @@ import '../../l10n/l10n.dart';
 import '../../ui/app_notice.dart';
 import '../../ui/external_link.dart';
 import '../../ui/sheet_layout.dart';
+import '../controller.dart';
 import '../model.dart';
 import 'agenda_editor.dart';
 import 'agenda_operations.dart';
 import 'completion_text.dart';
+import 'timeline_colors.dart';
 
 Future<void> showAgendaEntry(
   BuildContext pageContext,
-  AppController controller,
-  AgendaEntry entry,
-) => showAppSheet<void>(
+  AgendaController controller,
+  AgendaEntry entry, {
+  AutomationController? automation,
+}) => showAppSheet<void>(
   context: pageContext,
   builder: (sheetContext) => ListenableBuilder(
-    listenable: Listenable.merge([controller.agenda, controller.automation]),
+    listenable: Listenable.merge([controller, ?automation]),
     builder: (context, _) {
       final l10n = context.l10n;
       // Keep the closing sheet readable after its entry has been deleted.
       final current =
-          controller.automation.entries
+          automation?.entries
               .where((value) => value.id == entry.id)
               .firstOrNull ??
-          controller.agenda.entries
+          controller.entries
               .where((value) => value.id == entry.id)
               .firstOrNull ??
           entry;
@@ -101,7 +104,7 @@ Future<void> showAgendaEntry(
             if (current is! ScriptGenerated)
               IconButton(
                 tooltip: l10n.delete,
-                onPressed: controller.agenda.busy
+                onPressed: controller.busy
                     ? null
                     : () async {
                         if (await deleteAgendaEntry(
@@ -200,7 +203,7 @@ Future<void> showAgendaEntry(
             : current.isDeadline
             ? SheetActionBar.split(
                 leading: TextButton.icon(
-                  onPressed: controller.agenda.busy ? null : edit,
+                  onPressed: controller.busy ? null : edit,
                   icon: const Icon(Icons.edit_outlined, size: 18),
                   label: Text(l10n.edit),
                 ),
@@ -211,11 +214,11 @@ Future<void> showAgendaEntry(
                           foregroundColor: scheme.onSecondaryContainer,
                         )
                       : null,
-                  onPressed: controller.agenda.busy
+                  onPressed: controller.busy
                       ? null
                       : () async {
                           final saved = await toggleAgendaDone(
-                            controller.agenda,
+                            controller,
                             current,
                           );
                           if (!saved && context.mounted) {
@@ -236,7 +239,7 @@ Future<void> showAgendaEntry(
               )
             : SheetActionBar.primary(
                 primary: FilledButton.icon(
-                  onPressed: controller.agenda.busy ? null : edit,
+                  onPressed: controller.busy ? null : edit,
                   icon: const Icon(Icons.edit_outlined, size: 18),
                   label: Text(l10n.edit),
                 ),
@@ -258,24 +261,39 @@ class _EntryTime extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final color = entry.overdue(now) ? scheme.error : scheme.onSurface;
-    final time = entry.isDeadline
-        ? entry.allDay
-              ? l10n.agendaDueBeforeEndOfDay
-              : clockText(entry.startsAt)
-        : localizedAgendaTime(l10n, entry);
-    final lastDay = entry.allDay && !entry.isDeadline
+    final displayedAt = entry.scheduledAt;
+    final allDay = entry.effectiveAllDay;
+    final accent = entry.overdue(now)
+        ? null
+        : agendaTimelineColors(context, entry, now).accent;
+    // An open-ended deadline has no due date: it reads like a timed entry and
+    // is labelled as opening rather than as due.
+    final String time;
+    if (!entry.isDeadline) {
+      time = localizedAgendaTime(l10n, entry);
+    } else if (entry.startOnly) {
+      time = allDay ? l10n.allDay : clockText(displayedAt);
+    } else {
+      time = allDay ? l10n.agendaDueBeforeEndOfDay : clockText(displayedAt);
+    }
+    final timeLabel = entry.hasAdjustedDeadline
+        ? l10n.agendaAdjustedDeadline
+        : entry.startOnly
+        ? l10n.start
+        : l10n.due;
+    final lastDay = allDay && !entry.isDeadline
         ? entry.endsAt!.subtract(const Duration(days: 1))
-        : entry.startsAt;
-    final date = calendarDate(lastDay) == calendarDate(entry.startsAt)
-        ? localizedAgendaDate(l10n, entry.startsAt)
-        : '${localizedAgendaDate(l10n, entry.startsAt)} – '
+        : displayedAt;
+    final date = calendarDate(lastDay) == calendarDate(displayedAt)
+        ? localizedAgendaDate(l10n, displayedAt)
+        : '${localizedAgendaDate(l10n, displayedAt)} – '
               '${localizedAgendaDate(l10n, lastDay)}';
 
     return DecoratedBox(
       decoration: BoxDecoration(
         border: Border(
           left: BorderSide(
-            color: entry.overdue(now) ? scheme.error : scheme.primary,
+            color: entry.overdue(now) ? scheme.error : accent ?? scheme.primary,
             width: 3,
           ),
         ),
@@ -296,21 +314,32 @@ class _EntryTime extends StatelessWidget {
               TextSpan(
                 children: [
                   TextSpan(text: time),
-                  if (entry.isDeadline && !entry.allDay)
+                  if (entry.isDeadline && !allDay)
                     TextSpan(
-                      text: '  ${l10n.due}',
+                      text: '  $timeLabel',
                       style: theme.textTheme.bodyMedium?.copyWith(color: color),
                     ),
                 ],
               ),
               style: theme.textTheme.headlineSmall?.copyWith(
-                fontSize: entry.isDeadline && !entry.allDay ? 30 : 22,
+                fontSize: entry.isDeadline && !allDay ? 30 : 22,
                 height: 1.25,
                 fontWeight: FontWeight.w500,
                 color: color,
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
+            if (entry.hasAdjustedDeadline) ...[
+              const SizedBox(height: 12),
+              Text(
+                l10n.agendaCutoffOriginal(
+                  localizedAgendaDateTime(l10n, entry.realDueAt),
+                ),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ],
         ),
       ),

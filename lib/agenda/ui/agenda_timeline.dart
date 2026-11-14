@@ -11,11 +11,47 @@ import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../model.dart';
 import '../timeline_layout.dart';
+import 'adjusted_deadline_painter.dart';
 import 'agenda_detail.dart';
+import 'event_timeline_entry.dart';
+import 'timeline_caption.dart';
 import 'timeline_entry.dart';
+
+part 'agenda_timeline_painters.dart';
 
 const _microsecondsPerHour = Duration.microsecondsPerSecond * 3600;
 const _minimumEventWidth = 2.0;
+
+/// Keep genuine user overscroll, but retire an in-range position immediately
+/// when filtering or resizing makes its old content range invalid.
+class _TimelineScrollPhysics extends BouncingScrollPhysics {
+  const _TimelineScrollPhysics({super.parent});
+
+  @override
+  _TimelineScrollPhysics applyTo(ScrollPhysics? ancestor) =>
+      _TimelineScrollPhysics(parent: buildParent(ancestor));
+
+  @override
+  double adjustPositionForNewDimensions({
+    required ScrollMetrics oldPosition,
+    required ScrollMetrics newPosition,
+    required bool isScrolling,
+    required double velocity,
+  }) {
+    if (newPosition.maxScrollExtent < oldPosition.maxScrollExtent &&
+        !oldPosition.outOfRange) {
+      return newPosition.pixels
+          .clamp(newPosition.minScrollExtent, newPosition.maxScrollExtent)
+          .toDouble();
+    }
+    return super.adjustPositionForNewDimensions(
+      oldPosition: oldPosition,
+      newPosition: newPosition,
+      isScrolling: isScrolling,
+      velocity: velocity,
+    );
+  }
+}
 
 /// A viewport-sized timeline: panning changes a date, not a giant scroll offset.
 class AgendaTimeline extends StatefulWidget {
@@ -24,6 +60,7 @@ class AgendaTimeline extends StatefulWidget {
     required this.controller,
     required this.entries,
     required this.now,
+    this.filter = (kind: null, term: null),
     this.active = true,
     this.visible = true,
   });
@@ -31,6 +68,9 @@ class AgendaTimeline extends StatefulWidget {
   final AppController controller;
   final List<AgendaEntry> entries;
   final DateTime now;
+
+  /// Changing filters resets the vertical range, without changing the date.
+  final ({AgendaKind? kind, String? term}) filter;
 
   /// Reset the date on page re-entry, not when changing list/timeline mode.
   final bool active;
@@ -46,41 +86,71 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     with TickerProviderStateMixin {
   final ScrollController _lanes = ScrollController();
   late final AnimationController _horizontalFling;
-  late final AnimationController _verticalFling;
+  Drag? _verticalDrag;
+  ScrollHoldController? _verticalHold;
+  double? _lastContentExtent;
+  double? _lastViewportHeight;
   double _lastHorizontal = 0;
-  double _lastVertical = 0;
   double _flingPixelsPerHour = 1;
   bool _gestureHadMultiplePointers = false;
   bool _gestureScaled = false;
   bool _gestureTrackpad = false;
   final Set<int> _downPointers = <int>{};
   final Set<int> _panZoomPointers = <int>{};
-  late DateTime _center;
+  late final ValueNotifier<DateTime> _visibleCenter;
+  DateTime get _center => _visibleCenter.value;
   double _zoom = 1;
   double _gestureZoom = 1;
   int _gesturePointers = 0;
   DateTime? _gestureAnchor;
   List<AgendaEntry>? _cachedEntries;
+  DeadlineCutoffWindow? _cachedCutoff;
+  int? _cachedLayoutDays;
+  bool? _cachedEventInfoBar;
   Duration? _cachedMinimumEventSpan;
+  Duration? _cachedDeadlineCardSpan;
+  double? _cachedZoom;
+  AgendaTimelineLayout? _laneLayout;
   List<AgendaTimelinePlacement> _cachedPlacements = const [];
-  final Map<String, DateTime> _nextStartById = {};
+  final Map<String, AgendaTimelineEntry> _plainCards = {};
 
-  List<AgendaTimelinePlacement> _layout(Duration minimumEventSpan) {
+  _TimelineText? _gridText;
+  late double _fontScale;
+  late double _headerHeight;
+  late double _laneHeight;
+
+  List<AgendaTimelinePlacement> _layout(
+    Duration minimumEventSpan,
+    Duration deadlineCardSpan,
+  ) {
+    final cutoff = widget.controller.settings.deadlineCutoff.value;
+    final layoutDays = widget.controller.settings.agendaLayoutDays.value;
+    final eventInfoBar = widget.controller.settings.agendaEventInfoBar.value;
     if (!identical(_cachedEntries, widget.entries) ||
-        _cachedMinimumEventSpan != minimumEventSpan) {
+        _cachedCutoff != cutoff ||
+        _cachedLayoutDays != layoutDays ||
+        _cachedEventInfoBar != eventInfoBar ||
+        _cachedMinimumEventSpan != minimumEventSpan ||
+        _cachedDeadlineCardSpan != deadlineCardSpan) {
       _cachedEntries = widget.entries;
+      _cachedCutoff = cutoff;
+      _cachedLayoutDays = layoutDays;
+      _cachedEventInfoBar = eventInfoBar;
       _cachedMinimumEventSpan = minimumEventSpan;
-      _cachedPlacements = layoutAgendaTimeline(
-        widget.entries,
+      _cachedDeadlineCardSpan = deadlineCardSpan;
+      _cachedZoom = null;
+      _plainCards.clear();
+      _laneLayout = AgendaTimelineLayout(
+        widget.entries.map((entry) => entry.withDeadlineCutoff(cutoff)),
         minimumEventSpan: minimumEventSpan,
+        deadlineCardSpan: deadlineCardSpan,
+        layoutDays: layoutDays,
+        reserveEventInformation: eventInfoBar,
       );
-      _nextStartById.clear();
-      final nextByLane = <int, DateTime>{};
-      for (final placement in _cachedPlacements.reversed) {
-        final next = nextByLane[placement.lane];
-        if (next != null) _nextStartById[placement.entry.id] = next;
-        nextByLane[placement.lane] = placement.start;
-      }
+    }
+    if (_cachedZoom != _zoom) {
+      _cachedZoom = _zoom;
+      _cachedPlacements = _laneLayout!.atZoom(_zoom);
     }
     return _cachedPlacements;
   }
@@ -88,109 +158,184 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   @override
   void initState() {
     super.initState();
-    _center = calendarDate(widget.now).add(const Duration(hours: 12));
-    _lanes.addListener(_laneChanged);
+    _visibleCenter = ValueNotifier(
+      calendarDate(widget.now).add(const Duration(hours: 12)),
+    );
+    widget.controller.settings.deadlineCutoff.addListener(_settingsChanged);
+    widget.controller.settings.agendaLayoutDays.addListener(_settingsChanged);
+    widget.controller.settings.agendaEventInfoBar.addListener(_settingsChanged);
     _horizontalFling = AnimationController.unbounded(vsync: this)
       ..addListener(_tickHorizontal);
-    _verticalFling = AnimationController.unbounded(vsync: this)
-      ..addListener(_tickVertical);
   }
 
-  void _stopMotion() {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final theme = Theme.of(context);
+    final textScaler = MediaQuery.textScalerOf(context);
+    _fontScale = math.max(1.0, textScaler.scale(14) / 14);
+    final baseStyle =
+        theme.textTheme.labelMedium ?? const TextStyle(fontSize: 12);
+    final headerStyle = baseStyle.copyWith(
+      fontSize: (baseStyle.fontSize ?? 12) * 5 / 6,
+      height: 1,
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    _gridText?.dispose();
+    _gridText = _TimelineText(headerStyle, textScaler);
+
+    double textHeight(double fontSize, double height) {
+      final measure = TextPainter(
+        text: TextSpan(
+          text: '${context.l10n.agendaTitle} Ag',
+          style: TextStyle(fontSize: fontSize, height: height),
+        ),
+        textScaler: textScaler,
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final result = measure.height;
+      measure.dispose();
+      return result;
+    }
+
+    _headerHeight = math.max(
+      24.0 * _fontScale,
+      textHeight(headerStyle.fontSize!, 1) * 2 + 4,
+    );
+    _laneHeight =
+        math.max(
+          56.0 * _fontScale,
+          textHeight(14, 1.2) +
+              math.max(textHeight(12, 1.2) * 2, 13 * _fontScale) +
+              10,
+        ) +
+        12;
+  }
+
+  void _stopMotion({bool holdVertical = false}) {
     _horizontalFling.stop();
-    _verticalFling.stop();
+    final drag = _verticalDrag;
+    _verticalDrag = null;
+    drag?.cancel();
+    if (_lanes.hasClients && _verticalHold == null) {
+      _verticalHold = _lanes.position.hold(() => _verticalHold = null);
+    }
+    if (!holdVertical) _releaseVerticalHold();
+  }
+
+  void _releaseVerticalHold() {
+    final hold = _verticalHold;
+    _verticalHold = null;
+    hold?.cancel();
   }
 
   void _tickHorizontal() {
     final delta = _horizontalFling.value - _lastHorizontal;
     _lastHorizontal = _horizontalFling.value;
     if (!mounted || !widget.active || !widget.visible) return;
-    setState(() {
-      _center = _center.subtract(
-        Duration(
-          microseconds: (delta / _flingPixelsPerHour * _microsecondsPerHour)
-              .round(),
-        ),
-      );
-    });
+    _visibleCenter.value = _center.subtract(
+      Duration(
+        microseconds: (delta / _flingPixelsPerHour * _microsecondsPerHour)
+            .round(),
+      ),
+    );
   }
 
-  void _tickVertical() {
-    final delta = _verticalFling.value - _lastVertical;
-    _lastVertical = _verticalFling.value;
-    if (!_lanes.hasClients || !widget.active || !widget.visible) {
-      _verticalFling.stop();
-      return;
-    }
-    final target = _lanes.offset - delta;
-    _scrollLanes(-delta);
-    if (target <= 0 || target >= _lanes.position.maxScrollExtent) {
-      _verticalFling.stop();
-    }
-  }
+  bool get _canFling =>
+      widget.active &&
+      widget.visible &&
+      !_gestureHadMultiplePointers &&
+      !_gestureScaled &&
+      !_gestureTrackpad;
 
   void _startFling(Offset velocity, double pixelsPerHour) {
-    if (!widget.active ||
-        !widget.visible ||
-        _gestureHadMultiplePointers ||
-        _gestureScaled ||
-        _gestureTrackpad) {
-      return;
-    }
+    if (!_canFling) return;
     _flingPixelsPerHour = pixelsPerHour;
-    // Framework friction supplies both axes; only the viewport/date is moved.
+    // Vertical flings and edge springs belong to the ScrollPosition.
     if (velocity.dx.abs() >= 50) {
       _lastHorizontal = 0;
       _horizontalFling.value = 0;
       _horizontalFling.animateWith(FrictionSimulation(0.135, 0, velocity.dx));
-    }
-    if (velocity.dy.abs() >= 50 && _lanes.hasClients) {
-      _lastVertical = 0;
-      _verticalFling.value = 0;
-      _verticalFling.animateWith(FrictionSimulation(0.135, 0, velocity.dy));
     }
   }
 
   @override
   void didUpdateWidget(covariant AgendaTimeline oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.settings.deadlineCutoff.removeListener(
+        _settingsChanged,
+      );
+      oldWidget.controller.settings.agendaLayoutDays.removeListener(
+        _settingsChanged,
+      );
+      oldWidget.controller.settings.agendaEventInfoBar.removeListener(
+        _settingsChanged,
+      );
+      widget.controller.settings.deadlineCutoff.addListener(_settingsChanged);
+      widget.controller.settings.agendaLayoutDays.addListener(_settingsChanged);
+      widget.controller.settings.agendaEventInfoBar.addListener(
+        _settingsChanged,
+      );
+      _cachedEntries = null;
+    }
+    if (oldWidget.filter != widget.filter) {
+      _cachedEntries = null;
+    }
     if (oldWidget.visible != widget.visible) {
-      _stopMotion();
+      _stopMotion(holdVertical: true);
       _gestureAnchor = null;
       _downPointers.clear();
       _panZoomPointers.clear();
     }
     if (oldWidget.active != widget.active) {
-      _stopMotion();
+      _stopMotion(holdVertical: true);
       _gestureAnchor = null;
       _downPointers.clear();
       _panZoomPointers.clear();
       if (widget.active) {
-        _center = calendarDate(widget.now).add(const Duration(hours: 12));
+        _visibleCenter.value = calendarDate(widget.now)
+            .add(const Duration(hours: 12));
       }
     }
+    if (widget.active &&
+        widget.visible &&
+        (oldWidget.active != widget.active ||
+            oldWidget.visible != widget.visible)) {
+      _releaseVerticalHold();
+    }
+  }
+
+  void _settingsChanged() {
+    if (!mounted) return;
+    _stopMotion();
+    setState(() => _cachedEntries = null);
   }
 
   @override
   void deactivate() {
-    _stopMotion();
+    _stopMotion(holdVertical: true);
     _gestureAnchor = null;
     _downPointers.clear();
     _panZoomPointers.clear();
     super.deactivate();
   }
 
-  void _laneChanged() {
-    if (mounted) setState(() {});
-  }
-
   @override
   void dispose() {
-    _stopMotion();
+    _stopMotion(holdVertical: true);
+    widget.controller.settings.deadlineCutoff.removeListener(_settingsChanged);
+    widget.controller.settings.agendaLayoutDays.removeListener(
+      _settingsChanged,
+    );
+    widget.controller.settings.agendaEventInfoBar.removeListener(
+      _settingsChanged,
+    );
     _horizontalFling.dispose();
-    _verticalFling.dispose();
-    _lanes.removeListener(_laneChanged);
+    _releaseVerticalHold();
     _lanes.dispose();
+    _visibleCenter.dispose();
+    _gridText?.dispose();
     super.dispose();
   }
 
@@ -203,35 +348,28 @@ class _AgendaTimelineState extends State<AgendaTimeline>
 
   void _scrollLanes(double delta) {
     if (!_lanes.hasClients) return;
-    _lanes.jumpTo(
-      (_lanes.offset + delta)
-          .clamp(0.0, _lanes.position.maxScrollExtent)
-          .toDouble(),
-    );
+    _releaseVerticalHold();
+    _lanes.position.pointerScroll(delta);
   }
 
   void _zoomAt(double zoom, double x, double width, double baseline) {
     _stopMotion();
-    final anchor = _timeAt(x, width, baseline * _zoom);
     final next = zoom.clamp(1.0, 24.0).toDouble();
-    setState(() {
-      _zoom = next;
-      _center = anchor.subtract(
-        Duration(
-          microseconds:
-              ((x - width / 2) / (baseline * next) * _microsecondsPerHour)
-                  .round(),
-        ),
-      );
-    });
+    if (next == _zoom) return;
+    final anchor = _timeAt(x, width, baseline * _zoom);
+    setState(() => _zoom = next);
+    _visibleCenter.value = anchor.subtract(
+      Duration(
+        microseconds:
+            ((x - width / 2) / (baseline * next) * _microsecondsPerHour)
+                .round(),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final textScaler = MediaQuery.textScalerOf(context);
-    final fontScale = math.max(1.0, textScaler.scale(14) / 14);
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
@@ -244,86 +382,37 @@ class _AgendaTimelineState extends State<AgendaTimeline>
             : _zoom == 24
             ? l10n.agendaTimelineOneHour
             : l10n.agendaTimelineHours(hoursPerCell.toStringAsFixed(1));
-        double textHeight(double fontSize, double height) {
-          final measure = TextPainter(
-            text: TextSpan(
-              text: '${l10n.agendaTitle} Ag',
-              style: TextStyle(fontSize: fontSize, height: height),
-            ),
-            textScaler: textScaler,
-            textDirection: TextDirection.ltr,
-          )..layout();
-          final result = measure.height;
-          measure.dispose();
-          return result;
-        }
-
-        final baseHeaderStyle =
-            theme.textTheme.labelMedium ?? const TextStyle(fontSize: 12);
-        final headerStyle = baseHeaderStyle.copyWith(
-          fontSize: (baseHeaderStyle.fontSize ?? 12) * 5 / 6,
-          height: 1,
-        );
-        final headerHeight = math.max(
-          24.0 * fontScale,
-          textHeight(headerStyle.fontSize!, 1) * 2 + 4,
-        );
-        final barHeight = math.max(
-          56.0 * fontScale,
-          textHeight(14, 1.2) +
-              math.max(textHeight(12, 1.2) * 2, 13 * fontScale) +
-              10,
-        );
-        final laneHeight = barHeight + 12;
-        // Keep the tail a quarter baseline day inside its reservation.
-        // Width is set by the MINIMUM zoom, never by the current zoom.
-        double deadlineWidth(AgendaEntry entry) =>
-            cellWidth * (entry.tailDays - 0.25);
-        Duration deadlineDuration(AgendaEntry entry) => Duration(
-          microseconds:
-              (deadlineWidth(entry) / pixelsPerHour * _microsecondsPerHour)
-                  .ceil(),
+        final deadlineCardWidth =
+            cellWidth *
+            (widget.controller.settings.agendaLayoutDays.value - .25);
+        final deadlineCardSpan = Duration(
+          microseconds: (deadlineCardWidth / baseline * _microsecondsPerHour)
+              .ceil(),
         );
         final minimumEventSpan = Duration(
           // The visual floor is fixed and does not scale with accessibility text.
-          microseconds:
-              (_minimumEventWidth / pixelsPerHour * _microsecondsPerHour)
-                  .ceil(),
+          microseconds: (_minimumEventWidth / baseline * _microsecondsPerHour)
+              .ceil(),
         );
-        final placements = _layout(minimumEventSpan);
-        final left = _timeAt(0, width, pixelsPerHour);
-        final right = _timeAt(width, width, pixelsPerHour);
-        final painter = _TimelineGridPainter(
-          center: _center,
-          now: widget.now,
-          pixelsPerHour: pixelsPerHour,
-          cellWidth: cellWidth,
-          scheme: theme.colorScheme,
-          textStyle: headerStyle,
-          textScaler: textScaler,
-          header: true,
-          l10n: l10n,
-        );
+        final placements = _layout(minimumEventSpan, deadlineCardSpan);
 
-        return Listener(
-          onPointerDown: (_) => _stopMotion(),
-          onPointerSignal: (event) {
-            if (event is PointerScrollEvent) _stopMotion();
-          },
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Listener(
+              onPointerDown: (_) => _stopMotion(),
+              onPointerSignal: (event) {
+                if (event is PointerScrollEvent) _stopMotion();
+              },
+              child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(
                   children: [
                     TextButton.icon(
                       onPressed: () {
                         _stopMotion();
-                        setState(() {
-                          _center = calendarDate(widget.now)
-                              .add(const Duration(hours: 12));
-                        });
+                        _visibleCenter.value = calendarDate(widget.now)
+                            .add(const Duration(hours: 12));
                       },
                       icon: const Icon(Icons.today_outlined, size: 18),
                       label: Text(l10n.today),
@@ -345,286 +434,357 @@ class _AgendaTimelineState extends State<AgendaTimeline>
                   ],
                 ),
               ),
-              Expanded(
-                child: Listener(
-                  onPointerDown: (event) {
-                    _stopMotion();
-                    if (_downPointers.isEmpty) {
-                      _gestureHadMultiplePointers = false;
-                    }
-                    _downPointers.add(event.pointer);
-                    if (_downPointers.length > 1) {
-                      _gestureHadMultiplePointers = true;
-                    }
-                  },
-                  onPointerUp: (event) => _downPointers.remove(event.pointer),
-                  onPointerCancel: (event) {
-                    _downPointers.remove(event.pointer);
-                    _panZoomPointers.remove(event.pointer);
+            ),
+            Expanded(
+              child: Listener(
+                onPointerDown: (event) {
+                  _stopMotion(holdVertical: true);
+                  if (_downPointers.isEmpty) {
+                    _gestureHadMultiplePointers = false;
+                  }
+                  _downPointers.add(event.pointer);
+                  if (_downPointers.length > 1) {
                     _gestureHadMultiplePointers = true;
-                    _stopMotion();
-                  },
-                  onPointerPanZoomStart: (event) {
-                    _stopMotion();
-                    if (_panZoomPointers.isEmpty && _downPointers.isEmpty) {
-                      _gestureHadMultiplePointers = false;
-                    }
-                    _panZoomPointers.add(event.pointer);
-                  },
-                  onPointerPanZoomEnd: (event) =>
-                      _panZoomPointers.remove(event.pointer),
-                  onPointerSignal: (event) {
-                    if (event is! PointerScrollEvent) return;
-                    _stopMotion();
-                    GestureBinding.instance.pointerSignalResolver.register(
-                      event,
-                      (resolved) {
-                        final scroll = resolved as PointerScrollEvent;
-                        final keys =
-                            HardwareKeyboard.instance.logicalKeysPressed;
-                        final control =
-                            keys.contains(LogicalKeyboardKey.controlLeft) ||
-                            keys.contains(LogicalKeyboardKey.controlRight);
-                        final shift =
-                            keys.contains(LogicalKeyboardKey.shiftLeft) ||
-                            keys.contains(LogicalKeyboardKey.shiftRight);
-                        final delta = scroll.scrollDelta.dy != 0
-                            ? scroll.scrollDelta.dy
-                            : scroll.scrollDelta.dx;
-                        if (control) {
-                          _zoomAt(
-                            _zoom * math.exp(-delta / 350),
-                            scroll.localPosition.dx,
-                            width,
-                            baseline,
-                          );
-                        } else if (shift) {
-                          _scrollLanes(delta);
-                        } else {
-                          setState(() {
-                            _center = _center.add(
-                              Duration(
-                                microseconds:
-                                    ((scroll.scrollDelta.dx +
-                                                scroll.scrollDelta.dy) /
-                                            pixelsPerHour *
-                                            _microsecondsPerHour)
-                                        .round(),
-                              ),
-                            );
-                          });
-                        }
-                      },
-                    );
-                  },
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onScaleStart: (details) {
-                      _stopMotion();
-                      _gestureTrackpad = _panZoomPointers.isNotEmpty;
-                      _gestureHadMultiplePointers =
-                          _gestureHadMultiplePointers ||
-                          (!_gestureTrackpad &&
-                              (details.pointerCount > 1 ||
-                                  _downPointers.length > 1));
-                      _gestureScaled = false;
-                      _gesturePointers = details.pointerCount;
-                      _gestureZoom = _zoom;
-                      _gestureAnchor = _timeAt(
-                        details.localFocalPoint.dx,
-                        width,
-                        pixelsPerHour,
-                      );
-                    },
-                    onScaleUpdate: (details) {
-                      if (!_gestureTrackpad && details.pointerCount > 1) {
-                        _gestureHadMultiplePointers = true;
-                      }
-                      // Pan/zoom events identify trackpads, regardless of whether
-                      // the recognizer reports zero or virtual multiple pointers.
-                      // Native trackpad momentum must never get a second fling.
-                      if ((details.scale - 1).abs() > 0.0001) {
-                        _gestureScaled = true;
-                      }
-                      // Adding/removing a finger changes the focal point. Rebase so
-                      // that transition does not jump to another calendar time.
-                      if (_gesturePointers != details.pointerCount) {
-                        _gestureAnchor = _timeAt(
-                          details.localFocalPoint.dx,
+                  }
+                },
+                onPointerUp: (event) {
+                  _downPointers.remove(event.pointer);
+                  if (_downPointers.isEmpty) _releaseVerticalHold();
+                },
+                onPointerCancel: (event) {
+                  _downPointers.remove(event.pointer);
+                  _panZoomPointers.remove(event.pointer);
+                  _gestureHadMultiplePointers = true;
+                  _stopMotion();
+                },
+                onPointerPanZoomStart: (event) {
+                  _stopMotion(holdVertical: true);
+                  if (_panZoomPointers.isEmpty && _downPointers.isEmpty) {
+                    _gestureHadMultiplePointers = false;
+                  }
+                  _panZoomPointers.add(event.pointer);
+                },
+                onPointerPanZoomEnd: (event) {
+                  _panZoomPointers.remove(event.pointer);
+                  if (_panZoomPointers.isEmpty) _releaseVerticalHold();
+                },
+                onPointerSignal: (event) {
+                  if (event is! PointerScrollEvent) return;
+                  GestureBinding.instance.pointerSignalResolver.register(
+                    event,
+                    (resolved) {
+                      final scroll = resolved as PointerScrollEvent;
+                      final keys = HardwareKeyboard.instance.logicalKeysPressed;
+                      final control =
+                          keys.contains(LogicalKeyboardKey.controlLeft) ||
+                          keys.contains(LogicalKeyboardKey.controlRight);
+                      final shift =
+                          keys.contains(LogicalKeyboardKey.shiftLeft) ||
+                          keys.contains(LogicalKeyboardKey.shiftRight);
+                      final delta = scroll.scrollDelta.dy != 0
+                          ? scroll.scrollDelta.dy
+                          : scroll.scrollDelta.dx;
+                      if (control) {
+                        _zoomAt(
+                          _zoom * math.exp(-delta / 350),
+                          scroll.localPosition.dx,
                           width,
-                          baseline * _zoom,
+                          baseline,
                         );
-                        _gestureZoom = _zoom / details.scale;
-                        _gesturePointers = details.pointerCount;
-                      }
-                      final next = (_gestureZoom * details.scale)
-                          .clamp(1.0, 24.0)
-                          .toDouble();
-                      final anchor = _gestureAnchor;
-                      if (anchor == null) return;
-                      setState(() {
-                        _zoom = next;
-                        _center = anchor.subtract(
+                      } else if (shift) {
+                        _stopMotion();
+                        _scrollLanes(delta);
+                      } else {
+                        _stopMotion();
+                        _visibleCenter.value = _center.add(
                           Duration(
                             microseconds:
-                                ((details.localFocalPoint.dx - width / 2) /
-                                        (baseline * next) *
+                                ((scroll.scrollDelta.dx +
+                                            scroll.scrollDelta.dy) /
+                                        pixelsPerHour *
                                         _microsecondsPerHour)
                                     .round(),
                           ),
                         );
-                      });
-                      if ((_gestureTrackpad || details.pointerCount <= 1) &&
-                          !_gestureHadMultiplePointers &&
-                          !_gestureScaled) {
-                        _scrollLanes(-details.focalPointDelta.dy);
                       }
                     },
-                    onScaleEnd: (details) {
-                      final hadAnchor = _gestureAnchor != null;
-                      _gestureAnchor = null;
-                      if (hadAnchor) {
-                        _startFling(
-                          details.velocity.pixelsPerSecond,
-                          baseline * _zoom,
-                        );
-                      }
-                    },
-                    child: CustomPaint(
-                      foregroundPainter: _TimelineNowPainter(
-                        center: _center,
-                        now: widget.now,
-                        pixelsPerHour: pixelsPerHour,
-                        color: theme.colorScheme.error,
+                  );
+                },
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onScaleStart: (details) {
+                    _stopMotion(holdVertical: true);
+                    _gestureTrackpad = _panZoomPointers.isNotEmpty;
+                    _gestureHadMultiplePointers =
+                        _gestureHadMultiplePointers ||
+                        (!_gestureTrackpad &&
+                            (details.pointerCount > 1 ||
+                                _downPointers.length > 1));
+                    _gestureScaled = false;
+                    _gesturePointers = details.pointerCount;
+                    _gestureZoom = _zoom;
+                    _gestureAnchor = _timeAt(
+                      details.localFocalPoint.dx,
+                      width,
+                      pixelsPerHour,
+                    );
+                    if (!_gestureHadMultiplePointers && _lanes.hasClients) {
+                      _verticalDrag = _lanes.position.drag(
+                        DragStartDetails(
+                          globalPosition: details.focalPoint,
+                          localPosition: details.localFocalPoint,
+                        ),
+                        () => _verticalDrag = null,
+                      );
+                    }
+                  },
+                  onScaleUpdate: (details) {
+                    if (!_gestureTrackpad && details.pointerCount > 1) {
+                      _gestureHadMultiplePointers = true;
+                    }
+                    // Pan/zoom events identify trackpads, regardless of whether
+                    // the recognizer reports zero or virtual multiple pointers.
+                    // Native trackpad momentum must never get a second fling.
+                    if ((details.scale - 1).abs() > 0.0001) {
+                      _gestureScaled = true;
+                    }
+                    // Adding/removing a finger changes the focal point. Rebase so
+                    // that transition does not jump to another calendar time.
+                    if (_gesturePointers != details.pointerCount) {
+                      _gestureAnchor = _timeAt(
+                        details.localFocalPoint.dx,
+                        width,
+                        baseline * _zoom,
+                      );
+                      _gestureZoom = _zoom / details.scale;
+                      _gesturePointers = details.pointerCount;
+                    }
+                    final next = (_gestureZoom * details.scale)
+                        .clamp(1.0, 24.0)
+                        .toDouble();
+                    final anchor = _gestureAnchor;
+                    if (anchor == null) return;
+                    final center = anchor.subtract(
+                      Duration(
+                        microseconds:
+                            ((details.localFocalPoint.dx - width / 2) /
+                                    (baseline * next) *
+                                    _microsecondsPerHour)
+                                .round(),
                       ),
-                      child: Column(
-                        children: [
-                          SizedBox(
-                            height: headerHeight,
-                            width: width,
-                            child: CustomPaint(painter: painter),
+                    );
+                    if (next != _zoom) setState(() => _zoom = next);
+                    _visibleCenter.value = center;
+                    if ((_gestureTrackpad || details.pointerCount <= 1) &&
+                        !_gestureHadMultiplePointers &&
+                        !_gestureScaled) {
+                      _verticalDrag?.update(
+                        DragUpdateDetails(
+                          delta: Offset(0, details.focalPointDelta.dy),
+                          primaryDelta: details.focalPointDelta.dy,
+                          globalPosition: details.focalPoint,
+                          localPosition: details.localFocalPoint,
+                        ),
+                      );
+                    } else {
+                      final drag = _verticalDrag;
+                      _verticalDrag = null;
+                      drag?.cancel();
+                    }
+                  },
+                  onScaleEnd: (details) {
+                    final hadAnchor = _gestureAnchor != null;
+                    _gestureAnchor = null;
+                    final drag = _verticalDrag;
+                    _verticalDrag = null;
+                    drag?.end(
+                      DragEndDetails(
+                        velocity: Velocity(
+                          pixelsPerSecond: Offset(
+                            0,
+                            _canFling ? details.velocity.pixelsPerSecond.dy : 0,
                           ),
-                          Expanded(
-                            child: LayoutBuilder(
-                              builder: (context, laneConstraints) {
-                                final height = laneConstraints.maxHeight;
-                                final offset = _lanes.hasClients
-                                    ? _lanes.offset
-                                    : 0.0;
-                                final placementsInTime = placements
-                                    .where(
-                                      (placement) =>
-                                          placement.layoutEnd.isAfter(left) &&
-                                          (placement.entry.isDeadline
-                                                  ? placement.end.subtract(
-                                                      deadlineDuration(
-                                                        placement.entry,
-                                                      ),
-                                                    )
-                                                  : placement.start)
-                                              .isBefore(right),
-                                    )
-                                    .toList(growable: false);
-                                final displayedLaneCount = placementsInTime
-                                    .fold<int>(
-                                      0,
-                                      (count, placement) =>
-                                          math.max(count, placement.lane + 1),
-                                    );
-                                final contentHeight = math.max(
-                                  height,
-                                  displayedLaneCount * laneHeight + 12,
-                                );
-                                final visible = placementsInTime
-                                    .where(
-                                      (placement) =>
-                                          (placement.lane + 1) * laneHeight >=
-                                              offset &&
-                                          placement.lane * laneHeight + 12 <=
-                                              offset + height,
-                                    )
-                                    .toList(growable: false);
-                                return Stack(
-                                  fit: StackFit.expand,
-                                  children: [
-                                    CustomPaint(
-                                      painter: _TimelineGridPainter(
-                                        center: _center,
-                                        now: widget.now,
-                                        pixelsPerHour: pixelsPerHour,
-                                        cellWidth: cellWidth,
-                                        scheme: theme.colorScheme,
-                                        textStyle: headerStyle,
-                                        textScaler: textScaler,
-                                        header: false,
-                                        l10n: l10n,
-                                      ),
-                                    ),
-                                    ScrollConfiguration(
-                                      behavior: ScrollConfiguration.of(context)
-                                          .copyWith(scrollbars: false),
-                                      child: SingleChildScrollView(
-                                        key: const ValueKey(
-                                          'agenda-timeline-lanes',
-                                        ),
-                                        controller: _lanes,
-                                        physics:
-                                            const NeverScrollableScrollPhysics(),
-                                        child: SizedBox(
-                                          height: contentHeight,
-                                          width: width,
-                                          child: Stack(
-                                            clipBehavior: Clip.hardEdge,
-                                            children: [
-                                              for (final placement in visible)
-                                                _buildEntry(
-                                                  context,
-                                                  placement,
-                                                  width,
-                                                  pixelsPerHour,
-                                                  laneHeight,
-                                                  deadlineWidth(
-                                                    placement.entry,
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    if (widget.entries.isEmpty)
-                                      Center(
-                                        child: IgnorePointer(
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(24),
-                                            child: Text(
-                                              l10n.agendaTimelineEmpty,
-                                              textAlign: TextAlign.center,
-                                              style: theme.textTheme.bodyLarge
-                                                  ?.copyWith(
-                                                    color: theme
-                                                        .colorScheme
-                                                        .onSurfaceVariant,
-                                                  ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                );
-                              },
-                            ),
-                          ),
-                        ],
+                        ),
+                        primaryVelocity: _canFling
+                            ? details.velocity.pixelsPerSecond.dy
+                            : 0,
                       ),
+                    );
+                    _releaseVerticalHold();
+                    if (hadAnchor) {
+                      _startFling(
+                        details.velocity.pixelsPerSecond,
+                        baseline * _zoom,
+                      );
+                    }
+                  },
+                  child: ListenableBuilder(
+                    listenable: _visibleCenter,
+                    builder: (context, _) => _buildViewport(
+                      context,
+                      placements: placements,
+                      width: width,
+                      cellWidth: cellWidth,
+                      pixelsPerHour: pixelsPerHour,
                     ),
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         );
       },
+    );
+  }
+
+  Widget _buildViewport(
+    BuildContext context, {
+    required List<AgendaTimelinePlacement> placements,
+    required double width,
+    required double cellWidth,
+    required double pixelsPerHour,
+  }) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final laneHeight = _laneHeight;
+    final left = _timeAt(0, width, pixelsPerHour);
+    final right = _timeAt(width, width, pixelsPerHour);
+    final placementsInTime = <AgendaTimelinePlacement>[];
+    final laneCount = placements.fold<int>(
+      0,
+      (count, placement) => math.max(count, placement.lane + 1),
+    );
+    for (final placement in placements) {
+      if (placement.paintEnd.isAfter(left) &&
+          placement.paintStart.isBefore(right)) {
+        placementsInTime.add(placement);
+      }
+    }
+    final painter = _TimelineGridPainter(
+      center: _center,
+      now: widget.now,
+      pixelsPerHour: pixelsPerHour,
+      cellWidth: cellWidth,
+      scheme: theme.colorScheme,
+      text: _gridText!,
+      header: true,
+      l10n: l10n,
+    );
+    return CustomPaint(
+      foregroundPainter: _TimelineNowPainter(
+        center: _center,
+        now: widget.now,
+        pixelsPerHour: pixelsPerHour,
+        color: theme.colorScheme.error,
+      ),
+      child: Column(
+        children: [
+          SizedBox(
+            height: _headerHeight,
+            width: width,
+            child: CustomPaint(painter: painter),
+          ),
+          Expanded(
+            child: ListenableBuilder(
+              listenable: _lanes,
+              builder: (context, _) => LayoutBuilder(
+                builder: (context, laneConstraints) {
+                  final height = laneConstraints.maxHeight;
+                  final contentHeight = math.max(
+                    height,
+                    laneCount * laneHeight + 12,
+                  );
+                  final extent = contentHeight - height;
+                  final previousOffset = _lanes.hasClients
+                      ? _lanes.offset
+                      : 0.0;
+                  // Bounce overscroll belongs to ScrollPosition. Only a changed
+                  // range/viewport invalidates a previously valid culling offset.
+                  final dimensionsChanged =
+                      _lastContentExtent != extent ||
+                      _lastViewportHeight != height;
+                  _lastContentExtent = extent;
+                  _lastViewportHeight = height;
+                  final offset = dimensionsChanged
+                      ? previousOffset.clamp(0.0, extent).toDouble()
+                      : previousOffset;
+                  final visible = placementsInTime.where(
+                    (placement) =>
+                        (placement.lane + 1) * laneHeight >= offset &&
+                        placement.lane * laneHeight + 12 <= offset + height,
+                  );
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      CustomPaint(
+                        painter: _TimelineGridPainter(
+                          center: _center,
+                          now: widget.now,
+                          pixelsPerHour: pixelsPerHour,
+                          cellWidth: cellWidth,
+                          scheme: theme.colorScheme,
+                          text: _gridText!,
+                          header: false,
+                          l10n: l10n,
+                        ),
+                      ),
+                      ScrollConfiguration(
+                        behavior: ScrollConfiguration.of(context)
+                            .copyWith(scrollbars: false),
+                        // Preserve overscroll when horizontal
+                        // panning changes the content height.
+                        child: CustomScrollView(
+                          key: const ValueKey('agenda-timeline-lanes'),
+                          controller: _lanes,
+                          physics: const _TimelineScrollPhysics(
+                            parent: NeverScrollableScrollPhysics(),
+                          ),
+                          slivers: [
+                            SliverToBoxAdapter(
+                              child: SizedBox(
+                                height: contentHeight,
+                                width: width,
+                                child: Stack(
+                                  clipBehavior: Clip.hardEdge,
+                                  children: [
+                                    for (final placement in visible)
+                                      _buildEntry(
+                                        context,
+                                        placement,
+                                        width,
+                                        pixelsPerHour,
+                                        laneHeight,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (widget.entries.isEmpty)
+                        Center(
+                          child: IgnorePointer(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Text(
+                                l10n.agendaTimelineEmpty,
+                                textAlign: TextAlign.center,
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -634,308 +794,125 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     double width,
     double pixelsPerHour,
     double laneHeight,
-    double deadlineWidth,
   ) {
     final entry = placement.entry;
+    final cellWidth = (width / 5).clamp(80.0, 140.0).toDouble() * .6;
+    final deadlineWidth =
+        cellWidth *
+        (entry.effectiveLayoutDays(
+              widget.controller.settings.agendaLayoutDays.value,
+            ) -
+            .25);
     double x(DateTime time) =>
         width / 2 +
         time.difference(_center).inMicroseconds /
             _microsecondsPerHour *
             pixelsPerHour;
-    final actualRight = x(placement.layoutEnd);
+    if (!entry.isDeadline &&
+        widget.controller.settings.agendaEventInfoBar.value) {
+      final start = x(entry.startsAt);
+      final end = x(entry.endsAt!);
+      final informationLeft = start - deadlineWidth;
+      final left = math.max(0.0, informationLeft);
+      final right = math.min(width, end);
+      return Positioned(
+        key: ValueKey(('agenda-timeline-entry', entry.id)),
+        left: left,
+        top: placement.lane * laneHeight + 12,
+        width: math.max(0.0, right - left),
+        height: laneHeight - 12,
+        child: EventTimelineEntry(
+          entry: entry,
+          now: widget.now,
+          informationWidth: deadlineWidth,
+          geometry: EventTimelineGeometry(
+            informationLeft: informationLeft - left,
+            startX: start - left,
+            endX: end - left,
+          ),
+          onTap: () => showAgendaEntry(
+            context,
+            widget.controller.agenda,
+            entry,
+            automation: widget.controller.automation,
+          ),
+        ),
+      );
+    }
+    if (entry.hasDeadlineCutoff) {
+      final effective = x(entry.dueAt);
+      final real = x(entry.realDueAt);
+      final bodyLeft = effective - deadlineWidth;
+      // The extension may be enormous in time coordinates. Only allocate its
+      // intersection with this viewport, while retaining the body's true origin.
+      final left = math.max(0.0, bodyLeft);
+      final right = math.min(width, real);
+      return Positioned(
+        key: ValueKey(('agenda-timeline-entry', entry.id)),
+        left: left,
+        top: placement.lane * laneHeight + 12,
+        width: math.max(0.0, right - left),
+        height: laneHeight - 12,
+        child: AgendaTimelineEntry(
+          entry: entry,
+          now: widget.now,
+          barWidth: deadlineWidth,
+          deadlineWidth: deadlineWidth,
+          adjustedGeometry: AdjustedDeadlineGeometry(
+            bodyLeft: bodyLeft - left,
+            effectiveX: effective - left,
+            realX: real - left,
+          ),
+          onTap: () => showAgendaEntry(
+            context,
+            widget.controller.agenda,
+            entry,
+            automation: widget.controller.automation,
+          ),
+        ),
+      );
+    }
+    // A start-only deadline keeps the usual painted width but grows rightwards
+    // from its opening time, so its right edge is derived instead of its left.
+    final actualRight = entry.isDeadline && entry.startOnly
+        ? x(placement.start) + deadlineWidth
+        : x(placement.layoutEnd);
     final actualLeft = entry.isDeadline
         ? actualRight - deadlineWidth
         : x(placement.start);
     // Crop long ordinary events before creating widgets; no huge canvas/boxes.
     final left = entry.isDeadline ? actualLeft : math.max(0.0, actualLeft);
-    final right = entry.isDeadline ? actualRight : math.min(width, actualRight);
-    final barWidth = math.max(0.0, right - left);
-    final nextStart = _nextStartById[entry.id];
-    final availableWidth = nextStart == null
-        ? double.infinity
-        : math.max(0.0, x(nextStart) - left);
-    final tapWidth = math.min(math.max(24.0, barWidth), availableWidth);
-    return Positioned(
-      left: left,
-      top: placement.lane * laneHeight + 12,
-      width: tapWidth,
-      height: laneHeight - 12,
-      child: AgendaTimelineEntry(
+    final barWidth = entry.isDeadline
+        ? deadlineWidth
+        : math.max(0.0, math.min(width, actualRight) - left);
+    final tapWidth = math.max(24.0, barWidth);
+    var card = _plainCards[entry.id];
+    if (card == null ||
+        card.entry != entry ||
+        card.now != widget.now ||
+        card.barWidth != barWidth ||
+        card.deadlineWidth != deadlineWidth) {
+      card = AgendaTimelineEntry(
         entry: entry,
         now: widget.now,
         barWidth: barWidth,
         deadlineWidth: deadlineWidth,
-        onTap: () => showAgendaEntry(context, widget.controller, entry),
-      ),
-    );
-  }
-}
-
-class _TimelineGridPainter extends CustomPainter {
-  const _TimelineGridPainter({
-    required this.center,
-    required this.now,
-    required this.pixelsPerHour,
-    required this.cellWidth,
-    required this.scheme,
-    required this.textStyle,
-    required this.textScaler,
-    required this.header,
-    required this.l10n,
-  });
-
-  final DateTime center;
-  final DateTime now;
-  final double pixelsPerHour;
-  final double cellWidth;
-  final ColorScheme scheme;
-  final TextStyle textStyle;
-  final TextScaler textScaler;
-  final bool header;
-  final AppLocalizations l10n;
-
-  TextPainter _text(String text, {bool bold = false}) => TextPainter(
-    text: TextSpan(
-      text: text,
-      style: textStyle.copyWith(
-        color: scheme.onSurfaceVariant,
-        fontWeight: bold ? FontWeight.w600 : FontWeight.normal,
-      ),
-    ),
-    textDirection: TextDirection.ltr,
-    textScaler: textScaler,
-    maxLines: 1,
-  )..layout();
-
-  double _textWidth(String text, {bool bold = false}) {
-    final painter = _text(text, bold: bold);
-    final width = painter.width;
-    painter.dispose();
-    return width;
-  }
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.save();
-    canvas.clipRect(Offset.zero & size);
-    double x(DateTime time) =>
-        size.width / 2 +
-        time.difference(center).inMicroseconds /
-            _microsecondsPerHour *
-            pixelsPerHour;
-    final left = center.subtract(
-      Duration(
-        microseconds: (size.width / 2 / pixelsPerHour * _microsecondsPerHour)
-            .ceil(),
-      ),
-    );
-    final right = center.add(
-      Duration(
-        microseconds: (size.width / 2 / pixelsPerHour * _microsecondsPerHour)
-            .ceil(),
-      ),
-    );
-    final today = calendarDate(now);
-    final tomorrow = DateTime.utc(today.year, today.month, today.day + 1);
-    final dayWidth = 24 * pixelsPerHour;
-    canvas.drawRect(
-      Rect.fromLTRB(x(today), 0, x(tomorrow), size.height),
-      Paint()..color = scheme.primary.withValues(alpha: 0.06),
-    );
-    final gridPaint = Paint()
-      ..strokeWidth = 1
-      ..color = scheme.outlineVariant.withValues(alpha: 0.65);
-    // Text density must not change the grid's one-day / one-hour endpoints.
-    final hourStep = <int>[1, 2, 3, 6, 12, 24].firstWhere(
-      (hours) => hours * pixelsPerHour >= cellWidth - 0.001,
-      orElse: () => 24,
-    );
-    double maxDigitWidth(bool bold) {
-      var width = 0.0;
-      for (var digit = 0; digit <= 9; digit++) {
-        width = math.max(width, _textWidth('$digit', bold: bold));
-      }
-      return width;
-    }
-
-    final showHours = hourStep < 24;
-    var weekdayWidth = 0.0;
-    if (header) {
-      for (var day = 1; day <= 7; day++) {
-        for (final weekday in [localizedShortWeekday(l10n, day)]) {
-          weekdayWidth = math.max(
-            weekdayWidth,
-            _textWidth(weekday, bold: showHours),
-          );
-        }
-      }
-    }
-    final dateTextWidth = header
-        ? maxDigitWidth(true) * 4 + _textWidth('/', bold: true)
-        : 0.0;
-    // Measure the full date/weekday group, or both independent rows, so labels
-    // retain stable cell centers and cannot collide when weekday text is added.
-    final dateLabelWidth = header
-        ? (showHours
-                  ? dateTextWidth + _textWidth(' ', bold: true) + weekdayWidth
-                  : math.max(dateTextWidth, weekdayWidth)) +
-              8
-        : 0.0;
-    final hourLabelWidth = header
-        ? maxDigitWidth(false) * 4 + _textWidth(':') + 8
-        : 0.0;
-    final dayStride = math.max(1, (dateLabelWidth / dayWidth).ceil());
-    final hourLabelStride = math.max(
-      1,
-      (hourLabelWidth / (hourStep * pixelsPerHour)).ceil(),
-    );
-    // Include adjacent cells based on TEXT bounds, never just tick positions.
-    // Date centers remain the original day's midpoint even at huge day widths.
-    final extraDays = header
-        ? (math.max(dateLabelWidth, hourLabelWidth) / 2 / dayWidth).ceil() + 1
-        : 0;
-    var day = DateTime.utc(left.year, left.month, left.day - extraDays);
-    final lastDay = DateTime.utc(
-      right.year,
-      right.month,
-      right.day + extraDays,
-    );
-    while (!day.isAfter(lastDay)) {
-      final nextDay = DateTime.utc(day.year, day.month, day.day + 1);
-      final dayX = x(day);
-      canvas.drawLine(Offset(dayX, 0), Offset(dayX, size.height), gridPaint);
-      // UTC calendar ordinals give a stable stride independent of panning/DST.
-      final dayOrdinal = DateTime.utc(
-        day.year,
-        day.month,
-        day.day,
-      ).difference(DateTime.utc(1970)).inDays;
-      if (header && dayOrdinal % dayStride == 0) {
-        final dayCenter = (dayX + x(nextDay)) / 2;
-        final weekday = localizedShortWeekday(l10n, day.weekday);
-        final date = '${day.month}/${day.day}';
-        _label(
-          canvas,
-          size,
-          showHours ? '$date $weekday' : date,
-          Offset(dayCenter, 1),
-          bold: true,
-        );
-        if (!showHours) {
-          _label(canvas, size, weekday, Offset(dayCenter, size.height / 2));
-        }
-      }
-      for (var hour = 0; hour < 24; hour += hourStep) {
-        final tick = DateTime.utc(day.year, day.month, day.day, hour);
-        final tickX = x(tick);
-        if (hour != 0) {
-          canvas.drawLine(
-            Offset(tickX, header ? size.height / 2 : 0),
-            Offset(tickX, size.height),
-            gridPaint,
-          );
-        }
-        if (header &&
-            showHours &&
-            (dayOrdinal * (24 ~/ hourStep) + hour ~/ hourStep) %
-                    hourLabelStride ==
-                0) {
-          final cellEnd = DateTime.utc(
-            day.year,
-            day.month,
-            day.day,
-            hour + hourStep,
-          );
-          _label(
-            canvas,
-            size,
-            '${hour.toString().padLeft(2, '0')}:00',
-            Offset((tickX + x(cellEnd)) / 2, size.height / 2),
-          );
-        }
-      }
-      day = nextDay;
-    }
-    if (header) {
-      canvas.drawLine(
-        Offset(0, size.height),
-        Offset(size.width, size.height),
-        gridPaint,
+        onTap: () => showAgendaEntry(
+          context,
+          widget.controller.agenda,
+          entry,
+          automation: widget.controller.automation,
+        ),
       );
+      _plainCards[entry.id] = card;
     }
-    canvas.restore();
-  }
-
-  void _label(
-    Canvas canvas,
-    Size viewport,
-    String text,
-    Offset centerTop, {
-    bool bold = false,
-  }) {
-    final painter = _text(text, bold: bold);
-    final offset = Offset(centerTop.dx - painter.width / 2, centerTop.dy);
-    // Full intrinsic width, fixed cell center; only the viewport clips text.
-    if ((offset & painter.size).overlaps(Offset.zero & viewport)) {
-      painter.paint(canvas, offset);
-    }
-    painter.dispose();
-  }
-
-  @override
-  bool shouldRepaint(covariant _TimelineGridPainter oldDelegate) =>
-      oldDelegate.center != center ||
-      oldDelegate.now != now ||
-      oldDelegate.pixelsPerHour != pixelsPerHour ||
-      oldDelegate.cellWidth != cellWidth ||
-      oldDelegate.scheme != scheme ||
-      oldDelegate.textStyle != textStyle ||
-      oldDelegate.textScaler != textScaler ||
-      oldDelegate.header != header ||
-      oldDelegate.l10n.localeName != l10n.localeName;
-}
-
-/// Foreground decoration across header and lanes; never participates in input.
-class _TimelineNowPainter extends CustomPainter {
-  const _TimelineNowPainter({
-    required this.center,
-    required this.now,
-    required this.pixelsPerHour,
-    required this.color,
-  });
-
-  final DateTime center;
-  final DateTime now;
-  final double pixelsPerHour;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final nowX =
-        size.width / 2 +
-        now.difference(center).inMicroseconds /
-            _microsecondsPerHour *
-            pixelsPerHour;
-    if (nowX < 0 || nowX > size.width) return;
-    canvas.save();
-    canvas.clipRect(Offset.zero & size);
-    canvas.drawLine(
-      Offset(nowX, 0),
-      Offset(nowX, size.height),
-      Paint()
-        ..color = color
-        ..strokeWidth = 1.5,
+    return Positioned(
+      key: ValueKey(('agenda-timeline-entry', entry.id)),
+      left: left,
+      top: placement.lane * laneHeight + 12,
+      width: tapWidth,
+      height: laneHeight - 12,
+      child: card,
     );
-    canvas.restore();
   }
-
-  @override
-  bool? hitTest(Offset position) => false;
-
-  @override
-  bool shouldRepaint(covariant _TimelineNowPainter oldDelegate) =>
-      oldDelegate.center != center ||
-      oldDelegate.now != now ||
-      oldDelegate.pixelsPerHour != pixelsPerHour ||
-      oldDelegate.color != color;
 }

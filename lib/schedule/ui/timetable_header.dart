@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../agenda/controller.dart';
 import '../../agenda/ui/calendar_list.dart';
-import '../../app/controller.dart';
+import '../../automation/controller.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
@@ -11,13 +12,15 @@ class TimetableHeader extends StatelessWidget {
   const TimetableHeader({
     super.key,
     required this.controller,
+    this.automation,
     required this.monday,
     required this.now,
     required this.gutterWidth,
     required this.todayBackground,
   });
 
-  final AppController controller;
+  final AgendaController controller;
+  final AutomationController? automation;
   final DateTime monday;
   final DateTime now;
   final double gutterWidth;
@@ -32,9 +35,16 @@ class TimetableHeader extends StatelessWidget {
       for (var day = 0; day < 7; day++)
         (
           date: monday.add(Duration(days: day)),
-          count: controller.automation
-              .pendingOn(monday.add(Duration(days: day)), now: now)
-              .length,
+          count:
+              (automation?.pendingOn(
+                        monday.add(Duration(days: day)),
+                        now: now,
+                      ) ??
+                      controller.pendingOn(
+                        monday.add(Duration(days: day)),
+                        now: now,
+                      ))
+                  .length,
         ),
     ];
 
@@ -56,7 +66,12 @@ class TimetableHeader extends StatelessWidget {
         for (final day in dayCounts)
           Expanded(
             child: InkWell(
-              onTap: () => showAgendaDay(context, controller, day.date),
+              onTap: () => showAgendaDay(
+                context,
+                controller,
+                day.date,
+                automation: automation,
+              ),
               child: _DateHeading(
                 date: day.date,
                 today: today,

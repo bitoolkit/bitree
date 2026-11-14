@@ -1670,7 +1670,7 @@ abstract class AppLocalizations {
   /// No description provided for @agendaTailDaysHint.
   ///
   /// In en, this message translates to:
-  /// **'1–30 days; default: 4 days'**
+  /// **'1–30 days; per-item settings take priority'**
   String get agendaTailDaysHint;
 
   /// No description provided for @agendaTailDaysValue.
@@ -4367,6 +4367,258 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{channel} {version}'**
   String releaseVersion(String channel, String version);
+
+  /// No description provided for @settingsDeveloperOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Developer options'**
+  String get settingsDeveloperOptions;
+
+  /// No description provided for @settingsResetDefaultDeadlineTails.
+  ///
+  /// In en, this message translates to:
+  /// **'Set default tail lengths to null'**
+  String get settingsResetDefaultDeadlineTails;
+
+  /// No description provided for @settingsResetDefaultDeadlineTailsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Make all four-day DDL tails follow the global setting.'**
+  String get settingsResetDefaultDeadlineTailsDescription;
+
+  /// No description provided for @settingsResetDefaultDeadlineTailsResult.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 DDL now follows the global setting.} other{{count} DDLs now follow the global setting.}}'**
+  String settingsResetDefaultDeadlineTailsResult(int count);
+
+  /// No description provided for @agendaTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get agendaTime;
+
+  /// No description provided for @agendaMoreOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'More options'**
+  String get agendaMoreOptions;
+
+  /// No description provided for @agendaColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Agenda color'**
+  String get agendaColor;
+
+  /// No description provided for @agendaColorDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get agendaColorDefault;
+
+  /// No description provided for @agendaColorBlue.
+  ///
+  /// In en, this message translates to:
+  /// **'Blue'**
+  String get agendaColorBlue;
+
+  /// No description provided for @agendaColorCoral.
+  ///
+  /// In en, this message translates to:
+  /// **'Coral'**
+  String get agendaColorCoral;
+
+  /// No description provided for @agendaColorViolet.
+  ///
+  /// In en, this message translates to:
+  /// **'Violet'**
+  String get agendaColorViolet;
+
+  /// No description provided for @agendaColorGreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Green'**
+  String get agendaColorGreen;
+
+  /// No description provided for @agendaColorAmber.
+  ///
+  /// In en, this message translates to:
+  /// **'Amber'**
+  String get agendaColorAmber;
+
+  /// No description provided for @agendaColorTeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Teal'**
+  String get agendaColorTeal;
+
+  /// No description provided for @agendaColorRose.
+  ///
+  /// In en, this message translates to:
+  /// **'Rose'**
+  String get agendaColorRose;
+
+  /// No description provided for @agendaColorSlate.
+  ///
+  /// In en, this message translates to:
+  /// **'Slate'**
+  String get agendaColorSlate;
+
+  /// No description provided for @agendaColorCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom {value}'**
+  String agendaColorCustom(String value);
+
+  /// No description provided for @agendaColorPickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose color'**
+  String get agendaColorPickerTitle;
+
+  /// No description provided for @agendaColorPresets.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick colors'**
+  String get agendaColorPresets;
+
+  /// No description provided for @agendaColorCustomSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom color'**
+  String get agendaColorCustomSection;
+
+  /// No description provided for @agendaTailDaysDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Use global default'**
+  String get agendaTailDaysDefault;
+
+  /// No description provided for @settingsDeadlineCutoff.
+  ///
+  /// In en, this message translates to:
+  /// **'Deadline cutoff window'**
+  String get settingsDeadlineCutoff;
+
+  /// No description provided for @deadlineCutoffEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable daily cutoff window'**
+  String get deadlineCutoffEnabled;
+
+  /// No description provided for @deadlineCutoffDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Show DDLs in this window as due at its start. Actual deadlines stay unchanged.'**
+  String get deadlineCutoffDescription;
+
+  /// No description provided for @deadlineCutoffStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start time'**
+  String get deadlineCutoffStart;
+
+  /// No description provided for @deadlineCutoffEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'End time'**
+  String get deadlineCutoffEnd;
+
+  /// No description provided for @deadlineCutoffDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enabled'**
+  String get deadlineCutoffDisabled;
+
+  /// No description provided for @deadlineCutoffSameDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily, {start}–{end}'**
+  String deadlineCutoffSameDay(String start, String end);
+
+  /// No description provided for @deadlineCutoffOvernight.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily, {start} to {end} the next day'**
+  String deadlineCutoffOvernight(String start, String end);
+
+  /// No description provided for @deadlineCutoffInstant.
+  ///
+  /// In en, this message translates to:
+  /// **'Only at {time} each day'**
+  String deadlineCutoffInstant(String time);
+
+  /// No description provided for @deadlineCutoffBoundaryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Both endpoints are included. An end before the start crosses midnight; equal times match only one instant.'**
+  String get deadlineCutoffBoundaryHint;
+
+  /// No description provided for @deadlineCutoffPreserveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Actual deadlines stay unchanged. Turning this off retains your selected start and end times.'**
+  String get deadlineCutoffPreserveHint;
+
+  /// No description provided for @agendaAdjustedDeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjusted deadline'**
+  String get agendaAdjustedDeadline;
+
+  /// No description provided for @agendaRealDeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'Actual deadline'**
+  String get agendaRealDeadline;
+
+  /// No description provided for @agendaCutoffOriginal.
+  ///
+  /// In en, this message translates to:
+  /// **'Actual deadline: {time}'**
+  String agendaCutoffOriginal(String time);
+
+  /// No description provided for @agendaCutoffAdjusted.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjusted deadline: {time}'**
+  String agendaCutoffAdjusted(String time);
+
+  /// No description provided for @settingsAgendaLayoutDays.
+  ///
+  /// In en, this message translates to:
+  /// **'DDL layout width'**
+  String get settingsAgendaLayoutDays;
+
+  /// No description provided for @agendaLayoutDaysDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Default layout width. Individual DDL tail lengths take priority.'**
+  String get agendaLayoutDaysDescription;
+
+  /// No description provided for @agendaLayoutDaysUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'days'**
+  String get agendaLayoutDaysUnit;
+
+  /// No description provided for @agendaLayoutDaysRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a whole number from 1 to 30'**
+  String get agendaLayoutDaysRange;
+
+  /// No description provided for @settingsAgendaEventInfoBar.
+  ///
+  /// In en, this message translates to:
+  /// **'Event information bar'**
+  String get settingsAgendaEventInfoBar;
+
+  /// No description provided for @settingsAgendaEventInfoBarDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Show details on the left when on, or inside event and exam boxes when off.'**
+  String get settingsAgendaEventInfoBarDescription;
 }
 
 class _AppLocalizationsDelegate

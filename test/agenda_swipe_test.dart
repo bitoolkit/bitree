@@ -185,6 +185,16 @@ void main() {
       await tester.tap(find.text('作业 1'));
       await tester.pump();
       expect(find.text('已选 1 / 3'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), '作业 2');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(Checkbox).first);
+      await tester.pump();
+      expect(find.text('已选 2 / 3'), findsOneWidget);
+      await tester.tap(find.byType(Checkbox).first);
+      await tester.pump();
+      expect(find.text('已选 1 / 3'), findsOneWidget);
+
       await tester.tap(find.text('恢复所选'));
       await tester.pumpAndSettle();
 
@@ -366,22 +376,6 @@ void main() {
     expect(app.agenda.entries.single.done, isFalse);
     expect(app.agenda.deletedDeadlines, isEmpty);
     expect(find.text('完成'), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('A schedule has only a left swipe delete action', (tester) async {
-    final app = await showAgenda(tester, kind: AgendaKind.event);
-    final row = find.byKey(const ValueKey('task'));
-    await swipeRow(tester, row, const Offset(250, 0));
-    await tester.pumpAndSettle();
-    expect(app.agenda.entries.single.kind, AgendaKind.event);
-    expect(app.agenda.entries.single.done, isFalse);
-    expect(find.text('完成'), findsNothing);
-    await swipeRow(tester, row, const Offset(-90, 0));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('删除'));
-    await tester.pumpAndSettle();
-    expect(app.agenda.entries, isEmpty);
     expect(tester.takeException(), isNull);
   });
 

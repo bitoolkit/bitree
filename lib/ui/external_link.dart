@@ -23,7 +23,7 @@ Future<bool> openExternalLink(
 
   await showAppDialog<void>(
     context: context,
-    builder: (context) => AlertDialog(
+    builder: (context) => AppDialog(
       title: Text(failureTitle),
       content: SelectableText(context.l10n.openInBrowser('$url')),
       actions: [

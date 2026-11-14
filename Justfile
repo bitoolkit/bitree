@@ -11,15 +11,18 @@ run device=os():
     flutter run -d {{ quote(device) }}
 
 fmt:
-    dart format lib
+    dart format lib test tool
 
 fmt-nix:
     nixfmt devenv.nix
 
 analyze:
-    flutter analyze
+    flutter analyze --no-pub
 
-check: analyze
+test:
+    flutter test --no-pub
+
+check: analyze test
 
 build target=os():
     flutter build {{ quote(target) }}

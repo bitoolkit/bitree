@@ -1,27 +1,34 @@
 import 'package:flutter/material.dart';
 
-import '../../app/controller.dart';
+import '../../automation/controller.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
+import '../../schedule/controller.dart';
 import '../../schedule/ui/conflicting_courses.dart';
 import '../../schedule/ui/course_tile.dart';
 import '../../ui/course_palette.dart';
 import '../../ui/design.dart';
 import '../calendar.dart';
+import '../controller.dart';
 import '../model.dart';
+import 'agenda_color_palette.dart';
 import 'calendar_list.dart';
 
 class CalendarBlockTile extends StatelessWidget {
   const CalendarBlockTile({
     super.key,
     required this.items,
-    required this.controller,
+    required this.timetable,
+    required this.agenda,
+    this.automation,
     required this.isToday,
     this.courseProgress,
   });
 
   final List<CalendarItem> items;
-  final AppController controller;
+  final TimetableController timetable;
+  final AgendaController agenda;
+  final AutomationController? automation;
   final bool isToday;
   final double? courseProgress;
 
@@ -32,14 +39,16 @@ class CalendarBlockTile extends StatelessWidget {
       return items.length == 1
           ? CourseTile(
               course: items.single.course!,
-              controller: controller,
+              controller: timetable,
+              automation: automation,
               isToday: isToday,
               date: items.single.startsAt,
               progress: courseProgress,
             )
           : ConflictingCourses(
               courses: items.map((item) => item.course!).toList(),
-              controller: controller,
+              controller: timetable,
+              automation: automation,
               isToday: isToday,
               date: items.first.startsAt,
             );
@@ -47,20 +56,29 @@ class CalendarBlockTile extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final exam = items.any((item) => item.entry?.kind == AgendaKind.exam);
+    final customColors = items.length == 1 && items.single.entry?.color != null
+        ? agendaColorValues(theme.colorScheme, items.single.entry!.color!)
+        : null;
     final palette = agendaPaletteColors(theme);
     // The outline carries contrast for subtle fills in both palette modes.
     final background = exam
         ? scheme.errorContainer
+        : customColors != null
+        ? customColors.fill
         : palette == null
         ? scheme.primaryContainer
         : Color(palette.fill);
     final foreground = exam
         ? scheme.onErrorContainer
+        : customColors != null
+        ? customColors.text
         : palette == null
         ? scheme.onPrimaryContainer
         : Color(palette.text);
     final outline = exam
         ? scheme.error
+        : customColors != null
+        ? customColors.accent
         : palette == null
         ? scheme.primary
         : Color(palette.accent);
@@ -87,12 +105,20 @@ class CalendarBlockTile extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: () => items.length == 1
-                ? openCalendarItem(context, controller, items.single)
+                ? openCalendarItem(
+                    context,
+                    timetable,
+                    agenda,
+                    items.single,
+                    automation: automation,
+                  )
                 : showCalendarItems(
                     context,
-                    controller,
+                    timetable,
+                    agenda,
                     l10n.agendaChooseItems,
                     items,
+                    automation: automation,
                   ),
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -107,12 +133,17 @@ class CalendarBlockTile extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 1),
                     child: Center(
                       child: Text(
-                        items.map((item) => localizedCalendarItemTitle(l10n, item))
+                        items
+                            .map(
+                              (item) => localizedCalendarItemTitle(l10n, item),
+                            )
                             .join(' / '),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 12, height: 1.25, color: foreground,
+                          fontSize: 12,
+                          height: 1.25,
+                          color: foreground,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../app/controller.dart';
+import '../../automation/controller.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/design.dart';
+import '../controller.dart';
 import '../model.dart';
 import 'course_colors.dart';
 import 'course_detail.dart';
@@ -13,13 +14,15 @@ class CourseTile extends StatelessWidget {
     super.key,
     required this.course,
     required this.controller,
+    this.automation,
     required this.isToday,
     this.date,
     this.progress,
   });
 
   final Course course;
-  final AppController controller;
+  final TimetableController controller;
+  final AutomationController? automation;
   final bool isToday;
   final DateTime? date;
 
@@ -57,7 +60,13 @@ class CourseTile extends StatelessWidget {
             ),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
-              onTap: () => showCourse(context, controller, course, date: date),
+              onTap: () => showCourse(
+                context,
+                controller,
+                course,
+                date: date,
+                automation: automation,
+              ),
               child: Stack(
                 fit: StackFit.expand,
                 children: [

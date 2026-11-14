@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 
-import '../../app/controller.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../ui/app_dialog.dart';
 import '../../ui/app_notice.dart';
+import '../controller.dart';
 import 'school_screen.dart';
 import 'school_verification_dialog.dart';
 
 class SchoolAccount extends StatefulWidget {
   const SchoolAccount({super.key, required this.controller});
 
-  final AppController controller;
+  final SchoolController controller;
 
   @override
   State<SchoolAccount> createState() => _SchoolAccountState();
@@ -35,7 +35,7 @@ class _SchoolAccountState extends State<SchoolAccount> {
   }
 
   Future<void> _verify() async {
-    final success = await widget.controller.school.restoreAccount(
+    final success = await widget.controller.restoreAccount(
       verify: (request) => verifySchoolLogin(context, request),
     );
     if (success && mounted) showAppNotice(context, context.l10n.schoolVerified);
@@ -49,23 +49,23 @@ class _SchoolAccountState extends State<SchoolAccount> {
       body: l10n.schoolSignOutBody,
       confirmLabel: l10n.schoolSignOutAction,
     );
-    if (confirmed) await widget.controller.school.signOut();
+    if (confirmed) await widget.controller.signOut();
   }
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: widget.controller.school,
+    listenable: widget.controller,
     builder: (context, _) => _build(context),
   );
 
   Widget _build(BuildContext context) {
     final l10n = context.l10n;
     final controller = widget.controller;
-    final hasAccount = controller.school.username != null;
-    final needsVerification = controller.school.verificationRequired;
-    final needsLogin = !hasAccount || controller.school.loginExpired;
+    final hasAccount = controller.username != null;
+    final needsVerification = controller.verificationRequired;
+    final needsLogin = !hasAccount || controller.loginExpired;
     final enabled = !_handlingAction;
-    final canLogin = enabled && !controller.school.busy;
+    final canLogin = enabled && !controller.busy;
     final onTap = needsLogin
         ? _login
         : needsVerification
@@ -80,15 +80,15 @@ class _SchoolAccountState extends State<SchoolAccount> {
         size: 36,
         color: hasAccount ? scheme.primary : null,
       ),
-      title: Text(controller.school.username ?? l10n.schoolLogin),
+      title: Text(controller.username ?? l10n.schoolLogin),
       subtitle: hasAccount || needsVerification
-          ? Text(controller.school.accountStatus.localizedLabel(l10n))
+          ? Text(controller.accountStatus.localizedLabel(l10n))
           : null,
       trailing: hasAccount
           ? Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (needsVerification || controller.school.loginExpired)
+                if (needsVerification || controller.loginExpired)
                   TextButton(
                     onPressed: canLogin
                         ? () => _perform(needsVerification ? _verify : _login)

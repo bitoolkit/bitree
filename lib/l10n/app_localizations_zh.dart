@@ -907,7 +907,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get agendaTailDays => '拖尾长度（天）';
 
   @override
-  String get agendaTailDaysHint => '1–30 天，默认 4 天';
+  String get agendaTailDaysHint => '1–30 天，单条设置优先';
 
   @override
   String agendaTailDaysValue(int days) {
@@ -2424,4 +2424,147 @@ class AppLocalizationsZh extends AppLocalizations {
   String releaseVersion(String channel, String version) {
     return '$channel $version';
   }
+
+  @override
+  String get settingsDeveloperOptions => '开发者选项';
+
+  @override
+  String get settingsResetDefaultDeadlineTails => '将默认拖尾长度设为 null';
+
+  @override
+  String get settingsResetDefaultDeadlineTailsDescription =>
+      '将所有 4 天的 DDL 拖尾改为跟随全局设置。';
+
+  @override
+  String settingsResetDefaultDeadlineTailsResult(int count) {
+    return '已将 $count 个 DDL 改为跟随全局设置。';
+  }
+
+  @override
+  String get agendaTime => '时间';
+
+  @override
+  String get agendaMoreOptions => '更多选项';
+
+  @override
+  String get agendaColor => '日程颜色';
+
+  @override
+  String get agendaColorDefault => '默认';
+
+  @override
+  String get agendaColorBlue => '蓝色';
+
+  @override
+  String get agendaColorCoral => '珊瑚色';
+
+  @override
+  String get agendaColorViolet => '紫色';
+
+  @override
+  String get agendaColorGreen => '绿色';
+
+  @override
+  String get agendaColorAmber => '琥珀色';
+
+  @override
+  String get agendaColorTeal => '青色';
+
+  @override
+  String get agendaColorRose => '玫红';
+
+  @override
+  String get agendaColorSlate => '灰色';
+
+  @override
+  String agendaColorCustom(String value) {
+    return '自定义 $value';
+  }
+
+  @override
+  String get agendaColorPickerTitle => '选择颜色';
+
+  @override
+  String get agendaColorPresets => '快捷颜色';
+
+  @override
+  String get agendaColorCustomSection => '自定义颜色';
+
+  @override
+  String get agendaTailDaysDefault => '跟随全局设置';
+
+  @override
+  String get settingsDeadlineCutoff => 'DDL 伪提前';
+
+  @override
+  String get deadlineCutoffEnabled => '启用每日伪提前';
+
+  @override
+  String get deadlineCutoffDescription => '将时段内的 DDL 提前至开始时间，真实截止时间不变。';
+
+  @override
+  String get deadlineCutoffStart => '开始时间';
+
+  @override
+  String get deadlineCutoffEnd => '结束时间';
+
+  @override
+  String get deadlineCutoffDisabled => '未启用';
+
+  @override
+  String deadlineCutoffSameDay(String start, String end) {
+    return '每天 $start–$end';
+  }
+
+  @override
+  String deadlineCutoffOvernight(String start, String end) {
+    return '每天 $start 至次日 $end';
+  }
+
+  @override
+  String deadlineCutoffInstant(String time) {
+    return '仅每天 $time';
+  }
+
+  @override
+  String get deadlineCutoffBoundaryHint =>
+      '开始和结束时刻均包含在区间内。结束早于开始时表示跨日；两者相同时仅匹配单个时刻。';
+
+  @override
+  String get deadlineCutoffPreserveHint =>
+      '真实截止时间保持不变。关闭后不再伪提前，但会保留已选择的开始和结束时间。';
+
+  @override
+  String get agendaAdjustedDeadline => '伪截止';
+
+  @override
+  String get agendaRealDeadline => '真实截止时间';
+
+  @override
+  String agendaCutoffOriginal(String time) {
+    return '真实截止：$time';
+  }
+
+  @override
+  String agendaCutoffAdjusted(String time) {
+    return '伪截止：$time';
+  }
+
+  @override
+  String get settingsAgendaLayoutDays => 'DDL 排版宽度';
+
+  @override
+  String get agendaLayoutDaysDescription => '默认排版宽度；单个 DDL 的拖尾长度优先。';
+
+  @override
+  String get agendaLayoutDaysUnit => '天';
+
+  @override
+  String get agendaLayoutDaysRange => '请输入 1–30 的整数';
+
+  @override
+  String get settingsAgendaEventInfoBar => '日程与考试信息栏';
+
+  @override
+  String get settingsAgendaEventInfoBarDescription => '开启显示左侧信息栏，关闭使用方框样式。';
 }

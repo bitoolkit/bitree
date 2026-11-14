@@ -58,7 +58,7 @@ class HomeScreen extends StatelessWidget {
           ? Text(l10n.homeTitle)
           : LayoutBuilder(
               builder: (context, constraints) {
-                final selector = WeekSelector(controller: controller);
+                final selector = WeekSelector(controller: controller.timetable);
                 final compact =
                     constraints.maxWidth <
                     MediaQuery.textScalerOf(context).scale(200);
@@ -89,9 +89,13 @@ class HomeScreen extends StatelessWidget {
               },
             ),
       actions: [
-        AddButton(controller: controller, date: selectedDate),
+        AddButton(
+          timetable: controller.timetable,
+          agenda: controller.agenda,
+          date: selectedDate,
+        ),
         SyncButton(controller: controller),
-        ScheduleMenu(controller: controller),
+        ScheduleMenu(controller: controller.timetable),
       ],
       child: Stack(
         fit: StackFit.expand,
@@ -119,7 +123,10 @@ class HomeScreen extends StatelessWidget {
                             OutlinedButton.icon(
                               onPressed: controller.timetable.busy
                                   ? null
-                                  : () => editCourse(context, controller),
+                                  : () => editCourse(
+                                      context,
+                                      controller.timetable,
+                                    ),
                               icon: const Icon(Icons.add_rounded, size: 20),
                               label: Text(l10n.addCourse),
                             ),
@@ -133,7 +140,10 @@ class HomeScreen extends StatelessWidget {
                           controller.timetable.weeks.first,
                           controller.timetable.weeks.last,
                         )),
-                        controller: controller,
+                        timetable: controller.timetable,
+                        agenda: controller.agenda,
+                        automation: controller.automation,
+                        heightMode: controller.settings.timetableHeightMode,
                         active: active,
                       ),
               ),
@@ -155,7 +165,8 @@ class HomeScreen extends StatelessWidget {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 560),
                 child: AgendaReminder(
-                  controller: controller,
+                  controller: controller.agenda,
+                  automation: controller.automation,
                   entries: controller.agenda.ready
                       ? controller.automation.pendingOn(now, now: now)
                       : const [],
@@ -172,20 +183,29 @@ class HomeScreen extends StatelessWidget {
 
   Future<void> _unscheduled(BuildContext context) => showAppDialog<void>(
     context: context,
-    builder: (dialogContext) => SimpleDialog(
+    builder: (dialogContext) => AppDialog(
       title: Text(context.l10n.timedCourses),
-      children: [
-        for (final course in controller.automation.schedule!.courses.where(
-          (course) => !course.isScheduled,
-        ))
-          SimpleDialogOption(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              showCourse(context, controller, course);
-            },
-            child: Text(course.name),
-          ),
-      ],
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final course in controller.automation.schedule!.courses.where(
+            (course) => !course.isScheduled,
+          ))
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(course.name),
+              onTap: () {
+                Navigator.pop(dialogContext);
+                showCourse(
+                  context,
+                  controller.timetable,
+                  course,
+                  automation: controller.automation,
+                );
+              },
+            ),
+        ],
+      ),
     ),
   );
 }

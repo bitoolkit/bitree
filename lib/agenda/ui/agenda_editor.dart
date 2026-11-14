@@ -1,21 +1,28 @@
 import 'package:flutter/material.dart';
 
-import '../../app/controller.dart';
 import '../../automation/presentation.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../schedule/selection.dart';
-import '../../ui/dialog_layout.dart';
+import '../../ui/app_pickers.dart';
+import '../../ui/design.dart';
 import '../../ui/editor_sheet.dart';
 import '../../ui/external_link.dart';
+import '../../ui/selection_controls.dart';
 import '../../ui/sheet_layout.dart';
+import '../agenda_color.dart';
+import '../controller.dart';
 import '../model.dart';
+import 'agenda_color_palette.dart';
+import 'agenda_color_picker.dart';
 import 'agenda_operations.dart';
+
+part 'agenda_editor_sections.dart';
 
 Future<void> editAgenda(
   BuildContext context,
-  AppController controller, {
+  AgendaController controller, {
   AgendaEntry? entry,
   AgendaKind kind = AgendaKind.event,
   TimetableSelection? selection,
@@ -26,9 +33,7 @@ Future<void> editAgenda(
   if (entry != null) {
     final id = entry.id;
     entry =
-        controller.agenda.entries
-            .where((original) => original.id == id)
-            .firstOrNull ??
+        controller.entries.where((original) => original.id == id).firstOrNull ??
         entry;
   }
   final original = entry;
@@ -63,7 +68,7 @@ class _AgendaEditor extends StatefulWidget {
     this.term,
   });
 
-  final AppController controller;
+  final AgendaController controller;
   final AgendaEntry? entry;
   final String? entryTitle;
   final String? entryNotes;
@@ -81,7 +86,7 @@ class _AgendaEditorState extends State<_AgendaEditor> {
   late final _title = TextEditingController(text: widget.entryTitle);
   late final _location = TextEditingController(text: widget.entry?.location);
   late final _notes = TextEditingController(text: widget.entryNotes);
-  late int _tailDays = widget.entry?.tailDays ?? AgendaEntry.defaultTailDays;
+  late int? _tailDays = widget.entry?.tailDays;
   late AgendaKind _kind = widget.kind;
   late DateTime _start = widget.entry?.startsAt ?? widget.startsAt;
   late DateTime _end =
@@ -91,6 +96,7 @@ class _AgendaEditorState extends State<_AgendaEditor> {
             widget.endsAt ??
             _start.add(const Duration(hours: 1));
   late bool _allDay = widget.entry?.allDay ?? false;
+  late AgendaColor? _color = widget.entry?.color;
   bool _saving = false;
   String? _error;
 
@@ -104,9 +110,8 @@ class _AgendaEditorState extends State<_AgendaEditor> {
 
   Future<void> _pickDate(bool start) async {
     final current = start ? _start : _end;
-    final date = await showDatePicker(
+    final date = await showAppDatePicker(
       context: context,
-      builder: appPickerDialogBuilder,
       initialDate: current,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
@@ -131,9 +136,8 @@ class _AgendaEditorState extends State<_AgendaEditor> {
 
   Future<void> _pickTime(bool start) async {
     final current = start ? _start : _end;
-    final time = await showTimePicker(
+    final time = await showAppTimePicker(
       context: context,
-      builder: appPickerDialogBuilder,
       initialTime: TimeOfDay.fromDateTime(current),
     );
     if (time == null || !mounted) return;
@@ -169,7 +173,7 @@ class _AgendaEditorState extends State<_AgendaEditor> {
       _error = null;
     });
     final l10n = context.l10n;
-    final success = await widget.controller.agenda.save(
+    final success = await widget.controller.save(
       AgendaEntry(
         id:
             widget.entry?.id ??
@@ -186,10 +190,15 @@ class _AgendaEditorState extends State<_AgendaEditor> {
         source: widget.entry?.source,
         course: widget.entry?.course ?? '',
         url: widget.entry?.url,
+        color: _kind == AgendaKind.exam ? null : _color,
         // Editing turns a generated record into a user-authored snapshot. Its
         // localized presentation must not keep overriding the edited values.
         details: null,
         tailDays: _tailDays,
+        // Editing keeps the open-ended flag, but only while the entry stays a
+        // deadline: an event or exam always has an end time.
+        startOnly:
+            _kind == AgendaKind.deadline && (widget.entry?.startOnly ?? false),
       ),
     );
     if (!mounted) return;
@@ -222,27 +231,13 @@ class _AgendaEditorState extends State<_AgendaEditor> {
     }
   }
 
-  Widget _when(String label, DateTime value, bool start) => Padding(
-    padding: const EdgeInsets.only(top: 8),
-    child: Row(
-      children: [
-        SizedBox(width: 44, child: Text(label)),
-        Expanded(
-          child: OutlinedButton(
-            onPressed: _saving ? null : () => _pickDate(start),
-            child: Text(dateText(value)),
-          ),
-        ),
-        if (!_allDay) ...[
-          const SizedBox(width: 8),
-          OutlinedButton(
-            onPressed: _saving ? null : () => _pickTime(start),
-            child: Text(clockText(value)),
-          ),
-        ],
-      ],
-    ),
-  );
+  void _updateTailDays(int? days) {
+    setState(() => _tailDays = days);
+  }
+
+  void _updateColor(AgendaColor? color) {
+    setState(() => _color = color);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -272,19 +267,15 @@ class _AgendaEditorState extends State<_AgendaEditor> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (widget.entry == null) ...[
-            SegmentedButton<AgendaKind>(
-              segments: [
-                ButtonSegment(
-                  value: AgendaKind.event,
-                  label: Text(l10n.agenda),
-                ),
-                ButtonSegment(value: AgendaKind.deadline, label: Text('DDL')),
-              ],
-              selected: {_kind},
-              showSelectedIcon: false,
-              onSelectionChanged: _saving
+            AppSegmentedControl<AgendaKind>(
+              options: {
+                AgendaKind.event: l10n.agenda,
+                AgendaKind.deadline: 'DDL',
+              },
+              value: _kind,
+              onChanged: _saving
                   ? null
-                  : (values) => setState(() => _kind = values.single),
+                  : (value) => setState(() => _kind = value),
             ),
             const SizedBox(height: 16),
           ],
@@ -321,9 +312,19 @@ class _AgendaEditorState extends State<_AgendaEditor> {
             validator: (text) =>
                 text!.trim().isEmpty ? l10n.agendaNameRequired : null,
           ),
+          const SizedBox(height: 20),
           Row(
             children: [
-              Expanded(child: Text(l10n.agendaAllDay)),
+              Expanded(
+                child: Text(
+                  l10n.agendaTime,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Text(l10n.agendaAllDay),
               Switch(
                 value: _allDay,
                 onChanged: _saving
@@ -332,60 +333,34 @@ class _AgendaEditorState extends State<_AgendaEditor> {
               ),
             ],
           ),
-          _when(
-            _kind == AgendaKind.deadline ? l10n.due : l10n.start,
-            _start,
-            true,
-          ),
-          if (_kind != AgendaKind.deadline) _when(l10n.end, _end, false),
-          const SizedBox(height: 16),
-          if (_kind == AgendaKind.deadline) ...[
-            Row(
+          const SizedBox(height: 4),
+          Material(
+            color: theme.colorScheme.surfaceContainerLow,
+            shape: RoundedRectangleBorder(
+              borderRadius: AppCorners.control,
+              side: BorderSide(color: theme.colorScheme.outlineVariant),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
               children: [
-                Expanded(child: Text(l10n.agendaTailDays)),
-                Text(l10n.agendaTailDaysValue(_tailDays)),
+                _timeRow(
+                  _kind == AgendaKind.deadline &&
+                          widget.entry?.startOnly != true
+                      ? l10n.due
+                      : l10n.start,
+                  _start,
+                  true,
+                ),
+                if (_kind != AgendaKind.deadline) ...[
+                  Divider(height: 1, color: theme.colorScheme.outlineVariant),
+                  _timeRow(l10n.end, _end, false),
+                ],
               ],
             ),
-            Semantics(
-              label: l10n.agendaTailDays,
-              child: Slider(
-                value: _tailDays.toDouble(),
-                min: 1,
-                max: AgendaEntry.maxTailDays.toDouble(),
-                divisions: AgendaEntry.maxTailDays - 1,
-                label: l10n.agendaTailDaysValue(_tailDays),
-                semanticFormatterCallback: (value) =>
-                    l10n.agendaTailDaysValue(value.round()),
-                onChanged: _saving
-                    ? null
-                    : (value) => setState(() => _tailDays = value.round()),
-              ),
-            ),
-            Text(
-              l10n.agendaTailDaysHint,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-          if (_kind != AgendaKind.deadline) ...[
-            TextFormField(
-              controller: _location,
-              enabled: !_saving,
-              decoration: InputDecoration(
-                labelText: l10n.agendaLocationOptional,
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-          TextFormField(
-            controller: _notes,
-            enabled: !_saving,
-            minLines: 2,
-            maxLines: 4,
-            decoration: InputDecoration(labelText: l10n.agendaNotesOptional),
           ),
+          const SizedBox(height: 8),
+          if (_kind != AgendaKind.exam) _colorSelector(),
+          _moreOptions(),
         ],
       ),
     );
