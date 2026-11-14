@@ -1,57 +1,27 @@
-# bitree_lua
+# Native Lua display filter
 
-This package is the native boundary for source extensions. It pins Lua 5.5.1
-and exposes one operation call at a time through `bitree_lua_execute_start`.
+`bitree_lua` embeds official C Lua 5.5.1 for the application's local
+`filter(data)` function. It does not discover courses or provide source modules,
+HTTP, sessions, storage, extension loading, or host callbacks.
 
-The Lua environment lives in `lua/prelude.lua`; JSON uses the vendored,
-unmodified `dkjson` 2.7 (`lua/vendor/dkjson.lua`, MIT). `hook/build.dart`
-generates a C++ source containing those Lua files and compiles it together
-with the vendored Lua sources and `native/bitree_lua_runtime.cpp`.
+The application passes a JSON snapshot of already saved timetable courses,
+deadlines, events and exams. The filter returns JSON display data; the
+application validates it and leaves the saved records unchanged. The Dart
+wrapper lives in `lib/automation/native_lua.dart`.
 
-The C++ bridge opens only the standard libraries needed by source scripts and
-removes `io`, `os`, `debug`, `package`, `dofile`, `loadfile`, and `load`.
-`require` only resolves the host-provided `bitree.*` modules. URL, encoding,
-time conversion and all application data access cross the JSON host callback;
-the C layer contains no platform or application logic.
+Each call creates and closes a Lua state with a 32 MiB heap limit, an instruction
+budget, a wall-clock deadline and a shared cancellation flag. Only base,
+`string`, `table`, `math` and `utf8` libraries are exposed. File access, system
+commands, dynamic code loading, `require` and coroutines are unavailable.
+JSON conversion uses the bundled, unmodified dkjson 2.7 module.
 
-`ctx` carries only the invocation's `config`, `scope`, `source`, `locale` and
-`base` entries. Reusable host capabilities are loaded explicitly, for example:
+Flutter native assets compile the bridge and vendored Lua sources through
+`hook/build.dart`, then bundle the library on supported target platforms. There
+is no runtime system-Lua dependency. The C ABI exports only
+`bitree_lua_filter` and `bitree_lua_free`. Errors cross the FFI boundary as a
+status code and plain UTF-8 text, without JSON encoding.
 
-```lua
-local http = require("bitree.http")
-local json = require("bitree.json")
-local data = require("bitree.data")
-```
-
-`require("bitree.http").request` yields the Lua coroutine with a JSON request. Dart performs
-the HTTP call with `HttpClient`, then resumes the suspended execution through
-`bitree_lua_execute_resume`. Several HTTP calls may suspend in one operation.
-The transport enforces declared HTTPS origins, strips credential headers from
-the script-visible request and response, limits redirects and response size,
-and keeps cookies per source instance. If the script is cancelled or reaches
-its deadline while waiting, the execution is discarded instead of resumed.
-
-Flutter's native assets toolchain builds and packages the library automatically
-for Android, Linux, Windows, macOS, and iOS. The build uses the platform C++
-compiler supplied by the Flutter toolchain, so no system Lua installation is
-required.
-
-```bash
-flutter test --no-pub test/native_lua_test.dart
-```
-
-The test always loads the native asset. A missing or broken build hook fails
-the test instead of skipping the native runtime.
-
-## Updating Lua
-
-The bundled source is pinned in `third_party/lua/SOURCE.json`. To change
-versions, update `version`, `url`, and `sha256` there, then run:
-
-```bash
-python3 tool/update_lua.py
-```
-
-The updater downloads the pinned official archive, verifies its checksum, and
-replaces `src/`. Build hooks and CI never download Lua; they compile only the
-committed source.
+The Lua source version and archive checksum are recorded in
+`third_party/lua/SOURCE.json`; `tool/update_lua.py` updates the vendored sources.
+Tests run with `flutter test --no-pub test/native_lua_test.dart
+test/lua_filter_test.dart` after dependencies have been resolved.

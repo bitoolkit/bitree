@@ -6,10 +6,7 @@ import 'package:bitree/agenda/ui/agenda_operations.dart';
 import 'package:bitree/agenda/ui/calendar_screen.dart';
 import 'package:bitree/agenda/view_mode.dart';
 import 'package:bitree/app/ui/settings_screen.dart';
-import 'package:bitree/automation/controller.dart';
-import 'package:bitree/automation/lua_filter.dart';
 import 'package:bitree/automation/ui/automation_screen.dart';
-import 'package:bitree/automation/ui/automation_script_screen.dart';
 import 'package:bitree/schedule/model.dart';
 import 'package:bitree/schedule/ui/course_editor.dart';
 import 'package:bitree/schedule/ui/home_screen.dart';
@@ -20,20 +17,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'support/test_app.dart';
 
-class _PassthroughExecutor extends LuaFilterExecutor {
-  @override
-  Future<Map<String, dynamic>> run(
-    String source,
-    Map<String, dynamic> data, {
-    Map<String, dynamic>? rules,
-  }) async => data;
-
-  @override
-  void cancel() {}
-}
-
 void main() {
-  testWidgets('display rules open from settings', (tester) async {
+  testWidgets('automation is available through unlocked developer settings', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -52,13 +39,15 @@ void main() {
         ),
       ),
     );
-    await tester.scrollUntilVisible(find.widgetWithText(ListTile, '显示规则'), 200);
-    expect(find.widgetWithText(ListTile, '未设置'), findsOneWidget);
-    await tester.tap(find.widgetWithText(ListTile, '显示规则'));
+    expect(find.text('开发者模式'), findsNothing);
+    controller.settings.unlockDeveloperMode();
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('开发者模式'), 200);
+    await tester.tap(find.text('开发者模式'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('自动化'));
     await tester.pumpAndSettle();
     expect(find.byType(AutomationScreen), findsOneWidget);
-    await tester.tap(find.text('自定义 Lua 脚本'));
-    await tester.pumpAndSettle();
     expect(find.text('加载 Lua 文件'), findsOneWidget);
     await tester.tap(find.text('填入示例'));
     await tester.pump();
@@ -73,99 +62,19 @@ void main() {
     );
     expect(controller.automation.executionDuration, isNotNull);
     await tester.pumpAndSettle();
-    expect(find.text('启用脚本'), findsOneWidget);
-    expect(find.textContaining(RegExp(r'\d+\.\dms · 无变更')), findsOneWidget);
-    await tester.pageBack();
-    await tester.pumpAndSettle();
-    expect(find.widgetWithText(ListTile, '已启用'), findsOneWidget);
-    expect(find.textContaining(RegExp(r'\d+\.\dms')), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('quick settings update courses, deadlines and exams', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    final start = DateTime.utc(2026, 9, 7, 12);
-    final controller = TestAppController(
-      schedule: SemesterSchedule(
-        term: '2026-2027-1',
-        firstMonday: start,
-        courses: [
-          Course(
-            id: 'course',
-            name: '很长很长的课程名称',
-            weekday: 1,
-            startSection: 1,
-            endSection: 2,
-            weeks: [1],
-          ),
-        ],
-      ),
-      entries: [
-        AgendaEntry(
-          id: 'deadline',
-          title: '作业',
-          kind: AgendaKind.deadline,
-          startsAt: start,
-          source: DeadlineSource.lexue,
-          course: '很长很长的课程名称',
-        ),
-        AgendaEntry(
-          id: 'exam',
-          title: '期末考试',
-          kind: AgendaKind.exam,
-          startsAt: start,
-          endsAt: start.add(const Duration(hours: 2)),
-          course: '很长很长的课程名称',
-        ),
-      ],
+    final executionTime = find.textContaining(RegExp(r'\d+\.\dms · 无变更'));
+    final scrollable = tester.state<ScrollableState>(
+      find
+          .descendant(
+            of: find.byType(AutomationScreen),
+            matching: find.byType(Scrollable),
+          )
+          .first,
     );
-    await controller.initialize();
-    final automation = AutomationController(
-      MemoryPreferences(),
-      controller.timetable,
-      controller.agenda,
-      executor: _PassthroughExecutor(),
-      widgetPublisher: (_) async {},
-    );
-    addTearDown(automation.dispose);
-    await automation.initialize();
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: bitreeTheme(Brightness.light),
-        home: AutomationScreen(controller: automation),
-      ),
-    );
-
-    await tester.tap(find.text('课程显示名称'));
+    scrollable.position.jumpTo(scrollable.position.maxScrollExtent);
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.byKey(const ValueKey('automation-alias-很长很长的课程名称')),
-      '简称',
-    );
-    await tester.tap(find.text('保存'));
-    await tester.pumpAndSettle();
-    expect(automation.rules!.courseAliases, {'很长很长的课程名称': '简称'});
-
-    await tester.tap(find.text('隐藏平台 DDL'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('乐学'));
-    await tester.tap(find.text('保存'));
-    await tester.pumpAndSettle();
-    expect(automation.rules!.hiddenDeadlineSources, {DeadlineSource.lexue});
-
-    await tester.tap(find.text('考试标题前缀'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), '考试：');
-    await tester.tap(find.text('保存'));
-    await tester.pumpAndSettle();
-    expect(automation.rules!.examTitlePrefix, '考试：');
-    expect(automation.rules!.courseAliases, {'很长很长的课程名称': '简称'});
-    expect(automation.rules!.hiddenDeadlineSources, {DeadlineSource.lexue});
+    expect(executionTime, findsOneWidget);
+    expect(find.textContaining('运行耗时：'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -203,7 +112,7 @@ end
       await tester.pumpWidget(
         MaterialApp(
           theme: bitreeTheme(Brightness.light),
-          home: AutomationScriptScreen(controller: controller.automation),
+          home: AutomationScreen(controller: controller.automation),
         ),
       );
       expect(
@@ -213,7 +122,7 @@ end
       final entry = controller.automation.entries.firstWhere(
         (entry) => entry.isDeadline,
       );
-      final context = tester.element(find.byType(AutomationScriptScreen));
+      final context = tester.element(find.byType(AutomationScreen));
       final sheet = showAgendaEntry(context, controller, entry);
       await tester.pumpAndSettle();
       expect(find.text('脚本作业'), findsWidgets);
@@ -325,7 +234,7 @@ end
     expect(find.text('展示作业'), findsWidgets);
     expect(find.text('旧作业'), findsNothing);
     expect(find.text('新作业'), findsNothing);
-    await tester.runAsync(() => controller.automation.setScriptEnabled(false));
+    await tester.runAsync(() => controller.automation.setEnabled(false));
     await tester.pumpAndSettle();
     expect(find.text('旧作业'), findsWidgets);
     expect(find.text('新作业'), findsWidgets);

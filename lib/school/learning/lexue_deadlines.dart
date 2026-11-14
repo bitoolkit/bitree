@@ -7,7 +7,6 @@ import '../../agenda/deadline_source.dart';
 import '../../agenda/model.dart';
 import '../../core/async/cancelable_request.dart';
 import '../../core/json.dart';
-import '../../sources/course_selection.dart';
 import '../errors.dart';
 import '../session.dart';
 
@@ -23,31 +22,18 @@ const _activityModules = {
   'workshop',
 };
 
-/// Reads activity deadlines for the chosen courses and the account calendar.
-/// The calendar names courses only by title, so entries for courses the user
-/// left out are dropped by name.
 Future<List<AgendaEntry>> fetchLexueDeadlines(
   SchoolSession session,
-  SchoolResponse page, {
-  CourseChooser? chooseCourses,
-}) async {
+  SchoolResponse page,
+) async {
   final sesskey = RegExp(r'''["']sesskey["']\s*:\s*["']([^"']+)["']''')
       .firstMatch(page.text)?[1];
-  final discovered = await fetchLexueCourses(session);
-  final selected = chooseCourses == null
-      ? discovered
-      : await chooseCourses(discovered);
-  final selectedIds = {for (final course in selected) course.remoteId};
-  final skippedNames = {
-    for (final course in discovered)
-      if (!selectedIds.contains(course.remoteId)) course.name,
-  };
   final outcomes = await Future.wait([
     if (sesskey == null)
       Future.value((value: const <AgendaEntry>[], error: null, stack: null))
     else
       _attempt(() => _calendarDeadlines(session, sesskey)),
-    _attempt(() => _activityDeadlines(session, selected)),
+    _attempt(() => _activityDeadlines(session)),
   ], eagerError: true);
   final calendar = outcomes[0];
   final activities = outcomes[1];
@@ -57,48 +43,9 @@ Future<List<AgendaEntry>> fetchLexueDeadlines(
       calendar.stack ?? activities.stack!,
     );
   }
-  return _mergeActivityDeadlines([
-    for (final entry in calendar.value ?? const <AgendaEntry>[])
-      if (!skippedNames.contains(entry.course)) entry,
-  ], activities.value ?? const []);
-}
-
-Future<List<PlatformCourse>> fetchLexueCourses(SchoolSession session) async {
-  final home = await session.request(
-    DeadlineSource.lexue.origin.resolve('/my/'),
-    stopAtLogin: true,
-  );
-  return [
-    for (final course in _courseLinks(home.text, base: home.url).values)
-      PlatformCourse(remoteId: course.id, name: course.name, url: course.url),
-  ];
-}
-
-Future<List<AgendaEntry>> fetchLexueCourseDeadlines(
-  SchoolSession session,
-  PlatformCourse course,
-) async {
-  final scan = await _courseActivities(session, _courseLink(course));
-  if (scan.entries.isEmpty && scan.error != null) {
-    Error.throwWithStackTrace(scan.error!, scan.stack!);
-  }
-  return scan.entries;
-}
-
-_CourseLink _courseLink(PlatformCourse course) {
-  final url = course.url;
-  return (
-    id: course.remoteId,
-    name: course.name,
-    url:
-        url != null &&
-            url.scheme == 'https' &&
-            url.host == DeadlineSource.lexue.host &&
-            url.userInfo.isEmpty
-        ? url
-        : DeadlineSource.lexue.origin.resolve(
-            '/course/view.php?id=${course.remoteId}',
-          ),
+  return _mergeActivityDeadlines(
+    calendar.value ?? const [],
+    activities.value ?? const [],
   );
 }
 
@@ -147,13 +94,16 @@ Future<List<AgendaEntry>> _calendarDeadlines(
   }
 }
 
-Future<List<AgendaEntry>> _activityDeadlines(
-  SchoolSession session,
-  List<PlatformCourse> courses,
-) async {
+Future<List<AgendaEntry>> _activityDeadlines(SchoolSession session) async {
+  final source = DeadlineSource.lexue;
+  final home = await session.request(
+    source.origin.resolve('/my/'),
+    stopAtLogin: true,
+  );
+  final courses = _courseLinks(home.text, base: home.url);
   final scans = await Future.wait([
-    for (final course in courses)
-      _attempt(() => _courseActivities(session, _courseLink(course))),
+    for (final course in courses.values)
+      _attempt(() => _courseActivities(session, course)),
   ], eagerError: true);
 
   final result = <AgendaEntry>[];

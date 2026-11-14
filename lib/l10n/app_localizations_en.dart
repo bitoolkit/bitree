@@ -57,80 +57,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get developerMode => 'Developer mode';
 
   @override
-  String get automationTitle => 'Display rules';
+  String get automationTitle => 'Automation';
 
   @override
-  String get automationFailedSummary => 'Not applied; showing original data';
+  String get automationDescription =>
+      'Customize courses, deadlines, events and exams with Lua without changing original data or synchronization.';
 
   @override
-  String get automationCourseAliases => 'Course display names';
+  String get automationEnabled => 'Enable script';
 
   @override
-  String get automationCourseAliasesHint =>
-      'Enter a shorter name to update the course and its labels in the agenda. Leave blank to keep the original name.';
-
-  @override
-  String get automationCourseAliasesEmpty =>
-      'Sync courses to set shorter names here.';
-
-  @override
-  String get automationDisplayName => 'Display name';
-
-  @override
-  String automationAliasSummary(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count courses changed',
-      one: '1 course changed',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get automationHideSources => 'Hide platform deadlines';
-
-  @override
-  String get automationHideSourcesHint =>
-      'Selected platforms are hidden from the agenda only. Original data is kept.';
-
-  @override
-  String get automationNoneHidden => 'No deadlines hidden';
-
-  @override
-  String automationHiddenSources(String sources) {
-    return 'Hidden: $sources';
-  }
-
-  @override
-  String get automationExamPrefix => 'Exam title prefix';
-
-  @override
-  String get automationExamPrefixLabel => 'Prefix';
-
-  @override
-  String get automationExamPrefixExample => 'e.g. Exam: ';
-
-  @override
-  String automationPrefixSummary(String prefix) {
-    return 'Prefix: $prefix';
-  }
-
-  @override
-  String get automationNotSet => 'Not set';
-
-  @override
-  String get automationCustomScript => 'Custom Lua script';
-
-  @override
-  String get automationCustomScriptHint =>
-      'Handle dates, times, new entries and more';
-
-  @override
-  String get automationScriptActive => 'On';
-
-  @override
-  String get automationScriptEnabled => 'Use this script';
+  String get automationLocalScript => 'Local Lua script';
 
   @override
   String get automationImport => 'Load Lua file';
@@ -145,11 +82,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationApply => 'Save and apply';
 
   @override
-  String get automationFallback =>
-      'Display rules couldn\'t be applied. Original data is shown.';
+  String get automationSaved => 'Script saved and applied.';
 
   @override
-  String get automationRunning => 'Applying…';
+  String automationExecutionTime(String milliseconds) {
+    return 'Execution time: $milliseconds ms';
+  }
+
+  @override
+  String get automationResult => 'Result';
+
+  @override
+  String get automationFallback =>
+      'The script could not be applied. Original data is being displayed.';
+
+  @override
+  String get automationRunning => 'Running script…';
+
+  @override
+  String get automationDisabled =>
+      'Script disabled. Original data is displayed.';
 
   @override
   String automationApplied(String milliseconds, String changes) {
@@ -179,7 +131,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get automationContract =>
-      'The rules above run first, and filter(data) receives their result. Define filter(data) and return a table with courses, deadlines, events and exams. Omit id to add a display item; remove items or set hidden = true to hide them. Keep existing identities and status unchanged.\n\nrequire(\"bitree.display\") provides renameCourses(data, aliases), hideDeadlines(data, sources), prefixExams(data, prefix) and apply(data, rules).';
+      'Define filter(data) and return a table with courses, deadlines, events and exams. Omit id to add a display item; remove items or set hidden = true to hide them. Keep existing identities and status unchanged.';
 
   @override
   String get widgetUsesSystemPalette => 'Use system palette for widget';
@@ -1361,9 +1313,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncTargetPhysicsLab => 'Physics lab DDLs';
 
   @override
-  String get syncTargetExtensionSources => 'Extension source DDLs';
-
-  @override
   String get syncActionSchedule => 'Sync schedule';
 
   @override
@@ -1386,9 +1335,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get syncActionPhysicsLab => 'Update physics lab DDLs';
-
-  @override
-  String get syncActionExtensionSources => 'Sync extension source DDLs';
 
   @override
   String get syncing => 'Synchronizing…';
@@ -2595,211 +2541,4 @@ class AppLocalizationsEn extends AppLocalizations {
   String releaseVersion(String channel, String version) {
     return '$channel $version';
   }
-
-  @override
-  String get dataSourcesTitle => 'Data sources';
-
-  @override
-  String get dataSourcesNone => 'No sources enabled';
-
-  @override
-  String get sourceBuiltinImplementation => 'Built-in implementation';
-
-  @override
-  String get sourceBundledImplementation => 'Built-in package';
-
-  @override
-  String get sourceUnavailable => 'This source is unavailable';
-
-  @override
-  String get sourceSettings => 'Source settings';
-
-  @override
-  String get sourceCourses => 'Courses';
-
-  @override
-  String get sourceSyncNow => 'Sync now';
-
-  @override
-  String get sourceDisabledHint => 'Sync skips it. Synced content is kept.';
-
-  @override
-  String sourceCoursesSelected(int selected, int total) {
-    return '$selected of $total courses selected';
-  }
-
-  @override
-  String sourceUsingImplementation(String name) {
-    return 'Using $name';
-  }
-
-  @override
-  String get advanced => 'Advanced';
-
-  @override
-  String get discoveringCourses => 'Discovering courses…';
-
-  @override
-  String get noCourses => 'Courses on the platform appear here after syncing.';
-
-  @override
-  String get manualCourse => 'Added manually';
-
-  @override
-  String courseLinkedTo(String names) {
-    return 'Linked: $names';
-  }
-
-  @override
-  String get linkLocalCourses => 'Link local courses';
-
-  @override
-  String get noLocalCourses => 'There are no local courses yet';
-
-  @override
-  String get addManualCourse => 'Add course';
-
-  @override
-  String get courseInputHint => 'Course link or ID';
-
-  @override
-  String removeManualCourseQuestion(String name) {
-    return 'Remove $name?';
-  }
-
-  @override
-  String get removeManualCourseBody =>
-      'This course won\'t sync anymore. Imported deadlines are kept.';
-
-  @override
-  String get discoverCourses => 'Refresh course list';
-
-  @override
-  String get sourceImplementation => 'Implementation';
-
-  @override
-  String get extensionsTitle => 'Extensions';
-
-  @override
-  String get installExtension => 'Install extension';
-
-  @override
-  String get installExtensionFromFolder => 'Install from folder';
-
-  @override
-  String get installExtensionFromUrl => 'Install from link';
-
-  @override
-  String get install => 'Install';
-
-  @override
-  String get extensionInstallFailed => 'Couldn\'t install extension';
-
-  @override
-  String get extensionBundled => 'Built-in';
-
-  @override
-  String get extensionDownloadUrl => 'Package URL';
-
-  @override
-  String get extensionDownloadSha256 => 'SHA-256';
-
-  @override
-  String get extensionDownloadHint =>
-      'The content must exactly match the SHA-256 published by the author; mismatches are rejected.';
-
-  @override
-  String get extensionDownloadAction => 'Download and check';
-
-  @override
-  String get extensionDownloadChecking => 'Checking…';
-
-  @override
-  String get extensionPackageVersion => 'Version';
-
-  @override
-  String get extensionProvides => 'Provides';
-
-  @override
-  String extensionProvidesSource(String name) {
-    return 'New source: $name';
-  }
-
-  @override
-  String extensionReplacesSource(String name) {
-    return 'Replaces the $name implementation';
-  }
-
-  @override
-  String extensionInstallApplies(String names) {
-    return 'After installation, $names will sync with this extension.';
-  }
-
-  @override
-  String get extensionAccess => 'Can access';
-
-  @override
-  String extensionAccessWebsites(String sites) {
-    return 'Websites: $sites';
-  }
-
-  @override
-  String extensionAccessAccounts(String accounts) {
-    return 'Signed-in sessions: $accounts';
-  }
-
-  @override
-  String extensionAccessCookies(String accounts) {
-    return 'Sign-in credentials: $accounts';
-  }
-
-  @override
-  String extensionAccessDataRead(String resources) {
-    return 'Read local $resources';
-  }
-
-  @override
-  String extensionAccessDataEdit(String resources) {
-    return 'Edit local $resources';
-  }
-
-  @override
-  String get extensionNoAccess => 'No network, account, or local data access';
-
-  @override
-  String sourceResource(String resource) {
-    String _temp0 = intl.Intl.selectLogic(resource, {
-      'course': 'courses',
-      'timetable': 'timetable',
-      'deadline': 'deadlines',
-      'event': 'events',
-      'exam': 'exams',
-      'grade': 'grades',
-      'studyPlan': 'study plan',
-      'classroom': 'classrooms',
-      'other': '$resource',
-    });
-    return '$_temp0';
-  }
-
-  @override
-  String get uninstallExtension => 'Uninstall extension';
-
-  @override
-  String uninstallExtensionQuestion(String name) {
-    return 'Uninstall $name?';
-  }
-
-  @override
-  String get uninstallExtensionBody =>
-      'Sources using it switch back to the built-in implementation, and sources it added are removed. Synced content is kept.';
-
-  @override
-  String get enabled => 'Enabled';
-
-  @override
-  String get disabled => 'Disabled';
-
-  @override
-  String get settingsSaved => 'Saved.';
 }

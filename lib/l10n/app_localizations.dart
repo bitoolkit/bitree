@@ -191,122 +191,26 @@ abstract class AppLocalizations {
   /// No description provided for @automationTitle.
   ///
   /// In en, this message translates to:
-  /// **'Display rules'**
+  /// **'Automation'**
   String get automationTitle;
 
-  /// No description provided for @automationFailedSummary.
+  /// No description provided for @automationDescription.
   ///
   /// In en, this message translates to:
-  /// **'Not applied; showing original data'**
-  String get automationFailedSummary;
+  /// **'Customize courses, deadlines, events and exams with Lua without changing original data or synchronization.'**
+  String get automationDescription;
 
-  /// No description provided for @automationCourseAliases.
+  /// No description provided for @automationEnabled.
   ///
   /// In en, this message translates to:
-  /// **'Course display names'**
-  String get automationCourseAliases;
+  /// **'Enable script'**
+  String get automationEnabled;
 
-  /// No description provided for @automationCourseAliasesHint.
+  /// No description provided for @automationLocalScript.
   ///
   /// In en, this message translates to:
-  /// **'Enter a shorter name to update the course and its labels in the agenda. Leave blank to keep the original name.'**
-  String get automationCourseAliasesHint;
-
-  /// No description provided for @automationCourseAliasesEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'Sync courses to set shorter names here.'**
-  String get automationCourseAliasesEmpty;
-
-  /// No description provided for @automationDisplayName.
-  ///
-  /// In en, this message translates to:
-  /// **'Display name'**
-  String get automationDisplayName;
-
-  /// No description provided for @automationAliasSummary.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{1 course changed} other{{count} courses changed}}'**
-  String automationAliasSummary(int count);
-
-  /// No description provided for @automationHideSources.
-  ///
-  /// In en, this message translates to:
-  /// **'Hide platform deadlines'**
-  String get automationHideSources;
-
-  /// No description provided for @automationHideSourcesHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Selected platforms are hidden from the agenda only. Original data is kept.'**
-  String get automationHideSourcesHint;
-
-  /// No description provided for @automationNoneHidden.
-  ///
-  /// In en, this message translates to:
-  /// **'No deadlines hidden'**
-  String get automationNoneHidden;
-
-  /// No description provided for @automationHiddenSources.
-  ///
-  /// In en, this message translates to:
-  /// **'Hidden: {sources}'**
-  String automationHiddenSources(String sources);
-
-  /// No description provided for @automationExamPrefix.
-  ///
-  /// In en, this message translates to:
-  /// **'Exam title prefix'**
-  String get automationExamPrefix;
-
-  /// No description provided for @automationExamPrefixLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Prefix'**
-  String get automationExamPrefixLabel;
-
-  /// No description provided for @automationExamPrefixExample.
-  ///
-  /// In en, this message translates to:
-  /// **'e.g. Exam: '**
-  String get automationExamPrefixExample;
-
-  /// No description provided for @automationPrefixSummary.
-  ///
-  /// In en, this message translates to:
-  /// **'Prefix: {prefix}'**
-  String automationPrefixSummary(String prefix);
-
-  /// No description provided for @automationNotSet.
-  ///
-  /// In en, this message translates to:
-  /// **'Not set'**
-  String get automationNotSet;
-
-  /// No description provided for @automationCustomScript.
-  ///
-  /// In en, this message translates to:
-  /// **'Custom Lua script'**
-  String get automationCustomScript;
-
-  /// No description provided for @automationCustomScriptHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Handle dates, times, new entries and more'**
-  String get automationCustomScriptHint;
-
-  /// No description provided for @automationScriptActive.
-  ///
-  /// In en, this message translates to:
-  /// **'On'**
-  String get automationScriptActive;
-
-  /// No description provided for @automationScriptEnabled.
-  ///
-  /// In en, this message translates to:
-  /// **'Use this script'**
-  String get automationScriptEnabled;
+  /// **'Local Lua script'**
+  String get automationLocalScript;
 
   /// No description provided for @automationImport.
   ///
@@ -332,17 +236,41 @@ abstract class AppLocalizations {
   /// **'Save and apply'**
   String get automationApply;
 
+  /// No description provided for @automationSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Script saved and applied.'**
+  String get automationSaved;
+
+  /// No description provided for @automationExecutionTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Execution time: {milliseconds} ms'**
+  String automationExecutionTime(String milliseconds);
+
+  /// No description provided for @automationResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Result'**
+  String get automationResult;
+
   /// No description provided for @automationFallback.
   ///
   /// In en, this message translates to:
-  /// **'Display rules couldn\'t be applied. Original data is shown.'**
+  /// **'The script could not be applied. Original data is being displayed.'**
   String get automationFallback;
 
   /// No description provided for @automationRunning.
   ///
   /// In en, this message translates to:
-  /// **'Applying…'**
+  /// **'Running script…'**
   String get automationRunning;
+
+  /// No description provided for @automationDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Script disabled. Original data is displayed.'**
+  String get automationDisabled;
 
   /// No description provided for @automationApplied.
   ///
@@ -383,7 +311,7 @@ abstract class AppLocalizations {
   /// No description provided for @automationContract.
   ///
   /// In en, this message translates to:
-  /// **'The rules above run first, and filter(data) receives their result. Define filter(data) and return a table with courses, deadlines, events and exams. Omit id to add a display item; remove items or set hidden = true to hide them. Keep existing identities and status unchanged.\n\nrequire(\"bitree.display\") provides renameCourses(data, aliases), hideDeadlines(data, sources), prefixExams(data, prefix) and apply(data, rules).'**
+  /// **'Define filter(data) and return a table with courses, deadlines, events and exams. Omit id to add a display item; remove items or set hidden = true to hide them. Keep existing identities and status unchanged.'**
   String get automationContract;
 
   /// No description provided for @widgetUsesSystemPalette.
@@ -2298,12 +2226,6 @@ abstract class AppLocalizations {
   /// **'Physics lab DDLs'**
   String get syncTargetPhysicsLab;
 
-  /// No description provided for @syncTargetExtensionSources.
-  ///
-  /// In en, this message translates to:
-  /// **'Extension source DDLs'**
-  String get syncTargetExtensionSources;
-
   /// No description provided for @syncActionSchedule.
   ///
   /// In en, this message translates to:
@@ -2351,12 +2273,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Update physics lab DDLs'**
   String get syncActionPhysicsLab;
-
-  /// No description provided for @syncActionExtensionSources.
-  ///
-  /// In en, this message translates to:
-  /// **'Sync extension source DDLs'**
-  String get syncActionExtensionSources;
 
   /// No description provided for @syncing.
   ///
@@ -4451,336 +4367,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{channel} {version}'**
   String releaseVersion(String channel, String version);
-
-  /// No description provided for @dataSourcesTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Data sources'**
-  String get dataSourcesTitle;
-
-  /// No description provided for @dataSourcesNone.
-  ///
-  /// In en, this message translates to:
-  /// **'No sources enabled'**
-  String get dataSourcesNone;
-
-  /// No description provided for @sourceBuiltinImplementation.
-  ///
-  /// In en, this message translates to:
-  /// **'Built-in implementation'**
-  String get sourceBuiltinImplementation;
-
-  /// No description provided for @sourceBundledImplementation.
-  ///
-  /// In en, this message translates to:
-  /// **'Built-in package'**
-  String get sourceBundledImplementation;
-
-  /// No description provided for @sourceUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'This source is unavailable'**
-  String get sourceUnavailable;
-
-  /// No description provided for @sourceSettings.
-  ///
-  /// In en, this message translates to:
-  /// **'Source settings'**
-  String get sourceSettings;
-
-  /// No description provided for @sourceCourses.
-  ///
-  /// In en, this message translates to:
-  /// **'Courses'**
-  String get sourceCourses;
-
-  /// No description provided for @sourceSyncNow.
-  ///
-  /// In en, this message translates to:
-  /// **'Sync now'**
-  String get sourceSyncNow;
-
-  /// No description provided for @sourceDisabledHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Sync skips it. Synced content is kept.'**
-  String get sourceDisabledHint;
-
-  /// No description provided for @sourceCoursesSelected.
-  ///
-  /// In en, this message translates to:
-  /// **'{selected} of {total} courses selected'**
-  String sourceCoursesSelected(int selected, int total);
-
-  /// No description provided for @sourceUsingImplementation.
-  ///
-  /// In en, this message translates to:
-  /// **'Using {name}'**
-  String sourceUsingImplementation(String name);
-
-  /// No description provided for @advanced.
-  ///
-  /// In en, this message translates to:
-  /// **'Advanced'**
-  String get advanced;
-
-  /// No description provided for @discoveringCourses.
-  ///
-  /// In en, this message translates to:
-  /// **'Discovering courses…'**
-  String get discoveringCourses;
-
-  /// No description provided for @noCourses.
-  ///
-  /// In en, this message translates to:
-  /// **'Courses on the platform appear here after syncing.'**
-  String get noCourses;
-
-  /// No description provided for @manualCourse.
-  ///
-  /// In en, this message translates to:
-  /// **'Added manually'**
-  String get manualCourse;
-
-  /// No description provided for @courseLinkedTo.
-  ///
-  /// In en, this message translates to:
-  /// **'Linked: {names}'**
-  String courseLinkedTo(String names);
-
-  /// No description provided for @linkLocalCourses.
-  ///
-  /// In en, this message translates to:
-  /// **'Link local courses'**
-  String get linkLocalCourses;
-
-  /// No description provided for @noLocalCourses.
-  ///
-  /// In en, this message translates to:
-  /// **'There are no local courses yet'**
-  String get noLocalCourses;
-
-  /// No description provided for @addManualCourse.
-  ///
-  /// In en, this message translates to:
-  /// **'Add course'**
-  String get addManualCourse;
-
-  /// No description provided for @courseInputHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Course link or ID'**
-  String get courseInputHint;
-
-  /// No description provided for @removeManualCourseQuestion.
-  ///
-  /// In en, this message translates to:
-  /// **'Remove {name}?'**
-  String removeManualCourseQuestion(String name);
-
-  /// No description provided for @removeManualCourseBody.
-  ///
-  /// In en, this message translates to:
-  /// **'This course won\'t sync anymore. Imported deadlines are kept.'**
-  String get removeManualCourseBody;
-
-  /// No description provided for @discoverCourses.
-  ///
-  /// In en, this message translates to:
-  /// **'Refresh course list'**
-  String get discoverCourses;
-
-  /// No description provided for @sourceImplementation.
-  ///
-  /// In en, this message translates to:
-  /// **'Implementation'**
-  String get sourceImplementation;
-
-  /// No description provided for @extensionsTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Extensions'**
-  String get extensionsTitle;
-
-  /// No description provided for @installExtension.
-  ///
-  /// In en, this message translates to:
-  /// **'Install extension'**
-  String get installExtension;
-
-  /// No description provided for @installExtensionFromFolder.
-  ///
-  /// In en, this message translates to:
-  /// **'Install from folder'**
-  String get installExtensionFromFolder;
-
-  /// No description provided for @installExtensionFromUrl.
-  ///
-  /// In en, this message translates to:
-  /// **'Install from link'**
-  String get installExtensionFromUrl;
-
-  /// No description provided for @install.
-  ///
-  /// In en, this message translates to:
-  /// **'Install'**
-  String get install;
-
-  /// No description provided for @extensionInstallFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn\'t install extension'**
-  String get extensionInstallFailed;
-
-  /// No description provided for @extensionBundled.
-  ///
-  /// In en, this message translates to:
-  /// **'Built-in'**
-  String get extensionBundled;
-
-  /// No description provided for @extensionDownloadUrl.
-  ///
-  /// In en, this message translates to:
-  /// **'Package URL'**
-  String get extensionDownloadUrl;
-
-  /// No description provided for @extensionDownloadSha256.
-  ///
-  /// In en, this message translates to:
-  /// **'SHA-256'**
-  String get extensionDownloadSha256;
-
-  /// No description provided for @extensionDownloadHint.
-  ///
-  /// In en, this message translates to:
-  /// **'The content must exactly match the SHA-256 published by the author; mismatches are rejected.'**
-  String get extensionDownloadHint;
-
-  /// No description provided for @extensionDownloadAction.
-  ///
-  /// In en, this message translates to:
-  /// **'Download and check'**
-  String get extensionDownloadAction;
-
-  /// No description provided for @extensionDownloadChecking.
-  ///
-  /// In en, this message translates to:
-  /// **'Checking…'**
-  String get extensionDownloadChecking;
-
-  /// No description provided for @extensionPackageVersion.
-  ///
-  /// In en, this message translates to:
-  /// **'Version'**
-  String get extensionPackageVersion;
-
-  /// No description provided for @extensionProvides.
-  ///
-  /// In en, this message translates to:
-  /// **'Provides'**
-  String get extensionProvides;
-
-  /// No description provided for @extensionProvidesSource.
-  ///
-  /// In en, this message translates to:
-  /// **'New source: {name}'**
-  String extensionProvidesSource(String name);
-
-  /// No description provided for @extensionReplacesSource.
-  ///
-  /// In en, this message translates to:
-  /// **'Replaces the {name} implementation'**
-  String extensionReplacesSource(String name);
-
-  /// No description provided for @extensionInstallApplies.
-  ///
-  /// In en, this message translates to:
-  /// **'After installation, {names} will sync with this extension.'**
-  String extensionInstallApplies(String names);
-
-  /// No description provided for @extensionAccess.
-  ///
-  /// In en, this message translates to:
-  /// **'Can access'**
-  String get extensionAccess;
-
-  /// No description provided for @extensionAccessWebsites.
-  ///
-  /// In en, this message translates to:
-  /// **'Websites: {sites}'**
-  String extensionAccessWebsites(String sites);
-
-  /// No description provided for @extensionAccessAccounts.
-  ///
-  /// In en, this message translates to:
-  /// **'Signed-in sessions: {accounts}'**
-  String extensionAccessAccounts(String accounts);
-
-  /// No description provided for @extensionAccessCookies.
-  ///
-  /// In en, this message translates to:
-  /// **'Sign-in credentials: {accounts}'**
-  String extensionAccessCookies(String accounts);
-
-  /// No description provided for @extensionAccessDataRead.
-  ///
-  /// In en, this message translates to:
-  /// **'Read local {resources}'**
-  String extensionAccessDataRead(String resources);
-
-  /// No description provided for @extensionAccessDataEdit.
-  ///
-  /// In en, this message translates to:
-  /// **'Edit local {resources}'**
-  String extensionAccessDataEdit(String resources);
-
-  /// No description provided for @extensionNoAccess.
-  ///
-  /// In en, this message translates to:
-  /// **'No network, account, or local data access'**
-  String get extensionNoAccess;
-
-  /// No description provided for @sourceResource.
-  ///
-  /// In en, this message translates to:
-  /// **'{resource, select, course{courses} timetable{timetable} deadline{deadlines} event{events} exam{exams} grade{grades} studyPlan{study plan} classroom{classrooms} other{{resource}}}'**
-  String sourceResource(String resource);
-
-  /// No description provided for @uninstallExtension.
-  ///
-  /// In en, this message translates to:
-  /// **'Uninstall extension'**
-  String get uninstallExtension;
-
-  /// No description provided for @uninstallExtensionQuestion.
-  ///
-  /// In en, this message translates to:
-  /// **'Uninstall {name}?'**
-  String uninstallExtensionQuestion(String name);
-
-  /// No description provided for @uninstallExtensionBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Sources using it switch back to the built-in implementation, and sources it added are removed. Synced content is kept.'**
-  String get uninstallExtensionBody;
-
-  /// No description provided for @enabled.
-  ///
-  /// In en, this message translates to:
-  /// **'Enabled'**
-  String get enabled;
-
-  /// No description provided for @disabled.
-  ///
-  /// In en, this message translates to:
-  /// **'Disabled'**
-  String get disabled;
-
-  /// No description provided for @settingsSaved.
-  ///
-  /// In en, this message translates to:
-  /// **'Saved.'**
-  String get settingsSaved;
 }
 
 class _AppLocalizationsDelegate

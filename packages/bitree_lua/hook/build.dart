@@ -12,6 +12,10 @@ void main(List<String> arguments) async {
     final generated = input.outputDirectory.resolve('prelude_data.cpp');
     Directory.fromUri(input.outputDirectory).createSync(recursive: true);
     _writePrelude(input.packageRoot, generated);
+    output.dependencies.addAll([
+      input.packageRoot.resolve('lua/prelude.lua'),
+      input.packageRoot.resolve('lua/vendor/dkjson.lua'),
+    ]);
 
     final luaDirectory = Directory.fromUri(
       input.packageRoot.resolve('third_party/lua/src'),

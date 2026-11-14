@@ -25,12 +25,6 @@ class AgendaPresentation extends AgendaEntry {
          url: entry.url,
          details: entry.details,
          tailDays: entry.tailDays,
-         origin: entry.origin,
-         overrides: entry.overrides,
-         sourceValues: entry.sourceValues,
-         completionOverride: entry.completionOverride,
-         lastSourceCompletion: entry.lastSourceCompletion,
-         sourceRemoved: entry.sourceRemoved,
        );
 
   final String? titleOverride;

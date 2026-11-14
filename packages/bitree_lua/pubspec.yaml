@@ -1,5 +1,5 @@
 name: bitree_lua
-description: Official Lua 5.5.1 runtime for BITree source extensions.
+description: Official Lua 5.5.1 runtime for BITree display filters.
 version: 0.1.0
 publish_to: none
 

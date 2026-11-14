@@ -81,38 +81,6 @@ end
     expect(result, {'courses': [], 'deadlines': [], 'events': [], 'exams': []});
   });
 
-  test('display rules run before the script without source escaping', () async {
-    final rules = {
-      'courseAliases': {'某个非常长的课程名称': '简"称]]'},
-      'hiddenDeadlineSources': ['lexue'],
-    };
-    final rulesOnly = await LuaFilterExecutor().run('', data(), rules: rules);
-    expect((rulesOnly['courses'] as List).single['name'], '简"称]]');
-    expect(rulesOnly['deadlines'], [
-      {'id': 'new', 'course': '简"称]]', 'source': 'eclass', 'done': true},
-    ]);
-
-    final allHidden = await LuaFilterExecutor().run(
-      '',
-      data(),
-      rules: {
-        'hiddenDeadlineSources': ['lexue', 'eclass'],
-      },
-    );
-    expect(allHidden['deadlines'], isEmpty);
-
-    final scripted = await LuaFilterExecutor().run('''
-local display = require("bitree.display")
-
-function filter(data)
-    data.courses[1].name = data.courses[1].name .. "!"
-    return display.renameCourses(data, { ["某门课程"] = "旧课" })
-end
-''', data(), rules: rules);
-    expect((scripted['courses'] as List).single['name'], '简"称]]!');
-    expect((scripted['deadlines'] as List).single['course'], '简"称]]');
-  });
-
   test(
     'events and exams support transforms and legacy output preserves them',
     () async {
@@ -165,15 +133,12 @@ end
   }
 
   test('the standard string library is available to filters', () async {
-    final result = await LuaFilterExecutor().run(
-      '''
+    final result = await LuaFilterExecutor().run('''
 function filter(data)
     data.courses[1].name = string.gsub(data.courses[1].name, "课程", "课")
     return data
 end
-''',
-      data(),
-    );
+''', data());
 
     expect((result['courses'] as List).single['name'], '某个非常长的课名称');
   });

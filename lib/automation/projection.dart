@@ -58,43 +58,14 @@ class AutomationProjection {
     'courses': [
       for (final schedule in schedules)
         for (final course in schedule.courses)
-          {..._displayCourseJson(course), 'term': schedule.term},
+          {...course.toJson(), 'term': schedule.term},
     ],
     for (final kind in _agendaKeys.entries)
       kind.value: [
         for (final entry in entries)
-          if (!entry.deleted && entry.kind == kind.key)
-            _displayEntryJson(entry),
+          if (!entry.deleted && entry.kind == kind.key) entry.toJson(),
       ],
   };
-
-  static Map<String, dynamic> _displayCourseJson(Course course) {
-    final json = course.toJson();
-    for (final key in [
-      'origin',
-      'overrides',
-      'sourceValues',
-      'sourceRemoved',
-    ]) {
-      json.remove(key);
-    }
-    return json;
-  }
-
-  static Map<String, dynamic> _displayEntryJson(AgendaEntry entry) {
-    final json = entry.toJson();
-    for (final key in [
-      'origin',
-      'overrides',
-      'sourceValues',
-      'completionOverride',
-      'lastSourceCompletion',
-      'sourceRemoved',
-    ]) {
-      json.remove(key);
-    }
-    return json;
-  }
 
   factory AutomationProjection.fromResult(
     Map<String, dynamic> result,

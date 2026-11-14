@@ -7,8 +7,6 @@ import '../core/async/serial_queue.dart';
 import '../core/diagnostics.dart';
 import '../core/time.dart';
 import '../schedule/model.dart';
-import '../sources/agenda_merge.dart';
-import '../sources/source.dart';
 import 'deadline_clear_scope.dart';
 import 'model.dart';
 import 'physics_lab_deadlines.dart';
@@ -45,7 +43,7 @@ class AgendaController extends ChangeNotifier {
     _ready = false;
     _notify();
     try {
-      _entries = List.unmodifiable(normalizeAgendaOrigins(await _store.read()));
+      _entries = List.unmodifiable(await _store.read());
       _ready = true;
     } on Exception catch (failure, stack) {
       AppDiagnostics.instance.report('读取日程', failure, stack);
@@ -102,85 +100,49 @@ class AgendaController extends ChangeNotifier {
     String term,
     List<AgendaEntry> exams, {
     void Function()? checkActive,
-    String sourceInstanceId = 'instance:builtin.bit.school',
-  }) => _write(
-    (entries) => mergeAgendaSource(
-      existing: entries,
-      incoming: [
-        for (final exam in exams)
-          exam.copyWith(
-            term: term,
-            origin:
-                exam.origin ??
-                RecordOrigin(
-                  sourceInstanceId: sourceInstanceId,
-                  resource: SourceResource.exam,
-                  remoteId: exam.id,
-                  scope: term,
-                ),
-          ),
-      ],
-      sourceInstanceId: sourceInstanceId,
-      resource: SourceResource.exam,
-      replace: true,
-      scope: term,
-    ),
-    checkActive: checkActive,
-  );
+  }) => _write((entries) {
+    final edited = {
+      for (final entry in entries)
+        if (entry.kind == AgendaKind.exam && entry.term == term && entry.local)
+          entry.id,
+    };
+    return [
+      ...entries.where(
+        (entry) =>
+            entry.kind != AgendaKind.exam || entry.term != term || entry.local,
+      ),
+      ...exams.where((entry) => !edited.contains(entry.id)),
+    ];
+  }, checkActive: checkActive);
 
   Future<bool> mergeDeadlines(
     List<AgendaEntry> incoming, {
     void Function()? checkActive,
-    String? sourceInstanceId,
-    String? scope,
   }) => _write((entries) {
-    if (sourceInstanceId != null) {
-      return mergeAgendaSource(
-        existing: entries,
-        incoming: incoming,
-        sourceInstanceId: sourceInstanceId,
-        resource: SourceResource.deadline,
-        scope: scope,
+    final unmatched = [...incoming];
+    final matched = <AgendaEntry>[];
+    final merged = <AgendaEntry>[];
+    for (final saved in entries) {
+      final index = unmatched.indexWhere(
+        (entry) => _sameRemoteEntry(saved, entry),
       );
-    }
-    var merged = entries;
-    final groups = <String, List<AgendaEntry>>{};
-    final manual = <AgendaEntry>[];
-    for (final entry in incoming) {
-      final origin = agendaOriginFor(entry);
-      if (origin == null) {
-        manual.add(entry);
-      } else {
-        groups.putIfAbsent(origin.sourceInstanceId, () => []).add(entry);
+      if (index < 0) {
+        if (matched.any((entry) => _sameRemoteEntry(saved, entry))) continue;
+        merged.add(saved);
+        continue;
       }
-    }
-    for (final group in groups.entries) {
-      merged = mergeAgendaSource(
-        existing: merged,
-        incoming: group.value,
-        sourceInstanceId: group.key,
-        resource: SourceResource.deadline,
-        scope: scope,
+      final entry = unmatched.removeAt(index);
+      matched.add(entry);
+      final next = saved.local ? saved : entry;
+      merged.add(
+        next.copyWith(
+          done: saved.local ? entry.done || saved.done : entry.done,
+          deleted: saved.deleted,
+        ),
       );
     }
-    return _mergeManualDeadlines(merged, manual);
+    return [...merged, ...unmatched];
   }, checkActive: checkActive);
-
-  /// Rebinds records imported before a persistent source instance existed.
-  Future<bool> rebindSourceInstance(String from, String to) =>
-      _operations.run(() async {
-        var changed = false;
-        final next = <AgendaEntry>[];
-        for (final entry in _entries) {
-          if (entry.origin?.sourceInstanceId == from) {
-            changed = true;
-            next.add(entry.rebindOrigin(to));
-          } else {
-            next.add(entry);
-          }
-        }
-        return changed ? await _commit(next) : true;
-      });
 
   int countDeadlines(DeadlineClearScope scope) =>
       _entries.where(scope.includes).length;
@@ -308,35 +270,6 @@ class AgendaController extends ChangeNotifier {
     _disposed = true;
     super.dispose();
   }
-}
-
-List<AgendaEntry> _mergeManualDeadlines(
-  List<AgendaEntry> saved,
-  List<AgendaEntry> incoming,
-) {
-  final unmatched = [...incoming];
-  final matched = <AgendaEntry>[];
-  final merged = <AgendaEntry>[];
-  for (final current in saved) {
-    final index = unmatched.indexWhere(
-      (entry) => _sameRemoteEntry(current, entry),
-    );
-    if (index < 0) {
-      if (matched.any((entry) => _sameRemoteEntry(current, entry))) continue;
-      merged.add(current);
-      continue;
-    }
-    final entry = unmatched.removeAt(index);
-    matched.add(entry);
-    final next = current.local ? current : entry;
-    merged.add(
-      next.copyWith(
-        done: current.local ? entry.done || current.done : entry.done,
-        deleted: current.deleted,
-      ),
-    );
-  }
-  return [...merged, ...unmatched];
 }
 
 bool _sameRemoteEntry(AgendaEntry left, AgendaEntry right) {

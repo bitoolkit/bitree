@@ -199,10 +199,6 @@ void main() {
           category: SyncCategory.deadlineData,
           usesSchoolSession: false,
         ),
-        SyncTarget.extensionSources: (
-          category: SyncCategory.deadlineData,
-          usesSchoolSession: false,
-        ),
       },
     );
   });

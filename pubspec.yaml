@@ -43,6 +43,3 @@ flutter:
     - assets/brand/bitree.png
     - assets/wencui/
     - assets/palettes/
-    - assets/extensions/builtin.lexue/
-    - assets/extensions/builtin.eclass/
-    - assets/extensions/builtin.mooc/

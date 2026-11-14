@@ -55,70 +55,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get developerMode => '开发者模式';
 
   @override
-  String get automationTitle => '显示规则';
+  String get automationTitle => '自动化';
 
   @override
-  String get automationFailedSummary => '未能应用，正在显示原始数据';
+  String get automationDescription => '用 Lua 自定义课程、DDL、活动和考试的展示，不影响原始数据和同步。';
 
   @override
-  String get automationCourseAliases => '课程显示名称';
+  String get automationEnabled => '启用脚本';
 
   @override
-  String get automationCourseAliasesHint => '填写简称即可，课程和日程中的课程名会一起更新。留空使用原名称。';
-
-  @override
-  String get automationCourseAliasesEmpty => '同步课程后，就能在这里设置简称。';
-
-  @override
-  String get automationDisplayName => '显示名称';
-
-  @override
-  String automationAliasSummary(int count) {
-    return '已设置 $count 门课程';
-  }
-
-  @override
-  String get automationHideSources => '隐藏平台 DDL';
-
-  @override
-  String get automationHideSourcesHint => '选中的平台 DDL 只从展示中隐藏，原始数据不会被删除。';
-
-  @override
-  String get automationNoneHidden => '没有隐藏 DDL';
-
-  @override
-  String automationHiddenSources(String sources) {
-    return '已隐藏：$sources';
-  }
-
-  @override
-  String get automationExamPrefix => '考试标题前缀';
-
-  @override
-  String get automationExamPrefixLabel => '前缀';
-
-  @override
-  String get automationExamPrefixExample => '例如：考试：';
-
-  @override
-  String automationPrefixSummary(String prefix) {
-    return '前缀：$prefix';
-  }
-
-  @override
-  String get automationNotSet => '未设置';
-
-  @override
-  String get automationCustomScript => '自定义 Lua 脚本';
-
-  @override
-  String get automationCustomScriptHint => '处理日期、时间、新增日程等更多情况';
-
-  @override
-  String get automationScriptActive => '已启用';
-
-  @override
-  String get automationScriptEnabled => '启用脚本';
+  String get automationLocalScript => '本地 Lua 脚本';
 
   @override
   String get automationImport => '加载 Lua 文件';
@@ -133,10 +79,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get automationApply => '保存并应用';
 
   @override
-  String get automationFallback => '显示规则未能应用，当前显示原始数据。';
+  String get automationSaved => '已保存并应用脚本。';
 
   @override
-  String get automationRunning => '正在应用…';
+  String automationExecutionTime(String milliseconds) {
+    return '运行耗时：$milliseconds ms';
+  }
+
+  @override
+  String get automationResult => '运行结果';
+
+  @override
+  String get automationFallback => '脚本未能应用，当前展示原始数据。';
+
+  @override
+  String get automationRunning => '正在运行脚本…';
+
+  @override
+  String get automationDisabled => '脚本已停用，展示原始数据。';
 
   @override
   String automationApplied(String milliseconds, String changes) {
@@ -166,7 +126,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get automationContract =>
-      '上面的规则先运行，filter(data) 收到它们的结果。定义 filter(data)，返回含 courses、deadlines、events、exams 的 table。省略 id 可新增展示项，移除项目或设置 hidden = true 可隐藏；已有项目保留身份和状态。\n\nrequire(\"bitree.display\") 提供 renameCourses(data, aliases)、hideDeadlines(data, sources)、prefixExams(data, prefix) 和 apply(data, rules)。';
+      '定义 filter(data)，返回含 courses、deadlines、events、exams 的 table。省略 id 可新增展示项，移除项目或设置 hidden = true 可隐藏；已有项目保留身份和状态。';
 
   @override
   String get widgetUsesSystemPalette => '小组件使用系统调色板';
@@ -1280,9 +1240,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get syncTargetPhysicsLab => '大物实验 DDL';
 
   @override
-  String get syncTargetExtensionSources => '扩展来源 DDL';
-
-  @override
   String get syncActionSchedule => '同步课表';
 
   @override
@@ -1305,9 +1262,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get syncActionPhysicsLab => '更新大物实验 DDL';
-
-  @override
-  String get syncActionExtensionSources => '同步扩展来源 DDL';
 
   @override
   String get syncing => '正在同步…';
@@ -2470,208 +2424,4 @@ class AppLocalizationsZh extends AppLocalizations {
   String releaseVersion(String channel, String version) {
     return '$channel $version';
   }
-
-  @override
-  String get dataSourcesTitle => '数据来源';
-
-  @override
-  String get dataSourcesNone => '未启用来源';
-
-  @override
-  String get sourceBuiltinImplementation => '内置实现';
-
-  @override
-  String get sourceBundledImplementation => '内置包';
-
-  @override
-  String get sourceUnavailable => '来源暂时不可用';
-
-  @override
-  String get sourceSettings => '来源设置';
-
-  @override
-  String get sourceCourses => '课程';
-
-  @override
-  String get sourceSyncNow => '立即同步';
-
-  @override
-  String get sourceDisabledHint => '同步时会跳过它，已同步的内容保留。';
-
-  @override
-  String sourceCoursesSelected(int selected, int total) {
-    return '已选 $selected/$total 门课程';
-  }
-
-  @override
-  String sourceUsingImplementation(String name) {
-    return '使用$name';
-  }
-
-  @override
-  String get advanced => '高级';
-
-  @override
-  String get discoveringCourses => '正在发现课程…';
-
-  @override
-  String get noCourses => '同步后会列出平台上的课程。';
-
-  @override
-  String get manualCourse => '手动添加';
-
-  @override
-  String courseLinkedTo(String names) {
-    return '关联：$names';
-  }
-
-  @override
-  String get linkLocalCourses => '关联本地课程';
-
-  @override
-  String get noLocalCourses => '本地还没有课程';
-
-  @override
-  String get addManualCourse => '添加课程';
-
-  @override
-  String get courseInputHint => '课程链接或编号';
-
-  @override
-  String removeManualCourseQuestion(String name) {
-    return '移除$name？';
-  }
-
-  @override
-  String get removeManualCourseBody => '之后不再同步这门课程，已导入的 DDL 会保留。';
-
-  @override
-  String get discoverCourses => '刷新课程列表';
-
-  @override
-  String get sourceImplementation => '实现';
-
-  @override
-  String get extensionsTitle => '扩展';
-
-  @override
-  String get installExtension => '安装扩展';
-
-  @override
-  String get installExtensionFromFolder => '从文件夹安装扩展';
-
-  @override
-  String get installExtensionFromUrl => '从链接安装扩展';
-
-  @override
-  String get install => '安装';
-
-  @override
-  String get extensionInstallFailed => '无法安装扩展';
-
-  @override
-  String get extensionBundled => '内置';
-
-  @override
-  String get extensionDownloadUrl => '扩展包链接';
-
-  @override
-  String get extensionDownloadSha256 => 'SHA-256';
-
-  @override
-  String get extensionDownloadHint => '内容必须与发布页给出的 SHA-256 完全一致；不匹配会拒绝安装。';
-
-  @override
-  String get extensionDownloadAction => '下载并检查';
-
-  @override
-  String get extensionDownloadChecking => '正在检查…';
-
-  @override
-  String get extensionPackageVersion => '版本';
-
-  @override
-  String get extensionProvides => '提供';
-
-  @override
-  String extensionProvidesSource(String name) {
-    return '新来源：$name';
-  }
-
-  @override
-  String extensionReplacesSource(String name) {
-    return '替换$name的实现';
-  }
-
-  @override
-  String extensionInstallApplies(String names) {
-    return '安装后，$names会改用这个扩展同步。';
-  }
-
-  @override
-  String get extensionAccess => '可以访问';
-
-  @override
-  String extensionAccessWebsites(String sites) {
-    return '网站：$sites';
-  }
-
-  @override
-  String extensionAccessAccounts(String accounts) {
-    return '登录状态：$accounts';
-  }
-
-  @override
-  String extensionAccessCookies(String accounts) {
-    return '登录凭据：$accounts';
-  }
-
-  @override
-  String extensionAccessDataRead(String resources) {
-    return '读取本地$resources';
-  }
-
-  @override
-  String extensionAccessDataEdit(String resources) {
-    return '修改本地$resources';
-  }
-
-  @override
-  String get extensionNoAccess => '不访问网络、账号或本地数据';
-
-  @override
-  String sourceResource(String resource) {
-    String _temp0 = intl.Intl.selectLogic(resource, {
-      'course': '课程',
-      'timetable': '课表',
-      'deadline': 'DDL',
-      'event': '日程',
-      'exam': '考试',
-      'grade': '成绩',
-      'studyPlan': '培养方案',
-      'classroom': '教室',
-      'other': '$resource',
-    });
-    return '$_temp0';
-  }
-
-  @override
-  String get uninstallExtension => '卸载扩展';
-
-  @override
-  String uninstallExtensionQuestion(String name) {
-    return '卸载$name？';
-  }
-
-  @override
-  String get uninstallExtensionBody => '使用它的来源会改回内置实现，它新增的来源会被移除。已同步的内容保留。';
-
-  @override
-  String get enabled => '启用';
-
-  @override
-  String get disabled => '已停用';
-
-  @override
-  String get settingsSaved => '已保存。';
 }

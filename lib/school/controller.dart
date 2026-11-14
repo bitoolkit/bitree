@@ -5,13 +5,9 @@ import 'package:flutter/foundation.dart';
 import '../academics/controller.dart';
 import '../agenda/controller.dart';
 import '../agenda/deadline_source.dart';
-import '../agenda/model.dart';
 import '../core/async/cancelable_request.dart';
 import '../core/diagnostics.dart';
 import '../schedule/controller.dart';
-import '../sources/builtin.dart';
-import '../sources/course_selection.dart';
-import '../sources/registry.dart';
 import 'academics.dart';
 import 'access.dart';
 import 'error_message.dart';
@@ -41,7 +37,6 @@ class SchoolController extends ChangeNotifier {
     required this._timetable,
     required this._agenda,
     required this._academics,
-    this._sources,
   }) : _storage = storage,
        _access = SchoolAccess(storage);
 
@@ -51,7 +46,6 @@ class SchoolController extends ChangeNotifier {
   final TimetableController _timetable;
   final AgendaController _agenda;
   final AcademicController _academics;
-  final SourceRegistry? _sources;
   AccountStatus _status = AccountStatus.unverified;
   String? _username;
   Future<void>? _finished;
@@ -227,7 +221,6 @@ class SchoolController extends ChangeNotifier {
         result.schedule,
         result.terms,
         checkActive: session.checkActive,
-        sourceInstanceId: _sourceInstanceId(BuiltinSources.school),
       );
     }),
     notifyErrors: false,
@@ -246,9 +239,6 @@ class SchoolController extends ChangeNotifier {
         result.term,
         result.exams,
         checkActive: session.checkActive,
-        sourceInstanceId:
-            _sourceInstanceId(BuiltinSources.school) ??
-            'instance:${BuiltinSources.school}',
       );
     }),
     notifyErrors: false,
@@ -279,7 +269,6 @@ class SchoolController extends ChangeNotifier {
 
   Future<bool> importDeadlines({
     required DeadlineSource source,
-    CourseChooser? chooseCourses,
     VerifySchoolLogin? verify,
   }) => _run(
     '同步${_deadlineSourceName(source)} DDL',
@@ -288,81 +277,18 @@ class SchoolController extends ChangeNotifier {
       page,
     ) async {
       final deadlines = await switch (source) {
-        DeadlineSource.lexue => fetchLexueDeadlines(
-          session,
-          page,
-          chooseCourses: chooseCourses,
-        ),
-        DeadlineSource.eclass => fetchEclassDeadlines(
-          session,
-          chooseCourses: chooseCourses,
-        ),
+        DeadlineSource.lexue => fetchLexueDeadlines(session, page),
+        DeadlineSource.eclass => fetchEclassDeadlines(session),
         DeadlineSource.mooc => throw ArgumentError('MOOC 使用独立账号同步'),
       };
       session.checkActive();
       return _agenda.mergeDeadlines(
         deadlines,
         checkActive: session.checkActive,
-        sourceInstanceId: _sourceInstanceId(switch (source) {
-          DeadlineSource.lexue => BuiltinSources.lexue,
-          DeadlineSource.eclass => BuiltinSources.eclass,
-          DeadlineSource.mooc => BuiltinSources.mooc,
-        }),
       );
     }),
     notifyErrors: false,
   );
-
-  Future<List<PlatformCourse>?> discoverCourses(
-    DeadlineSource source, {
-    VerifySchoolLogin? verify,
-  }) => _readLearning(
-    source,
-    '发现${_deadlineSourceName(source)}课程',
-    (session, page) => switch (source) {
-      DeadlineSource.lexue => fetchLexueCourses(session),
-      DeadlineSource.eclass => fetchEclassCourses(session),
-      DeadlineSource.mooc => throw ArgumentError('MOOC 使用独立账号同步'),
-    },
-    verify: verify,
-  );
-
-  Future<List<AgendaEntry>?> readCourseDeadlines(
-    DeadlineSource source, {
-    required PlatformCourse course,
-    VerifySchoolLogin? verify,
-  }) => _readLearning(
-    source,
-    '读取${_deadlineSourceName(source)}课程 DDL',
-    (session, page) => switch (source) {
-      DeadlineSource.lexue => fetchLexueCourseDeadlines(session, course),
-      DeadlineSource.eclass => fetchEclassCourseDeadlines(session, course),
-      DeadlineSource.mooc => throw ArgumentError('MOOC 使用独立账号同步'),
-    },
-    verify: verify,
-  );
-
-  Future<T?> _readLearning<T>(
-    DeadlineSource source,
-    String label,
-    Future<T> Function(SchoolSession session, SchoolResponse page) operation, {
-    VerifySchoolLogin? verify,
-  }) async {
-    T? result;
-    final success = await _run(
-      label,
-      () => _access.readLearningPlatform(source, _verification(verify), (
-        session,
-        page,
-      ) async {
-        result = await operation(session, page);
-        session.checkActive();
-        return true;
-      }),
-      notifyErrors: false,
-    );
-    return success ? result : null;
-  }
 
   void cancel() => _access.cancel();
 
@@ -389,13 +315,6 @@ class SchoolController extends ChangeNotifier {
 
   void _notify() {
     if (!_disposed) notifyListeners();
-  }
-
-  String? _sourceInstanceId(String definitionId) {
-    final username = _username;
-    final sources = _sources;
-    if (username == null || sources == null) return null;
-    return sources.instanceForAccount(definitionId, 'bit.school:$username')?.id;
   }
 }
 

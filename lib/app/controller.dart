@@ -5,12 +5,7 @@ import '../academics/controller.dart';
 import '../agenda/controller.dart';
 import '../automation/controller.dart';
 import '../classrooms/repository.dart';
-import '../core/diagnostics.dart';
 import '../core/platform/system_palette.dart';
-import '../core/time.dart';
-import '../extensions/bundled.dart';
-import '../extensions/controller.dart';
-import '../extensions/store.dart';
 import '../mooc/controller.dart';
 import '../mooc/storage.dart';
 import '../schedule/controller.dart';
@@ -18,13 +13,6 @@ import '../schedule/store.dart';
 import '../school/controller.dart';
 import '../school/service.dart';
 import '../school/storage.dart';
-import '../sources/builtin.dart';
-import '../sources/builtin_runtime.dart';
-import '../sources/host.dart';
-import '../sources/registry.dart';
-import '../sources/runtime.dart';
-import '../sources/secrets.dart';
-import '../sources/sync.dart';
 import '../sync/controller.dart';
 import '../ui/course_palette.dart';
 import 'settings_controller.dart';
@@ -42,17 +30,12 @@ class AppController extends ChangeNotifier {
     SystemPaletteSource? systemPaletteSource,
     Future<Map<String, CoursePalette>> Function()? coursePaletteLoader,
     MoocStorage? moocStorage,
-    SourceRegistry? sourceRegistry,
-    ExtensionStore? extensionStore,
-    BundledExtensionLoader? bundledExtensionLoader,
-    SourceSecretStore? sourceSecrets,
   }) : settings = AppSettingsController(
          preferences,
          systemPaletteSource: systemPaletteSource,
          coursePaletteLoader: coursePaletteLoader,
        ),
-       timetable = TimetableController(store),
-       sources = sourceRegistry ?? SourceRegistry() {
+       timetable = TimetableController(store) {
     automation = AutomationController(preferences, timetable, agenda);
     this.school = SchoolController(
       service: school,
@@ -60,54 +43,22 @@ class AppController extends ChangeNotifier {
       timetable: timetable,
       agenda: agenda,
       academics: academics,
-      sources: sources,
     );
     classrooms = ClassroomRepository(this.school);
     mooc = MoocController(
       storage: moocStorage ?? MoocStorage(),
       agenda: agenda,
     );
-    extensions = ExtensionController(
-      sources: sources,
-      store: extensionStore,
-      bundledLoader: bundledExtensionLoader,
-    );
-    final builtinRuntime = BuiltinSourceRuntime(
-      school: this.school,
-      mooc: mooc,
-    );
-    sourceHost = SourceHost(
-      registry: sources,
-      secrets: sourceSecrets ?? const SecureSourceSecrets(),
-      data: {
-        'courses': _sourceCourses,
-        'courseOccurrences': _sourceCourseOccurrences,
-        'agenda': _sourceAgenda,
-        'grades': (query) => academics.record.toJson(),
-        'studyPlan': (query) => academics.record.plan?.toJson(),
-      },
-      runtimeFor: (definition) async {
-        final builtin = builtinRuntime.runtimeFor(definition);
-        return builtin ?? await extensions.runtimeFor(definition);
-      },
-    );
-    sourceSync = SourceSync(sources: sources, host: sourceHost, agenda: agenda);
     sync = SyncController(
       school: this.school,
       mooc: mooc,
       timetable: timetable,
       agenda: agenda,
-      sources: sources,
-      sourceSync: sourceSync,
     );
   }
 
   final AppSettingsController settings;
   final TimetableController timetable;
-  final SourceRegistry sources;
-  late final ExtensionController extensions;
-  late final SourceHost sourceHost;
-  late final SourceSync sourceSync;
   late final AutomationController automation;
   late final SchoolController school;
   late final ClassroomRepository classrooms;
@@ -120,110 +71,15 @@ class AppController extends ChangeNotifier {
   bool get ready => _ready;
 
   Future<void> initialize() async {
-    await sources.load();
-    await extensions.load();
     await timetable.load();
     await settings.initialize();
     await school.loadAccount();
-    await _connectSourceInstances();
-    await extensions.activateBundledImplementations();
     await agenda.load();
     await automation.initialize();
     await mooc.load();
     await academics.load(school.username);
     _ready = true;
     notifyListeners();
-  }
-
-  Future<void> _connectSourceInstances() async {
-    try {
-      for (final definitionId in [
-        BuiltinSources.school,
-        BuiltinSources.lexue,
-        BuiltinSources.eclass,
-        BuiltinSources.mooc,
-      ]) {
-        sources.ensureInstance(definitionId);
-      }
-      final username = school.username;
-      if (username != null) {
-        final account = await sources.ensureAccount(
-          service: 'bit.school',
-          identity: username,
-          displayName: username,
-        );
-        for (final definitionId in [
-          BuiltinSources.school,
-          BuiltinSources.lexue,
-          BuiltinSources.eclass,
-        ]) {
-          final instance = sources.ensureInstance(
-            definitionId,
-            accountId: account.id,
-          );
-          final legacy = 'instance:$definitionId';
-          if (instance.id != legacy) {
-            await timetable.rebindSourceInstance(legacy, instance.id);
-            await agenda.rebindSourceInstance(legacy, instance.id);
-          }
-        }
-      }
-      sources.ensureInstance(BuiltinSources.physicsLab);
-      await sources.persist();
-    } catch (failure, stack) {
-      AppDiagnostics.instance.report('初始化数据来源', failure, stack);
-    }
-  }
-
-  List<Map<String, Object?>> _sourceCourses(Map<String, Object?> query) {
-    final term = query['termId'] ?? query['term'];
-    final schedules = term is String
-        ? timetable.schedules.where((schedule) => schedule.term == term)
-        : [
-            ?timetable.schedule,
-          ];
-    return [
-      for (final schedule in schedules)
-        for (final course in schedule.courses) course.toJson(),
-    ];
-  }
-
-  List<Map<String, Object?>> _sourceCourseOccurrences(
-    Map<String, Object?> query,
-  ) {
-    final term = query['termId'] ?? query['term'];
-    final selected = term is String
-        ? timetable.schedules.where((schedule) => schedule.term == term)
-        : timetable.schedules;
-    return [
-      for (final schedule in selected)
-        for (final course in schedule.courses)
-          if (course.weekday != null)
-            for (final week in course.weeks)
-              {
-                'date': dateText(
-                  schedule.mondayAt(week).add(
-                    Duration(days: course.weekday! - 1),
-                  ),
-                ),
-                'week': week,
-                'course': course.toJson(),
-                if (course.startSection != null)
-                  'startSection': course.startSection,
-                if (course.endSection != null) 'endSection': course.endSection,
-              },
-    ];
-  }
-
-  List<Map<String, Object?>> _sourceAgenda(Map<String, Object?> query) {
-    final term = query['termId'] ?? query['term'];
-    final kind = query['kind'];
-    return [
-      for (final entry in agenda.entries)
-        if ((term is! String || entry.term == term) &&
-            (kind is! String || entry.kind.name == kind))
-          entry.toJson(),
-    ];
   }
 
   @override
@@ -235,8 +91,6 @@ class AppController extends ChangeNotifier {
     school.dispose();
     mooc.dispose();
     timetable.dispose();
-    sources.dispose();
-    extensions.dispose();
     agenda.dispose();
     academics.dispose();
     super.dispose();

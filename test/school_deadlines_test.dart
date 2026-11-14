@@ -106,60 +106,6 @@ void main() {
     expect(paths, contains('/zy-eclass.bit.edu.cn/api/activities/9060'));
   });
 
-  test('Eclass deadlines read only the courses the user keeps', () async {
-    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    addTearDown(() => server.close(force: true));
-    final paths = <String>[];
-    server.listen((request) async {
-      paths.add(request.uri.path);
-      request.response.headers.contentType = ContentType.json;
-      switch (request.uri.path) {
-        case '/zy-eclass.bit.edu.cn/api/my-courses':
-          request.response.write(
-            jsonEncode({
-              'courses': [
-                {'id': 1, 'name': '不再同步'},
-                {'id': 2, 'name': '保留'},
-              ],
-            }),
-          );
-        case '/zy-eclass.bit.edu.cn/api/courses/2/activities':
-          request.response.write(jsonEncode({'activities': []}));
-        default:
-          request.response.statusCode = HttpStatus.notFound;
-          request.response.write('unexpected request');
-      }
-      await request.response.close();
-    });
-
-    final offered = <String>[];
-    SchoolSession? session;
-    addTearDown(() => session?.close());
-    await HttpOverrides.runWithHttpOverrides(() {
-      session = SchoolSession(
-        network: SchoolNetwork.campus,
-        storage: MemorySchoolStorage(),
-      );
-      return fetchEclassDeadlines(
-        session!,
-        chooseCourses: (discovered) async {
-          offered.addAll(discovered.map((course) => course.name));
-          return [
-            for (final course in discovered)
-              if (course.remoteId == '2') course,
-          ];
-        },
-      );
-    }, LocalHttpOverrides(server.port));
-
-    expect(offered, ['不再同步', '保留']);
-    expect(paths, contains('/zy-eclass.bit.edu.cn/api/courses/2/activities'));
-    expect(
-      paths,
-      isNot(contains('/zy-eclass.bit.edu.cn/api/courses/1/activities')),
-    );
-  });
-
   test('Eclass courses scan concurrently within the request limit', () async {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     addTearDown(() => server.close(force: true));

@@ -6,7 +6,6 @@ import 'package:cookie_jar/cookie_jar.dart';
 
 import '../agenda/model.dart';
 import '../core/async/cancelable_request.dart';
-import '../sources/course_selection.dart';
 import 'cookie.dart';
 import 'credentials.dart';
 import 'errors.dart';
@@ -51,13 +50,14 @@ class MoocApi {
     return [for (final (_, cookie) in cookies) cookie];
   }
 
-  Future<List<MoocCourse>> readCourses({
-    void Function(MoocProgress)? progress,
-  }) async {
+  Future<MoocImportResult> readDeadlines(
+    String memberId,
+    void Function(MoocProgress) progress,
+  ) async {
     final courses = <String, MoocCourse>{};
     for (final type in [1, 2]) {
       final seenTerms = <String>{};
-      progress?.call(MoocCourseListProgress(isSpoc: type == 2));
+      progress(MoocCourseListProgress(isSpoc: type == 2));
       for (var page = 1; ; page++) {
         final response = await _rpc(
           'learnerCourseRpcBean.getMyLearnedCoursePanelList',
@@ -110,25 +110,10 @@ class MoocApi {
       }
     }
     if (courses.isEmpty) await _verifySession();
-    return courses.values.toList();
-  }
-
-  Future<MoocImportResult> readDeadlines(
-    String memberId,
-    void Function(MoocProgress) progress, {
-    CourseChooser? chooseCourses,
-  }) async {
-    final discovered = [
-      for (final course in await readCourses(progress: progress))
-        course.toPlatformCourse(),
-    ];
-    final courses = chooseCourses == null
-        ? discovered
-        : await chooseCourses(discovered);
     final entries = <AgendaEntry>[];
     final failures = <({String course, String message})>[];
     var count = 0;
-    for (final course in courses) {
+    for (final course in courses.values) {
       _cancellation.check();
       progress(
         MoocCourseReadProgress(
@@ -138,9 +123,34 @@ class MoocApi {
         ),
       );
       try {
-        entries.addAll(
-          await _readCourse(MoocCourse.fromPlatformCourse(course), memberId),
+        final learned = moocMap(
+          await _rpc(
+            'courseBean.getLastLearnedMocTermDto',
+            form: {'termId': course.termId},
+            referer: course.url,
+          ),
         );
+        final term = moocMap(learned?['mocTermDto']);
+        if (term == null) throw const FormatException('MOOC 未返回课程结构。');
+        final courseEntries = <AgendaEntry>[];
+        for (final task in readMoocTasks(term, course, memberId)) {
+          var entry = task.entry;
+          if (task.reviewTestId case final testId?) {
+            final response = await _rpc(
+              'mocEvaluateBean.getEvaluateStatus',
+              form: {'testId': testId, 'evaluatorId': memberId},
+              referer: course.url,
+            );
+            final status = moocMap(response);
+            final completed = status?['stepEvaluated'];
+            if (response != null && completed is! bool) {
+              throw const FormatException('MOOC 互评状态格式不正确。');
+            }
+            entry = entry.copyWith(done: completed == true);
+          }
+          courseEntries.add(entry);
+        }
+        entries.addAll(courseEntries);
       } on MoocLoginRequired {
         rethrow;
       } on MoocFailure catch (error) {
@@ -153,46 +163,6 @@ class MoocApi {
       throw MoocFailure('所有 MOOC 课程读取失败：${failures.first.message}');
     }
     return MoocImportResult(entries: entries, failures: failures);
-  }
-
-  Future<List<AgendaEntry>> readCourseDeadlines(
-    MoocCourse course,
-    String memberId,
-  ) => _readCourse(course, memberId);
-
-  Future<List<AgendaEntry>> _readCourse(
-    MoocCourse course,
-    String memberId,
-  ) async {
-    _cancellation.check();
-    final learned = moocMap(
-      await _rpc(
-        'courseBean.getLastLearnedMocTermDto',
-        form: {'termId': course.termId},
-        referer: course.url,
-      ),
-    );
-    final term = moocMap(learned?['mocTermDto']);
-    if (term == null) throw const FormatException('MOOC 未返回课程结构。');
-    final entries = <AgendaEntry>[];
-    for (final task in readMoocTasks(term, course, memberId)) {
-      var entry = task.entry;
-      if (task.reviewTestId case final testId?) {
-        final response = await _rpc(
-          'mocEvaluateBean.getEvaluateStatus',
-          form: {'testId': testId, 'evaluatorId': memberId},
-          referer: course.url,
-        );
-        final status = moocMap(response);
-        final completed = status?['stepEvaluated'];
-        if (response != null && completed is! bool) {
-          throw const FormatException('MOOC 互评状态格式不正确。');
-        }
-        entry = entry.copyWith(done: completed == true);
-      }
-      entries.add(entry);
-    }
-    return entries;
   }
 
   Future<Object?> _rpc(

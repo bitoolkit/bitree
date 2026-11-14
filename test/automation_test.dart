@@ -4,7 +4,6 @@ import 'package:bitree/agenda/model.dart';
 import 'package:bitree/agenda/ui/agenda_operations.dart';
 import 'package:bitree/automation/controller.dart';
 import 'package:bitree/automation/projection.dart';
-import 'package:bitree/automation/rules.dart';
 import 'package:bitree/l10n/app_localizations_zh.dart';
 import 'package:bitree/l10n/formats.dart';
 import 'package:bitree/schedule/model.dart';
@@ -164,92 +163,15 @@ end
       );
       await restarted.initialize();
       expect(restarted.settings.developerMode, isFalse);
-      expect(restarted.automation.scriptEnabled, isTrue);
+      expect(restarted.automation.enabled, isTrue);
       expect(restarted.automation.fileName, 'rules.lua');
       expect(restarted.automation.entries.single.title, '展示作业');
-      await restarted.automation.setScriptEnabled(false);
+      await restarted.automation.setEnabled(false);
       expect(restarted.automation.executionDuration, isNull);
       expect(restarted.automation.schedule!.courses.single.name, '原课程');
       expect(restarted.automation.entries, hasLength(2));
     },
   );
-
-  test('quick rules persist and custom scripts run on their result', () async {
-    final preferences = MemoryPreferences();
-    final exam = AgendaEntry(
-      id: 'exam',
-      title: '考试',
-      kind: AgendaKind.exam,
-      startsAt: old.startsAt,
-      endsAt: old.startsAt.add(const Duration(hours: 2)),
-    );
-    final controller = TestAppController(
-      schedule: schedule,
-      entries: [old, newer, exam],
-      preferences: preferences,
-    );
-    await controller.initialize();
-    await controller.automation.saveRules(
-      AutomationRules(
-        courseAliases: {'原课程': '简称'},
-        hiddenDeadlineSources: {DeadlineSource.lexue},
-        examTitlePrefix: '考试：',
-      ),
-    );
-    expect(controller.automation.rules, isNotNull);
-    expect(controller.automation.schedule!.courses.single.name, '简称');
-    expect(
-      controller.automation.entries
-          .firstWhere((entry) => entry.isDeadline)
-          .title,
-      '原作业',
-    );
-    expect(controller.automation.hiddenDeadlines, 1);
-    expect(
-      controller.automation.entries
-          .firstWhere((entry) => entry.kind == AgendaKind.exam)
-          .title,
-      '考试：考试',
-    );
-
-    final restarted = TestAppController(
-      schedule: schedule,
-      entries: [old, newer, exam],
-      preferences: preferences,
-    );
-    await restarted.initialize();
-    expect(restarted.automation.rules!.examTitlePrefix, '考试：');
-    expect(restarted.automation.schedule!.courses.single.name, '简称');
-    expect(restarted.automation.hiddenDeadlines, 1);
-    expect(
-      restarted.automation.entries
-          .firstWhere((entry) => entry.kind == AgendaKind.exam)
-          .title,
-      '考试：考试',
-    );
-
-    await restarted.automation.saveScript('''
-local display = require("bitree.display")
-
-function filter(data)
-    data.courses[1].name = data.courses[1].name .. "（脚本）"
-    return display.prefixExams(data, "期末·")
-end
-''');
-    expect(restarted.automation.error, isNull);
-    expect(restarted.automation.rules!.examTitlePrefix, '考试：');
-    expect(restarted.automation.schedule!.courses.single.name, '简称（脚本）');
-    expect(restarted.automation.hiddenDeadlines, 1);
-    expect(
-      restarted.automation.entries
-          .firstWhere((entry) => entry.kind == AgendaKind.exam)
-          .title,
-      '期末·考试：考试',
-    );
-
-    await restarted.automation.setScriptEnabled(false);
-    expect(restarted.automation.schedule!.courses.single.name, '简称');
-  });
 
   test(
     'completing a presentation row only changes the original done flag',
@@ -368,10 +290,10 @@ end
         )['done'],
         isTrue,
       );
-      await automation.setScriptEnabled(false);
+      await automation.setEnabled(false);
       expect(published.last['schedule']['courses'].single['name'], '原课程');
       expect(published.last['entries'], hasLength(3));
-      await automation.setScriptEnabled(true);
+      await automation.setEnabled(true);
       expect(published.last['schedule']['courses'].single['name'], '简称');
       await automation.saveScript('error("failure")');
       expect(automation.error, isNotNull);

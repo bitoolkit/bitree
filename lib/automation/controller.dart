@@ -13,7 +13,6 @@ import '../schedule/controller.dart';
 import '../schedule/model.dart';
 import 'lua_filter.dart';
 import 'projection.dart';
-import 'rules.dart';
 
 class AutomationController extends ChangeNotifier {
   AutomationController(
@@ -37,8 +36,7 @@ class AutomationController extends ChangeNotifier {
   AutomationProjection? _projection;
   String _source = '';
   String _fileName = '';
-  bool _scriptEnabled = false;
-  AutomationRules? _rules;
+  bool _enabled = false;
   bool _loaded = false;
   bool _running = false;
   bool _disposed = false;
@@ -50,27 +48,11 @@ class AutomationController extends ChangeNotifier {
 
   String get source => _source;
   String get fileName => _fileName;
-  bool get scriptEnabled => _scriptEnabled;
-  AutomationRules? get rules => _rules;
+  bool get enabled => _enabled;
   bool get running => _running;
   String? get error => _error;
   Duration? get executionDuration => _executionDuration;
   Future<void> get settled => _pending;
-
-  bool get _scriptActive => _scriptEnabled && _source.trim().isNotEmpty;
-
-  List<String> get courseNames {
-    final names = <String>{};
-    for (final schedule in _timetable.schedules) {
-      for (final course in schedule.courses) {
-        if (course.name.trim().isNotEmpty) names.add(course.name);
-      }
-    }
-    for (final entry in _agenda.entries) {
-      if (entry.course.trim().isNotEmpty) names.add(entry.course);
-    }
-    return names.toList()..sort();
-  }
 
   SemesterSchedule? get schedule {
     final raw = _timetable.schedule;
@@ -121,18 +103,12 @@ class AutomationController extends ChangeNotifier {
         final json = jsonDecode(saved) as Map<String, dynamic>;
         _source = json['source'] as String;
         _fileName = json['fileName'] as String;
-        _scriptEnabled = json['enabled'] as bool;
-        final savedRules = json['quickRules'];
-        if (savedRules is Map<String, dynamic>) {
-          final rules = AutomationRules.fromJson(savedRules);
-          _rules = rules.isEmpty ? null : rules;
-        }
+        _enabled = json['enabled'] as bool;
       }
     } catch (failure, stack) {
       _source = '';
       _fileName = '';
-      _scriptEnabled = false;
-      _rules = null;
+      _enabled = false;
       AppDiagnostics.instance.report('读取自动化设置', failure, stack);
     }
     if (_disposed) return;
@@ -149,49 +125,31 @@ class AutomationController extends ChangeNotifier {
         await _save(
           source: source,
           fileName: fileName,
-          scriptEnabled: source.trim().isNotEmpty,
-          rules: _rules,
+          enabled: source.trim().isNotEmpty,
         );
       });
 
-  Future<void> saveRules(AutomationRules rules) => _writes.run(
-    () => _save(
+  Future<void> setEnabled(bool value) => _writes.run(() async {
+    await _save(
       source: _source,
       fileName: _fileName,
-      scriptEnabled: _scriptEnabled,
-      rules: rules.isEmpty ? null : rules,
-    ),
-  );
-
-  Future<void> setScriptEnabled(bool value) => _writes.run(
-    () => _save(
-      source: _source,
-      fileName: _fileName,
-      scriptEnabled: value && _source.trim().isNotEmpty,
-      rules: _rules,
-    ),
-  );
+      enabled: value && _source.trim().isNotEmpty,
+    );
+  });
 
   Future<void> _save({
     required String source,
     required String fileName,
-    required bool scriptEnabled,
-    required AutomationRules? rules,
+    required bool enabled,
   }) async {
     await _preferences.setString(
       'automation',
-      jsonEncode({
-        'source': source,
-        'fileName': fileName,
-        'enabled': scriptEnabled,
-        if (rules != null) 'quickRules': rules.toJson(),
-      }),
+      jsonEncode({'source': source, 'fileName': fileName, 'enabled': enabled}),
     );
     if (_disposed) return;
     _source = source;
     _fileName = fileName;
-    _scriptEnabled = scriptEnabled;
-    _rules = rules;
+    _enabled = enabled;
     _snapshot = null;
     _refresh();
     await _pending;
@@ -218,7 +176,7 @@ class AutomationController extends ChangeNotifier {
     _projection = null;
     _error = null;
     _executionDuration = null;
-    _running = _rules != null || _scriptActive;
+    _running = _enabled && _source.trim().isNotEmpty;
     notifyListeners();
     final published = _publishWidget();
     if (!_running) {
@@ -244,11 +202,7 @@ class AutomationController extends ChangeNotifier {
   ) async {
     final stopwatch = Stopwatch()..start();
     try {
-      final result = await _executor.run(
-        _scriptActive ? _source : '',
-        data,
-        rules: _rules?.toJson(),
-      );
+      final result = await _executor.run(_source, data);
       if (_disposed || revision != _revision) return;
       _projection = AutomationProjection.fromResult(result, schedules, entries);
     } on LuaFilterCancelled {
