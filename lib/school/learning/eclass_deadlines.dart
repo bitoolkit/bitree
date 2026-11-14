@@ -42,7 +42,7 @@ Future<List<AgendaEntry>> fetchEclassDeadlines(SchoolSession session) async {
           task.isExam
               ? '/course/${Uri.encodeComponent(task.courseId)}/exam'
               : '/course/${Uri.encodeComponent(task.courseId)}'
-                    '/learning-activity/full-screen#/${task.id}',
+                    '/learning-activity#/${task.id}',
         ),
       ),
   ];

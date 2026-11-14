@@ -853,7 +853,7 @@ void main() {
       local: false,
       url: Uri.https(
         'zy-eclass.bit.edu.cn',
-        '/course/20336/learning-activity/full-screen',
+        '/course/20336/learning-activity#',
       ).replace(fragment: '/$id'),
     );
 
