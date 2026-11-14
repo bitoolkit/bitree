@@ -19,6 +19,9 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+      - name: Test release scripts
+        run: python3 -m unittest discover -s test -p '*_test.py'
+        shell: bash
       - name: Install native toolchain
         shell: bash
         run: |

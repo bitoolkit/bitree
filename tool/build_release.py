@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 def run(program, *arguments):
-    subprocess.run([program, *arguments], check=True)
+    subprocess.run([shutil.which(program) or program, *arguments], check=True)
 
 
 def build_flutter(target, flags, *arguments):
@@ -78,7 +78,7 @@ def build_macos(flags, prefix):
 
 
 def build_ios(flags, prefix):
-    build_flutter("ios", flags, "--no-codesign")
+    build_flutter("ios", flags, "--no-codesign", "--verbose")
     payload = Path("build/unsigned-ipa/Payload")
     payload.mkdir(parents=True, exist_ok=True)
     shutil.copytree(

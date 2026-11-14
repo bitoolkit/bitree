@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:code_assets/code_assets.dart';
 import 'package:hooks/hooks.dart';
-import 'package:logging/logging.dart';
 import 'package:native_toolchain_c/native_toolchain_c.dart';
 
 void main(List<String> arguments) async {
@@ -20,6 +19,17 @@ void main(List<String> arguments) async {
     final luaDirectory = Directory.fromUri(
       input.packageRoot.resolve('third_party/lua/src'),
     );
+    // The sandbox opens only base, table, string, math and utf8 libraries.
+    const excludedSources = {
+      'lua.c',
+      'luac.c',
+      'linit.c',
+      'lcorolib.c',
+      'ldblib.c',
+      'liolib.c',
+      'loadlib.c',
+      'loslib.c',
+    };
     final luaSources =
         luaDirectory
             .listSync()
@@ -27,10 +37,12 @@ void main(List<String> arguments) async {
             .map((file) => file.path)
             .where((path) {
               final name = File(path).uri.pathSegments.last;
-              return name.endsWith('.c') && name != 'lua.c' && name != 'luac.c';
+              return name.endsWith('.c') && !excludedSources.contains(name);
             })
             .toList()
           ..sort();
+    final targetOS = input.config.code.targetOS;
+    final needsLibm = targetOS == OS.android || targetOS == OS.linux;
     final builder = CBuilder.library(
       name: 'bitree_lua',
       assetName: 'native_lua_bindings.dart',
@@ -45,15 +57,12 @@ void main(List<String> arguments) async {
       ],
       language: Language.cpp,
       std: 'c++17',
-      cppLinkStdLib: input.config.code.targetOS == OS.android
-          ? 'c++_static'
-          : null,
+      libraries: [if (needsLibm) 'm'],
+      // Fail the build instead of shipping a library that dlopen cannot load.
+      flags: [if (needsLibm) '-Wl,-z,defs'],
+      cppLinkStdLib: targetOS == OS.android ? 'c++_static' : null,
     );
-    await builder.run(
-      input: input,
-      output: output,
-      logger: Logger('bitree_lua'),
-    );
+    await builder.run(input: input, output: output);
   });
 }
 

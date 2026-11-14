@@ -30,6 +30,20 @@ end
     expect(result['exams'], isEmpty);
   });
 
+  test('C Lua links the math functions needed when loading the library', () {
+    final result = library.executeFilter(
+      source: '''
+function filter(data)
+    return { angle = math.acos(0), root = math.sqrt(16), log = math.log(1) }
+end
+''',
+      data: {},
+    ) as Map;
+    expect(result['angle'], closeTo(1.5707963267948966, 1e-12));
+    expect(result['root'], 4);
+    expect(result['log'], 0);
+  });
+
   test('filter has no module, host, filesystem or code-loading APIs', () {
     final result = library.executeFilter(
       source: '''
