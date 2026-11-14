@@ -179,7 +179,7 @@ extension _AgendaEditorSections on _AgendaEditorState {
         TextFormField(
           controller: _notes,
           enabled: !_saving,
-          minLines: 2,
+          minLines: 1,
           maxLines: 4,
           decoration: InputDecoration(labelText: l10n.agendaNotesOptional),
         ),
