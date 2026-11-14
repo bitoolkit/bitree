@@ -2778,6 +2778,24 @@ abstract class AppLocalizations {
   /// **'Verify'**
   String get verifyAction;
 
+  /// No description provided for @loginAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get loginAction;
+
+  /// No description provided for @schoolAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'School account'**
+  String get schoolAccount;
+
+  /// No description provided for @verifySchoolAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify school account'**
+  String get verifySchoolAccount;
+
   /// No description provided for @schoolVerified.
   ///
   /// In en, this message translates to:

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:bitree/agenda/controller.dart';
@@ -8,6 +9,7 @@ import 'package:bitree/core/time.dart';
 import 'package:bitree/l10n/app_localizations_zh.dart';
 import 'package:bitree/mooc/credentials.dart';
 import 'package:bitree/schedule/model.dart';
+import 'package:bitree/school/network.dart';
 import 'package:bitree/school/service.dart';
 import 'package:bitree/school/session.dart';
 import 'package:bitree/school/storage.dart';
@@ -22,8 +24,10 @@ import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:webview_all/webview_all.dart';
 
 import 'support/http.dart';
+import 'support/mooc_browser.dart';
 import 'support/test_app.dart';
 
 class _SchoolService extends SchoolService {
@@ -101,6 +105,7 @@ void main() {
   late HttpServer server;
   HttpOverrides? previous;
   var moocRequests = 0;
+  bool? moocAuthenticated;
   setUpAll(() async {
     directory = await Directory.systemTemp.createTemp('bitree-sync-tests-');
     messenger.setMockMethodCallHandler(channel, (_) async => directory.path);
@@ -111,12 +116,40 @@ void main() {
   });
   setUp(() async {
     moocRequests = 0;
+    moocAuthenticated = null;
     server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     server.listen((request) async {
       await request.drain<void>();
       if (request.uri.path.startsWith('/www.icourse163.org/')) {
         moocRequests++;
+        if (moocAuthenticated case final authenticated?) {
+          request.response.headers.contentType = ContentType.json;
+          request.response.write(
+            jsonEncode({
+              'code': authenticated ? 0 : 1,
+              if (!authenticated) 'message': 'not_auth',
+              'result': null,
+            }),
+          );
+          await request.response.close();
+        }
         return;
+      }
+      if (request.uri.path ==
+          '/jxzxehall.bit.edu.cn/auth-protocol-core/login') {
+        request.response.statusCode = HttpStatus.found;
+        request.response.headers.set(
+          HttpHeaders.locationHeader,
+          Uri.https('sso.bit.edu.cn', '/cas/login', {
+            'service': '${SchoolNetwork.campus.accountPage}',
+          }),
+        );
+      } else if (request.uri.path == '/sso.bit.edu.cn/cas/login') {
+        request.response.statusCode = HttpStatus.found;
+        request.response.headers.set(
+          HttpHeaders.locationHeader,
+          '${SchoolNetwork.campus.accountPage}',
+        );
       }
       request.response.write('ok');
       await request.response.close();
@@ -289,7 +322,7 @@ void main() {
       (_) async => true,
       verify: (_) async => null,
     );
-    expect(await model.sync.synchronize(model.sync.incompleteTargets), isTrue);
+    expect(await model.sync.retryIncomplete(), isTrue);
     expect(service.reads, [
       SyncTarget.schedule,
       SyncTarget.schedule,
@@ -619,6 +652,176 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'Both login choices remain accessible after cancelling either account',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final model = TestAppController();
+      await model.initialize();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: bitreeTheme(Brightness.light),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: TextScaler.linear(1.4)),
+            child: child!,
+          ),
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => startSync(
+                  context,
+                  model,
+                  targets: {
+                    SyncTarget.schedule,
+                    SyncTarget.exams,
+                    SyncTarget.mooc,
+                  },
+                ),
+                child: const Text('开始同步'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('开始同步'));
+      await tester.pumpAndSettle();
+      final results = model.sync.results;
+      expect(
+        results.values.map((result) => result.outcome),
+        everyElement(SyncOutcome.needsLogin),
+      );
+      expect(find.text('课表 · 考试安排'), findsOneWidget);
+      expect(find.text('重试未完成的内容'), findsNothing);
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+      for (final schoolFirst in [false, true]) {
+        expect(find.bySemanticsLabel('登录学校账号').hitTestable(), findsOneWidget);
+        expect(
+          find.bySemanticsLabel('登录中国大学MOOC').hitTestable(),
+          findsOneWidget,
+        );
+        await tester.tap(
+          find.bySemanticsLabel(schoolFirst ? '登录学校账号' : '登录中国大学MOOC'),
+        );
+        await tester.pumpAndSettle();
+        if (schoolFirst) {
+          expect(find.text('学号'), findsOneWidget);
+          await tester.pageBack();
+        } else {
+          expect(find.text('网页登录'), findsOneWidget);
+          await tester.tap(find.byTooltip('关闭'));
+        }
+        await tester.pumpAndSettle();
+        expect(find.text('同步进度'), findsOneWidget);
+        expect(model.sync.results, results);
+      }
+      final moocLabel = find.text('登录').last;
+      for (
+        var i = 0;
+        i < 10 && !Focus.of(tester.element(moocLabel)).hasFocus;
+        i++
+      ) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pump();
+      }
+      expect(Focus.of(tester.element(moocLabel)).hasFocus, isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(find.text('网页登录'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+    semanticsEnabled: true,
+  );
+
+  testWidgets(
+    'MOOC can authenticate and sync while school verification remains pending',
+    (tester) async {
+      final browser = TestMoocBrowser();
+      WebViewPlatform.instance = browser;
+      moocAuthenticated = false;
+      final service = _SchoolService()..smsRequired = true;
+      service.release.complete();
+      final model = app(service, mooc: true);
+      await model.initialize();
+      final syncing = model.sync.synchronize({
+        SyncTarget.schedule,
+        SyncTarget.exams,
+        SyncTarget.mooc,
+      }, term: '2025-2026-1');
+      await waitFor(tester, () => !model.sync.busy);
+      expect(await syncing, isFalse);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: bitreeTheme(Brightness.dark),
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => showSyncProgress(context, model),
+                child: const Text('查看进度'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('查看进度'));
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('验证学校账号'), findsOneWidget);
+      await tester.tap(find.bySemanticsLabel('登录中国大学MOOC'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('网页登录'));
+      await tester.pumpAndSettle();
+      moocAuthenticated = true;
+      browser.cookies.add(
+        const WebViewCookie(
+          name: 'NTESSTUDYSI',
+          value: 'test',
+          domain: '.icourse163.org',
+        ),
+      );
+      browser.controller.snapshot = {
+        'id': '8',
+        'name': '测试账号',
+        'userAgent': 'test',
+      };
+      browser.controller.finishLoading();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await waitFor(tester, () => !model.sync.busy);
+      await tester.pumpAndSettle();
+      final moocResult = model.sync.results[SyncTarget.mooc];
+      expect(moocResult?.outcome, SyncOutcome.synced);
+      expect(model.sync.incompleteTargets, {
+        SyncTarget.schedule,
+        SyncTarget.exams,
+      });
+      expect(service.reads, [SyncTarget.schedule]);
+      expect(find.bySemanticsLabel('验证学校账号'), findsOneWidget);
+      expect(find.bySemanticsLabel('登录中国大学MOOC'), findsNothing);
+      expect(find.text('已同步 0 条 DDL'), findsOneWidget);
+
+      service.smsRequired = false;
+      await tester.tap(find.bySemanticsLabel('验证学校账号'));
+      await waitFor(tester, () => !model.school.busy && !model.sync.busy);
+      await tester.pumpAndSettle();
+      expect(model.sync.incompleteTargets, isEmpty);
+      expect(model.sync.results[SyncTarget.mooc], same(moocResult));
+      expect(model.sync.targets, [
+        SyncTarget.schedule,
+        SyncTarget.exams,
+        SyncTarget.mooc,
+      ]);
+      expect(service.requestedTerms, everyElement('2025-2026-1'));
+      expect(find.text('已同步 0 条 DDL'), findsOneWidget);
+      expect(find.bySemanticsLabel('验证学校账号'), findsNothing);
+      expect(find.text('同步完成'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+    semanticsEnabled: true,
+  );
 
   for (final brightness in Brightness.values) {
     testWidgets(

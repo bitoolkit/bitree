@@ -1530,6 +1530,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get verifyAction => '验证';
 
   @override
+  String get loginAction => '登录';
+
+  @override
+  String get schoolAccount => '学校账号';
+
+  @override
+  String get verifySchoolAccount => '验证学校账号';
+
+  @override
   String get schoolVerified => '学校账号验证完成';
 
   @override

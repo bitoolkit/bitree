@@ -10,7 +10,6 @@ import '../../mooc/ui/mooc_sheet.dart';
 import '../../schedule/model.dart';
 import '../../school/ui/school_screen.dart';
 import '../../school/ui/school_verification_dialog.dart';
-import '../../school/verification.dart';
 import '../../ui/app_notice.dart';
 import '../../ui/design.dart';
 import '../../ui/section_label.dart';
@@ -26,13 +25,12 @@ part 'sync_progress_sheet.dart';
 final _progressSheets = <SyncController, Future<void>>{};
 typedef _CustomSyncSelection = ({Set<SyncTarget> targets, String? term});
 
-/// Starts one round silently. Only account authentication requires a page.
+/// Starts available sources without making one account block another.
 Future<bool> startSync(
   BuildContext context,
   AppController app, {
   Set<SyncTarget>? targets,
   String? term,
-  VerifySchoolLogin? verify,
 }) async {
   if (app.sync.busy) {
     await showSyncProgress(context, app);
@@ -40,31 +38,25 @@ Future<bool> startSync(
   }
   final selected = targets ?? app.sync.defaultTargets;
   if (selected.isEmpty) return false;
-  final school = selected
-      .where((target) => target.usesSchoolSession)
-      .firstOrNull;
-  if (school != null &&
-      (app.school.username == null || app.school.loginExpired)) {
-    if (await openSchoolLogin(context, app.school, source: school.source) !=
-            true ||
-        !context.mounted) {
-      return false;
-    }
+  final syncing = app.sync.synchronize(selected, term: term);
+  if ((selected.any((target) => target.usesSchoolSession) &&
+          (app.school.username == null ||
+              app.school.loginExpired ||
+              app.school.verificationRequired)) ||
+      (selected.contains(SyncTarget.mooc) && app.mooc.needsLogin)) {
+    unawaited(showSyncProgress(context, app));
   }
-  if (!context.mounted) return false;
-  if (selected.contains(SyncTarget.mooc) && app.mooc.needsLogin) {
-    if (!await showMoocAccount(context, app.mooc) || !context.mounted) {
-      return false;
-    }
-  }
-  if (!context.mounted) return false;
+  return _completeSync(context, app, syncing);
+}
+
+Future<bool> _completeSync(
+  BuildContext context,
+  AppController app,
+  Future<bool> syncing,
+) async {
   final overlay = Overlay.of(context, rootOverlay: true);
   final l10n = context.l10n;
-  final success = await app.sync.synchronize(
-    selected,
-    term: term,
-    verify: verify,
-  );
+  final success = await syncing;
   if (!overlay.mounted ||
       app.sync.cancelled ||
       _progressSheets.containsKey(app.sync)) {

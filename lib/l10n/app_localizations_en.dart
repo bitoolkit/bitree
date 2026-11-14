@@ -1621,6 +1621,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get verifyAction => 'Verify';
 
   @override
+  String get loginAction => 'Sign in';
+
+  @override
+  String get schoolAccount => 'School account';
+
+  @override
+  String get verifySchoolAccount => 'Verify school account';
+
+  @override
   String get schoolVerified => 'School account verified';
 
   @override

@@ -10,24 +10,37 @@ class _SyncProgressSheet extends StatefulWidget {
 class _SyncProgressSheetState extends State<_SyncProgressSheet> {
   bool _authenticating = false;
 
-  Future<void> _retry() async {
-    if (_authenticating || widget.app.sync.busy) return;
+  Future<void> _authenticate({required bool school}) async {
+    if (_authenticating) return;
     final app = widget.app;
-    final selected = app.sync.incompleteTargets;
-    final term = app.sync.term;
     setState(() => _authenticating = true);
+    final bool success;
     try {
-      if (!mounted) return;
-      await startSync(
-        context,
-        app,
-        targets: selected,
-        term: term,
-        verify: (request) => verifySchoolLogin(context, request),
-      );
+      if (!school) {
+        success = await showMoocAccount(context, app.mooc);
+      } else if (app.school.username == null || app.school.loginExpired) {
+        final target = app.sync.incompleteTargets.firstWhere(
+          (target) => target.usesSchoolSession,
+        );
+        success =
+            await openSchoolLogin(context, app.school, source: target.source) ==
+            true;
+      } else {
+        success = await app.school.restoreAccount(
+          verify: (request) => verifySchoolLogin(context, request),
+        );
+      }
     } finally {
       if (mounted) setState(() => _authenticating = false);
     }
+    if (success && mounted && !app.sync.busy) {
+      await _retry();
+    }
+  }
+
+  Future<void> _retry() async {
+    if (_authenticating || widget.app.sync.busy) return;
+    await _completeSync(context, widget.app, widget.app.sync.retryIncomplete());
   }
 
   @override
@@ -38,6 +51,25 @@ class _SyncProgressSheetState extends State<_SyncProgressSheet> {
       final theme = Theme.of(context);
       final results = model.results;
       final l10n = context.l10n;
+      final app = widget.app;
+      final schoolNeedsLogin =
+          app.school.username == null || app.school.loginExpired;
+      final pendingSchoolTargets = model.incompleteTargets
+          .where((target) => target.usesSchoolSession)
+          .toList();
+      final schoolNeedsAuthentication =
+          pendingSchoolTargets.isNotEmpty &&
+          (schoolNeedsLogin || app.school.verificationRequired);
+      final moocNeedsLogin =
+          model.incompleteTargets.contains(SyncTarget.mooc) &&
+          app.mooc.needsLogin;
+      final canRetry = model.incompleteTargets.any(
+        (target) => target.usesSchoolSession
+            ? !schoolNeedsAuthentication
+            : target == SyncTarget.mooc
+            ? !moocNeedsLogin
+            : true,
+      );
       return SheetLayout(
         header: SheetHeader(
           title: Text(l10n.syncProgress),
@@ -56,26 +88,62 @@ class _SyncProgressSheetState extends State<_SyncProgressSheet> {
               Text(term, style: theme.textTheme.bodySmall),
               const SizedBox(height: 6),
             ],
-            Text(
-              model.busy
-                  ? l10n.syncProcessed(results.length, model.targets.length)
-                  : model.cancelled
-                  ? l10n.syncCancelled
-                  : model.incompleteTargets.isEmpty
-                  ? l10n.syncComplete
-                  : l10n.syncPartial,
-              style: theme.textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            LinearProgressIndicator(
-              value: model.targets.isEmpty
-                  ? 0
-                  : results.length / model.targets.length,
-              minHeight: 3,
-            ),
-            const SizedBox(height: 16),
+            if (model.busy ||
+                model.cancelled ||
+                canRetry ||
+                model.incompleteTargets.isEmpty) ...[
+              Text(
+                model.busy
+                    ? l10n.syncProcessed(results.length, model.targets.length)
+                    : model.cancelled
+                    ? l10n.syncCancelled
+                    : model.incompleteTargets.isEmpty
+                    ? l10n.syncComplete
+                    : l10n.syncPartial,
+                style: theme.textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (model.busy) ...[
+              LinearProgressIndicator(
+                value: model.targets.isEmpty
+                    ? 0
+                    : results.length / model.targets.length,
+                minHeight: 3,
+              ),
+              const SizedBox(height: 12),
+            ],
             for (final target in model.targets)
-              _SyncProgressRow(controller: model, target: target, l10n: l10n),
+              if (schoolNeedsAuthentication &&
+                  pendingSchoolTargets.contains(target)) ...[
+                if (target == pendingSchoolTargets.first)
+                  _SyncAuthenticationRow(
+                    title: l10n.schoolAccount,
+                    detail: pendingSchoolTargets
+                        .map((target) => target.localizedTitle(l10n))
+                        .join(' · '),
+                    action: schoolNeedsLogin
+                        ? l10n.loginAction
+                        : l10n.verifyAction,
+                    actionLabel: schoolNeedsLogin
+                        ? l10n.schoolLogin
+                        : l10n.verifySchoolAccount,
+                    onPressed: _authenticating || app.school.busy
+                        ? null
+                        : () => _authenticate(school: true),
+                  ),
+              ] else if (target == SyncTarget.mooc && moocNeedsLogin)
+                _SyncAuthenticationRow(
+                  title: l10n.moocName,
+                  detail: app.mooc.status.localizedLabel(l10n),
+                  action: l10n.loginAction,
+                  actionLabel: l10n.moocLoginTitle,
+                  onPressed: _authenticating || app.mooc.busy
+                      ? null
+                      : () => _authenticate(school: false),
+                )
+              else
+                _SyncProgressRow(controller: model, target: target, l10n: l10n),
           ],
         ),
         actions: model.busy
@@ -95,19 +163,56 @@ class _SyncProgressSheetState extends State<_SyncProgressSheet> {
                   ),
                 ],
               )
-            : model.incompleteTargets.isNotEmpty
+            : canRetry
             ? SheetActionBar.primary(
                 primary: FilledButton(
                   onPressed: _authenticating ? null : _retry,
-                  child: Text(
-                    _authenticating ? l10n.verifying : l10n.retryIncomplete,
-                  ),
+                  child: Text(l10n.retryIncomplete),
                 ),
               )
             : null,
       );
     },
   );
+}
+
+class _SyncAuthenticationRow extends StatelessWidget {
+  const _SyncAuthenticationRow({
+    required this.title,
+    required this.detail,
+    required this.action,
+    required this.actionLabel,
+    required this.onPressed,
+  });
+
+  final String title;
+  final String detail;
+  final String action;
+  final String actionLabel;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      minVerticalPadding: 12,
+      minLeadingWidth: 20,
+      horizontalTitleGap: 14,
+      leading: const Icon(Icons.lock_outline_rounded, size: 20),
+      title: Text(title, style: theme.textTheme.titleSmall),
+      subtitle: Text(
+        detail,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+      trailing: TextButton(
+        onPressed: onPressed,
+        child: Text(action, semanticsLabel: actionLabel),
+      ),
+    );
+  }
 }
 
 class _SyncProgressRow extends StatelessWidget {
