@@ -2430,6 +2430,18 @@ abstract class AppLocalizations {
   /// **'Exit'**
   String get exitAction;
 
+  /// No description provided for @moocPasswordLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Account and password'**
+  String get moocPasswordLogin;
+
+  /// No description provided for @moocSmsLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'SMS verification code'**
+  String get moocSmsLogin;
+
   /// No description provided for @webLogin.
   ///
   /// In en, this message translates to:
@@ -2487,7 +2499,7 @@ abstract class AppLocalizations {
   /// No description provided for @moocCookieInstructions.
   ///
   /// In en, this message translates to:
-  /// **'Copy the Cookie from developer tools while signed in. Use this only if web sign-in does not work.'**
+  /// **'Paste the Cookie from a browser request header.'**
   String get moocCookieInstructions;
 
   /// No description provided for @moocPasteCookie.
@@ -2495,6 +2507,174 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Paste a Cookie'**
   String get moocPasteCookie;
+
+  /// No description provided for @moocPhoneOrEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone number or email'**
+  String get moocPhoneOrEmail;
+
+  /// No description provided for @moocPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get moocPassword;
+
+  /// No description provided for @moocEnterAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a phone number or email'**
+  String get moocEnterAccount;
+
+  /// No description provided for @moocEnterPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your password'**
+  String get moocEnterPassword;
+
+  /// No description provided for @moocShowPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Show password'**
+  String get moocShowPassword;
+
+  /// No description provided for @moocHidePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide password'**
+  String get moocHidePassword;
+
+  /// No description provided for @moocPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone number'**
+  String get moocPhone;
+
+  /// No description provided for @moocEnterPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your phone number'**
+  String get moocEnterPhone;
+
+  /// No description provided for @moocInvalidPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid phone number'**
+  String get moocInvalidPhone;
+
+  /// No description provided for @moocSmsCode.
+  ///
+  /// In en, this message translates to:
+  /// **'SMS verification code'**
+  String get moocSmsCode;
+
+  /// No description provided for @moocEnterSmsCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the SMS verification code'**
+  String get moocEnterSmsCode;
+
+  /// No description provided for @moocSendCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Send code'**
+  String get moocSendCode;
+
+  /// No description provided for @moocSendingCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending…'**
+  String get moocSendingCode;
+
+  /// No description provided for @moocResendIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend in {seconds}s'**
+  String moocResendIn(int seconds);
+
+  /// No description provided for @moocSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get moocSignIn;
+
+  /// No description provided for @moocSigningIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing in…'**
+  String get moocSigningIn;
+
+  /// No description provided for @moocVerificationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete verification'**
+  String get moocVerificationTitle;
+
+  /// No description provided for @moocVerifyNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify'**
+  String get moocVerifyNow;
+
+  /// No description provided for @moocVerificationLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load verification'**
+  String get moocVerificationLoadFailed;
+
+  /// No description provided for @moocWrongCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'Incorrect account or password'**
+  String get moocWrongCredentials;
+
+  /// No description provided for @moocSmsLoginFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Incorrect phone number or verification code'**
+  String get moocSmsLoginFailed;
+
+  /// No description provided for @moocTooFrequent.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many requests. Try again later.'**
+  String get moocTooFrequent;
+
+  /// No description provided for @moocGetCodeFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Get an SMS code first'**
+  String get moocGetCodeFirst;
+
+  /// No description provided for @moocInvalidSmsCode.
+  ///
+  /// In en, this message translates to:
+  /// **'The code is incorrect or expired'**
+  String get moocInvalidSmsCode;
+
+  /// No description provided for @moocNetworkFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Network request failed. Check your connection.'**
+  String get moocNetworkFailed;
+
+  /// No description provided for @moocLoginUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in is temporarily unavailable. Try again later.'**
+  String get moocLoginUnavailable;
+
+  /// No description provided for @moocLoginChallenge.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete the human verification to sign in'**
+  String get moocLoginChallenge;
+
+  /// No description provided for @moocLoginFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in failed. Try again.'**
+  String get moocLoginFailed;
 
   /// No description provided for @openMoocFailed.
   ///

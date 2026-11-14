@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:bitree/mooc/credentials.dart';
 import 'package:bitree/mooc/ui/login.dart';
 import 'package:bitree/ui/theme.dart';
@@ -17,7 +15,6 @@ void main() {
   Future<void> open(
     WidgetTester tester,
     TestAppController model, {
-    List<Cookie>? initialCookies,
     ValueChanged<bool>? completed,
   }) async {
     await model.initialize();
@@ -28,11 +25,7 @@ void main() {
           body: Builder(
             builder: (context) => TextButton(
               onPressed: () async {
-                final result = await loginToMooc(
-                  context,
-                  model.mooc,
-                  initialCookies: initialCookies,
-                );
+                final result = await loginToMooc(context, model.mooc);
                 completed?.call(result);
               },
               child: const Text('登录'),
@@ -91,6 +84,7 @@ void main() {
       expect(model.mooc.busy, isFalse);
       await tester.pageBack();
       await tester.pumpAndSettle();
+      expect(browser.controller.closeCount, 1);
     },
   );
 
@@ -137,28 +131,8 @@ void main() {
         expect(result, isTrue);
         expect(model.mooc.account!.id, '8');
         expect(find.byType(WebViewWidget), findsNothing);
+        expect(browser.controller.closeCount, 1);
       },
     );
   }
-
-  testWidgets('Cookie fallback uses the same embedded account capture', (
-    tester,
-  ) async {
-    final model = TestAppController();
-    final cookies = MoocCredentials.cookiesFromHeader(
-      'NTESSTUDYSI=csrf; STUDY_SESS=seed',
-    );
-    await open(tester, model, initialCookies: cookies);
-    expect(find.byType(WebViewWidget), findsOneWidget);
-    expect(browser.controller.url!.path, '/home.htm');
-    expect(
-      browser.cookies.singleWhere((c) => c.name == 'STUDY_SESS').value,
-      'seed',
-    );
-    browser.cookies.clear();
-    signIn();
-    await tester.pumpAndSettle();
-    expect(model.mooc.account!.id, '8');
-    expect(find.byType(WebViewWidget), findsNothing);
-  });
 }
