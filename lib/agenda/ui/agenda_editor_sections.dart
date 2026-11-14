@@ -128,7 +128,7 @@ extension _AgendaEditorSections on _AgendaEditorState {
       initiallyExpanded:
           hasNotes || (_kind != AgendaKind.deadline && hasLocation),
       tilePadding: EdgeInsets.zero,
-      childrenPadding: const EdgeInsets.only(bottom: 8),
+      childrenPadding: const EdgeInsets.only(top: 12, bottom: 8),
       shape: const Border(),
       collapsedShape: const Border(),
       leading: const Icon(Icons.tune_rounded, size: 20),
