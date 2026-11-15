@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:bitree/core/diagnostics.dart';
 import 'package:bitree/mooc/cookie.dart';
 import 'package:bitree/mooc/credentials.dart';
 import 'package:bitree/mooc/login_client.dart';
 import 'package:bitree/mooc/login_crypto.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/http.dart';
@@ -12,6 +14,24 @@ import 'support/mooc_login_server.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  late Directory directory;
+  const pathProvider = MethodChannel('plugins.flutter.io/path_provider');
+  final messenger =
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  setUpAll(() async {
+    directory = await Directory.systemTemp.createTemp(
+      'bitree-mooc-login-tests-',
+    );
+    messenger.setMockMethodCallHandler(
+      pathProvider,
+      (_) async => directory.path,
+    );
+  });
+  tearDownAll(() async {
+    await AppDiagnostics.instance.recentLines();
+    messenger.setMockMethodCallHandler(pathProvider, null);
+    await directory.delete(recursive: true);
+  });
 
   test('MOOC params use the expected SM4 envelope', () {
     expect(
@@ -317,17 +337,146 @@ void main() {
         addTearDown(client.close);
 
         await expectLater(
-          client.verifyCookies(
-            MoocCredentials.cookiesFromHeader(
-              'NTESSTUDYSI=csrf; STUDY_SESS=session',
-            ),
+          client.loginWithSmsCode(phone: '13800138000', code: '123456'),
+          throwsA(
+            isA<MoocLoginException>()
+                .having((error) => error.kind, 'kind', MoocLoginError.noSession)
+                .having(
+                  (error) => error.code,
+                  'code',
+                  'account-script-missing',
+                ),
           ),
+        );
+      },
+    );
+
+    for (final useCookies in [false, true]) {
+      test(
+        'reads the account after session exchange, cookies=$useCookies',
+        () async {
+          server.exchangeSession = true;
+          final client = MoocLoginClient();
+          addTearDown(client.close);
+
+          final account = useCookies
+              ? await client.verifyCookies(
+                  MoocCredentials.cookiesFromHeader(
+                    'NTESSTUDYSI=csrf; NTES_SESS=provider-session',
+                  ),
+                )
+              : await client.loginWithSmsCode(
+                  phone: '13800138000',
+                  code: '123456',
+                );
+
+          expect(account.id, '123');
+          expect(account.name, '测试账号');
+          final cookies = account.credentials.cookies.map(
+            MoocCookie.fromSetCookieValue,
+          );
+          expect(
+            cookies.any(
+              (cookie) =>
+                  cookie.name == 'STUDY_SESS' && cookie.value == 'session',
+            ),
+            isTrue,
+          );
+          expect(
+            server.requests.where((request) => request.endsWith('/home.htm')),
+            hasLength(2),
+          );
+        },
+      );
+    }
+
+    test(
+      'an incomplete session exchange stops without repeating SMS login',
+      () async {
+        server.exchangeSession = true;
+        server.homeRedirect =
+            'https://www.icourse163.org/passport/logingate/changeCookie.htm';
+        final client = MoocLoginClient();
+        addTearDown(client.close);
+
+        await expectLater(
+          client.loginWithSmsCode(phone: '13800138000', code: '123456'),
           throwsA(
             isA<MoocLoginException>().having(
               (error) => error.kind,
               'kind',
               MoocLoginError.noSession,
             ),
+          ),
+        );
+        expect(server.smsLoginAttempts, 1);
+        expect(
+          server.requests.where((request) => request.endsWith('/home.htm')),
+          hasLength(2),
+        );
+      },
+    );
+
+    test('redirect diagnostics omit credentials and URL parameters', () async {
+      server.homeRedirect =
+          'https://www.icourse163.org/passport/logingate/changeCookie.htm'
+          '?ticket=secret-query#secret-fragment';
+      final client = MoocLoginClient();
+      addTearDown(client.close);
+
+      await expectLater(
+        client.loginWithSmsCode(phone: '13800138000', code: '123456'),
+        throwsA(
+          isA<MoocLoginException>().having(
+            (error) => error.kind,
+            'kind',
+            MoocLoginError.noSession,
+          ),
+        ),
+      );
+
+      final logs = await AppDiagnostics.instance.recentLines();
+      expect(logs, contains('HTTP 302'));
+      expect(logs, contains('STUDY_SESS(.icourse163.org,/,present)'));
+      expect(
+        logs,
+        contains(
+          '页面=https://www.icourse163.org/passport/logingate/changeCookie.htm',
+        ),
+      );
+      for (final secret in [
+        'secret-query',
+        'secret-fragment',
+        '13800138000',
+        '123456',
+        '=csrf',
+        '=session',
+      ]) {
+        expect(logs, isNot(contains(secret)));
+      }
+    });
+
+    test(
+      'incomplete account data is distinguished from a missing session',
+      () async {
+        server.accountScript = 'window.webUser = {id: 123};';
+        final client = MoocLoginClient();
+        addTearDown(client.close);
+
+        await expectLater(
+          client.verifyCookies(
+            MoocCredentials.cookiesFromHeader(
+              'NTESSTUDYSI=csrf; STUDY_SESS=session',
+            ),
+          ),
+          throwsA(
+            isA<MoocLoginException>()
+                .having((error) => error.kind, 'kind', MoocLoginError.noSession)
+                .having(
+                  (error) => error.code,
+                  'code',
+                  'account-fields-missing',
+                ),
           ),
         );
       },

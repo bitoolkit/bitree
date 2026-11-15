@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:html/parser.dart' as html_parser;
 
+import '../core/diagnostics.dart';
 import 'cookie.dart';
 import 'credentials.dart';
 import 'login_crypto.dart';
@@ -195,9 +196,7 @@ class MoocLoginClient {
     }
     await _cookies.deleteAll();
     await _cookies.saveFromResponse(MoocCredentials.origin, values);
-    final page = await _get(MoocCredentials.origin.resolve('/home.htm'));
-    final account = _readAccount(page.body);
-    return await _account(account);
+    return _loadAccount();
   }
 
   Future<List<Cookie>> exportCookies() async {
@@ -367,7 +366,7 @@ class MoocLoginClient {
         ..cookies.addAll(await _cookies.loadForRequest(request.uri));
       request.write(jsonEncode({'encParams': encryptMoocParams(payload)}));
       final response = await request.close().timeout(_commandTimeout);
-      await _saveResponseCookies(url, response);
+      await _saveResponseCookies(url, request, response);
       final text = await utf8.decoder
           .bind(response)
           .join()
@@ -416,7 +415,7 @@ class MoocLoginClient {
         ..headers.set(HttpHeaders.refererHeader, 'https://www.icourse163.org/')
         ..cookies.addAll(await _cookies.loadForRequest(url));
       final response = await request.close().timeout(_commandTimeout);
-      await _saveResponseCookies(url, response);
+      await _saveResponseCookies(url, request, response);
       if (_isRedirect(response.statusCode)) {
         final location = response.headers.value(HttpHeaders.locationHeader);
         await response.drain<void>();
@@ -467,15 +466,41 @@ class MoocLoginClient {
       }
       await _get(uri);
     }
-    final home = await _get(MoocCredentials.origin.resolve('/home.htm'));
-    final values = _readAccount(home.body);
-    return _account(values);
+    return _loadAccount();
+  }
+
+  Future<MoocAccount> _loadAccount() async {
+    final url = MoocCredentials.origin.resolve('/home.htm');
+    var page = await _get(url);
+    if (page.url.origin == MoocCredentials.origin.origin &&
+        page.url.path == '/passport/logingate/changeCookie.htm') {
+      // The login gate sets the MOOC session in a 200 response without account
+      // data. Read the account page with those cookies; do not loop if it fails.
+      page = await _get(url);
+    }
+    try {
+      final values = _readAccount(page.body);
+      return await _account(values);
+    } on Exception catch (error, stack) {
+      final reason = error is MoocLoginException
+          ? error.code ?? error.kind.name
+          : error.runtimeType;
+      AppDiagnostics.instance.error(
+        '读取 MOOC 登录账号：$reason；页面=${_diagnosticUrl(page.url)} ',
+        error,
+        stack,
+      );
+      rethrow;
+    }
   }
 
   Future<MoocAccount> _account(({String id, String name}) values) async {
     final cookies = await _cookies.loadForRequest(MoocCredentials.rpcDirectory);
     if (!MoocCredentials.hasSession(cookies)) {
-      throw const MoocLoginException(MoocLoginError.noSession);
+      throw const MoocLoginException(
+        MoocLoginError.noSession,
+        code: 'session-cookies-missing',
+      );
     }
     return MoocAccount(
       id: values.id,
@@ -485,6 +510,7 @@ class MoocLoginClient {
   }
 
   ({String id, String name}) _readAccount(String source) {
+    var failure = 'account-script-missing';
     for (final script
         in html_parser
             .parse(source)
@@ -493,6 +519,7 @@ class MoocLoginClient {
       final assignment = RegExp(r'\bwindow\.webUser\s*=\s*\{')
           .firstMatch(script);
       if (assignment == null) continue;
+      failure = 'account-script-unbalanced';
       final object = _balancedObject(script, assignment.end - 1);
       if (object == null) continue;
       // MOOC emits a data object with unquoted property names and JSON strings.
@@ -508,11 +535,13 @@ class MoocLoginClient {
         if (id != null && name is String && name.trim().isNotEmpty) {
           return (id: id, name: name);
         }
+        failure = 'account-fields-missing';
       } on FormatException {
+        failure = 'account-script-invalid';
         continue;
       }
     }
-    throw const MoocLoginException(MoocLoginError.noSession);
+    throw MoocLoginException(MoocLoginError.noSession, code: failure);
   }
 
   void _requireSuccess(Map<String, dynamic> data) {
@@ -550,6 +579,7 @@ class MoocLoginClient {
 
   Future<void> _saveResponseCookies(
     Uri url,
+    HttpClientRequest request,
     HttpClientResponse response,
   ) async {
     final values =
@@ -573,6 +603,38 @@ class MoocLoginClient {
       }
     }
     await _cookies.saveFromResponse(url, values);
+    final location = response.headers.value(HttpHeaders.locationHeader);
+    final redirect = location == null ? null : Uri.tryParse(location);
+    // Log only cookie names, scope and expiry, never credentials or URL queries.
+    AppDiagnostics.instance.info(
+      'MOOC 登录 ${request.method} ${_diagnosticUrl(url)} '
+      'HTTP ${response.statusCode}；'
+      '发送会话=${_diagnosticCookies(request.cookies)}；'
+      '收到会话=${_diagnosticCookies(values)}'
+      '${redirect == null ? '' : '；跳转=${_diagnosticUrl(url.resolveUri(redirect))}'}',
+    );
+  }
+
+  String _diagnosticUrl(Uri url) => '${url.scheme}://${url.host}${url.path}';
+
+  String _diagnosticCookies(Iterable<Cookie> cookies) {
+    const names = {'NTESSTUDYSI', 'STUDY_SESS', 'STUDY_INFO', 'NTES_SESS'};
+    final now = DateTime.now();
+    return cookies
+        .where((cookie) => names.contains(cookie.name))
+        .map((cookie) {
+          final expired =
+              (cookie.maxAge != null && cookie.maxAge! <= 0) ||
+              (cookie.expires?.isBefore(now) ?? false);
+          final state = cookie.value.isEmpty
+              ? 'empty'
+              : expired
+              ? 'expired'
+              : 'present';
+          return '${cookie.name}(${cookie.domain ?? 'host-only'},'
+              '${cookie.path ?? 'default-path'},$state)';
+        })
+        .join(',');
   }
 
   String _randomId(int length) {

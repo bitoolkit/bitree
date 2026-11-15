@@ -14,6 +14,8 @@ class MoocLoginServer {
   int passwordAttempts = 0;
   int smsSendAttempts = 0;
   int smsLoginAttempts = 0;
+  bool exchangeSession = false;
+  String? homeRedirect;
   String accountScript = '''
     window.webUser = {
       rightsTime: -1,
@@ -41,11 +43,14 @@ class MoocLoginServer {
     await request.drain<void>();
     if (request.method == 'GET' && path.endsWith('/home.htm')) {
       final cookie = request.headers.value(HttpHeaders.cookieHeader) ?? '';
-      if (!cookie.contains('NTESSTUDYSI=') || !cookie.contains('STUDY_SESS=')) {
+      if (homeRedirect != null ||
+          !cookie.contains('NTESSTUDYSI=') ||
+          !cookie.contains('STUDY_SESS=')) {
         request.response.statusCode = HttpStatus.found;
         request.response.headers.set(
           HttpHeaders.locationHeader,
-          'https://www.icourse163.org/passport/logingate/changeCookie.htm',
+          homeRedirect ??
+              'https://www.icourse163.org/passport/logingate/changeCookie.htm',
         );
       } else {
         request.response.headers.contentType = ContentType.html;
@@ -59,6 +64,10 @@ class MoocLoginServer {
       return;
     }
     if (request.method == 'GET') {
+      if (exchangeSession &&
+          path == '/www.icourse163.org/passport/logingate/changeCookie.htm') {
+        _setSession(request.response);
+      }
       request.response.headers.contentType = ContentType.html;
       request.response.write('<html></html>');
       await request.response.close();
@@ -96,7 +105,9 @@ class MoocLoginServer {
         await _json(request.response, {'ret': 805});
         return;
       }
-      if (passwordResult['ret'] == 201) _setSession(request.response);
+      if (passwordResult['ret'] == 201) {
+        _setSession(request.response, login: true);
+      }
       await _json(request.response, passwordResult);
       return;
     }
@@ -108,7 +119,7 @@ class MoocLoginServer {
     if (path.endsWith('/sms/vfsms')) {
       smsLoginAttempts++;
       if (smsLoginResult['ret'] == 201) {
-        _setSession(request.response);
+        _setSession(request.response, login: true);
       }
       await _json(request.response, smsLoginResult);
       return;
@@ -120,12 +131,19 @@ class MoocLoginServer {
     await _json(request.response, {'ret': 404});
   }
 
-  void _setSession(HttpResponse response) {
+  void _setSession(HttpResponse response, {bool login = false}) {
     response.headers.add(
       HttpHeaders.setCookieHeader,
       'NTESSTUDYSI=csrf; Domain=.icourse163.org; Path=/; '
       'Secure; HttpOnly; SameSite=Lax',
     );
+    if (login && exchangeSession) {
+      response.headers.add(
+        HttpHeaders.setCookieHeader,
+        'NTES_SESS=; Domain=.icourse163.org; Path=/; Secure; HttpOnly',
+      );
+      return;
+    }
     response.headers.add(
       HttpHeaders.setCookieHeader,
       'STUDY_SESS=session; Domain=.icourse163.org; Path=/; '
