@@ -677,6 +677,7 @@
       }
     }
   },
+  "agendaTailDaysOneDay": "Done today",
   "agendaEndAfterStart": "The end must be later than the start",
   "agendaReminderOverdue": "{time} · overdue",
   "@agendaReminderOverdue": {

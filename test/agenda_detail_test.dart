@@ -415,6 +415,20 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('A one-day tail reads as a same-day deadline', (tester) async {
+    await open(tester, deadline(tailDays: 1));
+    await tester.tap(find.widgetWithText(TextButton, '编辑'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('agenda-more-options')));
+    await tester.pumpAndSettle();
+    final slider = tester.widget<Slider>(
+      find.byKey(const ValueKey('agenda-tail-days-slider')),
+    );
+    expect(slider.label, '1 天');
+    expect(find.text('今日事今日毕'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Editing an adjusted coloured DDL saves the real timestamp', (
     tester,
   ) async {
