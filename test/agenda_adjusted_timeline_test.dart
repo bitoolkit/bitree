@@ -91,7 +91,7 @@ void main() {
       final entry = _deadline(tailDays: 14);
       final placement = layoutAgendaTimeline([
         entry,
-      ], minimumEventSpan: const Duration(minutes: 1)).single;
+      ], minimumEventSpan: const Duration(minutes: 1), now: _date).single;
       expect(placement.start, entry.dueAt.subtract(const Duration(days: 14)));
       expect(placement.end, entry.realDueAt);
       expect(placement.layoutEnd, entry.realDueAt);
@@ -112,7 +112,7 @@ void main() {
     final placements = layoutAgendaTimeline([
       ddl,
       event,
-    ], minimumEventSpan: const Duration(minutes: 1));
+    ], minimumEventSpan: const Duration(minutes: 1), now: _date);
     expect(placements.map((p) => p.lane).toSet(), hasLength(2));
   });
 
@@ -128,6 +128,7 @@ void main() {
         final placement = layoutAgendaTimeline(
           [entry],
           minimumEventSpan: const Duration(minutes: 1),
+          now: _date,
           layoutDays: 8,
         ).single;
         expect(
@@ -229,7 +230,7 @@ void main() {
     expect(tester.getRect(_body(entry)).width, closeTo(48 * 13.75, .001));
     final placement = layoutAgendaTimeline([
       entry,
-    ], minimumEventSpan: const Duration(minutes: 1)).single;
+    ], minimumEventSpan: const Duration(minutes: 1), now: _date).single;
     expect(placement.start, entry.dueAt.subtract(const Duration(days: 14)));
     await tester.pumpWidget(const SizedBox());
   });

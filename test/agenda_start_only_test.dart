@@ -113,6 +113,7 @@ void main() {
       final placement = layoutAgendaTimeline(
         [_openEnded(tailDays: 6)],
         minimumEventSpan: const Duration(hours: 1),
+        now: _date,
         layoutDays: 6,
       ).single;
 
@@ -125,6 +126,7 @@ void main() {
       final placement = layoutAgendaTimeline(
         [_due(tailDays: 6)],
         minimumEventSpan: const Duration(hours: 1),
+        now: _date,
         layoutDays: 6,
       ).single;
 

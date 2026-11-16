@@ -637,6 +637,7 @@ void main() {
     final zoomedOut = layoutAgendaTimeline(
       entries,
       minimumEventSpan: const Duration(hours: 48),
+      now: _date,
     );
     expect(zoomedOut.map((placement) => placement.lane), [0, 1]);
     expect(
@@ -651,6 +652,7 @@ void main() {
     final zoomedIn = layoutAgendaTimeline(
       entries,
       minimumEventSpan: const Duration(hours: 2),
+      now: _date,
     );
     // Their real intervals do not overlap, but the four-day information
     // reservations do, independently of the minimum hit-target span.
@@ -686,7 +688,7 @@ void main() {
     final placements = layoutAgendaTimeline([
       long,
       ddl,
-    ], minimumEventSpan: const Duration(days: 2));
+    ], minimumEventSpan: const Duration(days: 2), now: _date);
     final eventPlacement = placements.singleWhere(
       (placement) => placement.entry == long,
     );
@@ -701,6 +703,100 @@ void main() {
       ddl.dueAt.subtract(const Duration(days: 4)),
     );
     expect(deadlinePlacement.layoutEnd, ddl.dueAt);
+  });
+
+  test('Live DDLs claim the top lanes over done ones', () {
+    final finished = AgendaEntry(
+      id: 'finished',
+      title: '已完成作业',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(hours: 12)),
+      done: true,
+    );
+    final live = AgendaEntry(
+      id: 'live',
+      title: '未完成作业',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(hours: 12)),
+    );
+    final placements = layoutAgendaTimeline(
+      [finished, live],
+      minimumEventSpan: const Duration(minutes: 1),
+      now: _date,
+    );
+    expect(placements.singleWhere((p) => p.entry == live).lane, 0);
+    expect(placements.singleWhere((p) => p.entry == finished).lane, 1);
+  });
+
+  test('A start-only DDL sinks once ticked off', () {
+    final ticked = AgendaEntry(
+      id: 'ticked',
+      title: '已交测验',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(hours: 10)),
+      startOnly: true,
+      done: true,
+    );
+    final open = AgendaEntry(
+      id: 'open',
+      title: '开放测验',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(hours: 10)),
+      startOnly: true,
+    );
+    final placements = layoutAgendaTimeline(
+      [ticked, open],
+      minimumEventSpan: const Duration(minutes: 1),
+      now: _date,
+    );
+    expect(placements.singleWhere((p) => p.entry == open).lane, 0);
+    expect(placements.singleWhere((p) => p.entry == ticked).lane, 1);
+  });
+
+  test('Unfinished events outrank ended ones even when they start later', () {
+    final ended = AgendaEntry(
+      id: 'ended',
+      title: '已结束的日程',
+      kind: AgendaKind.event,
+      startsAt: _date.subtract(const Duration(days: 1)),
+      endsAt: _date.subtract(const Duration(hours: 1)),
+    );
+    final upcoming = AgendaEntry(
+      id: 'upcoming',
+      title: '数据结构考试',
+      kind: AgendaKind.exam,
+      startsAt: _date.add(const Duration(days: 2)),
+      endsAt: _date.add(const Duration(days: 2, hours: 2)),
+    );
+    final placements = layoutAgendaTimeline(
+      [ended, upcoming],
+      minimumEventSpan: const Duration(minutes: 1),
+      now: _date,
+    );
+    expect(placements.singleWhere((p) => p.entry == upcoming).lane, 0);
+    expect(placements.singleWhere((p) => p.entry == ended).lane, 1);
+  });
+
+  test('Priority is best effort: a finished entry keeps a free top lane', () {
+    final earlierLive = AgendaEntry(
+      id: 'earlier-live',
+      title: '较早的未完成作业',
+      kind: AgendaKind.deadline,
+      startsAt: _date.subtract(const Duration(days: 3)),
+    );
+    final laterFinished = AgendaEntry(
+      id: 'later-finished',
+      title: '较晚的已完成作业',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(days: 1)),
+      done: true,
+    );
+    final placements = layoutAgendaTimeline(
+      [earlierLive, laterFinished],
+      minimumEventSpan: const Duration(minutes: 1),
+      now: _date,
+    );
+    expect(placements.map((p) => p.lane), everyElement(0));
   });
 
   for (final days in [1, 7, 14]) {
@@ -720,10 +816,15 @@ void main() {
         startsAt: ddl.dueAt.subtract(Duration(days: days, hours: -1)),
         endsAt: ddl.dueAt.subtract(Duration(days: days, hours: -2)),
       );
-      final placements = layoutAgendaTimeline([
-        ddl,
-        overlapping,
-      ], minimumEventSpan: const Duration(minutes: 1), layoutDays: days);
+      final placements = layoutAgendaTimeline(
+        [
+          ddl,
+          overlapping,
+        ],
+        minimumEventSpan: const Duration(minutes: 1),
+        now: _date,
+        layoutDays: days,
+      );
       final reservation = placements.singleWhere((p) => p.entry == ddl);
       expect(reservation.start, ddl.dueAt.subtract(Duration(days: days)));
       expect(reservation.end, ddl.dueAt);

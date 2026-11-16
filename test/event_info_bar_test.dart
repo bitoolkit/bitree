@@ -88,6 +88,7 @@ void main() {
       final placements = layoutAgendaTimeline(
         [event, deadline],
         minimumEventSpan: const Duration(minutes: 1),
+        now: _date,
         reserveEventInformation: reserve,
       );
       final byId = {for (final p in placements) p.entry.id: p};

@@ -144,6 +144,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
         widget.entries.map((entry) => entry.withDeadlineCutoff(cutoff)),
         minimumEventSpan: minimumEventSpan,
         deadlineCardSpan: deadlineCardSpan,
+        now: widget.now,
         layoutDays: layoutDays,
         reserveEventInformation: eventInfoBar,
       );

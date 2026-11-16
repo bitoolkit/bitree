@@ -31,11 +31,14 @@ typedef _LaneReservation = ({
 
 /// Reserve the full feature intervals once; zoom only projects paint geometry.
 /// In particular a fixed-width information card never changes an entry's lane.
+/// Live entries per [AgendaEntry.timelinePriority] are placed first, so they
+/// claim the top lanes whenever they compete with finished ones.
 class AgendaTimelineLayout {
   AgendaTimelineLayout(
     Iterable<AgendaEntry> entries, {
     required Duration minimumEventSpan,
     required this.deadlineCardSpan,
+    required DateTime now,
     int layoutDays = AgendaEntry.defaultTailDays,
     this.reserveEventInformation = true,
   }) : _layoutDays = layoutDays,
@@ -44,6 +47,7 @@ class AgendaTimelineLayout {
          minimumEventSpan: minimumEventSpan,
          layoutDays: layoutDays,
          reserveEventInformation: reserveEventInformation,
+         now: now,
        );
 
   final Duration deadlineCardSpan;
@@ -96,6 +100,7 @@ class AgendaTimelineLayout {
 List<AgendaTimelinePlacement> layoutAgendaTimeline(
   Iterable<AgendaEntry> entries, {
   required Duration minimumEventSpan,
+  required DateTime now,
   int layoutDays = AgendaEntry.defaultTailDays,
   bool reserveEventInformation = true,
 }) => AgendaTimelineLayout(
@@ -104,6 +109,7 @@ List<AgendaTimelinePlacement> layoutAgendaTimeline(
   deadlineCardSpan: Duration(
     microseconds: (Duration.microsecondsPerDay * (layoutDays - .25)).round(),
   ),
+  now: now,
   layoutDays: layoutDays,
   reserveEventInformation: reserveEventInformation,
 ).atZoom(1);
@@ -113,6 +119,7 @@ List<_LaneReservation> _reserveLanes(
   required Duration minimumEventSpan,
   required int layoutDays,
   required bool reserveEventInformation,
+  required DateTime now,
 }) {
   if (layoutDays < AgendaEntry.minTailDays ||
       layoutDays > AgendaEntry.maxTailDays) {
@@ -141,10 +148,14 @@ List<_LaneReservation> _reserveLanes(
         for (final entry in entries.where((entry) => !entry.deleted))
           (
             entry: entry,
+            priority: entry.timelinePriority(now),
             start: reservationStart(entry),
             end: reservationEnd(entry),
           ),
       ]..sort((a, b) {
+        // Live entries reserve lanes first; time order only breaks ties
+        // within one priority class.
+        if (a.priority != b.priority) return a.priority ? -1 : 1;
         final byStart = a.start.compareTo(b.start);
         if (byStart != 0) return byStart;
         final byEnd = a.end.compareTo(b.end);
