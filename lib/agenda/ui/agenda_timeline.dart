@@ -120,12 +120,16 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   late double _headerHeight;
   late double _laneHeight;
 
-  /// Lane-relevant fields only. Status changes (done, notes, colour) leave
-  /// the hash alone so an in-place edit cannot reshuffle the lanes; a hash
+  /// Lane-relevant fields only, summed per entry so the result depends on
+  /// the multiset, not the order: lane reservation sorts entries internally,
+  /// and controller.save re-appends every touched entry, which must not read
+  /// as a structural change. Status edits (done, notes, colour) leave the
+  /// sum alone, so an in-place change cannot reshuffle the lanes; a hash
   /// collision at worst freezes one extra frame of the old lane plan.
-  static int _structureOf(List<AgendaEntry> entries) => Object.hashAll([
-    for (final entry in entries)
-      Object.hash(
+  static int _structureOf(List<AgendaEntry> entries) {
+    var sum = 0;
+    for (final entry in entries) {
+      sum += Object.hash(
         entry.id,
         entry.kind,
         entry.deleted,
@@ -134,8 +138,10 @@ class _AgendaTimelineState extends State<AgendaTimeline>
         entry.startsAt,
         entry.endsAt,
         entry.tailDays,
-      ),
-  ]);
+      );
+    }
+    return sum;
+  }
 
   List<AgendaTimelinePlacement> _layout(
     Duration minimumEventSpan,

@@ -384,8 +384,10 @@ void main() {
     final secondTop = tester.getRect(_paintedBar(second)).top;
     expect(firstTop, lessThan(secondTop));
 
-    // An in-page completion must not reshuffle the retained lanes.
-    update(() => entries = [first.copyWith(done: true), second]);
+    // An in-page completion must not reshuffle the retained lanes — even
+    // though controller.save re-appends the touched entry, changing the
+    // list order while the multiset stays the same.
+    update(() => entries = [second, first.copyWith(done: true)]);
     await tester.pumpAndSettle();
     expect(tester.getRect(_paintedBar(first)).top, closeTo(firstTop, .001));
     expect(tester.getRect(_paintedBar(second)).top, closeTo(secondTop, .001));
