@@ -32,7 +32,9 @@ typedef _LaneReservation = ({
 /// Reserve the full feature intervals once; zoom only projects paint geometry.
 /// In particular a fixed-width information card never changes an entry's lane.
 /// Live entries per [AgendaEntry.timelinePriority] are placed first, so they
-/// claim the top lanes whenever they compete with finished ones.
+/// claim the top lanes whenever they compete with finished ones; finished
+/// entries then backfill any hole in an existing lane before opening a new
+/// lane at the bottom.
 class AgendaTimelineLayout {
   AgendaTimelineLayout(
     Iterable<AgendaEntry> entries, {
@@ -194,7 +196,12 @@ List<_LaneReservation> _reserveLanes(
         final byEnd = a.end.compareTo(b.end);
         return byEnd != 0 ? byEnd : a.entry.id.compareTo(b.entry.id);
       });
-  final laneEnds = <DateTime>[];
+  // Per lane, every reserved span already placed there in start order. Live
+  // entries are processed first in ascending starts, where "first lane with a
+  // gap" degenerates into the classic "first free lane tail". Finished entries
+  // then backfill any earlier hole they fit into — only when no lane has one
+  // do they open a new lane below everything.
+  final lanes = <List<_LaneSpan>>[];
   final reservations = <_LaneReservation>[];
   for (final interval in intervals) {
     final minimumEnd = interval.entry.startsAt.add(minimumEventSpan);
@@ -202,13 +209,21 @@ List<_LaneReservation> _reserveLanes(
         !interval.entry.isDeadline && interval.end.isBefore(minimumEnd)
         ? minimumEnd
         : interval.end;
-    var lane = laneEnds.indexWhere((end) => !interval.start.isBefore(end));
-    if (lane < 0) {
-      lane = laneEnds.length;
-      laneEnds.add(layoutEnd);
-    } else {
-      laneEnds[lane] = layoutEnd;
+    var lane = -1;
+    var insertion = 0;
+    for (var index = 0; index < lanes.length; index++) {
+      insertion = _insertionPoint(lanes[index], interval.start);
+      if (!_collides(lanes[index], insertion, interval.start, layoutEnd)) {
+        lane = index;
+        break;
+      }
     }
+    if (lane < 0) {
+      lane = lanes.length;
+      lanes.add([]);
+      insertion = 0;
+    }
+    lanes[lane].insert(insertion, (start: interval.start, end: layoutEnd));
     reservations.add((
       entry: interval.entry,
       lane: lane,
@@ -218,4 +233,37 @@ List<_LaneReservation> _reserveLanes(
     ));
   }
   return reservations;
+}
+
+/// A reserved collision span `[start, layoutEnd]` inside one lane.
+typedef _LaneSpan = ({DateTime start, DateTime end});
+
+/// The index after the last span starting at or before [start].
+int _insertionPoint(List<_LaneSpan> spans, DateTime start) {
+  var low = 0;
+  var high = spans.length;
+  while (low < high) {
+    final mid = (low + high) ~/ 2;
+    if (!spans[mid].start.isAfter(start)) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+  return low;
+}
+
+/// Touching endpoints are free, mirroring the tail comparison this planner
+/// replaces: a span may start exactly where its neighbour's layout ends.
+bool _collides(
+  List<_LaneSpan> spans,
+  int insertion,
+  DateTime start,
+  DateTime end,
+) {
+  if (insertion > 0 && spans[insertion - 1].end.isAfter(start)) return true;
+  if (insertion < spans.length && end.isAfter(spans[insertion].start)) {
+    return true;
+  }
+  return false;
 }

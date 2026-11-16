@@ -854,6 +854,98 @@ void main() {
     expect(placements.map((p) => p.lane), everyElement(0));
   });
 
+  test('A finished entry backfills a free span inside a live lane', () {
+    final live = AgendaEntry(
+      id: 'live-ahead',
+      title: '远期作业',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(days: 10)),
+    );
+    final finished = AgendaEntry(
+      id: 'backfill',
+      title: '补位日程',
+      kind: AgendaKind.event,
+      startsAt: _date,
+      endsAt: _date.add(const Duration(hours: 1)),
+    );
+    final placements = layoutAgendaTimeline(
+      [live, finished],
+      minimumEventSpan: const Duration(minutes: 1),
+      now: _date.add(const Duration(days: 2)),
+    );
+    final liveLane = placements.singleWhere((p) => p.entry == live).lane;
+    expect(
+      placements.singleWhere((p) => p.entry == finished).lane,
+      liveLane,
+    );
+    expect(liveLane, 0);
+  });
+
+  test('A finished entry overlapping every live lane sinks below them', () {
+    final first = AgendaEntry(
+      id: 'live-one',
+      title: '进行中日程',
+      kind: AgendaKind.event,
+      startsAt: _date.add(const Duration(hours: 12)),
+      endsAt: _date.add(const Duration(hours: 18)),
+    );
+    final second = AgendaEntry(
+      id: 'live-two',
+      title: '进行中考点',
+      kind: AgendaKind.event,
+      startsAt: _date.add(const Duration(hours: 13)),
+      endsAt: _date.add(const Duration(hours: 19)),
+    );
+    final finished = AgendaEntry(
+      id: 'sunk',
+      title: '结束于两条泳道之间',
+      kind: AgendaKind.event,
+      startsAt: _date.add(const Duration(hours: 12)),
+      endsAt: _date.add(const Duration(hours: 13)),
+    );
+    final placements = layoutAgendaTimeline(
+      [first, second, finished],
+      minimumEventSpan: const Duration(minutes: 1),
+      now: _date.add(const Duration(hours: 16)),
+    );
+    expect(
+      placements.singleWhere((p) => p.entry == finished).lane,
+      2,
+    );
+  });
+
+  test('Two disjoint finished entries share one backfilled hole', () {
+    final live = AgendaEntry(
+      id: 'live-hole-host',
+      title: '远期考试',
+      kind: AgendaKind.exam,
+      startsAt: _date.add(const Duration(days: 30, hours: 8)),
+      endsAt: _date.add(const Duration(days: 32)),
+    );
+    final first = AgendaEntry(
+      id: 'hole-one',
+      title: '上午日程',
+      kind: AgendaKind.event,
+      startsAt: _date,
+      endsAt: _date.add(const Duration(hours: 1)),
+    );
+    final second = AgendaEntry(
+      id: 'hole-two',
+      title: '一周后的上午日程',
+      kind: AgendaKind.event,
+      startsAt: _date.add(const Duration(days: 6)),
+      endsAt: _date.add(const Duration(days: 6, hours: 1)),
+    );
+    final placements = layoutAgendaTimeline(
+      [live, first, second],
+      minimumEventSpan: const Duration(minutes: 1),
+      now: _date.add(const Duration(days: 8)),
+    );
+    for (final entry in [live, first, second]) {
+      expect(placements.singleWhere((p) => p.entry == entry).lane, 0);
+    }
+  });
+
   for (final days in [1, 7, 14]) {
     test('DDL lane reservations follow $days global layout days', () {
       final ddl = AgendaEntry(
