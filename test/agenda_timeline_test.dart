@@ -346,6 +346,61 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets('Marking done keeps lanes until the page is re-entered', (
+    tester,
+  ) async {
+    AgendaEntry ddl(String id) => AgendaEntry(
+      id: id,
+      title: '作业 $id',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(hours: 12)),
+    );
+    final first = ddl('a');
+    final second = ddl('b');
+    final app = await _show(tester, [first, second]);
+    var entries = [first, second];
+    var active = true;
+    late StateSetter update;
+    await tester.pumpWidget(
+      StatefulBuilder(
+        builder: (context, setState) {
+          update = setState;
+          return MaterialApp(
+            theme: bitreeTheme(Brightness.light),
+            home: Scaffold(
+              body: AgendaTimeline(
+                controller: app,
+                entries: entries,
+                now: _date.add(const Duration(hours: 11)),
+                active: active,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    final firstTop = tester.getRect(_paintedBar(first)).top;
+    final secondTop = tester.getRect(_paintedBar(second)).top;
+    expect(firstTop, lessThan(secondTop));
+
+    // An in-page completion must not reshuffle the retained lanes.
+    update(() => entries = [first.copyWith(done: true), second]);
+    await tester.pumpAndSettle();
+    expect(tester.getRect(_paintedBar(first)).top, closeTo(firstTop, .001));
+    expect(tester.getRect(_paintedBar(second)).top, closeTo(secondTop, .001));
+
+    // Leaving and re-entering the page re-sorts with the new priorities.
+    update(() => active = false);
+    await tester.pumpAndSettle();
+    update(() => active = true);
+    await tester.pumpAndSettle();
+    expect(tester.getRect(_paintedBar(second)).top, closeTo(firstTop, .001));
+    expect(tester.getRect(_paintedBar(first)).top, closeTo(secondTop, .001));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('Zooming reuses unchanged deadline text', (tester) async {
     final entries = _stackedDeadlines();
     await _show(tester, entries);

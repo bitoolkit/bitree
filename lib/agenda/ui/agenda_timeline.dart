@@ -112,12 +112,30 @@ class _AgendaTimelineState extends State<AgendaTimeline>
   double? _cachedZoom;
   AgendaTimelineLayout? _laneLayout;
   List<AgendaTimelinePlacement> _cachedPlacements = const [];
+  int? _cachedStructureHash;
   final Map<String, AgendaTimelineEntry> _plainCards = {};
 
   _TimelineText? _gridText;
   late double _fontScale;
   late double _headerHeight;
   late double _laneHeight;
+
+  /// Lane-relevant fields only. Status changes (done, notes, colour) leave
+  /// the hash alone so an in-place edit cannot reshuffle the lanes; a hash
+  /// collision at worst freezes one extra frame of the old lane plan.
+  static int _structureOf(List<AgendaEntry> entries) => Object.hashAll([
+    for (final entry in entries)
+      Object.hash(
+        entry.id,
+        entry.kind,
+        entry.deleted,
+        entry.startOnly,
+        entry.allDay,
+        entry.startsAt,
+        entry.endsAt,
+        entry.tailDays,
+      ),
+  ]);
 
   List<AgendaTimelinePlacement> _layout(
     Duration minimumEventSpan,
@@ -126,13 +144,17 @@ class _AgendaTimelineState extends State<AgendaTimeline>
     final cutoff = widget.controller.settings.deadlineCutoff.value;
     final layoutDays = widget.controller.settings.agendaLayoutDays.value;
     final eventInfoBar = widget.controller.settings.agendaEventInfoBar.value;
-    if (!identical(_cachedEntries, widget.entries) ||
+    final entriesChanged = !identical(_cachedEntries, widget.entries);
+    final structure = _structureOf(widget.entries);
+    if (_laneLayout == null ||
         _cachedCutoff != cutoff ||
         _cachedLayoutDays != layoutDays ||
         _cachedEventInfoBar != eventInfoBar ||
         _cachedMinimumEventSpan != minimumEventSpan ||
-        _cachedDeadlineCardSpan != deadlineCardSpan) {
+        _cachedDeadlineCardSpan != deadlineCardSpan ||
+        (entriesChanged && structure != _cachedStructureHash)) {
       _cachedEntries = widget.entries;
+      _cachedStructureHash = structure;
       _cachedCutoff = cutoff;
       _cachedLayoutDays = layoutDays;
       _cachedEventInfoBar = eventInfoBar;
@@ -140,6 +162,7 @@ class _AgendaTimelineState extends State<AgendaTimeline>
       _cachedDeadlineCardSpan = deadlineCardSpan;
       _cachedZoom = null;
       _plainCards.clear();
+      // Re-snapshot the live priorities with the current clock.
       _laneLayout = AgendaTimelineLayout(
         widget.entries.map((entry) => entry.withDeadlineCutoff(cutoff)),
         minimumEventSpan: minimumEventSpan,
@@ -148,6 +171,14 @@ class _AgendaTimelineState extends State<AgendaTimeline>
         layoutDays: layoutDays,
         reserveEventInformation: eventInfoBar,
       );
+    } else if (entriesChanged) {
+      // A status-only edit while staying on the page: adopt the new entry
+      // instances for painting but keep every lane exactly where it is.
+      _cachedEntries = widget.entries;
+      _laneLayout = _laneLayout!.reboundTo(
+        widget.entries.map((entry) => entry.withDeadlineCutoff(cutoff)),
+      );
+      _cachedZoom = null;
     }
     if (_cachedZoom != _zoom) {
       _cachedZoom = _zoom;
@@ -288,6 +319,10 @@ class _AgendaTimelineState extends State<AgendaTimeline>
       _gestureAnchor = null;
       _downPointers.clear();
       _panZoomPointers.clear();
+      if (widget.visible) {
+        // Entering the timeline view: re-snapshot lane priorities.
+        _laneLayout = null;
+      }
     }
     if (oldWidget.active != widget.active) {
       _stopMotion(holdVertical: true);
@@ -297,6 +332,9 @@ class _AgendaTimelineState extends State<AgendaTimeline>
       if (widget.active) {
         _visibleCenter.value = calendarDate(widget.now)
             .add(const Duration(hours: 12));
+        // Re-entering the agenda page from another tab: the IndexedStack
+        // keeps this state alive, so this edge is the only re-entry signal.
+        _laneLayout = null;
       }
     }
     if (widget.active &&

@@ -37,18 +37,53 @@ class AgendaTimelineLayout {
   AgendaTimelineLayout(
     Iterable<AgendaEntry> entries, {
     required Duration minimumEventSpan,
-    required this.deadlineCardSpan,
+    required Duration deadlineCardSpan,
     required DateTime now,
     int layoutDays = AgendaEntry.defaultTailDays,
-    this.reserveEventInformation = true,
-  }) : _layoutDays = layoutDays,
-       _reservations = _reserveLanes(
-         entries,
-         minimumEventSpan: minimumEventSpan,
+    bool reserveEventInformation = true,
+  }) : this._reserved(
+         deadlineCardSpan: deadlineCardSpan,
          layoutDays: layoutDays,
          reserveEventInformation: reserveEventInformation,
-         now: now,
+         reservations: _reserveLanes(
+           entries,
+           minimumEventSpan: minimumEventSpan,
+           layoutDays: layoutDays,
+           reserveEventInformation: reserveEventInformation,
+           now: now,
+         ),
        );
+
+  AgendaTimelineLayout._reserved({
+    required this.deadlineCardSpan,
+    required int layoutDays,
+    required bool reserveEventInformation,
+    required List<_LaneReservation> reservations,
+  }) : _layoutDays = layoutDays,
+       reserveEventInformation = reserveEventInformation,
+       _reservations = reservations;
+
+  /// Adopts new instances of the same entries while keeping this exact lane
+  /// plan. An in-place status change (done, notes, colour) must not reshuffle
+  /// lanes; the caller guarantees the structural fields are unchanged.
+  AgendaTimelineLayout reboundTo(Iterable<AgendaEntry> entries) {
+    final byId = {for (final entry in entries) entry.id: entry};
+    return AgendaTimelineLayout._reserved(
+      deadlineCardSpan: deadlineCardSpan,
+      layoutDays: _layoutDays,
+      reserveEventInformation: reserveEventInformation,
+      reservations: [
+        for (final reservation in _reservations)
+          (
+            entry: byId[reservation.entry.id] ?? reservation.entry,
+            lane: reservation.lane,
+            start: reservation.start,
+            end: reservation.end,
+            layoutEnd: reservation.layoutEnd,
+          ),
+      ],
+    );
+  }
 
   final Duration deadlineCardSpan;
   final int _layoutDays;
