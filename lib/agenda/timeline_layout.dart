@@ -42,10 +42,10 @@ class AgendaTimelineLayout {
     int layoutDays = AgendaEntry.defaultTailDays,
     bool reserveEventInformation = true,
   }) : this._reserved(
-         deadlineCardSpan: deadlineCardSpan,
-         layoutDays: layoutDays,
-         reserveEventInformation: reserveEventInformation,
-         reservations: _reserveLanes(
+         deadlineCardSpan,
+         layoutDays,
+         reserveEventInformation,
+         _reserveLanes(
            entries,
            minimumEventSpan: minimumEventSpan,
            layoutDays: layoutDays,
@@ -54,14 +54,12 @@ class AgendaTimelineLayout {
          ),
        );
 
-  AgendaTimelineLayout._reserved({
-    required this.deadlineCardSpan,
-    required int layoutDays,
-    required bool reserveEventInformation,
-    required List<_LaneReservation> reservations,
-  }) : _layoutDays = layoutDays,
-       reserveEventInformation = reserveEventInformation,
-       _reservations = reservations;
+  AgendaTimelineLayout._reserved(
+    this.deadlineCardSpan,
+    this._layoutDays,
+    this.reserveEventInformation,
+    this._reservations,
+  );
 
   /// Adopts new instances of the same entries while keeping this exact lane
   /// plan. An in-place status change (done, notes, colour) must not reshuffle
@@ -69,10 +67,10 @@ class AgendaTimelineLayout {
   AgendaTimelineLayout reboundTo(Iterable<AgendaEntry> entries) {
     final byId = {for (final entry in entries) entry.id: entry};
     return AgendaTimelineLayout._reserved(
-      deadlineCardSpan: deadlineCardSpan,
-      layoutDays: _layoutDays,
-      reserveEventInformation: reserveEventInformation,
-      reservations: [
+      deadlineCardSpan,
+      _layoutDays,
+      reserveEventInformation,
+      [
         for (final reservation in _reservations)
           (
             entry: byId[reservation.entry.id] ?? reservation.entry,
