@@ -1069,7 +1069,9 @@ void main() {
   testWidgets('Global lanes reserve space without rendering off-screen cards', (
     tester,
   ) async {
-    final current = _event('current', 11);
+    // Unfinished at the fixed 12:00 clock, so live-entry priority keeps it
+    // in the top lane where the painted bar stays on screen.
+    final current = _event('current', 13);
     final farDay = _date.add(const Duration(days: 30));
     final offScreen = [
       for (var index = 0; index < 20; index++)
