@@ -198,6 +198,7 @@ void main() {
       final placements = layoutAgendaTimeline(
         entries,
         minimumEventSpan: const Duration(minutes: 1),
+        now: _date,
         layoutDays: days,
       );
       for (final placement in placements) {
@@ -231,6 +232,7 @@ void main() {
       final placements = layoutAgendaTimeline(
         entries,
         minimumEventSpan: const Duration(minutes: 1),
+        now: _date,
         layoutDays: days,
       );
       for (final p in placements) {
