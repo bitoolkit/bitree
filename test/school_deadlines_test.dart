@@ -744,6 +744,195 @@ void main() {
     },
   );
 
+  test(
+    'Lexue programming activities use discount time, close-time notes, and AC status',
+    () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => server.close(force: true));
+      final resultIds = <String>[];
+      server.listen((request) async {
+        final path = request.uri.path;
+        final id = request.uri.queryParameters['id'];
+        request.response.headers.contentType = ContentType(
+          'text',
+          'html',
+          charset: 'utf-8',
+        );
+        switch (path) {
+          case '/lexue.bit.edu.cn/calendar/export.php':
+            request.response.write(
+              '<div class="calendarurl">'
+              'https://lexue.bit.edu.cn/calendar/export_execute.php'
+              '</div>',
+            );
+          case '/lexue.bit.edu.cn/calendar/export_execute.php':
+            request.response.write('BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n');
+          case '/lexue.bit.edu.cn/my/':
+            request.response.write(
+              '<a href="https://lexue.bit.edu.cn/course/view.php?id=18675">'
+              '数据结构（2026秋）</a>',
+            );
+          case '/lexue.bit.edu.cn/course/view.php':
+            if (request.uri.queryParameters['section'] == '8') {
+              request.response.write(
+                '<div id="region-main">'
+                '<div class="activityinstance">'
+                '<a href="https://lexue.bit.edu.cn/mod/programming/view.php?id=543983">'
+                '<span class="instancename">1. 二叉哥的二叉树</span></a></div>'
+                '<div class="activityinstance">'
+                '<a href="https://lexue.bit.edu.cn/mod/programming/view.php?id=543992">'
+                '<span class="instancename">2. 广义表</span></a></div>'
+                '<div class="activityinstance">'
+                '<a href="https://lexue.bit.edu.cn/mod/programming/view.php?id=543994">'
+                '<span class="instancename">1. 折半查找</span></a></div>'
+                '<div class="activityinstance">'
+                '<a href="https://lexue.bit.edu.cn/mod/programming/view.php?id=543995">'
+                '<span class="instancename">无折扣题</span></a></div>'
+                '<div class="activityinstance">'
+                '<a href="https://lexue.bit.edu.cn/mod/programming/view.php?id=543996">'
+                '<span class="instancename">评测页暂不可用</span></a></div>'
+                '<div class="activityinstance">'
+                '<a href="https://lexue.bit.edu.cn/mod/quiz/view.php?id=543959">'
+                '<span class="instancename">第1章-绪论-练习</span></a></div>'
+                '</div>',
+              );
+            } else {
+              request.response.write(
+                '<div id="page-header"><h1>数据结构（2026秋）</h1></div>'
+                '<a href="https://lexue.bit.edu.cn/course/view.php?id=18675&section=8">'
+                '11月16日 - 11月22日</a>'
+                '<div id="region-main"></div>',
+              );
+            }
+          case '/lexue.bit.edu.cn/mod/programming/view.php':
+            switch (id) {
+              case '543983':
+                request.response.write(
+                  '<div class="box py-3 time-table"><table class="generaltable"><tbody>'
+                  '<tr><td>成绩</td><td>10</td><td>开启时间</td><td>2026年11月5日 星期四 12:00</td></tr>'
+                  '<tr><td>折扣</td><td>0.8</td><td>折扣时间</td><td>2026年11月12日 星期四 23:55</td></tr>'
+                  '<tr><td>允许迟交</td><td>否</td><td>关闭时间</td><td>2026年11月16日 星期一 23:55</td></tr>'
+                  '</tbody></table></div>',
+                );
+              case '543992':
+              case '543994':
+              case '543996':
+                request.response.write(
+                  '<div class="box py-3 time-table"><table class="generaltable"><tbody>'
+                  '<tr><td>成绩</td><td>10</td><td>开启时间</td><td>2026年11月16日 星期一 00:00</td></tr>'
+                  '<tr><td>折扣</td><td>0.8</td><td>折扣时间</td><td>2026年11月27日 星期五 23:55</td></tr>'
+                  '<tr><td>允许迟交</td><td>否</td><td>关闭时间</td><td>2026年11月30日 星期一 23:55</td></tr>'
+                  '</tbody></table></div>',
+                );
+              case '543995':
+                request.response.write(
+                  '<div class="box py-3 time-table"><table class="generaltable"><tbody>'
+                  '<tr><td>允许迟交</td><td>否</td><td>关闭时间</td><td>2026年12月1日 星期二 23:55</td></tr>'
+                  '</tbody></table></div>',
+                );
+            }
+          case '/lexue.bit.edu.cn/mod/programming/result.php':
+            resultIds.add(id!);
+            switch (id) {
+              case '543983':
+                request.response.write(
+                  '<div id="test-result-detail">'
+                  '<p>测试结果：共 2 个测试用例，您的程序通过了其中的 2 个，未能通过的有 0 个。</p>'
+                  '<table><tbody>'
+                  '<tr class="passed"><td>AC: 完全正确</td></tr>'
+                  '<tr class="passed lastrow"><td>AC: 完全正确</td></tr>'
+                  '</tbody></table></div>',
+                );
+              case '543992':
+                request.response.write(
+                  '<div id="test-result-detail">'
+                  '<p>测试结果：共 2 个测试用例，您的程序通过了其中的 1 个，未能通过的有 1 个。</p>'
+                  '<table><tbody>'
+                  '<tr class="passed"><td>AC</td></tr>'
+                  '<tr class="notpassed lastrow"><td>WA</td></tr>'
+                  '</tbody></table></div>',
+                );
+              case '543994':
+              case '543995':
+                request.response.write('<p>找不到您的程序</p>');
+              case '543996':
+                request.response.statusCode = HttpStatus.serviceUnavailable;
+                request.response.write('temporarily unavailable');
+            }
+          case '/lexue.bit.edu.cn/mod/quiz/view.php':
+            request.response.write(
+              '<div data-region="activity-dates">'
+              '<div><strong>已开放：</strong> 2026年09月21日 星期一 15:16</div>'
+              '<div><strong>已关闭:</strong> 2026年09月28日 星期一 23:55</div>'
+              '</div>',
+            );
+          default:
+            request.response.statusCode = HttpStatus.notFound;
+            request.response.write('unexpected request');
+        }
+        await request.response.close();
+      });
+
+      SchoolSession? session;
+      addTearDown(() => session?.close());
+      final page = SchoolResponse(
+        url: DeadlineSource.lexue.loginPage,
+        status: HttpStatus.ok,
+        location: null,
+        bytes: Uint8List.fromList(
+          utf8.encode('<script>M.cfg = {"sesskey":"test"};</script>'),
+        ),
+      );
+      final entries = await HttpOverrides.runWithHttpOverrides(() {
+        session = SchoolSession(
+          network: SchoolNetwork.campus,
+          storage: MemorySchoolStorage(),
+        );
+        return fetchLexueDeadlines(session!, page);
+      }, LocalHttpOverrides(server.port));
+
+      expect(entries, hasLength(6));
+      final ac = entries.singleWhere((e) => e.id == 'lexue-cmid-543983');
+      expect(ac.course, '数据结构（2026秋）');
+      expect(ac.title, '1. 二叉哥的二叉树');
+      expect(ac.startsAt, DateTime.utc(2026, 11, 12, 23, 55));
+      expect(ac.notes, '关闭时间：2026年11月16日 星期一 23:55');
+      expect(ac.done, isTrue);
+
+      final partial = entries.singleWhere((e) => e.id == 'lexue-cmid-543992');
+      expect(partial.startsAt, DateTime.utc(2026, 11, 27, 23, 55));
+      expect(partial.notes, '关闭时间：2026年11月30日 星期一 23:55');
+      expect(partial.done, isFalse);
+
+      final unsubmitted = entries.singleWhere(
+        (e) => e.id == 'lexue-cmid-543994',
+      );
+      expect(unsubmitted.done, isFalse);
+
+      final closeOnly = entries.singleWhere(
+        (e) => e.id == 'lexue-cmid-543995',
+      );
+      expect(closeOnly.startsAt, DateTime.utc(2026, 12, 1, 23, 55));
+      expect(closeOnly.notes, isEmpty);
+      expect(closeOnly.done, isFalse);
+
+      final resultFailed = entries.singleWhere(
+        (e) => e.id == 'lexue-cmid-543996',
+      );
+      expect(resultFailed.startsAt, DateTime.utc(2026, 11, 27, 23, 55));
+      expect(resultFailed.done, isFalse);
+
+      final quiz = entries.singleWhere((e) => e.id == 'lexue-cmid-543959');
+      expect(quiz.title, '第1章-绪论-练习');
+      expect(quiz.startsAt, DateTime.utc(2026, 9, 28, 23, 55));
+
+      expect(
+        resultIds,
+        unorderedEquals(['543983', '543992', '543994', '543995', '543996']),
+      );
+    },
+  );
+
   test('A refreshed remote identifier replaces the same synced URL', () async {
     final oldUrl = Uri.https('lexue.bit.edu.cn', '/mod/assign/view.php', {
       'id': '541355',

@@ -20,6 +20,7 @@ const _activityModules = {
   'forum',
   'h5pactivity',
   'lesson',
+  'programming',
   'quiz',
   'scorm',
   'workshop',
@@ -173,10 +174,7 @@ Future<_ActivityScan> _courseActivities(
 
   final outcomes = await Future.wait([
     for (final module in modules.values)
-      _attempt(() async {
-        final response = await session.request(module.url, stopAtLogin: true);
-        return _parseActivity(module, html.parse(response.text));
-      }),
+      _attempt(() => _fetchActivity(session, module)),
   ], eagerError: true);
   final entries = <AgendaEntry>[];
   for (final outcome in outcomes) {
@@ -259,10 +257,23 @@ _ActivityLink? _activityLink(
   if (title == null) return null;
   return (
     id: 'lexue-cmid-$id',
+    module: path[1],
     course: course,
     title: title,
     url: url.replace(queryParameters: {'id': id}, fragment: ''),
   );
+}
+
+Future<AgendaEntry?> _fetchActivity(
+  SchoolSession session,
+  _ActivityLink module,
+) async {
+  final response = await session.request(module.url, stopAtLogin: true);
+  final page = html.parse(response.text);
+  if (module.module == 'programming') {
+    return _parseProgrammingActivity(session, module, page);
+  }
+  return _parseActivity(module, page);
 }
 
 AgendaEntry? _parseActivity(_ActivityLink module, dom.Document page) {
@@ -284,6 +295,119 @@ AgendaEntry? _parseActivity(_ActivityLink module, dom.Document page) {
   );
 }
 
+Future<AgendaEntry?> _parseProgrammingActivity(
+  SchoolSession session,
+  _ActivityLink module,
+  dom.Document page,
+) async {
+  final dates = _programmingDates(page);
+  final due = dates.discount ?? dates.close;
+  if (due == null) return null;
+
+  final notes =
+      dates.discount != null &&
+          dates.close != null &&
+          dates.close != dates.discount
+      ? '关闭时间：${dates.closeText}'
+      : '';
+  return AgendaEntry(
+    id: module.id,
+    title: module.title,
+    kind: AgendaKind.deadline,
+    startsAt: due,
+    done: await _programmingCompleted(session, module.url),
+    notes: notes,
+    course: module.course,
+    source: DeadlineSource.lexue,
+    local: false,
+    url: module.url,
+  );
+}
+
+({DateTime? discount, DateTime? close, String? closeText}) _programmingDates(
+  dom.Document page,
+) {
+  final table = page.querySelector('.time-table');
+  if (table == null) return (discount: null, close: null, closeText: null);
+
+  DateTime? discount;
+  DateTime? close;
+  String? closeText;
+  for (final row in table.querySelectorAll('tr')) {
+    final cells = row.querySelectorAll('th, td');
+    for (var index = 0; index + 1 < cells.length; index += 2) {
+      final label = _text(cells[index]);
+      final value = _text(cells[index + 1]);
+      if (label == null || value == null) continue;
+      if (RegExp(
+        r'折扣时间|\bdiscount\s*time\b',
+        caseSensitive: false,
+      ).hasMatch(label)) {
+        discount ??= _moodleDate(value);
+      } else if (RegExp(
+        r'关闭时间|\b(?:time\s*close|close\s*time)\b',
+        caseSensitive: false,
+      ).hasMatch(label)) {
+        final parsed = _moodleDate(value);
+        if (parsed != null && close == null) {
+          close = parsed;
+          closeText = value;
+        }
+      }
+    }
+  }
+  return (discount: discount, close: close, closeText: closeText);
+}
+
+Future<bool> _programmingCompleted(
+  SchoolSession session,
+  Uri activityUrl,
+) async {
+  try {
+    final response = await session.request(
+      activityUrl.replace(path: '/mod/programming/result.php'),
+      stopAtLogin: true,
+    );
+    return _programmingResultPassed(html.parse(response.text));
+  } on RequestCancelled {
+    rethrow;
+  } on SessionExpired {
+    rethrow;
+  } on Exception {
+    return false;
+  }
+}
+
+bool _programmingResultPassed(dom.Document page) {
+  final detail = page.querySelector('#test-result-detail');
+  if (detail == null) return false;
+
+  final text = _text(detail) ?? '';
+  final zhSummary = RegExp(
+    r'共\s*(\d+)\s*个测试用例.*?通过了其中的\s*(\d+)\s*个.*?未能通过的有\s*(\d+)\s*个',
+  ).firstMatch(text);
+  if (zhSummary != null) {
+    final total = int.parse(zhSummary[1]!);
+    final passed = int.parse(zhSummary[2]!);
+    final failed = int.parse(zhSummary[3]!);
+    return total > 0 && passed == total && failed == 0;
+  }
+
+  final enSummary = RegExp(
+    r'\b(\d+)\s+passed\b.*?\b(\d+)\s+failed\b',
+    caseSensitive: false,
+  ).firstMatch(text);
+  if (enSummary != null) {
+    final passed = int.parse(enSummary[1]!);
+    final failed = int.parse(enSummary[2]!);
+    return passed > 0 && failed == 0;
+  }
+
+  final rows = detail.querySelectorAll('table tbody tr');
+  return rows.isNotEmpty &&
+      rows.every((row) => row.classes.contains('passed'));
+}
+
 DateTime? _activityDueDate(dom.Element dates) {
   final lines = dates.children.isEmpty
       ? [dates.text]
@@ -291,7 +415,7 @@ DateTime? _activityDueDate(dom.Element dates) {
   for (final text in lines) {
     final normalized = text.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (!RegExp(
-      r'\b(?:due|closes?)\b|到期|截止',
+      r'\b(?:due|clos(?:es?|ed))\b|到期|截止|关闭',
       caseSensitive: false,
     ).hasMatch(normalized)) {
       continue;
@@ -490,7 +614,13 @@ Future<({T? value, Object? error, StackTrace? stack})> _attempt<T>(
 }
 
 typedef _CourseLink = ({String id, String name, Uri url});
-typedef _ActivityLink = ({String id, String course, String title, Uri url});
+typedef _ActivityLink = ({
+  String id,
+  String module,
+  String course,
+  String title,
+  Uri url,
+});
 typedef _ActivityScan = ({
   List<AgendaEntry> entries,
   Object? error,
