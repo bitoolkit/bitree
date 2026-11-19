@@ -86,15 +86,11 @@ Future<List<AgendaEntry>> _calendarDeadlines(
   if (entries.isEmpty) return entries;
 
   try {
-    final completed = await _completedLexueEvents(session, sesskey, entries);
-    return [
-      for (final entry in entries)
-        completed.contains(entry.id) ? entry.copyWith(done: true) : entry,
-    ];
+    return await _resolveCalendarEvents(session, sesskey, entries);
   } on RequestCancelled {
     rethrow;
   } on Exception {
-    return entries;
+    return [for (final entry in entries) _canonicalizeLexueEntry(entry)];
   }
 }
 
@@ -260,7 +256,7 @@ _ActivityLink? _activityLink(
     module: path[1],
     course: course,
     title: title,
-    url: url.replace(queryParameters: {'id': id}, fragment: ''),
+    url: url.removeFragment().replace(queryParameters: {'id': id}),
   );
 }
 
@@ -462,12 +458,12 @@ bool _activityCompleted(dom.Document page) {
       );
 }
 
-Future<Set<String>> _completedLexueEvents(
+Future<List<AgendaEntry>> _resolveCalendarEvents(
   SchoolSession session,
   String sesskey,
   List<AgendaEntry> entries,
 ) async {
-  if (entries.isEmpty) return {};
+  if (entries.isEmpty) return entries;
 
   // Moodle's ICS UID is the calendar event ID followed by the site's hostname.
   final events = await _lexueAjax(session, sesskey, [
@@ -477,52 +473,128 @@ Future<Set<String>> _completedLexueEvents(
     throw const FormatException('乐学返回的日历事件数量不一致');
   }
   final modulesByEvent = <String, int>{};
+  final urlsByEvent = <String, Uri>{};
   for (var index = 0; index < events.length; index++) {
-    final moduleId = _moduleId(events[index]);
-    if (moduleId != null) modulesByEvent[entries[index].id] = moduleId;
-  }
-  final moduleIds = modulesByEvent.values.toSet().toList();
-  if (moduleIds.isEmpty) return {};
-
-  final modules = await _lexueAjax(session, sesskey, [
-    for (final id in moduleIds)
-      (method: 'core_course_get_module', args: {'id': id}),
-  ]);
-  if (modules.length != moduleIds.length) {
-    throw const FormatException('乐学返回的课程模块数量不一致');
-  }
-  final completedModules = <int>{};
-  for (var index = 0; index < modules.length; index++) {
-    final activity = html.parseFragment(jsonString(modules[index], '课程模块'));
-    final manuallyCompleted =
-        activity.querySelector('[data-toggletype="manual:undo"]') != null;
-    final submitted =
-        activity.querySelector('.submissionstatussubmitted') != null;
-    final conditions = activity.querySelectorAll(
-      '[data-region="completionrequirements"] [role="listitem"]',
+    final event = jsonObjectField(
+      jsonObject(events[index], '日历事件响应'),
+      'event',
     );
-    final automaticallyCompleted =
-        conditions.isNotEmpty &&
-        conditions.every(
-          (condition) => condition.classes.contains('badge-success'),
-        );
+    final moduleId = _moduleId(event);
+    if (moduleId != null) modulesByEvent[entries[index].id] = moduleId;
+    final eventUrl = _calendarEventUrl(event);
+    if (eventUrl != null) urlsByEvent[entries[index].id] = eventUrl;
+  }
 
-    if (manuallyCompleted || submitted || automaticallyCompleted) {
-      completedModules.add(moduleIds[index]);
+  final completedModules = <int>{};
+  final moduleIds = modulesByEvent.values.toSet().toList();
+  if (moduleIds.isNotEmpty) {
+    final modules = await _lexueAjax(session, sesskey, [
+      for (final id in moduleIds)
+        (method: 'core_course_get_module', args: {'id': id}),
+    ]);
+    if (modules.length != moduleIds.length) {
+      throw const FormatException('乐学返回的课程模块数量不一致');
+    }
+    for (var index = 0; index < modules.length; index++) {
+      final activity = html.parseFragment(jsonString(modules[index], '课程模块'));
+      final manuallyCompleted =
+          activity.querySelector('[data-toggletype="manual:undo"]') != null;
+      final submitted =
+          activity.querySelector('.submissionstatussubmitted') != null;
+      final conditions = activity.querySelectorAll(
+        '[data-region="completionrequirements"] [role="listitem"]',
+      );
+      final automaticallyCompleted =
+          conditions.isNotEmpty &&
+          conditions.every(
+            (condition) => condition.classes.contains('badge-success'),
+          );
+
+      if (manuallyCompleted || submitted || automaticallyCompleted) {
+        completedModules.add(moduleIds[index]);
+      }
     }
   }
-  return {
-    for (final entry in modulesByEvent.entries)
-      if (completedModules.contains(entry.value)) entry.key,
-  };
+
+  return [
+    for (final entry in entries)
+      _canonicalizeLexueEntry(
+        entry,
+        url: entry.url ?? urlsByEvent[entry.id],
+        done: entry.done || completedModules.contains(modulesByEvent[entry.id]),
+      ),
+  ];
 }
 
-int? _moduleId(Object? value) {
-  final result = jsonObject(value, '日历事件响应');
-  final event = jsonObjectField(result, 'event');
+int? _moduleId(Map<String, dynamic> event) {
   final moduleId = event['instance'];
   if (moduleId == null) return null;
   return jsonInt(moduleId, 'event.instance');
+}
+
+Uri? _calendarEventUrl(Map<String, dynamic> event) {
+  final direct = _lexueTaskUri(jsonStringOrNull(event['url'], 'event.url'));
+  if (direct != null) return direct;
+  final action = event['action'];
+  if (action is Map) {
+    final actionMap = jsonObject(action, 'event.action');
+    return _lexueTaskUri(
+      jsonStringOrNull(actionMap['url'], 'event.action.url'),
+    );
+  }
+  return null;
+}
+
+Uri? _lexueTaskUri(String? raw) {
+  final uri = _schoolUri(raw, base: DeadlineSource.lexue.origin);
+  if (uri == null) return null;
+  if (!uri.path.startsWith('/mod/') && !uri.path.startsWith('/course/')) {
+    return null;
+  }
+  return uri;
+}
+
+String? _canonicalLexueId(Uri? url) {
+  if (url == null) return null;
+  final id = url.queryParameters['id'];
+  final path = url.pathSegments;
+  if (id == null ||
+      id.isEmpty ||
+      path.length < 3 ||
+      path.first != 'mod' ||
+      path[2] != 'view.php') {
+    return null;
+  }
+  return 'lexue-cmid-$id';
+}
+
+AgendaEntry _canonicalizeLexueEntry(
+  AgendaEntry entry, {
+  Uri? url,
+  bool? done,
+}) {
+  final resolvedUrl = url ?? entry.url;
+  final canonicalId = _canonicalLexueId(resolvedUrl) ?? entry.id;
+  final resolvedDone = done ?? entry.done;
+  if (canonicalId == entry.id &&
+      resolvedUrl == entry.url &&
+      resolvedDone == entry.done) {
+    return entry;
+  }
+  return AgendaEntry(
+    id: canonicalId,
+    title: entry.title,
+    kind: entry.kind,
+    startsAt: entry.startsAt,
+    allDay: entry.allDay,
+    notes: entry.notes,
+    done: resolvedDone,
+    deleted: entry.deleted,
+    local: entry.local,
+    source: entry.source,
+    course: entry.course,
+    url: resolvedUrl,
+  );
 }
 
 ({String method, Map<String, Object> args}) _eventRequest(AgendaEntry entry) {

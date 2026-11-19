@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../agenda/model.dart';
 import '../../app/controller.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
@@ -21,8 +22,10 @@ import 'sync_text.dart';
 
 part 'custom_sync_sheet.dart';
 part 'sync_progress_sheet.dart';
+part 'sync_skipped_sheet.dart';
 
 final _progressSheets = <SyncController, Future<void>>{};
+final _skippedSheets = <SyncController, Future<void>>{};
 typedef _CustomSyncSelection = ({Set<SyncTarget> targets, String? term});
 
 /// Starts available sources without making one account block another.
@@ -62,19 +65,33 @@ Future<bool> _completeSync(
       _progressSheets.containsKey(app.sync)) {
     return success;
   }
+  final skippedCount = app.sync.skippedUpdates.length;
   showOverlayNotice(
     overlay,
-    success ? l10n.syncComplete : l10n.syncPartial,
-    action: success
-        ? null
-        : (
+    !success
+        ? l10n.syncPartial
+        : skippedCount > 0
+        ? l10n.syncCompleteWithSkipped(skippedCount)
+        : l10n.syncComplete,
+    action: !success
+        ? (
             label: l10n.view,
             onPressed: () {
               if (overlay.mounted) {
                 unawaited(showSyncProgress(overlay.context, app));
               }
             },
-          ),
+          )
+        : skippedCount > 0
+        ? (
+            label: l10n.view,
+            onPressed: () {
+              if (overlay.mounted) {
+                unawaited(showSyncSkippedUpdates(overlay.context, app));
+              }
+            },
+          )
+        : null,
   );
   return success;
 }
@@ -98,4 +115,17 @@ Future<void> showSyncProgress(BuildContext context, AppController app) {
   );
   _progressSheets[app.sync] = sheet;
   return sheet.whenComplete(() => _progressSheets.remove(app.sync));
+}
+
+Future<void> showSyncSkippedUpdates(BuildContext context, AppController app) {
+  final existing = _skippedSheets[app.sync];
+  if (existing != null) return existing;
+  if (app.sync.skippedUpdates.isEmpty) return Future.value();
+  dismissAppNotice();
+  final sheet = showAppSheet<void>(
+    context: context,
+    builder: (_) => _SyncSkippedUpdatesSheet(app: app),
+  );
+  _skippedSheets[app.sync] = sheet;
+  return sheet.whenComplete(() => _skippedSheets.remove(app.sync));
 }

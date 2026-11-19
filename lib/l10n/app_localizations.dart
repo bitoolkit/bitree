@@ -1673,6 +1673,12 @@ abstract class AppLocalizations {
   /// **'{days, plural, =1{1 day} other{{days} days}}'**
   String agendaTailDaysValue(int days);
 
+  /// No description provided for @agendaTailDaysOneDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Done today'**
+  String get agendaTailDaysOneDay;
+
   /// No description provided for @agendaEndAfterStart.
   ///
   /// In en, this message translates to:
@@ -2081,6 +2087,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sync complete'**
   String get syncComplete;
+
+  /// No description provided for @syncCompleteWithSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync complete, {count} local changes kept'**
+  String syncCompleteWithSkipped(int count);
+
+  /// No description provided for @syncSkippedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} local changes kept'**
+  String syncSkippedCount(int count);
+
+  /// No description provided for @syncSkippedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped local changes'**
+  String get syncSkippedTitle;
+
+  /// No description provided for @syncReviewSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Review skipped ({count})'**
+  String syncReviewSkipped(int count);
+
+  /// No description provided for @syncKeepLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep local'**
+  String get syncKeepLocal;
+
+  /// No description provided for @syncOverwriteSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Overwrite selected'**
+  String get syncOverwriteSelected;
+
+  /// No description provided for @syncOverwrittenCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Overwrote {count} items'**
+  String syncOverwrittenCount(int count);
+
+  /// No description provided for @syncDiffTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title: {local} → {remote}'**
+  String syncDiffTitle(String local, String remote);
+
+  /// No description provided for @syncDiffTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Time: {local} → {remote}'**
+  String syncDiffTime(String local, String remote);
+
+  /// No description provided for @syncDiffLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Location: {local} → {remote}'**
+  String syncDiffLocation(String local, String remote);
+
+  /// No description provided for @syncDiffNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes differ'**
+  String get syncDiffNotes;
+
+  /// No description provided for @syncDiffDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Status: {local} → {remote}'**
+  String syncDiffDone(String local, String remote);
+
+  /// No description provided for @syncDiffTeacher.
+  ///
+  /// In en, this message translates to:
+  /// **'Teacher: {local} → {remote}'**
+  String syncDiffTeacher(String local, String remote);
+
+  /// No description provided for @syncDiffWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'Weeks: {local} → {remote}'**
+  String syncDiffWeeks(String local, String remote);
+
+  /// No description provided for @syncValueDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get syncValueDone;
+
+  /// No description provided for @syncValuePending.
+  ///
+  /// In en, this message translates to:
+  /// **'Not done'**
+  String get syncValuePending;
+
+  /// No description provided for @syncValueEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get syncValueEmpty;
 
   /// No description provided for @syncPartial.
   ///

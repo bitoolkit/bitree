@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../agenda/controller.dart';
+import '../agenda/model.dart';
 import '../core/async/cancelable_request.dart';
 import '../core/async/serial_queue.dart';
 import '../core/diagnostics.dart';
@@ -60,7 +61,9 @@ class MoocController extends ChangeNotifier {
     }),
   );
 
-  Future<MoocImportResult?> synchronize() async {
+  Future<MoocImportResult?> synchronize({
+    void Function(List<SkippedAgendaUpdate>)? onSkipped,
+  }) async {
     final account = _account;
     if (account == null) throw const MoocLoginRequired();
     if (busy) throw const MoocFailure.issue(MoocIssue.requestBusy);
@@ -84,6 +87,7 @@ class MoocController extends ChangeNotifier {
         if (!await _agenda.mergeDeadlines(
           result.entries,
           checkActive: token.check,
+          onSkipped: onSkipped,
         )) {
           _error = const MoocFailure.issue(MoocIssue.saveResultFailed);
           return null;

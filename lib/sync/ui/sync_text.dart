@@ -10,7 +10,12 @@ String syncProgressText(
   SyncTarget target,
 ) {
   if (controller.results[target] case final result?) {
-    return _syncResultText(l10n, result, target);
+    return _syncResultText(
+      l10n,
+      result,
+      target,
+      skippedCount: controller.skippedUpdatesFor(target).length,
+    );
   }
   if (controller.isRunning(target)) {
     if (controller.cancelled) return l10n.cancelling;
@@ -34,8 +39,9 @@ String syncProgressText(
 String _syncResultText(
   AppLocalizations l10n,
   SyncResult result,
-  SyncTarget target,
-) {
+  SyncTarget target, {
+  int skippedCount = 0,
+}) {
   final detail = switch (result.detail) {
     MoocFailure failure => localizedMoocFailure(l10n, failure).trim(),
     final String text => text.trim(),
@@ -43,13 +49,15 @@ String _syncResultText(
     null => null,
   };
   return switch (result.outcome) {
-    SyncOutcome.synced => switch (result.count) {
-      null => l10n.synced,
-      final count when target == SyncTarget.physicsLab => l10n.updatedDdlCount(
-        count,
-      ),
-      final count => l10n.syncedDdlCount(count),
-    },
+    SyncOutcome.synced => [
+      switch (result.count) {
+        null => l10n.synced,
+        final count when target == SyncTarget.physicsLab =>
+          l10n.updatedDdlCount(count),
+        final count => l10n.syncedDdlCount(count),
+      },
+      if (skippedCount > 0) l10n.syncSkippedCount(skippedCount),
+    ].join(' · '),
     SyncOutcome.failed => [
       if (result.count case final count? when count > 0)
         target == SyncTarget.physicsLab

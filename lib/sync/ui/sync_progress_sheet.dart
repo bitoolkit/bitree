@@ -163,11 +163,37 @@ class _SyncProgressSheetState extends State<_SyncProgressSheet> {
                   ),
                 ],
               )
+            : canRetry && model.skippedUpdates.isNotEmpty
+            ? SheetActionBar.split(
+                leading: OutlinedButton(
+                  onPressed: _authenticating
+                      ? null
+                      : () => showSyncSkippedUpdates(context, app),
+                  child: Text(
+                    l10n.syncReviewSkipped(model.skippedUpdates.length),
+                  ),
+                ),
+                primary: FilledButton(
+                  onPressed: _authenticating ? null : _retry,
+                  child: Text(l10n.retryIncomplete),
+                ),
+              )
             : canRetry
             ? SheetActionBar.primary(
                 primary: FilledButton(
                   onPressed: _authenticating ? null : _retry,
                   child: Text(l10n.retryIncomplete),
+                ),
+              )
+            : model.skippedUpdates.isNotEmpty
+            ? SheetActionBar.primary(
+                primary: FilledButton(
+                  onPressed: _authenticating
+                      ? null
+                      : () => showSyncSkippedUpdates(context, app),
+                  child: Text(
+                    l10n.syncReviewSkipped(model.skippedUpdates.length),
+                  ),
                 ),
               )
             : null,

@@ -906,6 +906,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get agendaTailDaysOneDay => '今日事今日毕';
+
+  @override
   String get agendaEndAfterStart => '结束时间需要晚于开始时间';
 
   @override
@@ -1156,6 +1159,77 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get syncComplete => '同步完成';
+
+  @override
+  String syncCompleteWithSkipped(int count) {
+    return '同步完成，$count 项本地修改未覆盖';
+  }
+
+  @override
+  String syncSkippedCount(int count) {
+    return '$count 项本地修改未覆盖';
+  }
+
+  @override
+  String get syncSkippedTitle => '未覆盖的本地修改';
+
+  @override
+  String syncReviewSkipped(int count) {
+    return '查看未覆盖项 ($count)';
+  }
+
+  @override
+  String get syncKeepLocal => '保持本地';
+
+  @override
+  String get syncOverwriteSelected => '覆盖所选';
+
+  @override
+  String syncOverwrittenCount(int count) {
+    return '已覆盖 $count 项';
+  }
+
+  @override
+  String syncDiffTitle(String local, String remote) {
+    return '标题：$local → $remote';
+  }
+
+  @override
+  String syncDiffTime(String local, String remote) {
+    return '时间：$local → $remote';
+  }
+
+  @override
+  String syncDiffLocation(String local, String remote) {
+    return '地点：$local → $remote';
+  }
+
+  @override
+  String get syncDiffNotes => '备注不同';
+
+  @override
+  String syncDiffDone(String local, String remote) {
+    return '状态：$local → $remote';
+  }
+
+  @override
+  String syncDiffTeacher(String local, String remote) {
+    return '教师：$local → $remote';
+  }
+
+  @override
+  String syncDiffWeeks(String local, String remote) {
+    return '周次：$local → $remote';
+  }
+
+  @override
+  String get syncValueDone => '已完成';
+
+  @override
+  String get syncValuePending => '未完成';
+
+  @override
+  String get syncValueEmpty => '无';
 
   @override
   String get syncPartial => '部分内容未同步';

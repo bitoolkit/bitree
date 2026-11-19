@@ -17,7 +17,7 @@ List<AgendaEntry> _mergeActivityDeadlines(
     }
     final existing = result[index];
     result[index] = AgendaEntry(
-      id: existing.id,
+      id: activity.id,
       title: activity.title,
       kind: activity.kind,
       startsAt: activity.startsAt,
@@ -35,6 +35,7 @@ List<AgendaEntry> _mergeActivityDeadlines(
 }
 
 bool _sameLexueDeadline(AgendaEntry left, AgendaEntry right) {
+  if (left.id == right.id) return true;
   final leftUrl = left.url;
   final rightUrl = right.url;
   if (leftUrl != null &&

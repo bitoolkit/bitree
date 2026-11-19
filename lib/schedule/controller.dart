@@ -72,15 +72,46 @@ class TimetableController extends ChangeNotifier {
     SemesterSchedule incoming,
     List<String> availableTerms, {
     void Function()? checkActive,
-  }) => _operations.run(() {
-    final next = incoming.mergeLocalChanges(_schedules[incoming.term]);
-    return _commit(
+    void Function(List<SkippedCourseUpdate>)? onSkipped,
+  }) => _operations.run(() async {
+    final previous = _schedules[incoming.term];
+    final skipped = incoming.skippedLocalUpdates(previous);
+    final next = incoming.mergeLocalChanges(previous);
+    final saved = await _commit(
       next,
       availableTerms: availableTerms,
       resetWeek: true,
       checkActive: checkActive,
     );
+    if (saved) onSkipped?.call(skipped);
+    return saved;
   });
+
+  Future<bool> overwriteCourses(List<SkippedCourseUpdate> updates) {
+    if (updates.isEmpty) return Future.value(true);
+    return _operations.run(() async {
+      final byTerm = <String, List<SkippedCourseUpdate>>{};
+      for (final update in updates) {
+        byTerm.putIfAbsent(update.term, () => []).add(update);
+      }
+      for (final entry in byTerm.entries) {
+        final current = _schedules[entry.key];
+        if (current == null) continue;
+        final replacements = {
+          for (final update in entry.value) update.saved.id: update.incoming,
+        };
+        final next = current.copyWith(
+          courses: [
+            for (final course in current.courses)
+              replacements.remove(course.id) ?? course,
+            ...replacements.values,
+          ],
+        );
+        if (!await _commit(next)) return false;
+      }
+      return true;
+    });
+  }
 
   Future<bool> saveCourse(
     Course course, {

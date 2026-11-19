@@ -1,4 +1,6 @@
 import '../agenda/deadline_source.dart';
+import '../agenda/model.dart';
+import '../schedule/model.dart';
 
 enum SyncTarget {
   schedule,
@@ -44,4 +46,30 @@ class SyncResult {
   final SyncOutcome outcome;
   final int? count;
   final Object? detail;
+}
+
+sealed class SyncSkippedUpdate {
+  const SyncSkippedUpdate({required this.target});
+
+  final SyncTarget target;
+  String get key;
+}
+
+final class SyncSkippedAgendaUpdate extends SyncSkippedUpdate {
+  const SyncSkippedAgendaUpdate({required super.target, required this.update});
+
+  final SkippedAgendaUpdate update;
+
+  @override
+  String get key => '${target.name}:agenda:${update.saved.id}';
+}
+
+final class SyncSkippedCourseUpdate extends SyncSkippedUpdate {
+  const SyncSkippedCourseUpdate({required super.target, required this.update});
+
+  final SkippedCourseUpdate update;
+
+  @override
+  String get key =>
+      '${target.name}:course:${update.term}:${update.saved.id}';
 }

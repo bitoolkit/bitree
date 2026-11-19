@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
+
 import '../core/json.dart';
 import '../core/time.dart';
 import 'section_times.dart';
@@ -294,6 +296,21 @@ class SemesterSchedule {
     }.values.toList(),
   );
 
+  List<SkippedCourseUpdate> skippedLocalUpdates(SemesterSchedule? previous) {
+    if (previous == null) return const [];
+    final localById = {
+      for (final course in previous.courses)
+        if (course.local) course.id: course,
+    };
+    return [
+      for (final course in courses)
+        if (localById[course.id] case final saved?)
+          if (SkippedCourseUpdate(term: term, saved: saved, incoming: course)
+              case final update when update.hasChanges)
+            update,
+    ];
+  }
+
   Map<String, dynamic> toJson() => {
     'term': term,
     'firstMonday': dateText(firstMonday),
@@ -315,4 +332,32 @@ class SemesterSchedule {
         ],
         syncedAt: jsonDateTimeOrNull('syncedAt', json['syncedAt']),
       );
+}
+
+class SkippedCourseUpdate {
+  const SkippedCourseUpdate({
+    required this.term,
+    required this.saved,
+    required this.incoming,
+  });
+
+  final String term;
+  final Course saved;
+  final Course incoming;
+
+  bool get nameChanged => saved.name != incoming.name;
+  bool get teacherChanged => saved.teacher != incoming.teacher;
+  bool get roomChanged => saved.room != incoming.room;
+  bool get timeChanged =>
+      saved.weekday != incoming.weekday ||
+      saved.startSection != incoming.startSection ||
+      saved.endSection != incoming.endSection;
+  bool get weeksChanged => !listEquals(saved.weeks, incoming.weeks);
+
+  bool get hasChanges =>
+      nameChanged ||
+      teacherChanged ||
+      roomChanged ||
+      timeChanged ||
+      weeksChanged;
 }

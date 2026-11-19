@@ -5,9 +5,11 @@ import 'package:flutter/foundation.dart';
 import '../academics/controller.dart';
 import '../agenda/controller.dart';
 import '../agenda/deadline_source.dart';
+import '../agenda/model.dart';
 import '../core/async/cancelable_request.dart';
 import '../core/diagnostics.dart';
 import '../schedule/controller.dart';
+import '../schedule/model.dart';
 import 'academics.dart';
 import 'access.dart';
 import 'account_status.dart';
@@ -201,7 +203,11 @@ class SchoolController extends ChangeNotifier {
     }, notifyErrors: notifyErrors);
   }
 
-  Future<bool> synchronize({String? term, VerifySchoolLogin? verify}) => _run(
+  Future<bool> synchronize({
+    String? term,
+    VerifySchoolLogin? verify,
+    void Function(List<SkippedCourseUpdate>)? onSkipped,
+  }) => _run(
     '同步课表',
     () => _access.read(_verification(verify), (session) async {
       final result = await _service.synchronize(
@@ -214,12 +220,17 @@ class SchoolController extends ChangeNotifier {
         result.schedule,
         result.terms,
         checkActive: session.checkActive,
+        onSkipped: onSkipped,
       );
     }),
     notifyErrors: false,
   );
 
-  Future<bool> importExams({String? term, VerifySchoolLogin? verify}) => _run(
+  Future<bool> importExams({
+    String? term,
+    VerifySchoolLogin? verify,
+    void Function(List<SkippedAgendaUpdate>)? onSkipped,
+  }) => _run(
     '同步考试安排',
     () => _access.read(_verification(verify), (session) async {
       final result = await _service.exams(
@@ -232,6 +243,7 @@ class SchoolController extends ChangeNotifier {
         result.term,
         result.exams,
         checkActive: session.checkActive,
+        onSkipped: onSkipped,
       );
     }),
     notifyErrors: false,
@@ -263,6 +275,7 @@ class SchoolController extends ChangeNotifier {
   Future<bool> importDeadlines({
     required DeadlineSource source,
     VerifySchoolLogin? verify,
+    void Function(List<SkippedAgendaUpdate>)? onSkipped,
   }) => _run(
     '同步${_deadlineSourceName(source)} DDL',
     () => _access.readLearningPlatform(source, _verification(verify), (
@@ -278,6 +291,7 @@ class SchoolController extends ChangeNotifier {
       return _agenda.mergeDeadlines(
         deadlines,
         checkActive: session.checkActive,
+        onSkipped: onSkipped,
       );
     }),
     notifyErrors: false,

@@ -162,9 +162,13 @@ class AgendaEntry {
         endsAt!.isAfter(day);
   }
 
+  AgendaEntry toggleDone() =>
+      copyWith(done: !done, local: source == null ? local : true);
+
   AgendaEntry copyWith({
     bool? done,
     bool? deleted,
+    bool? local,
     Object? tailDays = _copyUnset,
     DeadlineCutoffWindow? deadlineCutoffWindow,
   }) => AgendaEntry(
@@ -179,7 +183,7 @@ class AgendaEntry {
     done: done ?? this.done,
     deleted: deleted ?? this.deleted,
     term: term,
-    local: local,
+    local: local ?? this.local,
     source: source,
     course: course,
     url: url,
@@ -274,4 +278,28 @@ class AgendaEntry {
           : AgendaEntryDetails.fromJson(jsonObject(rawDetails, 'details')),
     );
   }
+}
+
+class SkippedAgendaUpdate {
+  const SkippedAgendaUpdate({required this.saved, required this.incoming});
+
+  final AgendaEntry saved;
+  final AgendaEntry incoming;
+
+  bool get titleChanged => saved.title != incoming.title;
+  bool get timeChanged =>
+      saved.startsAt != incoming.startsAt ||
+      saved.endsAt != incoming.endsAt ||
+      saved.allDay != incoming.allDay ||
+      saved.startOnly != incoming.startOnly;
+  bool get locationChanged => saved.location != incoming.location;
+  bool get notesChanged => saved.notes != incoming.notes;
+  bool get doneChanged => saved.done != incoming.done;
+
+  bool get hasChanges =>
+      titleChanged ||
+      timeChanged ||
+      locationChanged ||
+      notesChanged ||
+      doneChanged;
 }

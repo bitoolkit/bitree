@@ -1,12 +1,14 @@
 part of 'controller.dart';
 
-List<AgendaEntry> _mergeDeadlineEntries(
+({List<AgendaEntry> entries, List<SkippedAgendaUpdate> skipped})
+_mergeDeadlineEntries(
   List<AgendaEntry> savedEntries,
   List<AgendaEntry> incoming,
 ) {
   final unmatched = [...incoming];
   final matched = <AgendaEntry>[];
   final merged = <AgendaEntry>[];
+  final skipped = <SkippedAgendaUpdate>[];
   for (final saved in savedEntries) {
     final index = unmatched.indexWhere(
       (entry) => _sameRemoteEntry(saved, entry),
@@ -18,16 +20,16 @@ List<AgendaEntry> _mergeDeadlineEntries(
     }
     final entry = unmatched.removeAt(index);
     matched.add(entry);
-    final next = saved.local ? saved : entry;
-    merged.add(
-      next.copyWith(
-        done: saved.local ? entry.done || saved.done : entry.done,
-        deleted: saved.deleted,
-        tailDays: saved.tailDays,
-      ),
-    );
+    final result = saved.local
+        ? saved
+        : entry.copyWith(deleted: saved.deleted, tailDays: saved.tailDays);
+    merged.add(result);
+    if (saved.local && !saved.deleted) {
+      final update = SkippedAgendaUpdate(saved: saved, incoming: entry);
+      if (update.hasChanges) skipped.add(update);
+    }
   }
-  return [...merged, ...unmatched];
+  return (entries: [...merged, ...unmatched], skipped: skipped);
 }
 
 bool _sameRemoteEntry(AgendaEntry left, AgendaEntry right) {

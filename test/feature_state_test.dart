@@ -352,7 +352,7 @@ void main() {
     },
   );
 
-  test('DDL sync preserves deletions and local edits while following remote completion', () async {
+  test('DDL sync preserves deletions and local edits without overwriting them', () async {
     final store = MemoryAgendaStore([
       deadline('deleted'),
       deadline('edited', title: '本地标题', local: true),
@@ -362,20 +362,25 @@ void main() {
     addTearDown(agenda.dispose);
     await agenda.load();
     await agenda.delete(agenda.entries.first);
+    var skipped = const <SkippedAgendaUpdate>[];
     await agenda.mergeDeadlines([
       deadline('deleted'),
       deadline('edited', done: true),
       deadline('finished'),
       deadline('new'),
-    ]);
+    ], onSkipped: (items) => skipped = items);
     expect(agenda.entries.map((entry) => entry.id), [
       'edited',
       'finished',
       'new',
     ]);
     expect(agenda.entries.first.title, '本地标题');
-    expect(agenda.entries.first.done, isTrue);
+    expect(agenda.entries.first.done, isFalse);
     expect(agenda.entries.elementAt(1).done, isFalse);
+    expect(skipped, hasLength(1));
+    expect(skipped.single.saved.id, 'edited');
+    expect(skipped.single.titleChanged, isTrue);
+    expect(skipped.single.doneChanged, isTrue);
     expect(agenda.deletedDeadlines.single.id, 'deleted');
     final restarted = AgendaController(store);
     addTearDown(restarted.dispose);

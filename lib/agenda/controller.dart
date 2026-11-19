@@ -138,28 +138,83 @@ class AgendaController extends ChangeNotifier {
     String term,
     List<AgendaEntry> exams, {
     void Function()? checkActive,
-  }) => _write((entries) {
-    final edited = {
-      for (final entry in entries)
-        if (entry.kind == AgendaKind.exam && entry.term == term && entry.local)
-          entry.id,
-    };
-    return [
-      ...entries.where(
-        (entry) =>
-            entry.kind != AgendaKind.exam || entry.term != term || entry.local,
-      ),
-      ...exams.where((entry) => !edited.contains(entry.id)),
-    ];
-  }, checkActive: checkActive);
+    void Function(List<SkippedAgendaUpdate>)? onSkipped,
+  }) async {
+    var skipped = const <SkippedAgendaUpdate>[];
+    final saved = await _write((entries) {
+      final edited = {
+        for (final entry in entries)
+          if (entry.kind == AgendaKind.exam && entry.term == term && entry.local)
+            entry.id: entry,
+      };
+      skipped = [
+        for (final exam in exams)
+          if (edited[exam.id] case final local?)
+            if (SkippedAgendaUpdate(saved: local, incoming: exam)
+                case final update when update.hasChanges)
+              update,
+      ];
+      return [
+        ...entries.where(
+          (entry) =>
+              entry.kind != AgendaKind.exam || entry.term != term || entry.local,
+        ),
+        ...exams.where((entry) => !edited.containsKey(entry.id)),
+      ];
+    }, checkActive: checkActive);
+    if (saved) onSkipped?.call(skipped);
+    return saved;
+  }
 
   Future<bool> mergeDeadlines(
     List<AgendaEntry> incoming, {
     void Function()? checkActive,
-  }) => _write(
-    (entries) => _mergeDeadlineEntries(entries, incoming),
-    checkActive: checkActive,
-  );
+    void Function(List<SkippedAgendaUpdate>)? onSkipped,
+  }) async {
+    var skipped = const <SkippedAgendaUpdate>[];
+    final saved = await _write((entries) {
+      final result = _mergeDeadlineEntries(entries, incoming);
+      skipped = result.skipped;
+      return result.entries;
+    }, checkActive: checkActive);
+    if (saved) onSkipped?.call(skipped);
+    return saved;
+  }
+
+  Future<bool> overwriteEntries(List<SkippedAgendaUpdate> updates) {
+    if (updates.isEmpty) return Future.value(true);
+    return _write((entries) {
+      final remaining = [...updates];
+      final next = <AgendaEntry>[];
+      for (final entry in entries) {
+        final index = remaining.indexWhere(
+          (update) =>
+              entry.id == update.saved.id ||
+              _sameRemoteEntry(entry, update.incoming),
+        );
+        if (index < 0) {
+          next.add(entry);
+          continue;
+        }
+        final update = remaining.removeAt(index);
+        next.add(
+          update.incoming.copyWith(
+            deleted: false,
+            tailDays: entry.tailDays,
+          ),
+        );
+      }
+      for (final update in remaining) {
+        next.add(
+          update.incoming.copyWith(
+            deleted: false,
+            tailDays: update.saved.tailDays,
+          ),
+        );
+      }
+      return next;
+    });
+  }
 
   int countDeadlines(DeadlineClearScope scope) =>
       _entries.where(scope.includes).length;
@@ -205,6 +260,7 @@ class AgendaController extends ChangeNotifier {
     SemesterSchedule schedule, {
     DateTime? now,
     void Function()? checkActive,
+    void Function(List<SkippedAgendaUpdate>)? onSkipped,
   }) => _operations.run(() async {
     if (!_ready) {
       _reportNotReady();
@@ -223,16 +279,25 @@ class AgendaController extends ChangeNotifier {
             entry.deleted)
           entry.id: entry,
     };
+    final skipped = <SkippedAgendaUpdate>[];
     for (final entry in incoming) {
       final saved = savedById[entry.id];
-      next[entry.id] = saved != null && saved.local
-          ? saved
-          : entry.copyWith(
-              done: saved?.done ?? entry.dueAt.isBefore(importedAt),
-              deleted: saved?.deleted ?? false,
-            );
+      if (saved != null && saved.local) {
+        next[entry.id] = saved;
+        if (!saved.deleted) {
+          final remote = entry.copyWith(done: saved.done, deleted: false);
+          final update = SkippedAgendaUpdate(saved: saved, incoming: remote);
+          if (update.hasChanges) skipped.add(update);
+        }
+      } else {
+        next[entry.id] = entry.copyWith(
+          done: saved?.done ?? entry.dueAt.isBefore(importedAt),
+          deleted: saved?.deleted ?? false,
+        );
+      }
     }
     final saved = await _commit(next.values.toList(), checkActive: checkActive);
+    if (saved) onSkipped?.call(skipped);
     return saved ? incoming.length : null;
   });
 

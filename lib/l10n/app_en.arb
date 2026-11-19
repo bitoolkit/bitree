@@ -926,6 +926,111 @@
   "syncTooltip": "Sync",
   "viewSyncProgress": "View sync progress",
   "syncComplete": "Sync complete",
+  "syncCompleteWithSkipped": "Sync complete, {count} local changes kept",
+  "@syncCompleteWithSkipped": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncSkippedCount": "{count} local changes kept",
+  "@syncSkippedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncSkippedTitle": "Skipped local changes",
+  "syncReviewSkipped": "Review skipped ({count})",
+  "@syncReviewSkipped": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncKeepLocal": "Keep local",
+  "syncOverwriteSelected": "Overwrite selected",
+  "syncOverwrittenCount": "Overwrote {count} items",
+  "@syncOverwrittenCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncDiffTitle": "Title: {local} → {remote}",
+  "@syncDiffTitle": {
+    "placeholders": {
+      "local": {
+        "type": "String"
+      },
+      "remote": {
+        "type": "String"
+      }
+    }
+  },
+  "syncDiffTime": "Time: {local} → {remote}",
+  "@syncDiffTime": {
+    "placeholders": {
+      "local": {
+        "type": "String"
+      },
+      "remote": {
+        "type": "String"
+      }
+    }
+  },
+  "syncDiffLocation": "Location: {local} → {remote}",
+  "@syncDiffLocation": {
+    "placeholders": {
+      "local": {
+        "type": "String"
+      },
+      "remote": {
+        "type": "String"
+      }
+    }
+  },
+  "syncDiffNotes": "Notes differ",
+  "syncDiffDone": "Status: {local} → {remote}",
+  "@syncDiffDone": {
+    "placeholders": {
+      "local": {
+        "type": "String"
+      },
+      "remote": {
+        "type": "String"
+      }
+    }
+  },
+  "syncDiffTeacher": "Teacher: {local} → {remote}",
+  "@syncDiffTeacher": {
+    "placeholders": {
+      "local": {
+        "type": "String"
+      },
+      "remote": {
+        "type": "String"
+      }
+    }
+  },
+  "syncDiffWeeks": "Weeks: {local} → {remote}",
+  "@syncDiffWeeks": {
+    "placeholders": {
+      "local": {
+        "type": "String"
+      },
+      "remote": {
+        "type": "String"
+      }
+    }
+  },
+  "syncValueDone": "Done",
+  "syncValuePending": "Not done",
+  "syncValueEmpty": "None",
   "syncPartial": "Some items were not synchronized",
   "selectedItems": "{count} selected",
   "@selectedItems": {

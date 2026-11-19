@@ -70,6 +70,8 @@ class _SchoolService extends SchoolService {
     );
   }
 
+  List<AgendaEntry> examEntries = const [];
+
   @override
   Future<({String term, List<AgendaEntry> exams})> exams(
     SchoolSession session, {
@@ -78,7 +80,7 @@ class _SchoolService extends SchoolService {
   }) async {
     reads.add(SyncTarget.exams);
     requestedTerms.add(term);
-    return (term: term ?? '2026-2027-1', exams: <AgendaEntry>[]);
+    return (term: term ?? '2026-2027-1', exams: examEntries);
   }
 }
 
@@ -167,10 +169,12 @@ void main() {
     bool mooc = false,
     SemesterSchedule? schedule,
     List<SemesterSchedule> schedules = const [],
+    List<AgendaEntry> agendaEntries = const [],
   }) => TestAppController(
     school: service,
     schedule: schedule,
     schedules: schedules,
+    entries: agendaEntries,
     schoolStorage: MemorySchoolStorage(
       credentials: const SchoolCredentials(
         username: 'student',
@@ -880,4 +884,128 @@ void main() {
       },
     );
   }
+
+  testWidgets(
+    'Sync keeps local edits, notifies skipped items, and selectively overwrites on a narrow screen',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final service = _SchoolService()
+        ..release.complete()
+        ..examEntries = [
+          AgendaEntry(
+            id: 'exam-1',
+            title: '数据结构期末考试',
+            kind: AgendaKind.exam,
+            startsAt: DateTime.utc(2026, 12, 20, 9, 0),
+            endsAt: DateTime.utc(2026, 12, 20, 11, 0),
+            location: '综教B-202',
+            term: '2026-2027-1',
+            local: false,
+          ),
+        ];
+
+      final editedCourse = Course(
+        id: 'lab',
+        name: '大物实验（我的备注）',
+        room: '物理实验306',
+        weekday: 1,
+        startSection: 1,
+        endSection: 2,
+        weeks: [1],
+        local: true,
+      );
+      final editedExam = AgendaEntry(
+        id: 'exam-1',
+        title: '数据结构期末考试',
+        kind: AgendaKind.exam,
+        startsAt: DateTime.utc(2026, 12, 20, 9, 0),
+        endsAt: DateTime.utc(2026, 12, 20, 11, 0),
+        location: '自习室A-101',
+        term: '2026-2027-1',
+        local: true,
+      );
+
+      final model = app(
+        service,
+        schedule: SemesterSchedule(
+          term: '2026-2027-1',
+          firstMonday: DateTime.utc(2026, 10, 26),
+          courses: [editedCourse],
+        ),
+        agendaEntries: [editedExam],
+      );
+      await model.initialize();
+
+      late BuildContext hostContext;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: bitreeTheme(Brightness.light),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) {
+                hostContext = context;
+                return SyncButton(controller: model);
+              },
+            ),
+          ),
+        ),
+      );
+
+      final syncing = startSync(
+        hostContext,
+        model,
+        targets: {SyncTarget.schedule, SyncTarget.exams},
+        term: '2026-2027-1',
+      );
+      await waitFor(tester, () => !model.sync.busy);
+      expect(await syncing, isTrue);
+      await tester.pump();
+
+      // Local edits were preserved during sync.
+      expect(model.timetable.schedule?.courses.single.name, '大物实验（我的备注）');
+      expect(model.agenda.entries.single.location, '自习室A-101');
+      expect(model.sync.skippedUpdates, hasLength(2));
+
+      // Notice informs user and opens the skipped updates review sheet.
+      expect(find.text('同步完成，2 项本地修改未覆盖'), findsOneWidget);
+      await tester.tap(find.text('查看'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('未覆盖的本地修改'), findsOneWidget);
+      expect(find.text('课表'), findsOneWidget);
+      expect(find.text('考试安排'), findsOneWidget);
+      expect(find.text('大物实验（我的备注）'), findsOneWidget);
+      expect(find.text('数据结构期末考试'), findsOneWidget);
+      expect(find.textContaining('自习室A-101 → 综教B-202'), findsOneWidget);
+
+      // Overwrite button starts disabled until user selects at least one item.
+      final overwriteButton = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, '覆盖所选'),
+      );
+      expect(overwriteButton.onPressed, isNull);
+
+      // Select only the exam update and overwrite it.
+      await tester.tap(find.widgetWithText(AppSelectionTile, '数据结构期末考试'));
+      await tester.pump();
+      await tester.tap(find.widgetWithText(FilledButton, '覆盖所选'));
+      await tester.pumpAndSettle();
+
+      // Exam was overwritten with remote location; course kept local edit.
+      expect(model.agenda.entries.single.location, '综教B-202');
+      expect(model.agenda.entries.single.local, isFalse);
+      expect(model.timetable.schedule?.courses.single.name, '大物实验（我的备注）');
+      expect(model.sync.skippedUpdates, hasLength(1));
+
+      // Keep remaining local edit and close cleanly.
+      await tester.tap(find.text('保持本地'));
+      await tester.pumpAndSettle();
+      expect(find.text('未覆盖的本地修改'), findsNothing);
+      expect(model.timetable.schedule?.courses.single.name, '大物实验（我的备注）');
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

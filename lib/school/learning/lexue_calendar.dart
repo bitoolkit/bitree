@@ -17,8 +17,7 @@ List<AgendaEntry> _parseLexueCalendar(String calendar) {
     }
     final start = _property(properties, 'DTSTART');
     final dateOnly = start.value.length == 8;
-    final rawUrl = properties['URL']?.value;
-    final taskUrl = rawUrl == null ? null : Uri.tryParse(rawUrl);
+    final taskUrl = _lexueTaskUri(properties['URL']?.value);
     result.add(
       AgendaEntry(
         id: 'lexue-${_property(properties, 'UID').value}',
@@ -36,15 +35,7 @@ List<AgendaEntry> _parseLexueCalendar(String calendar) {
         course: properties['CATEGORIES']?.value ?? '',
         source: DeadlineSource.lexue,
         local: false,
-        url:
-            taskUrl != null &&
-                taskUrl.scheme == 'https' &&
-                taskUrl.host == DeadlineSource.lexue.host &&
-                taskUrl.userInfo.isEmpty &&
-                (taskUrl.path.startsWith('/mod/') ||
-                    taskUrl.path.startsWith('/course/'))
-            ? taskUrl
-            : null,
+        url: taskUrl,
       ),
     );
   }

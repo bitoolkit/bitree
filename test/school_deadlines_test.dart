@@ -1100,6 +1100,182 @@ void main() {
     expect(agenda.entries.single.id, 'review');
     expect(agenda.deletedDeadlines.single.id, 'assignment');
   });
+
+  test(
+    'Toggling completion marks a synced deadline local, skips overwrite on sync, and can be overwritten on demand',
+    () async {
+      final url = Uri.https('lexue.bit.edu.cn', '/mod/programming/view.php', {
+        'id': '543994',
+      });
+      final initial = AgendaEntry(
+        id: 'lexue-cmid-543994',
+        title: '1. 折半查找',
+        kind: AgendaKind.deadline,
+        startsAt: DateTime.utc(2026, 11, 27, 23, 55),
+        done: false,
+        course: '数据结构（2026秋）',
+        source: DeadlineSource.lexue,
+        local: false,
+        url: url,
+      );
+      final store = MemoryAgendaStore([initial]);
+      final agenda = AgendaController(store);
+      addTearDown(agenda.dispose);
+      await agenda.load();
+
+      // Toggling completion turns the synced entry into a local modification.
+      expect(await agenda.save(agenda.entries.single.toggleDone()), isTrue);
+      expect(agenda.entries.single.done, isTrue);
+      expect(agenda.entries.single.local, isTrue);
+
+      // Sync keeps the local entry intact and reports the skipped remote diff.
+      var skipped = const <SkippedAgendaUpdate>[];
+      final incoming = AgendaEntry(
+        id: 'lexue-cmid-543994',
+        title: '1. 折半查找（延长）',
+        kind: AgendaKind.deadline,
+        startsAt: DateTime.utc(2026, 11, 28, 23, 55),
+        done: false,
+        course: '数据结构（2026秋）',
+        source: DeadlineSource.lexue,
+        local: false,
+        url: url,
+      );
+      expect(
+        await agenda.mergeDeadlines(
+          [incoming],
+          onSkipped: (items) => skipped = items,
+        ),
+        isTrue,
+      );
+      expect(agenda.entries.single.done, isTrue);
+      expect(agenda.entries.single.title, '1. 折半查找');
+      expect(agenda.entries.single.startsAt, DateTime.utc(2026, 11, 27, 23, 55));
+      expect(skipped, hasLength(1));
+      expect(skipped.single.doneChanged, isTrue);
+      expect(skipped.single.titleChanged, isTrue);
+      expect(skipped.single.timeChanged, isTrue);
+
+      // Explicitly overwriting restores remote fields and clears local=true.
+      expect(await agenda.overwriteEntries(skipped), isTrue);
+      expect(agenda.entries.single.done, isFalse);
+      expect(agenda.entries.single.local, isFalse);
+      expect(agenda.entries.single.title, '1. 折半查找（延长）');
+      expect(agenda.entries.single.startsAt, DateTime.utc(2026, 11, 28, 23, 55));
+    },
+  );
+
+  test(
+    'Lexue calendar and activity scans converge on one stable cmid identifier',
+    () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => server.close(force: true));
+      server.listen((request) async {
+        final path = request.uri.path;
+        switch (path) {
+          case '/lexue.bit.edu.cn/calendar/export.php':
+            request.response.headers.contentType = ContentType.html;
+            request.response.write(
+              '<div class="calendarurl">'
+              'https://lexue.bit.edu.cn/calendar/export_execute.php'
+              '</div>',
+            );
+          case '/lexue.bit.edu.cn/calendar/export_execute.php':
+            request.response.write(
+              'BEGIN:VCALENDAR\r\n'
+              'BEGIN:VEVENT\r\n'
+              'UID:98765@lexue.bit.edu.cn\r\n'
+              'SUMMARY:第五周作业 已到期\r\n'
+              'DTSTART:20261106T193000Z\r\n'
+              'CATEGORIES:PROB2026\r\n'
+              'END:VEVENT\r\n'
+              'END:VCALENDAR\r\n',
+            );
+          case '/lexue.bit.edu.cn/lib/ajax/service.php':
+            final body = jsonDecode(
+              await utf8.decoder.bind(request).join(),
+            ) as List<dynamic>;
+            final method =
+                (body.first as Map<String, dynamic>)['methodname'] as String;
+            request.response.headers.contentType = ContentType.json;
+            if (method == 'core_calendar_get_calendar_event_by_id') {
+              request.response.write(
+                jsonEncode([
+                  {
+                    'error': false,
+                    'data': {
+                      'event': {
+                        'instance': 541355,
+                        'url':
+                            'https://lexue.bit.edu.cn/mod/assign/view.php?id=541355',
+                      },
+                    },
+                  },
+                ]),
+              );
+            } else {
+              request.response.write(
+                jsonEncode([
+                  {'error': false, 'data': '<div></div>'},
+                ]),
+              );
+            }
+          case '/lexue.bit.edu.cn/my/':
+            request.response.headers.contentType = ContentType.html;
+            request.response.write(
+              '<a href="https://lexue.bit.edu.cn/course/view.php?id=18553">'
+              '概率论与数理统计</a>',
+            );
+          case '/lexue.bit.edu.cn/course/view.php':
+            request.response.headers.contentType = ContentType.html;
+            request.response.write(
+              '<div id="page-header"><h1>概率论与数理统计</h1></div>'
+              '<div id="region-main">'
+              '<div class="activityinstance">'
+              '<a href="https://lexue.bit.edu.cn/mod/assign/view.php?id=541355">'
+              '<span class="instancename">第五周作业</span></a></div></div>',
+            );
+          case '/lexue.bit.edu.cn/mod/assign/view.php':
+            request.response.headers.contentType = ContentType.html;
+            request.response.write(
+              '<div data-region="activity-dates">'
+              '<div><strong>到期日：</strong> 2026年11月7日 星期六 03:30</div>'
+              '</div>',
+            );
+          default:
+            request.response.statusCode = HttpStatus.notFound;
+        }
+        await request.response.close();
+      });
+
+      SchoolSession? session;
+      addTearDown(() => session?.close());
+      final page = SchoolResponse(
+        url: DeadlineSource.lexue.loginPage,
+        status: HttpStatus.ok,
+        location: null,
+        bytes: Uint8List.fromList(
+          utf8.encode('<script>M.cfg = {"sesskey":"test"};</script>'),
+        ),
+      );
+      final entries = await HttpOverrides.runWithHttpOverrides(() {
+        session = SchoolSession(
+          network: SchoolNetwork.campus,
+          storage: MemorySchoolStorage(),
+        );
+        return fetchLexueDeadlines(session!, page);
+      }, LocalHttpOverrides(server.port));
+
+      expect(entries, hasLength(1));
+      expect(entries.single.id, 'lexue-cmid-541355');
+      expect(entries.single.title, '第五周作业');
+      expect(entries.single.course, '概率论与数理统计');
+      expect(
+        entries.single.url,
+        Uri.https('lexue.bit.edu.cn', '/mod/assign/view.php', {'id': '541355'}),
+      );
+    },
+  );
 }
 
 /// One eclass scan plus the traffic it produced.

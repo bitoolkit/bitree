@@ -969,6 +969,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get agendaTailDaysOneDay => 'Done today';
+
+  @override
   String get agendaEndAfterStart => 'The end must be later than the start';
 
   @override
@@ -1233,6 +1236,77 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get syncComplete => 'Sync complete';
+
+  @override
+  String syncCompleteWithSkipped(int count) {
+    return 'Sync complete, $count local changes kept';
+  }
+
+  @override
+  String syncSkippedCount(int count) {
+    return '$count local changes kept';
+  }
+
+  @override
+  String get syncSkippedTitle => 'Skipped local changes';
+
+  @override
+  String syncReviewSkipped(int count) {
+    return 'Review skipped ($count)';
+  }
+
+  @override
+  String get syncKeepLocal => 'Keep local';
+
+  @override
+  String get syncOverwriteSelected => 'Overwrite selected';
+
+  @override
+  String syncOverwrittenCount(int count) {
+    return 'Overwrote $count items';
+  }
+
+  @override
+  String syncDiffTitle(String local, String remote) {
+    return 'Title: $local → $remote';
+  }
+
+  @override
+  String syncDiffTime(String local, String remote) {
+    return 'Time: $local → $remote';
+  }
+
+  @override
+  String syncDiffLocation(String local, String remote) {
+    return 'Location: $local → $remote';
+  }
+
+  @override
+  String get syncDiffNotes => 'Notes differ';
+
+  @override
+  String syncDiffDone(String local, String remote) {
+    return 'Status: $local → $remote';
+  }
+
+  @override
+  String syncDiffTeacher(String local, String remote) {
+    return 'Teacher: $local → $remote';
+  }
+
+  @override
+  String syncDiffWeeks(String local, String remote) {
+    return 'Weeks: $local → $remote';
+  }
+
+  @override
+  String get syncValueDone => 'Done';
+
+  @override
+  String get syncValuePending => 'Not done';
+
+  @override
+  String get syncValueEmpty => 'None';
 
   @override
   String get syncPartial => 'Some items were not synchronized';

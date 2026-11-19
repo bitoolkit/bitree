@@ -38,6 +38,7 @@ class SyncController extends ChangeNotifier {
   List<SyncTarget> _targets = const [];
   final _results = <SyncTarget, SyncResult>{};
   final _running = <SyncTarget>{};
+  final _skippedUpdates = <SyncSkippedUpdate>[];
 
   bool get busy => _operation != null;
   bool get cancelled => _cancelled;
@@ -46,6 +47,12 @@ class SyncController extends ChangeNotifier {
   String? get term => _term;
   List<SyncTarget> get targets => _targets;
   Map<SyncTarget, SyncResult> get results => Map.unmodifiable(_results);
+  List<SyncSkippedUpdate> get skippedUpdates =>
+      List.unmodifiable(_skippedUpdates);
+  List<SyncSkippedUpdate> skippedUpdatesFor(SyncTarget target) => [
+    for (final item in _skippedUpdates)
+      if (item.target == target) item,
+  ];
   Set<SyncTarget> get bulkTargets => {
     for (final target in SyncTarget.values)
       if (!target.isAcademicRecord) target,
@@ -70,6 +77,7 @@ class SyncController extends ChangeNotifier {
     _term = term;
     _targets = List.unmodifiable(SyncTarget.values.where(selected.contains));
     _results.clear();
+    _skippedUpdates.clear();
     return _start(_targets, verify: verify);
   }
 
@@ -88,6 +96,7 @@ class SyncController extends ChangeNotifier {
     _cancelled = false;
     for (final target in selected) {
       _results.remove(target);
+      _skippedUpdates.removeWhere((item) => item.target == target);
     }
     _notify();
     unawaited(
@@ -152,17 +161,48 @@ class SyncController extends ChangeNotifier {
           SyncTarget.schedule => _school.synchronize(
             term: term,
             verify: verify,
+            onSkipped: (items) => _recordSkipped(
+              target,
+              [
+                for (final item in items)
+                  SyncSkippedCourseUpdate(target: target, update: item),
+              ],
+            ),
           ),
-          SyncTarget.exams => _school.importExams(term: term, verify: verify),
+          SyncTarget.exams => _school.importExams(
+            term: term,
+            verify: verify,
+            onSkipped: (items) => _recordSkipped(
+              target,
+              [
+                for (final item in items)
+                  SyncSkippedAgendaUpdate(target: target, update: item),
+              ],
+            ),
+          ),
           SyncTarget.grades => _school.importGrades(verify: verify),
           SyncTarget.studyPlan => _school.importStudyPlan(verify: verify),
           SyncTarget.lexue => _school.importDeadlines(
             source: DeadlineSource.lexue,
             verify: verify,
+            onSkipped: (items) => _recordSkipped(
+              target,
+              [
+                for (final item in items)
+                  SyncSkippedAgendaUpdate(target: target, update: item),
+              ],
+            ),
           ),
           SyncTarget.eclass => _school.importDeadlines(
             source: DeadlineSource.eclass,
             verify: verify,
+            onSkipped: (items) => _recordSkipped(
+              target,
+              [
+                for (final item in items)
+                  SyncSkippedAgendaUpdate(target: target, update: item),
+              ],
+            ),
           ),
           _ => throw StateError('不是学校同步内容'),
         };
@@ -194,6 +234,16 @@ class SyncController extends ChangeNotifier {
             : await _agenda.updatePhysicsLabDeadlines(
                 schedule,
                 checkActive: _checkActive,
+                onSkipped: (items) => _recordSkipped(
+                  SyncTarget.physicsLab,
+                  [
+                    for (final item in items)
+                      SyncSkippedAgendaUpdate(
+                        target: SyncTarget.physicsLab,
+                        update: item,
+                      ),
+                  ],
+                ),
               );
         _results[SyncTarget.physicsLab] = SyncResult(
           schedule == null
@@ -221,7 +271,15 @@ class SyncController extends ChangeNotifier {
     _running.add(SyncTarget.mooc);
     _notify();
     try {
-      final result = await _mooc.synchronize();
+      final result = await _mooc.synchronize(
+        onSkipped: (items) => _recordSkipped(
+          SyncTarget.mooc,
+          [
+            for (final item in items)
+              SyncSkippedAgendaUpdate(target: SyncTarget.mooc, update: item),
+          ],
+        ),
+      );
       if (!_cancelled) {
         _results[SyncTarget.mooc] = SyncResult(
           result == null || result.failures.isNotEmpty
@@ -251,6 +309,53 @@ class SyncController extends ChangeNotifier {
       _running.remove(SyncTarget.mooc);
       _notify();
     }
+  }
+
+  void _recordSkipped(SyncTarget target, List<SyncSkippedUpdate> updates) {
+    _skippedUpdates.removeWhere((item) => item.target == target);
+    _skippedUpdates.addAll(updates);
+  }
+
+  Future<bool> overwriteSkipped(Iterable<SyncSkippedUpdate> selected) async {
+    final chosen = selected.toList();
+    if (chosen.isEmpty) return true;
+    final agendaUpdates = <SyncSkippedAgendaUpdate>[];
+    final courseUpdates = <SyncSkippedCourseUpdate>[];
+    for (final item in chosen) {
+      switch (item) {
+        case SyncSkippedAgendaUpdate():
+          agendaUpdates.add(item);
+        case SyncSkippedCourseUpdate():
+          courseUpdates.add(item);
+      }
+    }
+    var allSaved = true;
+    final appliedKeys = <String>{};
+    if (agendaUpdates.isNotEmpty) {
+      final saved = await _agenda.overwriteEntries([
+        for (final item in agendaUpdates) item.update,
+      ]);
+      if (saved) {
+        appliedKeys.addAll(agendaUpdates.map((item) => item.key));
+      } else {
+        allSaved = false;
+      }
+    }
+    if (courseUpdates.isNotEmpty) {
+      final saved = await _timetable.overwriteCourses([
+        for (final item in courseUpdates) item.update,
+      ]);
+      if (saved) {
+        appliedKeys.addAll(courseUpdates.map((item) => item.key));
+      } else {
+        allSaved = false;
+      }
+    }
+    if (appliedKeys.isNotEmpty) {
+      _skippedUpdates.removeWhere((item) => appliedKeys.contains(item.key));
+      _notify();
+    }
+    return allSaved;
   }
 
   void _checkActive() {
