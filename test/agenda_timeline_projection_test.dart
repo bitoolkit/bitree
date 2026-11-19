@@ -57,6 +57,7 @@ void main() {
         entries,
         minimumEventSpan: const Duration(hours: 1),
         deadlineCardSpan: cardSpan,
+        now: day,
         layoutDays: days,
       );
       final initial = layout.atZoom(1);
@@ -127,6 +128,7 @@ void main() {
       [adjusted, event],
       minimumEventSpan: const Duration(minutes: 1),
       deadlineCardSpan: const Duration(hours: 90),
+      now: day,
     );
     for (final zoom in [1.0, 4.0, 24.0]) {
       final projected = layout.atZoom(zoom);

@@ -164,7 +164,12 @@ extension _AgendaEditorSections on _AgendaEditorState {
                     : (value) => _updateTailDays(value.round()),
               ),
             ),
-            Text(l10n.agendaTailDaysValue(days), textAlign: TextAlign.center),
+            Text(
+              days == 1
+                  ? l10n.agendaTailDaysOneDay
+                  : l10n.agendaTailDaysValue(days),
+              textAlign: TextAlign.center,
+            ),
           ],
           const SizedBox(height: 12),
         ],

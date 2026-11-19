@@ -149,6 +149,12 @@ class AgendaEntry {
 
   bool isFinished(DateTime now) => isDeadline ? done : !endsAt!.isAfter(now);
 
+  /// Whether the timeline tries to keep this entry in its top lanes: live
+  /// DDLs (start-only ones included) until marked done, and events or exams
+  /// that have not ended yet.
+  bool timelinePriority(DateTime now) =>
+      isDeadline ? !done : endsAt!.isAfter(now);
+
   bool occursOn(DateTime date) {
     final day = calendarDate(date);
     if (isDeadline) return calendarDate(scheduledAt) == day;

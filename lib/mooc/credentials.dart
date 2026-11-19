@@ -3,17 +3,15 @@ import 'dart:io';
 import 'cookie.dart';
 import 'errors.dart';
 
-/// Only the cookies used by MOOC's read APIs and the browser's actual user agent
-/// cross the browser boundary. Passwords stay on the official login page.
+/// Cookies and the browser user agent needed by MOOC's authenticated APIs.
+/// Passwords are never stored here.
 class MoocCredentials {
   MoocCredentials({required this.userAgent, required Iterable<Cookie> cookies})
     : cookies = List.unmodifiable(_requestCookies(cookies)) {
     if (userAgent.trim().isEmpty || userAgent.contains(RegExp(r'[\r\n]'))) {
       throw const FormatException('无法读取登录浏览器的信息，请重新登录。');
     }
-    if (!this.cookies.any(
-      (value) => MoocCookie.fromSetCookieValue(value).name == 'NTESSTUDYSI',
-    )) {
+    if (!hasSession(this.cookies.map(MoocCookie.fromSetCookieValue))) {
       throw const MoocFailure.issue(MoocIssue.noSession);
     }
   }
@@ -23,9 +21,20 @@ class MoocCredentials {
 
   static final origin = Uri.https('www.icourse163.org');
   static final rpcDirectory = origin.resolve('/web/j/');
+  static const _sessionCookieNames = {'STUDY_SESS', 'STUDY_INFO', 'NTES_SESS'};
 
   static bool isMoocHost(String host) =>
       host == 'icourse163.org' || host.endsWith('.icourse163.org');
+
+  static bool hasSession(Iterable<Cookie> cookies) {
+    var hasCsrf = false;
+    var hasSession = false;
+    for (final cookie in cookies) {
+      hasCsrf |= cookie.name == 'NTESSTUDYSI';
+      hasSession |= _sessionCookieNames.contains(cookie.name);
+    }
+    return hasCsrf && hasSession;
+  }
 
   /// A copied request header has no cookie scope metadata. Treat its first
   /// occurrence of a name as the value selected by the browser for this URL.
@@ -53,7 +62,7 @@ class MoocCredentials {
           ..secure = true,
       );
     }
-    if (!cookies.any((cookie) => cookie.name == 'NTESSTUDYSI')) {
+    if (!hasSession(cookies)) {
       throw const MoocFailure.issue(MoocIssue.noSession);
     }
     return cookies;

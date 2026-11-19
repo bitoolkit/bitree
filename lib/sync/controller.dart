@@ -35,7 +35,6 @@ class SyncController extends ChangeNotifier {
   bool _disposed = false;
   bool _cancelled = false;
   String? _term;
-  VerifySchoolLogin? _verify;
   List<SyncTarget> _targets = const [];
   final _results = <SyncTarget, SyncResult>{};
   final _running = <SyncTarget>{};
@@ -68,29 +67,51 @@ class SyncController extends ChangeNotifier {
   }) {
     if (_operation case final current?) return current;
     assert(!_disposed && selected.isNotEmpty);
+    _term = term;
+    _targets = List.unmodifiable(SyncTarget.values.where(selected.contains));
+    _results.clear();
+    return _start(_targets, verify: verify);
+  }
+
+  Future<bool> retryIncomplete() {
+    if (_operation case final current?) return current;
+    final selected = incompleteTargets.toList();
+    if (selected.isEmpty) return Future.value(true);
+    return _start(selected);
+  }
+
+  Future<bool> _start(List<SyncTarget> selected, {VerifySchoolLogin? verify}) {
+    assert(!_disposed);
     final finished = Completer<bool>();
     _operation = finished.future;
     _cancelledSignal = Completer<void>();
     _cancelled = false;
-    _term = term;
-    _verify = verify;
-    _targets = List.unmodifiable(SyncTarget.values.where(selected.contains));
-    _results.clear();
+    for (final target in selected) {
+      _results.remove(target);
+    }
     _notify();
-    unawaited(_run().then(finished.complete, onError: finished.completeError));
+    unawaited(
+      _run(
+        selected,
+        verify,
+      ).then(finished.complete, onError: finished.completeError),
+    );
     return finished.future;
   }
 
-  Future<bool> _run() async {
+  Future<bool> _run(
+    List<SyncTarget> selected,
+    VerifySchoolLogin? verify,
+  ) async {
     try {
       await Future.wait([
-        _syncSchoolAndLab(_term),
-        if (_targets.contains(SyncTarget.mooc)) _syncMooc(),
+        _syncSchoolAndLab(selected, verify),
+        if (selected.contains(SyncTarget.mooc)) _syncMooc(),
       ]);
       return !_cancelled && incompleteTargets.isEmpty;
     } finally {
       if (_cancelled) {
-        for (final target in _targets) {
+        for (final target in selected) {
           _results.putIfAbsent(
             target,
             () => const SyncResult(SyncOutcome.cancelled),
@@ -99,14 +120,16 @@ class SyncController extends ChangeNotifier {
       }
       _operation = null;
       _cancelledSignal = null;
-      _verify = null;
       _notify();
     }
   }
 
-  Future<void> _syncSchoolAndLab(String? term) async {
-    final verify = _verify;
-    for (final target in _targets.where((target) => target.usesSchoolSession)) {
+  Future<void> _syncSchoolAndLab(
+    List<SyncTarget> selected,
+    VerifySchoolLogin? verify,
+  ) async {
+    final term = _term;
+    for (final target in selected.where((target) => target.usesSchoolSession)) {
       while (_school.busy && !_cancelled) {
         await Future.any([_school.idle, _cancelledSignal!.future]);
       }
@@ -161,7 +184,7 @@ class SyncController extends ChangeNotifier {
         _notify();
       }
     }
-    if (!_cancelled && _targets.contains(SyncTarget.physicsLab)) {
+    if (!_cancelled && selected.contains(SyncTarget.physicsLab)) {
       _running.add(SyncTarget.physicsLab);
       _notify();
       try {
@@ -190,6 +213,11 @@ class SyncController extends ChangeNotifier {
   }
 
   Future<void> _syncMooc() async {
+    if (_mooc.needsLogin) {
+      _results[SyncTarget.mooc] = const SyncResult(SyncOutcome.needsLogin);
+      _notify();
+      return;
+    }
     _running.add(SyncTarget.mooc);
     _notify();
     try {

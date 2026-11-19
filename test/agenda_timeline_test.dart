@@ -346,6 +346,63 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets('Marking done keeps lanes until the page is re-entered', (
+    tester,
+  ) async {
+    AgendaEntry ddl(String id) => AgendaEntry(
+      id: id,
+      title: '作业 $id',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(hours: 12)),
+    );
+    final first = ddl('a');
+    final second = ddl('b');
+    final app = await _show(tester, [first, second]);
+    var entries = [first, second];
+    var active = true;
+    late StateSetter update;
+    await tester.pumpWidget(
+      StatefulBuilder(
+        builder: (context, setState) {
+          update = setState;
+          return MaterialApp(
+            theme: bitreeTheme(Brightness.light),
+            home: Scaffold(
+              body: AgendaTimeline(
+                controller: app,
+                entries: entries,
+                now: _date.add(const Duration(hours: 11)),
+                active: active,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    final firstTop = tester.getRect(_paintedBar(first)).top;
+    final secondTop = tester.getRect(_paintedBar(second)).top;
+    expect(firstTop, lessThan(secondTop));
+
+    // An in-page completion must not reshuffle the retained lanes — even
+    // though controller.save re-appends the touched entry, changing the
+    // list order while the multiset stays the same.
+    update(() => entries = [second, first.copyWith(done: true)]);
+    await tester.pumpAndSettle();
+    expect(tester.getRect(_paintedBar(first)).top, closeTo(firstTop, .001));
+    expect(tester.getRect(_paintedBar(second)).top, closeTo(secondTop, .001));
+
+    // Leaving and re-entering the page re-sorts with the new priorities.
+    update(() => active = false);
+    await tester.pumpAndSettle();
+    update(() => active = true);
+    await tester.pumpAndSettle();
+    expect(tester.getRect(_paintedBar(second)).top, closeTo(firstTop, .001));
+    expect(tester.getRect(_paintedBar(first)).top, closeTo(secondTop, .001));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('Zooming reuses unchanged deadline text', (tester) async {
     final entries = _stackedDeadlines();
     await _show(tester, entries);
@@ -637,6 +694,7 @@ void main() {
     final zoomedOut = layoutAgendaTimeline(
       entries,
       minimumEventSpan: const Duration(hours: 48),
+      now: _date,
     );
     expect(zoomedOut.map((placement) => placement.lane), [0, 1]);
     expect(
@@ -651,6 +709,7 @@ void main() {
     final zoomedIn = layoutAgendaTimeline(
       entries,
       minimumEventSpan: const Duration(hours: 2),
+      now: _date,
     );
     // Their real intervals do not overlap, but the four-day information
     // reservations do, independently of the minimum hit-target span.
@@ -686,7 +745,7 @@ void main() {
     final placements = layoutAgendaTimeline([
       long,
       ddl,
-    ], minimumEventSpan: const Duration(days: 2));
+    ], minimumEventSpan: const Duration(days: 2), now: _date);
     final eventPlacement = placements.singleWhere(
       (placement) => placement.entry == long,
     );
@@ -701,6 +760,192 @@ void main() {
       ddl.dueAt.subtract(const Duration(days: 4)),
     );
     expect(deadlinePlacement.layoutEnd, ddl.dueAt);
+  });
+
+  test('Live DDLs claim the top lanes over done ones', () {
+    final finished = AgendaEntry(
+      id: 'finished',
+      title: '已完成作业',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(hours: 12)),
+      done: true,
+    );
+    final live = AgendaEntry(
+      id: 'live',
+      title: '未完成作业',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(hours: 12)),
+    );
+    final placements = layoutAgendaTimeline(
+      [finished, live],
+      minimumEventSpan: const Duration(minutes: 1),
+      now: _date,
+    );
+    expect(placements.singleWhere((p) => p.entry == live).lane, 0);
+    expect(placements.singleWhere((p) => p.entry == finished).lane, 1);
+  });
+
+  test('A start-only DDL sinks once ticked off', () {
+    final ticked = AgendaEntry(
+      id: 'ticked',
+      title: '已交测验',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(hours: 10)),
+      startOnly: true,
+      done: true,
+    );
+    final open = AgendaEntry(
+      id: 'open',
+      title: '开放测验',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(hours: 10)),
+      startOnly: true,
+    );
+    final placements = layoutAgendaTimeline(
+      [ticked, open],
+      minimumEventSpan: const Duration(minutes: 1),
+      now: _date,
+    );
+    expect(placements.singleWhere((p) => p.entry == open).lane, 0);
+    expect(placements.singleWhere((p) => p.entry == ticked).lane, 1);
+  });
+
+  test('Unfinished events outrank ended ones even when they start later', () {
+    final ended = AgendaEntry(
+      id: 'ended',
+      title: '已结束的日程',
+      kind: AgendaKind.event,
+      startsAt: _date.subtract(const Duration(days: 1)),
+      endsAt: _date.subtract(const Duration(hours: 1)),
+    );
+    final upcoming = AgendaEntry(
+      id: 'upcoming',
+      title: '数据结构考试',
+      kind: AgendaKind.exam,
+      startsAt: _date.add(const Duration(days: 2)),
+      endsAt: _date.add(const Duration(days: 2, hours: 2)),
+    );
+    final placements = layoutAgendaTimeline(
+      [ended, upcoming],
+      minimumEventSpan: const Duration(minutes: 1),
+      now: _date,
+    );
+    expect(placements.singleWhere((p) => p.entry == upcoming).lane, 0);
+    expect(placements.singleWhere((p) => p.entry == ended).lane, 1);
+  });
+
+  test('Priority is best effort: a finished entry keeps a free top lane', () {
+    final earlierLive = AgendaEntry(
+      id: 'earlier-live',
+      title: '较早的未完成作业',
+      kind: AgendaKind.deadline,
+      startsAt: _date.subtract(const Duration(days: 3)),
+    );
+    final laterFinished = AgendaEntry(
+      id: 'later-finished',
+      title: '较晚的已完成作业',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(days: 1)),
+      done: true,
+    );
+    final placements = layoutAgendaTimeline(
+      [earlierLive, laterFinished],
+      minimumEventSpan: const Duration(minutes: 1),
+      now: _date,
+    );
+    expect(placements.map((p) => p.lane), everyElement(0));
+  });
+
+  test('A finished entry backfills a free span inside a live lane', () {
+    final live = AgendaEntry(
+      id: 'live-ahead',
+      title: '远期作业',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(days: 10)),
+    );
+    final finished = AgendaEntry(
+      id: 'backfill',
+      title: '补位日程',
+      kind: AgendaKind.event,
+      startsAt: _date,
+      endsAt: _date.add(const Duration(hours: 1)),
+    );
+    final placements = layoutAgendaTimeline(
+      [live, finished],
+      minimumEventSpan: const Duration(minutes: 1),
+      now: _date.add(const Duration(days: 2)),
+    );
+    final liveLane = placements.singleWhere((p) => p.entry == live).lane;
+    expect(
+      placements.singleWhere((p) => p.entry == finished).lane,
+      liveLane,
+    );
+    expect(liveLane, 0);
+  });
+
+  test('A finished entry overlapping every live lane sinks below them', () {
+    final first = AgendaEntry(
+      id: 'live-one',
+      title: '进行中日程',
+      kind: AgendaKind.event,
+      startsAt: _date.add(const Duration(hours: 12)),
+      endsAt: _date.add(const Duration(hours: 18)),
+    );
+    final second = AgendaEntry(
+      id: 'live-two',
+      title: '进行中考点',
+      kind: AgendaKind.event,
+      startsAt: _date.add(const Duration(hours: 13)),
+      endsAt: _date.add(const Duration(hours: 19)),
+    );
+    final finished = AgendaEntry(
+      id: 'sunk',
+      title: '结束于两条泳道之间',
+      kind: AgendaKind.event,
+      startsAt: _date.add(const Duration(hours: 12)),
+      endsAt: _date.add(const Duration(hours: 13)),
+    );
+    final placements = layoutAgendaTimeline(
+      [first, second, finished],
+      minimumEventSpan: const Duration(minutes: 1),
+      now: _date.add(const Duration(hours: 16)),
+    );
+    expect(
+      placements.singleWhere((p) => p.entry == finished).lane,
+      2,
+    );
+  });
+
+  test('Two disjoint finished entries share one backfilled hole', () {
+    final live = AgendaEntry(
+      id: 'live-hole-host',
+      title: '远期考试',
+      kind: AgendaKind.exam,
+      startsAt: _date.add(const Duration(days: 30, hours: 8)),
+      endsAt: _date.add(const Duration(days: 32)),
+    );
+    final first = AgendaEntry(
+      id: 'hole-one',
+      title: '上午日程',
+      kind: AgendaKind.event,
+      startsAt: _date,
+      endsAt: _date.add(const Duration(hours: 1)),
+    );
+    final second = AgendaEntry(
+      id: 'hole-two',
+      title: '一周后的上午日程',
+      kind: AgendaKind.event,
+      startsAt: _date.add(const Duration(days: 6)),
+      endsAt: _date.add(const Duration(days: 6, hours: 1)),
+    );
+    final placements = layoutAgendaTimeline(
+      [live, first, second],
+      minimumEventSpan: const Duration(minutes: 1),
+      now: _date.add(const Duration(days: 8)),
+    );
+    for (final entry in [live, first, second]) {
+      expect(placements.singleWhere((p) => p.entry == entry).lane, 0);
+    }
   });
 
   for (final days in [1, 7, 14]) {
@@ -720,10 +965,15 @@ void main() {
         startsAt: ddl.dueAt.subtract(Duration(days: days, hours: -1)),
         endsAt: ddl.dueAt.subtract(Duration(days: days, hours: -2)),
       );
-      final placements = layoutAgendaTimeline([
-        ddl,
-        overlapping,
-      ], minimumEventSpan: const Duration(minutes: 1), layoutDays: days);
+      final placements = layoutAgendaTimeline(
+        [
+          ddl,
+          overlapping,
+        ],
+        minimumEventSpan: const Duration(minutes: 1),
+        now: _date,
+        layoutDays: days,
+      );
       final reservation = placements.singleWhere((p) => p.entry == ddl);
       expect(reservation.start, ddl.dueAt.subtract(Duration(days: days)));
       expect(reservation.end, ddl.dueAt);
@@ -913,7 +1163,9 @@ void main() {
   testWidgets('Global lanes reserve space without rendering off-screen cards', (
     tester,
   ) async {
-    final current = _event('current', 11);
+    // Unfinished at the fixed 12:00 clock, so live-entry priority keeps it
+    // in the top lane where the painted bar stays on screen.
+    final current = _event('current', 13);
     final farDay = _date.add(const Duration(days: 30));
     final offScreen = [
       for (var index = 0; index < 20; index++)

@@ -15,6 +15,7 @@ class EditorSheet extends StatelessWidget {
     this.onDelete,
     this.onBack,
     this.error,
+    this.errorAction,
   });
 
   final String title;
@@ -26,6 +27,7 @@ class EditorSheet extends StatelessWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onBack;
   final String? error;
+  final Widget? errorAction;
 
   @override
   Widget build(BuildContext context) {
@@ -56,11 +58,20 @@ class EditorSheet extends StatelessWidget {
               if (error case final message?)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    message,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        message,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                      if (errorAction case final action?) ...[
+                        const SizedBox(height: 4),
+                        Align(alignment: Alignment.centerLeft, child: action),
+                      ],
+                    ],
                   ),
                 ),
               SheetActionBar.split(

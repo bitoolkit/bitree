@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -15,26 +14,24 @@ import '../controller.dart';
 import '../cookie.dart';
 import '../credentials.dart';
 import '../tasks.dart';
+import '../webview_lifecycle.dart';
 
 final _loginUrl = MoocCredentials.origin.resolve('/member/login.htm');
 
 Future<bool> loginToMooc(
   BuildContext context,
-  MoocController controller, {
-  List<Cookie>? initialCookies,
-}) async =>
+  MoocController controller,
+) async =>
     await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) =>
-            _MoocLogin(controller: controller, initialCookies: initialCookies),
-      ),
+      MaterialPageRoute(builder: (_) => _MoocLogin(controller: controller)),
     ) ==
     true;
 
 class _MoocLogin extends StatefulWidget {
-  const _MoocLogin({required this.controller, this.initialCookies});
+  const _MoocLogin({required this.controller});
+
   final MoocController controller;
-  final List<Cookie>? initialCookies;
+
   @override
   State<_MoocLogin> createState() => _MoocLoginState();
 }
@@ -56,6 +53,9 @@ class _MoocLoginState extends State<_MoocLogin> {
   }
 
   Future<void> _prepare() async {
+    final previousBrowser = _browser;
+    _browser = null;
+    unawaited(disposeMoocWebView(previousBrowser));
     setState(() {
       _ready = false;
       _message = null;
@@ -96,26 +96,9 @@ class _MoocLoginState extends State<_MoocLogin> {
           true,
         );
       }
-      await cookies.clearCookies().timeout(const Duration(seconds: 10));
-      for (final cookie in widget.initialCookies ?? <Cookie>[]) {
-        await cookies
-            .setCookie(
-              WebViewCookie(
-                name: cookie.name,
-                value: cookie.value,
-                domain: cookie.domain ?? MoocCredentials.origin.host,
-                path: cookie.path ?? '/',
-              ),
-            )
-            .timeout(const Duration(seconds: 10));
-      }
       if (!mounted) return;
       setState(() => _ready = true);
-      await browser.loadRequest(
-        widget.initialCookies == null
-            ? _loginUrl
-            : MoocCredentials.origin.resolve('/home.htm'),
-      );
+      await browser.loadRequest(_loginUrl);
       _startChecking();
     } on Exception catch (error, stack) {
       AppDiagnostics.instance.error('打开 MOOC 登录页', error, stack);
@@ -181,7 +164,14 @@ class _MoocLoginState extends State<_MoocLogin> {
       final exported = await _cookies!
           .getCookies(domain: MoocCredentials.rpcDirectory)
           .timeout(const Duration(seconds: 8));
-      if (!exported.any((cookie) => cookie.name == 'NTESSTUDYSI')) {
+      final exportedCookies = [
+        for (final cookie in exported)
+          MoocCookie(cookie.name, cookie.value)
+            ..domain = cookie.domain
+            ..path = cookie.path
+            ..secure = true,
+      ];
+      if (!MoocCredentials.hasSession(exportedCookies)) {
         if (manual && mounted) {
           setState(() => _message = l10n.moocSessionNotReady);
         }
@@ -189,13 +179,7 @@ class _MoocLoginState extends State<_MoocLogin> {
       }
       final credentials = MoocCredentials(
         userAgent: agent,
-        cookies: [
-          for (final cookie in exported)
-            MoocCookie(cookie.name, cookie.value)
-              ..domain = cookie.domain
-              ..path = cookie.path
-              ..secure = true,
-        ],
+        cookies: exportedCookies,
       );
       if (!mounted) return;
       setState(() => _message = l10n.moocSavingLogin);
@@ -229,6 +213,9 @@ class _MoocLoginState extends State<_MoocLogin> {
   @override
   void dispose() {
     _poll?.cancel();
+    final browser = _browser;
+    _browser = null;
+    unawaited(disposeMoocWebView(browser));
     if (!_finished) widget.controller.cancel();
     super.dispose();
   }
