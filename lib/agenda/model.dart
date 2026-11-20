@@ -169,6 +169,7 @@ class AgendaEntry {
     bool? done,
     bool? deleted,
     bool? local,
+    Uri? url,
     Object? tailDays = _copyUnset,
     DeadlineCutoffWindow? deadlineCutoffWindow,
   }) => AgendaEntry(
@@ -186,7 +187,7 @@ class AgendaEntry {
     local: local ?? this.local,
     source: source,
     course: course,
-    url: url,
+    url: url ?? this.url,
     color: color,
     details: details,
     tailDays: identical(tailDays, _copyUnset)

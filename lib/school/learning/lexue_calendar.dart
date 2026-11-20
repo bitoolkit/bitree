@@ -17,7 +17,7 @@ List<AgendaEntry> _parseLexueCalendar(String calendar) {
     }
     final start = _property(properties, 'DTSTART');
     final dateOnly = start.value.length == 8;
-    final taskUrl = _lexueTaskUri(properties['URL']?.value);
+    final taskUrl = _lexueEventUri(properties['URL']?.value);
     result.add(
       AgendaEntry(
         id: 'lexue-${_property(properties, 'UID').value}',

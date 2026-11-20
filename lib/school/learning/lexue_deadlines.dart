@@ -30,14 +30,13 @@ Future<List<AgendaEntry>> fetchLexueDeadlines(
   SchoolSession session,
   SchoolResponse page,
 ) async {
-  final sesskey = RegExp(r'''["']sesskey["']\s*:\s*["']([^"']+)["']''')
-      .firstMatch(page.text)?[1];
+  final sesskey = _sesskey(page.text);
   final outcomes = await Future.wait([
     if (sesskey == null)
       Future.value((value: const <AgendaEntry>[], error: null, stack: null))
     else
       _attempt(() => _calendarDeadlines(session, sesskey)),
-    _attempt(() => _activityDeadlines(session)),
+    _attempt(() => _activityDeadlines(session, sesskey: sesskey)),
   ], eagerError: true);
   final calendar = outcomes[0];
   final activities = outcomes[1];
@@ -89,18 +88,34 @@ Future<List<AgendaEntry>> _calendarDeadlines(
     return await _resolveCalendarEvents(session, sesskey, entries);
   } on RequestCancelled {
     rethrow;
+  } on SessionExpired {
+    rethrow;
   } on Exception {
     return [for (final entry in entries) _canonicalizeLexueEntry(entry)];
   }
 }
 
-Future<List<AgendaEntry>> _activityDeadlines(SchoolSession session) async {
+Future<List<AgendaEntry>> _activityDeadlines(
+  SchoolSession session, {
+  String? sesskey,
+}) async {
   final source = DeadlineSource.lexue;
   final home = await session.request(
     source.origin.resolve('/my/'),
     stopAtLogin: true,
   );
   final courses = _courseLinks(home.text, base: home.url);
+  final effectiveSesskey = sesskey ?? _sesskey(home.text);
+  if (effectiveSesskey != null) {
+    final enrolled = await _attempt(
+      () => _enrolledCourses(session, effectiveSesskey),
+    );
+    if (enrolled.value case final extra?) {
+      for (final entry in extra.entries) {
+        courses.putIfAbsent(entry.key, () => entry.value);
+      }
+    }
+  }
   final scans = await Future.wait([
     for (final course in courses.values)
       _attempt(() => _courseActivities(session, course)),
@@ -161,7 +176,9 @@ Future<_ActivityScan> _courseActivities(
     final root =
         page.document.querySelector('#region-main') ?? page.document.body;
     if (root == null) continue;
-    for (final anchor in root.querySelectorAll('.activityinstance > a[href]')) {
+    for (final anchor in root.querySelectorAll(
+      '.activityinstance > a[href], .activityname a[href]',
+    )) {
       final link = _activityLink(anchor, courseName, base: page.url);
       if (link == null) continue;
       modules[link.id] = link;
@@ -273,9 +290,7 @@ Future<AgendaEntry?> _fetchActivity(
 }
 
 AgendaEntry? _parseActivity(_ActivityLink module, dom.Document page) {
-  final dates = page.querySelector('[data-region="activity-dates"]');
-  if (dates == null) return null;
-  final due = _activityDueDate(dates);
+  final due = _parseActivityDueDate(module, page);
   if (due == null) return null;
   return AgendaEntry(
     id: module.id,
@@ -400,8 +415,20 @@ bool _programmingResultPassed(dom.Document page) {
   }
 
   final rows = detail.querySelectorAll('table tbody tr');
-  return rows.isNotEmpty &&
-      rows.every((row) => row.classes.contains('passed'));
+  return rows.isNotEmpty && rows.every((row) => row.classes.contains('passed'));
+}
+
+DateTime? _parseActivityDueDate(_ActivityLink module, dom.Document page) {
+  final dates = page.querySelector('[data-region="activity-dates"]');
+  if (dates != null) {
+    final due = _activityDueDate(dates);
+    if (due != null) return due;
+  }
+  if (module.module == 'quiz') {
+    final quizInfo = page.querySelector('.quizinfo');
+    if (quizInfo != null) return _activityDueDate(quizInfo);
+  }
+  return null;
 }
 
 DateTime? _activityDueDate(dom.Element dates) {
@@ -466,51 +493,51 @@ Future<List<AgendaEntry>> _resolveCalendarEvents(
   if (entries.isEmpty) return entries;
 
   // Moodle's ICS UID is the calendar event ID followed by the site's hostname.
-  final events = await _lexueAjax(session, sesskey, [
-    for (final entry in entries) _eventRequest(entry),
-  ]);
-  if (events.length != entries.length) {
-    throw const FormatException('乐学返回的日历事件数量不一致');
-  }
+  final requests = <({String entryId, _LexueAjaxCall call})>[
+    for (final entry in entries)
+      if (_calendarEventId(entry) case final eventId?)
+        (
+          entryId: entry.id,
+          call: (
+            method: 'core_calendar_get_calendar_event_by_id',
+            args: {'eventid': eventId},
+          ),
+        ),
+  ];
   final modulesByEvent = <String, int>{};
   final urlsByEvent = <String, Uri>{};
-  for (var index = 0; index < events.length; index++) {
-    final event = jsonObjectField(
-      jsonObject(events[index], '日历事件响应'),
-      'event',
-    );
-    final moduleId = _moduleId(event);
-    if (moduleId != null) modulesByEvent[entries[index].id] = moduleId;
-    final eventUrl = _calendarEventUrl(event);
-    if (eventUrl != null) urlsByEvent[entries[index].id] = eventUrl;
+  if (requests.isNotEmpty) {
+    final events = await _lexueAjaxBestEffort(session, sesskey, [
+      for (final request in requests) request.call,
+    ]);
+    for (var index = 0; index < events.length; index++) {
+      final raw = events[index];
+      if (raw == null) continue;
+      try {
+        final event = jsonObjectField(jsonObject(raw, '日历事件响应'), 'event');
+        final eventUrl = _calendarEventUrl(event);
+        if (eventUrl != null) urlsByEvent[requests[index].entryId] = eventUrl;
+        final moduleId = _moduleId(event) ?? _cmidFromUrl(eventUrl);
+        if (moduleId != null) {
+          modulesByEvent[requests[index].entryId] = moduleId;
+        }
+      } on Exception {
+        continue;
+      }
+    }
   }
 
   final completedModules = <int>{};
   final moduleIds = modulesByEvent.values.toSet().toList();
   if (moduleIds.isNotEmpty) {
-    final modules = await _lexueAjax(session, sesskey, [
+    final modules = await _lexueAjaxBestEffort(session, sesskey, [
       for (final id in moduleIds)
         (method: 'core_course_get_module', args: {'id': id}),
     ]);
-    if (modules.length != moduleIds.length) {
-      throw const FormatException('乐学返回的课程模块数量不一致');
-    }
     for (var index = 0; index < modules.length; index++) {
-      final activity = html.parseFragment(jsonString(modules[index], '课程模块'));
-      final manuallyCompleted =
-          activity.querySelector('[data-toggletype="manual:undo"]') != null;
-      final submitted =
-          activity.querySelector('.submissionstatussubmitted') != null;
-      final conditions = activity.querySelectorAll(
-        '[data-region="completionrequirements"] [role="listitem"]',
-      );
-      final automaticallyCompleted =
-          conditions.isNotEmpty &&
-          conditions.every(
-            (condition) => condition.classes.contains('badge-success'),
-          );
-
-      if (manuallyCompleted || submitted || automaticallyCompleted) {
+      final raw = modules[index];
+      if (raw is! String) continue;
+      if (_moduleCompleted(html.parseFragment(raw))) {
         completedModules.add(moduleIds[index]);
       }
     }
@@ -526,29 +553,149 @@ Future<List<AgendaEntry>> _resolveCalendarEvents(
   ];
 }
 
+Future<Map<String, _CourseLink>> _enrolledCourses(
+  SchoolSession session,
+  String sesskey,
+) async {
+  final responses = await _lexueAjaxBestEffort(session, sesskey, [
+    (
+      method: 'core_course_get_enrolled_courses_by_timeline_classification',
+      args: {
+        'classification': 'inprogress',
+        'limit': 0,
+        'offset': 0,
+        'sort': 'fullname',
+      },
+    ),
+  ]);
+  final data = responses.firstOrNull;
+  if (data is! Map) return const {};
+  final rawCourses = jsonObject(data, '乐学课程响应')['courses'];
+  if (rawCourses is! List) return const {};
+
+  final result = <String, _CourseLink>{};
+  for (final item in rawCourses) {
+    if (item is! Map) continue;
+    final course = jsonObject(item, '乐学课程');
+    final rawId = course['id'];
+    if (rawId == null) continue;
+    final id = jsonInt(rawId, 'course.id');
+    if (id <= 1) continue;
+    final courseId = '$id';
+    final name = jsonStringOrNull(
+      course['fullname'],
+      'course.fullname',
+    )?.trim();
+    final viewUrl = _schoolUri(
+      jsonStringOrNull(course['viewurl'], 'course.viewurl'),
+      base: DeadlineSource.lexue.origin,
+    );
+    result[courseId] = (
+      id: courseId,
+      name: name == null || name.isEmpty ? '乐学课程' : name,
+      url:
+          (viewUrl ??
+                  DeadlineSource.lexue.origin.replace(path: '/course/view.php'))
+              .removeFragment()
+              .replace(queryParameters: {'id': courseId}),
+    );
+  }
+  return result;
+}
+
+bool _moduleCompleted(dom.DocumentFragment activity) {
+  final manuallyCompleted =
+      activity.querySelector('[data-toggletype="manual:undo"]') != null;
+  final submitted =
+      activity.querySelector('.submissionstatussubmitted') != null;
+  final conditions = activity.querySelectorAll(
+    '[data-region="completionrequirements"] [role="listitem"]',
+  );
+  final automaticallyCompleted =
+      conditions.isNotEmpty &&
+      conditions.every(
+        (condition) => condition.classes.contains('badge-success'),
+      );
+  return manuallyCompleted || submitted || automaticallyCompleted;
+}
+
 int? _moduleId(Map<String, dynamic> event) {
   final moduleId = event['instance'];
   if (moduleId == null) return null;
-  return jsonInt(moduleId, 'event.instance');
+  final id = jsonInt(moduleId, 'event.instance');
+  return id > 0 ? id : null;
 }
 
 Uri? _calendarEventUrl(Map<String, dynamic> event) {
-  final direct = _lexueTaskUri(jsonStringOrNull(event['url'], 'event.url'));
-  if (direct != null) return direct;
+  final direct = _lexueEventUri(jsonStringOrNull(event['url'], 'event.url'));
+  if (direct != null && direct.path.startsWith('/mod/')) return direct;
+
+  Uri? actionUrl;
   final action = event['action'];
   if (action is Map) {
     final actionMap = jsonObject(action, 'event.action');
-    return _lexueTaskUri(
+    actionUrl = _lexueEventUri(
       jsonStringOrNull(actionMap['url'], 'event.action.url'),
     );
+    if (actionUrl != null && actionUrl.path.startsWith('/mod/')) {
+      return actionUrl;
+    }
   }
-  return null;
+
+  final moduleUrl = _moduleUri(event);
+  if (moduleUrl != null) return moduleUrl;
+
+  if (direct != null && direct.path.startsWith('/course/')) return direct;
+  if (actionUrl != null && actionUrl.path.startsWith('/course/')) {
+    return actionUrl;
+  }
+
+  final courseUrl = _courseEventUri(event);
+  if (courseUrl != null) return courseUrl;
+
+  return direct ??
+      actionUrl ??
+      _lexueEventUri(jsonStringOrNull(event['viewurl'], 'event.viewurl'));
 }
 
-Uri? _lexueTaskUri(String? raw) {
+Uri? _moduleUri(Map<String, dynamic> event) {
+  final moduleId = _moduleId(event);
+  final moduleName = jsonStringOrNull(event['modulename'], 'event.modulename');
+  if (moduleId == null ||
+      moduleName == null ||
+      !RegExp(r'^[a-z][a-z0-9_]*$').hasMatch(moduleName)) {
+    return null;
+  }
+  return DeadlineSource.lexue.origin.replace(
+    path: '/mod/$moduleName/view.php',
+    queryParameters: {'id': '$moduleId'},
+  );
+}
+
+Uri? _courseEventUri(Map<String, dynamic> event) {
+  final course = event['course'];
+  if (course is! Map) return null;
+  final courseMap = jsonObject(course, 'event.course');
+  final viewUrl = _lexueEventUri(
+    jsonStringOrNull(courseMap['viewurl'], 'event.course.viewurl'),
+  );
+  if (viewUrl != null && viewUrl.path.startsWith('/course/')) return viewUrl;
+  final rawId = courseMap['id'];
+  if (rawId == null) return null;
+  final courseId = jsonInt(rawId, 'event.course.id');
+  if (courseId <= 1) return null;
+  return DeadlineSource.lexue.origin.replace(
+    path: '/course/view.php',
+    queryParameters: {'id': '$courseId'},
+  );
+}
+
+Uri? _lexueEventUri(String? raw) {
   final uri = _schoolUri(raw, base: DeadlineSource.lexue.origin);
   if (uri == null) return null;
-  if (!uri.path.startsWith('/mod/') && !uri.path.startsWith('/course/')) {
+  if (!uri.path.startsWith('/mod/') &&
+      !uri.path.startsWith('/course/') &&
+      !uri.path.startsWith('/calendar/')) {
     return null;
   }
   return uri;
@@ -568,11 +715,14 @@ String? _canonicalLexueId(Uri? url) {
   return 'lexue-cmid-$id';
 }
 
-AgendaEntry _canonicalizeLexueEntry(
-  AgendaEntry entry, {
-  Uri? url,
-  bool? done,
-}) {
+int? _cmidFromUrl(Uri? url) {
+  final canonical = _canonicalLexueId(url);
+  if (canonical == null) return null;
+  final id = int.tryParse(canonical.substring('lexue-cmid-'.length));
+  return id != null && id > 0 ? id : null;
+}
+
+AgendaEntry _canonicalizeLexueEntry(AgendaEntry entry, {Uri? url, bool? done}) {
   final resolvedUrl = url ?? entry.url;
   final canonicalId = _canonicalLexueId(resolvedUrl) ?? entry.id;
   final resolvedDone = done ?? entry.done;
@@ -597,22 +747,74 @@ AgendaEntry _canonicalizeLexueEntry(
   );
 }
 
-({String method, Map<String, Object> args}) _eventRequest(AgendaEntry entry) {
+int? _calendarEventId(AgendaEntry entry) {
+  if (!entry.id.startsWith('lexue-')) return null;
   final value = entry.id.substring('lexue-'.length).split('@').first;
   final eventId = int.tryParse(value);
-  if (eventId == null) {
-    throw FormatException('乐学事件编号格式不正确：${entry.id}');
-  }
-  return (
-    method: 'core_calendar_get_calendar_event_by_id',
-    args: {'eventid': eventId},
-  );
+  return eventId != null && eventId > 0 ? eventId : null;
 }
 
-Future<List<dynamic>> _lexueAjax(
+String? _sesskey(String htmlText) =>
+    RegExp(r'''["']sesskey["']\s*:\s*["']([^"']+)["']''')
+        .firstMatch(htmlText)?[1];
+
+Future<List<dynamic>> _lexueAjaxBestEffort(
   SchoolSession session,
   String sesskey,
-  List<({String method, Map<String, Object> args})> calls,
+  List<_LexueAjaxCall> calls,
+) async {
+  if (calls.isEmpty) return const [];
+  final results = List<dynamic>.filled(calls.length, null);
+
+  final batch = await _attempt(() => _lexueAjaxRaw(session, sesskey, calls));
+  var retryFrom = 0;
+  if (batch.value case final responses?) {
+    var failedAt = -1;
+    for (
+      var index = 0;
+      index < responses.length && index < calls.length;
+      index++
+    ) {
+      final result = responses[index];
+      if (jsonBool(result['error'], 'error', fallback: false)) {
+        _rethrowIfSessionExpired(result);
+        failedAt = index;
+        break;
+      }
+      results[index] = result['data'];
+    }
+    if (failedAt < 0 && responses.length >= calls.length) return results;
+    // Moodle stops executing a batch at the first error; keep everything before
+    // it and retry only the calls Moodle never reached.
+    retryFrom = failedAt >= 0 ? failedAt + 1 : responses.length;
+  }
+
+  if (calls.length == 1 || retryFrom >= calls.length) return results;
+
+  final remaining = await Future.wait([
+    for (var index = retryFrom; index < calls.length; index++)
+      _attempt(() async {
+        final responses = await _lexueAjaxRaw(session, sesskey, [calls[index]]);
+        if (responses.isEmpty) return null;
+        final result = responses.first;
+        if (jsonBool(result['error'], 'error', fallback: false)) {
+          _rethrowIfSessionExpired(result);
+          return null;
+        }
+        return result['data'];
+      }),
+  ], eagerError: true);
+
+  for (var offset = 0; offset < remaining.length; offset++) {
+    results[retryFrom + offset] = remaining[offset].value;
+  }
+  return results;
+}
+
+Future<List<Map<String, dynamic>>> _lexueAjaxRaw(
+  SchoolSession session,
+  String sesskey,
+  List<_LexueAjaxCall> calls,
 ) async {
   final response = await session.request(
     DeadlineSource.lexue.origin
@@ -628,23 +830,19 @@ Future<List<dynamic>> _lexueAjax(
     },
     stopAtLogin: true,
   );
-  final results = [
+  return [
     for (final value in jsonList(jsonDecode(response.text), '乐学接口响应'))
       jsonObject(value, '乐学接口响应[]'),
   ];
-  return [
-    for (final result in results)
-      if (jsonBool(result['error'], 'error', fallback: false))
-        throw SchoolRequestError(
-          jsonStringOrNull(
-                jsonObjectField(result, 'exception')['message'],
-                'exception.message',
-              ) ??
-              '乐学接口返回错误',
-        )
-      else
-        result['data'],
-  ];
+}
+
+void _rethrowIfSessionExpired(Map<String, dynamic> result) {
+  final exception = result['exception'];
+  if (exception is! Map) return;
+  final code = jsonStringOrNull(exception['errorcode'], 'exception.errorcode');
+  if (code == 'servicerequireslogin') {
+    throw const SessionExpired();
+  }
 }
 
 String? _courseName(dom.Document page) {
@@ -685,6 +883,7 @@ Future<({T? value, Object? error, StackTrace? stack})> _attempt<T>(
   }
 }
 
+typedef _LexueAjaxCall = ({String method, Map<String, Object> args});
 typedef _CourseLink = ({String id, String name, Uri url});
 typedef _ActivityLink = ({
   String id,

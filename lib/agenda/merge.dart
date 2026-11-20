@@ -21,7 +21,9 @@ _mergeDeadlineEntries(
     final entry = unmatched.removeAt(index);
     matched.add(entry);
     final result = saved.local
-        ? saved
+        ? (saved.url == null && entry.url != null
+              ? saved.copyWith(url: entry.url)
+              : saved)
         : entry.copyWith(deleted: saved.deleted, tailDays: saved.tailDays);
     merged.add(result);
     if (saved.local && !saved.deleted) {
@@ -51,7 +53,10 @@ bool _sameRemoteEntry(AgendaEntry left, AgendaEntry right) {
     }
     final leftId = leftUrl.queryParameters['id'];
     final rightId = rightUrl.queryParameters['id'];
-    if (leftId != null || rightId != null) return leftId == rightId;
+    if (leftUrl.path != '/course/view.php' &&
+        (leftId != null || rightId != null)) {
+      return leftId == rightId;
+    }
     final leftActivity = leftUrl.fragment;
     final rightActivity = rightUrl.fragment;
     if (leftActivity.isNotEmpty && rightActivity.isNotEmpty) {

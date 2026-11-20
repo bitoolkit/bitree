@@ -1276,6 +1276,323 @@ void main() {
       );
     },
   );
+
+  test(
+    'Lexue calendar URLs survive partial AJAX errors, zero instances, and module lookup failures',
+    () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => server.close(force: true));
+      final moduleCalls = <int>[];
+      server.listen((request) async {
+        switch (request.uri.path) {
+          case '/lexue.bit.edu.cn/calendar/export.php':
+            request.response.headers.contentType = ContentType.html;
+            request.response.write(
+              '<div class="calendarurl">'
+              'https://lexue.bit.edu.cn/calendar/export_execute.php'
+              '</div>',
+            );
+          case '/lexue.bit.edu.cn/calendar/export_execute.php':
+            request.response.write(
+              'BEGIN:VCALENDAR\r\n'
+              'BEGIN:VEVENT\r\n'
+              'UID:10001@lexue.bit.edu.cn\r\n'
+              'SUMMARY:第4章 数组-练习 关闭\r\n'
+              'DTSTART:20261120T031500Z\r\n'
+              'CATEGORIES:2026-2027-I 数据结构中文班\r\n'
+              'END:VEVENT\r\n'
+              'BEGIN:VEVENT\r\n'
+              'UID:10002@lexue.bit.edu.cn\r\n'
+              'SUMMARY:无权限事件\r\n'
+              'DTSTART:20261121T031500Z\r\n'
+              'CATEGORIES:2026-2027-I 数据结构中文班\r\n'
+              'END:VEVENT\r\n'
+              'BEGIN:VEVENT\r\n'
+              'UID:10003@lexue.bit.edu.cn\r\n'
+              'SUMMARY:课程通知\r\n'
+              'DTSTART:20261122T031500Z\r\n'
+              'CATEGORIES:2026-2027-I 数据结构中文班\r\n'
+              'END:VEVENT\r\n'
+              'END:VCALENDAR\r\n',
+            );
+          case '/lexue.bit.edu.cn/lib/ajax/service.php':
+            final body =
+                jsonDecode(await utf8.decoder.bind(request).join())
+                    as List<dynamic>;
+            request.response.headers.contentType = ContentType.json;
+            final responses = <Map<String, Object?>>[];
+            for (final rawCall in body) {
+              final call = rawCall as Map<String, dynamic>;
+              final method = call['methodname'] as String;
+              final args = call['args'] as Map<String, dynamic>;
+              if (method == 'core_calendar_get_calendar_event_by_id') {
+                final eventId = args['eventid'] as int;
+                if (eventId == 10001) {
+                  responses.add({
+                    'error': false,
+                    'data': {
+                      'event': {
+                        'modulename': 'quiz',
+                        'instance': 543999,
+                        'url':
+                            'https://lexue.bit.edu.cn/calendar/view.php?view=day#event_10001',
+                      },
+                    },
+                  });
+                } else if (eventId == 10002) {
+                  responses.add({
+                    'error': true,
+                    'exception': {
+                      'errorcode': 'nopermissiontoviewcalendar',
+                      'message': 'No permission',
+                    },
+                  });
+                  // Moodle stops executing remaining calls in a batch.
+                  break;
+                } else if (eventId == 10003) {
+                  responses.add({
+                    'error': false,
+                    'data': {
+                      'event': {
+                        'instance': 0,
+                        'course': {
+                          'id': 18675,
+                          'viewurl':
+                              'https://lexue.bit.edu.cn/course/view.php?id=18675',
+                        },
+                      },
+                    },
+                  });
+                }
+              } else if (method == 'core_course_get_module') {
+                moduleCalls.add(args['id'] as int);
+                responses.add({
+                  'error': true,
+                  'exception': {'message': 'module unavailable'},
+                });
+                break;
+              } else {
+                responses.add({
+                  'error': false,
+                  'data': {'courses': <Object?>[]},
+                });
+              }
+            }
+            request.response.write(jsonEncode(responses));
+          case '/lexue.bit.edu.cn/my/':
+            request.response.headers.contentType = ContentType.html;
+            request.response.write('<html><body></body></html>');
+          default:
+            request.response.statusCode = HttpStatus.notFound;
+        }
+        await request.response.close();
+      });
+
+      SchoolSession? session;
+      addTearDown(() => session?.close());
+      final page = SchoolResponse(
+        url: DeadlineSource.lexue.loginPage,
+        status: HttpStatus.ok,
+        location: null,
+        bytes: Uint8List.fromList(
+          utf8.encode('<script>M.cfg = {"sesskey":"test"};</script>'),
+        ),
+      );
+      final entries = await HttpOverrides.runWithHttpOverrides(() {
+        session = SchoolSession(
+          network: SchoolNetwork.campus,
+          storage: MemorySchoolStorage(),
+        );
+        return fetchLexueDeadlines(session!, page);
+      }, LocalHttpOverrides(server.port));
+
+      expect(entries, hasLength(3));
+      final quiz = entries.singleWhere((e) => e.id == 'lexue-cmid-543999');
+      expect(
+        quiz.url,
+        Uri.https('lexue.bit.edu.cn', '/mod/quiz/view.php', {'id': '543999'}),
+      );
+      final courseEvent = entries.singleWhere(
+        (e) => e.id == 'lexue-10003@lexue.bit.edu.cn',
+      );
+      expect(
+        courseEvent.url,
+        Uri.https('lexue.bit.edu.cn', '/course/view.php', {'id': '18675'}),
+      );
+      expect(moduleCalls, [543999]);
+    },
+  );
+
+  test(
+    'Lexue discovers enrolled courses via AJAX and parses quizinfo close times',
+    () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => server.close(force: true));
+      server.listen((request) async {
+        switch (request.uri.path) {
+          case '/lexue.bit.edu.cn/calendar/export.php':
+            request.response.headers.contentType = ContentType.html;
+            request.response.write(
+              '<div class="calendarurl">'
+              'https://lexue.bit.edu.cn/calendar/export_execute.php'
+              '</div>',
+            );
+          case '/lexue.bit.edu.cn/calendar/export_execute.php':
+            request.response.write('BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n');
+          case '/lexue.bit.edu.cn/my/':
+            request.response.headers.contentType = ContentType.html;
+            request.response.write('<html><body></body></html>');
+          case '/lexue.bit.edu.cn/lib/ajax/service.php':
+            request.response.headers.contentType = ContentType.json;
+            request.response.write(
+              jsonEncode([
+                {
+                  'error': false,
+                  'data': {
+                    'courses': [
+                      {
+                        'id': 18675,
+                        'fullname': '2026-2027-I 数据结构中文班',
+                        'viewurl':
+                            'https://lexue.bit.edu.cn/course/view.php?id=18675',
+                      },
+                    ],
+                  },
+                },
+              ]),
+            );
+          case '/lexue.bit.edu.cn/course/view.php':
+            request.response.headers.contentType = ContentType(
+              'text',
+              'html',
+              charset: 'utf-8',
+            );
+            request.response.write(
+              '<div id="page-header"><h1>2026-2027-I 数据结构中文班</h1></div>'
+              '<div id="region-main">'
+              '<div class="activityname">'
+              '<a href="https://lexue.bit.edu.cn/mod/quiz/view.php?id=544001">'
+              '第4章 数组-练习</a></div></div>',
+            );
+          case '/lexue.bit.edu.cn/mod/quiz/view.php':
+            request.response.headers.contentType = ContentType(
+              'text',
+              'html',
+              charset: 'utf-8',
+            );
+            request.response.write(
+              '<div class="box py-3 quizinfo">'
+              '<p>此测验将关闭于2026年11月20日 星期五 11:15。</p>'
+              '</div>',
+            );
+          default:
+            request.response.statusCode = HttpStatus.notFound;
+        }
+        await request.response.close();
+      });
+
+      SchoolSession? session;
+      addTearDown(() => session?.close());
+      final page = SchoolResponse(
+        url: DeadlineSource.lexue.loginPage,
+        status: HttpStatus.ok,
+        location: null,
+        bytes: Uint8List.fromList(
+          utf8.encode('<script>M.cfg = {"sesskey":"test"};</script>'),
+        ),
+      );
+      final entries = await HttpOverrides.runWithHttpOverrides(() {
+        session = SchoolSession(
+          network: SchoolNetwork.campus,
+          storage: MemorySchoolStorage(),
+        );
+        return fetchLexueDeadlines(session!, page);
+      }, LocalHttpOverrides(server.port));
+
+      expect(entries, hasLength(1));
+      final quiz = entries.single;
+      expect(quiz.id, 'lexue-cmid-544001');
+      expect(quiz.title, '第4章 数组-练习');
+      expect(quiz.course, '2026-2027-I 数据结构中文班');
+      expect(quiz.startsAt, DateTime.utc(2026, 11, 20, 11, 15));
+      expect(
+        quiz.url,
+        Uri.https('lexue.bit.edu.cn', '/mod/quiz/view.php', {'id': '544001'}),
+      );
+    },
+  );
+
+  test(
+    'Sync backfills a missing link on a local deadline without collapsing shared Lexue course URLs',
+    () async {
+      final courseUrl = Uri.https('lexue.bit.edu.cn', '/course/view.php', {
+        'id': '18675',
+      });
+      final quizUrl = Uri.https('lexue.bit.edu.cn', '/mod/quiz/view.php', {
+        'id': '543999',
+      });
+      final store = MemoryAgendaStore([
+        AgendaEntry(
+          id: 'lexue-10001@lexue.bit.edu.cn',
+          title: '第4章 数组-练习 关闭',
+          kind: AgendaKind.deadline,
+          startsAt: DateTime.utc(2026, 11, 20, 11, 15),
+          done: true,
+          course: '2026-2027-I 数据结构中文班',
+          source: DeadlineSource.lexue,
+          local: true,
+        ),
+        AgendaEntry(
+          id: 'lexue-10003@lexue.bit.edu.cn',
+          title: '期中答疑',
+          kind: AgendaKind.deadline,
+          startsAt: DateTime.utc(2026, 11, 22, 11, 15),
+          course: '2026-2027-I 数据结构中文班',
+          source: DeadlineSource.lexue,
+          local: false,
+          url: courseUrl,
+        ),
+      ]);
+      final agenda = AgendaController(store);
+      addTearDown(agenda.dispose);
+      await agenda.load();
+
+      expect(
+        await agenda.mergeDeadlines([
+          AgendaEntry(
+            id: 'lexue-cmid-543999',
+            title: '第4章 数组-练习 关闭',
+            kind: AgendaKind.deadline,
+            startsAt: DateTime.utc(2026, 11, 20, 11, 15),
+            done: false,
+            course: '2026-2027-I 数据结构中文班',
+            source: DeadlineSource.lexue,
+            local: false,
+            url: quizUrl,
+          ),
+          AgendaEntry(
+            id: 'lexue-10004@lexue.bit.edu.cn',
+            title: '期末答疑',
+            kind: AgendaKind.deadline,
+            startsAt: DateTime.utc(2026, 11, 25, 11, 15),
+            course: '2026-2027-I 数据结构中文班',
+            source: DeadlineSource.lexue,
+            local: false,
+            url: courseUrl,
+          ),
+        ]),
+        isTrue,
+      );
+
+      expect(agenda.entries, hasLength(3));
+      final localQuiz = agenda.entries.singleWhere(
+        (e) => e.title == '第4章 数组-练习 关闭',
+      );
+      expect(localQuiz.done, isTrue);
+      expect(localQuiz.local, isTrue);
+      expect(localQuiz.url, quizUrl);
+    },
+  );
 }
 
 /// One eclass scan plus the traffic it produced.

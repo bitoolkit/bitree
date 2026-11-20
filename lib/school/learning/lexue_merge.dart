@@ -42,6 +42,8 @@ bool _sameLexueDeadline(AgendaEntry left, AgendaEntry right) {
       rightUrl != null &&
       leftUrl.host == rightUrl.host &&
       leftUrl.path == rightUrl.path &&
+      leftUrl.path != '/course/view.php' &&
+      leftUrl.queryParameters['id'] != null &&
       leftUrl.queryParameters['id'] == rightUrl.queryParameters['id']) {
     return true;
   }
