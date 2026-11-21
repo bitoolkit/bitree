@@ -127,7 +127,12 @@ class _SyncSkippedUpdatesSheetState extends State<_SyncSkippedUpdatesSheet> {
         ),
         actions: SheetActionBar.split(
           leading: TextButton(
-            onPressed: _applying ? null : () => Navigator.pop(context),
+            onPressed: _applying
+                ? null
+                : () {
+                    widget.app.sync.dismissSkipped();
+                    Navigator.pop(context);
+                  },
             child: Text(l10n.syncKeepLocal),
           ),
           primary: FilledButton(

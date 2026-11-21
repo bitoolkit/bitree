@@ -353,6 +353,7 @@
   "syncValuePending": "未完成",
   "syncValueEmpty": "无",
   "syncPartial": "部分内容未同步",
+  "syncPartialWithSkipped": "部分内容未同步，{count} 项本地修改未覆盖",
   "selectedItems": "已选 {count} 项",
   "selectAll": "全选",
   "clearSelection": "清空",

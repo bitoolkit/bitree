@@ -1032,6 +1032,14 @@
   "syncValuePending": "Not done",
   "syncValueEmpty": "None",
   "syncPartial": "Some items were not synchronized",
+  "syncPartialWithSkipped": "Some items were not synchronized, {count} local changes kept",
+  "@syncPartialWithSkipped": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "selectedItems": "{count} selected",
   "@selectedItems": {
     "placeholders": {

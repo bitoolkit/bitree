@@ -1235,6 +1235,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get syncPartial => '部分内容未同步';
 
   @override
+  String syncPartialWithSkipped(int count) {
+    return '部分内容未同步，$count 项本地修改未覆盖';
+  }
+
+  @override
   String selectedItems(int count) {
     return '已选 $count 项';
   }

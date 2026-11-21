@@ -66,13 +66,15 @@ Future<bool> _completeSync(
     return success;
   }
   final skippedCount = app.sync.skippedUpdates.length;
+  final message = switch ((success, skippedCount > 0)) {
+    (true, false) => l10n.syncComplete,
+    (true, true) => l10n.syncCompleteWithSkipped(skippedCount),
+    (false, false) => l10n.syncPartial,
+    (false, true) => l10n.syncPartialWithSkipped(skippedCount),
+  };
   showOverlayNotice(
     overlay,
-    !success
-        ? l10n.syncPartial
-        : skippedCount > 0
-        ? l10n.syncCompleteWithSkipped(skippedCount)
-        : l10n.syncComplete,
+    message,
     action: !success
         ? (
             label: l10n.view,

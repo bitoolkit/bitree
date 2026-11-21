@@ -2196,6 +2196,12 @@ abstract class AppLocalizations {
   /// **'Some items were not synchronized'**
   String get syncPartial;
 
+  /// No description provided for @syncPartialWithSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Some items were not synchronized, {count} local changes kept'**
+  String syncPartialWithSkipped(int count);
+
   /// No description provided for @selectedItems.
   ///
   /// In en, this message translates to:

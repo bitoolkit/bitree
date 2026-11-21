@@ -66,6 +66,8 @@ class SyncController extends ChangeNotifier {
     for (final target in _targets)
       if (_results[target]?.outcome != SyncOutcome.synced) target,
   };
+  bool get hasUnresolvedIssues =>
+      !busy && !cancelled && incompleteTargets.isNotEmpty;
   bool isRunning(SyncTarget target) => _running.contains(target);
 
   Future<bool> synchronize(
@@ -315,6 +317,12 @@ class SyncController extends ChangeNotifier {
   void _recordSkipped(SyncTarget target, List<SyncSkippedUpdate> updates) {
     _skippedUpdates.removeWhere((item) => item.target == target);
     _skippedUpdates.addAll(updates);
+  }
+
+  void dismissSkipped() {
+    if (_skippedUpdates.isEmpty) return;
+    _skippedUpdates.clear();
+    _notify();
   }
 
   Future<bool> overwriteSkipped(Iterable<SyncSkippedUpdate> selected) async {

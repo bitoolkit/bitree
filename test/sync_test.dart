@@ -981,9 +981,16 @@ void main() {
       expect(model.agenda.entries.single.location, '自习室A-101');
       expect(model.sync.skippedUpdates, hasLength(2));
 
-      // Notice informs user and opens the skipped updates review sheet.
+      // Sync button persistently shows the skipped count badge even without the progress sheet open.
+      expect(find.byType(Badge), findsOneWidget);
+      expect(find.text('2'), findsOneWidget);
+
+      // Notice informs user; even after dismissing it, SyncButton menu opens skipped updates.
       expect(find.text('同步完成，2 项本地修改未覆盖'), findsOneWidget);
-      await tester.tap(find.text('查看'));
+      await tester.tap(find.byTooltip('同步'));
+      await tester.pumpAndSettle();
+      expect(find.text('查看未覆盖项 (2)'), findsOneWidget);
+      await tester.tap(find.text('查看未覆盖项 (2)'));
       await tester.pumpAndSettle();
 
       expect(find.text('未覆盖的本地修改'), findsOneWidget);
@@ -992,6 +999,18 @@ void main() {
       expect(find.text('大物实验（我的备注）'), findsOneWidget);
       expect(find.text('数据结构期末考试'), findsOneWidget);
       expect(find.textContaining('自习室A-101 → 综教B-202'), findsOneWidget);
+
+      // Closing with X keeps the pending badge so the user can return later.
+      await tester.tap(find.byTooltip('关闭'));
+      await tester.pumpAndSettle();
+      expect(model.sync.skippedUpdates, hasLength(2));
+      expect(find.byType(Badge), findsOneWidget);
+
+      // Reopen via SyncButton menu.
+      await tester.tap(find.byTooltip('同步'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('查看未覆盖项 (2)'));
+      await tester.pumpAndSettle();
 
       // Overwrite button starts disabled until user selects at least one item.
       final overwriteButton = tester.widget<FilledButton>(
@@ -1011,11 +1030,13 @@ void main() {
       expect(model.timetable.schedule?.courses.single.name, '大物实验（我的备注）');
       expect(model.sync.skippedUpdates, hasLength(1));
 
-      // Keep remaining local edit and close cleanly.
+      // Keep remaining local edit dismisses the skipped badge cleanly.
       await tester.tap(find.text('保持本地'));
       await tester.pumpAndSettle();
       expect(find.text('未覆盖的本地修改'), findsNothing);
       expect(model.timetable.schedule?.courses.single.name, '大物实验（我的备注）');
+      expect(model.sync.skippedUpdates, isEmpty);
+      expect(find.byType(Badge), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );

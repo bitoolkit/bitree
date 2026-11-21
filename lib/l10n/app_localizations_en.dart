@@ -1312,6 +1312,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncPartial => 'Some items were not synchronized';
 
   @override
+  String syncPartialWithSkipped(int count) {
+    return 'Some items were not synchronized, $count local changes kept';
+  }
+
+  @override
   String selectedItems(int count) {
     return '$count selected';
   }
