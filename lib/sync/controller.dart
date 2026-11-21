@@ -59,7 +59,8 @@ class SyncController extends ChangeNotifier {
   };
   Set<SyncTarget> get defaultTargets => {
     for (final target in bulkTargets)
-      if (target != SyncTarget.mooc || !_mooc.needsLogin) target,
+      if (target != SyncTarget.mooc || _mooc.status != MoocStatus.signedOut)
+        target,
   };
   Set<SyncTarget> get incompleteTargets => {
     for (final target in _targets)

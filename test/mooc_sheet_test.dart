@@ -536,14 +536,25 @@ void main() {
         final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
         server.listen((request) async {
           await request.drain<void>();
-          request.response.headers.contentType = ContentType.json;
-          request.response.write(
-            jsonEncode({
-              'code': authenticated ? 0 : 1,
-              if (!authenticated) 'message': 'not_auth',
-              'result': null,
-            }),
-          );
+          if (request.uri.path == '/www.icourse163.org/home.htm') {
+            request.response.headers.contentType = ContentType.html;
+            request.response.write(
+              authenticated
+                  ? '<html><script>window.webUser = {id: 8, nickName: "测试账号"};</script></html>'
+                  : '<html><title>中国大学MOOC - 个人中心</title></html>',
+            );
+          } else {
+            request.response.headers.contentType = ContentType.json;
+            request.response.write(
+              jsonEncode({
+                'code': 0,
+                'result': {
+                  'pagination': {'totleCount': 0, 'totlePageCount': 1},
+                  'result': null,
+                },
+              }),
+            );
+          }
           await request.response.close();
         });
         return server;

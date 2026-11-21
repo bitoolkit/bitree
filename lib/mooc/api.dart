@@ -11,6 +11,7 @@ import 'credentials.dart';
 import 'errors.dart';
 import 'progress.dart';
 import 'tasks.dart';
+import 'web_user.dart';
 
 class MoocImportResult {
   const MoocImportResult({required this.entries, required this.failures});
@@ -109,7 +110,7 @@ class MoocApi {
         }
       }
     }
-    if (courses.isEmpty) await _verifySession();
+    if (courses.isEmpty) await _verifySession(memberId);
     final entries = <AgendaEntry>[];
     final failures = <({String course, String message})>[];
     var count = 0;
@@ -174,11 +175,11 @@ class MoocApi {
     await _seedCookies();
     final url = MoocCredentials.origin.resolve('/web/j/$method.rpc');
     final cookies = await _requestCookies(url);
+    if (!MoocCredentials.hasSession(cookies)) throw const MoocLoginRequired();
     final csrf = cookies
         .where((cookie) => cookie.name == 'NTESSTUDYSI')
-        .firstOrNull
-        ?.value;
-    if (csrf == null) throw const MoocLoginRequired();
+        .first
+        .value;
     try {
       final request = await _http
           .postUrl(url.replace(queryParameters: {'csrfKey': csrf}))
@@ -277,11 +278,12 @@ class MoocApi {
     await _cookies.saveFromResponse(url, received);
   }
 
-  Future<void> _verifySession() async {
+  Future<void> _verifySession(String memberId) async {
     _cancellation.check();
     await _seedCookies();
     final url = MoocCredentials.origin.resolve('/home.htm');
     final cookies = await _requestCookies(url);
+    if (!MoocCredentials.hasSession(cookies)) throw const MoocLoginRequired();
     try {
       final request = await _http.getUrl(url).timeout(_timeout);
       _cancellation.check();
@@ -293,7 +295,7 @@ class MoocApi {
       final response = await request.close().timeout(_timeout);
       _cancellation.check();
       await _saveResponseCookies(url, response);
-      await utf8.decoder.bind(response).join().timeout(_timeout);
+      final body = await utf8.decoder.bind(response).join().timeout(_timeout);
       _cancellation.check();
       if ([301, 302, 303, 307, 308, 401, 403].contains(response.statusCode)) {
         throw const MoocLoginRequired();
@@ -303,6 +305,12 @@ class MoocApi {
       }
       if (response.statusCode != 200) {
         throw MoocFailure('MOOC 请求失败（${response.statusCode}），请稍后重试。');
+      }
+      // /home.htm returns HTTP 200 even when logged out; only an authenticated
+      // session injects window.webUser for the signed-in member.
+      final user = parseMoocWebUser(body).user;
+      if (user == null || user.id != memberId) {
+        throw const MoocLoginRequired();
       }
     } on Exception catch (error) {
       _cancellation.check();

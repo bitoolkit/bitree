@@ -33,10 +33,12 @@ class MoocController extends ChangeNotifier {
 
   MoocAccount? get account => _account;
   bool get busy => _request != null || _pendingLifecycle > 0;
-  bool get needsLogin => _account == null || _expired;
+  bool get _sessionExpired =>
+      _expired || (_account != null && !_account!.credentials.hasLiveSession);
+  bool get needsLogin => _account == null || _sessionExpired;
   MoocFailure? get error => _error;
   MoocProgress? get progress => _progress;
-  MoocStatus get status => _expired
+  MoocStatus get status => _sessionExpired
       ? MoocStatus.expired
       : _account == null
       ? MoocStatus.signedOut
@@ -45,7 +47,16 @@ class MoocController extends ChangeNotifier {
   Future<void> load() => _queue(() async {
     try {
       _account = await _storage.read();
+      _expired = false;
       _error = null;
+    } on MoocFailure catch (error) {
+      if (error.issue == MoocIssue.noSession) {
+        _account = null;
+        _expired = true;
+        _error = null;
+      } else {
+        _error = const MoocFailure.issue(MoocIssue.readAccountFailed);
+      }
     } on Exception catch (error, stack) {
       _error = const MoocFailure.issue(MoocIssue.readAccountFailed);
       AppDiagnostics.instance.error('读取 MOOC 账号', error, stack);
@@ -65,7 +76,13 @@ class MoocController extends ChangeNotifier {
     void Function(List<SkippedAgendaUpdate>)? onSkipped,
   }) async {
     final account = _account;
-    if (account == null) throw const MoocLoginRequired();
+    if (account == null || _sessionExpired) {
+      if (account != null && !_expired) {
+        _expired = true;
+        _notify();
+      }
+      throw const MoocLoginRequired();
+    }
     if (busy) throw const MoocFailure.issue(MoocIssue.requestBusy);
     return _run('更新 MOOC DDL', (token) async {
       final api = MoocApi(account.credentials, token);

@@ -408,7 +408,9 @@ void main() {
               'https://www.icourse163.org/passport/logingate/changeCookie.htm',
             );
           } else {
-            request.response.write('<html>signed in</html>');
+            request.response.write(
+              '<html><script>window.webUser = {id: 8, nickName: "测试同学"};</script></html>',
+            );
           }
           await request.response.close();
           return;
@@ -652,6 +654,91 @@ void main() {
         expect(result.failures, isEmpty);
         expect(controller.needsLogin, isFalse);
       }, network),
+    );
+
+    test(
+      'HTTP 200 home.htm without matching webUser is treated as expired instead of zero tasks',
+      () async {
+        for (final body in [
+          '<html><title>中国大学MOOC - 个人中心</title></html>',
+          '<html><script>window.webUser = {id: 999, nickName: "其他账号"};</script></html>',
+        ]) {
+          final authServer = await HttpServer.bind(
+            InternetAddress.loopbackIPv4,
+            0,
+          );
+          authServer.listen((request) async {
+            await request.drain<void>();
+            if (request.uri.path == '/www.icourse163.org/home.htm') {
+              request.response.headers.contentType = ContentType.html;
+              request.response.write(body);
+            } else {
+              request.response.headers.contentType = ContentType.json;
+              request.response.write(
+                jsonEncode({
+                  'code': 0,
+                  'result': {
+                    'pagination': {'totleCount': 0, 'totlePageCount': 1},
+                    'result': null,
+                  },
+                }),
+              );
+            }
+            await request.response.close();
+          });
+          final localStorage = MemoryMoocStorage();
+          final localAgenda = AgendaController(MemoryAgendaStore());
+          await localAgenda.load();
+          final localController = MoocController(
+            storage: localStorage,
+            agenda: localAgenda,
+          );
+          try {
+            await HttpOverrides.runWithHttpOverrides(() async {
+              await localController.connect(account);
+              await expectLater(
+                localController.synchronize(),
+                throwsA(isA<MoocLoginRequired>()),
+              );
+              expect(localController.status, MoocStatus.expired);
+              expect(localController.needsLogin, isTrue);
+            }, LocalHttpOverrides(authServer.port));
+          } finally {
+            localController.dispose();
+            localAgenda.dispose();
+            await authServer.close(force: true);
+          }
+        }
+      },
+    );
+
+    test(
+      'Locally expired cookies report expired status without sending RPCs',
+      () async {
+        // HTTP cookie Expires uses 1-second resolution.
+        final expiredCookie = MoocCookie('STUDY_SESS', 'old')
+          ..domain = '.icourse163.org'
+          ..path = '/'
+          ..expires = DateTime.now().toUtc().add(const Duration(seconds: 1));
+        final soonExpired = MoocAccount(
+          id: '8',
+          name: '测试同学',
+          credentials: MoocCredentials(
+            userAgent: 'MOOC test browser',
+            cookies: [Cookie('NTESSTUDYSI', 'csrf')..path = '/', expiredCookie],
+          ),
+        );
+        await controller.connect(soonExpired);
+        expect(controller.status, MoocStatus.connected);
+        await Future<void>.delayed(const Duration(milliseconds: 1200));
+        expect(controller.status, MoocStatus.expired);
+        expect(controller.needsLogin, isTrue);
+        await expectLater(
+          controller.synchronize(),
+          throwsA(isA<MoocLoginRequired>()),
+        );
+        expect(pages, isEmpty);
+      },
     );
 
     test(

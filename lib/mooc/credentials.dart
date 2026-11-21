@@ -19,6 +19,17 @@ class MoocCredentials {
   final String userAgent;
   final List<String> cookies;
 
+  bool get hasLiveSession => hasSession(
+    cookies
+        .map(MoocCookie.fromSetCookieValue)
+        .where(
+          (cookie) =>
+              cookie.value.isNotEmpty &&
+              cookie.maxAge != 0 &&
+              !(cookie.expires?.isBefore(DateTime.now()) ?? false),
+        ),
+  );
+
   static final origin = Uri.https('www.icourse163.org');
   static final rpcDirectory = origin.resolve('/web/j/');
   static const _sessionCookieNames = {'STUDY_SESS', 'STUDY_INFO', 'NTES_SESS'};
