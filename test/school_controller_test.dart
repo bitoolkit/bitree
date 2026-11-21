@@ -175,6 +175,16 @@ void main() {
             request.response.write('BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n');
           case '/lexue.bit.edu.cn/my/':
             request.response.write('<html><body></body></html>');
+          case '/lexue.bit.edu.cn/lib/ajax/service.php':
+            request.response.headers.contentType = ContentType.json;
+            request.response.write(
+              jsonEncode([
+                {
+                  'error': false,
+                  'data': {'courses': []},
+                },
+              ]),
+            );
           case '/zy-eclass.bit.edu.cn/user/courses':
             request.response.headers.contentType = ContentType.json;
             request.response.write('{}');
