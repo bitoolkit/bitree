@@ -431,8 +431,6 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('自定义同步'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('清空'));
-    await tester.pump();
   }
 
   testWidgets(
@@ -463,7 +461,7 @@ void main() {
   );
 
   testWidgets(
-    'Custom sync groups sources semantically and shares all and clear controls',
+    'Custom sync starts empty, groups sources cleanly, and offers single-tap select-all and clear',
     (tester) async {
       final model = app(_SchoolService());
       await model.initialize();
@@ -479,16 +477,44 @@ void main() {
       await tester.tap(find.text('自定义同步'));
       await tester.pumpAndSettle();
 
+      expect(find.byType(AppSelectionBar), findsNothing);
       expect(find.text('学校数据'), findsOneWidget);
       expect(find.text('DDL 来源'), findsOneWidget);
       expect(
         tester.getTopLeft(find.text('学校数据')).dy,
         lessThan(tester.getTopLeft(find.text('DDL 来源')).dy),
       );
-      expect(find.widgetWithText(AppSelectionTile, '课表'), findsOneWidget);
-      expect(find.widgetWithText(AppSelectionTile, '乐学 DDL'), findsOneWidget);
+      expect(
+        tester
+            .widgetList<AppSelectionTile>(find.byType(AppSelectionTile))
+            .every((tile) => !tile.value),
+        isTrue,
+      );
+      expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(FilledButton, '同步所选内容'))
+            .onPressed,
+        isNull,
+      );
+      expect(find.widgetWithText(TextButton, '全选'), findsOneWidget);
 
-      await tester.tap(find.text('清空'));
+      await tester.tap(find.widgetWithText(TextButton, '全选'));
+      await tester.pump();
+      expect(
+        tester
+            .widgetList<AppSelectionTile>(find.byType(AppSelectionTile))
+            .every((tile) => tile.value),
+        isTrue,
+      );
+      expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(FilledButton, '同步所选内容'))
+            .onPressed,
+        isNotNull,
+      );
+      expect(find.widgetWithText(TextButton, '清空'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(TextButton, '清空'));
       await tester.pump();
       expect(
         tester
@@ -503,20 +529,13 @@ void main() {
         isNull,
       );
 
-      await tester.tap(find.byType(Checkbox).first);
+      // Selecting a single item switches the leading action to Clear in one tap.
+      await tester.tap(find.widgetWithText(AppSelectionTile, '乐学 DDL'));
       await tester.pump();
-      expect(
-        tester
-            .widgetList<AppSelectionTile>(find.byType(AppSelectionTile))
-            .every((tile) => tile.value),
-        isTrue,
-      );
-      expect(
-        tester
-            .widget<FilledButton>(find.widgetWithText(FilledButton, '同步所选内容'))
-            .onPressed,
-        isNotNull,
-      );
+      expect(find.widgetWithText(TextButton, '清空'), findsOneWidget);
+      await tester.tap(find.widgetWithText(TextButton, '清空'));
+      await tester.pump();
+      expect(find.widgetWithText(TextButton, '全选'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -1037,6 +1056,45 @@ void main() {
       expect(model.timetable.schedule?.courses.single.name, '大物实验（我的备注）');
       expect(model.sync.skippedUpdates, isEmpty);
       expect(find.byType(Badge), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Expired MOOC session surfaces in SyncButton, defaultTargets, and Custom Sync',
+    (tester) async {
+      moocAuthenticated = false;
+      final service = _SchoolService()..release.complete();
+      final model = app(service, mooc: true);
+      await model.initialize();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: bitreeTheme(Brightness.light),
+          home: Scaffold(body: SyncButton(controller: model)),
+        ),
+      );
+
+      // Trigger MOOC sync via SyncButton menu -> Sync all.
+      await tester.tap(find.byTooltip('同步'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('同步全部'));
+      await tester.pump();
+      await waitFor(tester, () => !model.sync.busy);
+      await tester.pump();
+
+      expect(model.mooc.needsLogin, isTrue);
+      expect(model.sync.results[SyncTarget.mooc]?.outcome, SyncOutcome.needsLogin);
+      expect(model.sync.defaultTargets, contains(SyncTarget.mooc));
+      expect(find.byType(Badge), findsOneWidget);
+
+      // SyncButton menu lets the user reopen sync progress even after toast disappears.
+      await tester.tap(find.byTooltip('同步'));
+      await tester.pumpAndSettle();
+      expect(find.text('查看同步进度'), findsOneWidget);
+      await tester.tap(find.text('自定义同步'));
+      await tester.pumpAndSettle();
+      expect(find.text('需要重新登录'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );

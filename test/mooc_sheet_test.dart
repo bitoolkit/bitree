@@ -107,8 +107,6 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('自定义同步'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('清空'));
-    await tester.pump();
     await tester.ensureVisible(find.text('中国大学MOOC DDL'));
     await tester.tap(find.text('中国大学MOOC DDL'));
     await tester.pump();

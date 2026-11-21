@@ -9,7 +9,7 @@ class _CustomSyncSheet extends StatefulWidget {
 
 class _CustomSyncSheetState extends State<_CustomSyncSheet> {
   late final _availableTargets = widget.app.sync.bulkTargets;
-  late final _selected = widget.app.sync.defaultTargets;
+  final _selected = <SyncTarget>{};
   late final List<String> _terms;
   String? _term;
 
@@ -35,87 +35,84 @@ class _CustomSyncSheetState extends State<_CustomSyncSheet> {
   }
 
   @override
-  Widget build(BuildContext context) => SheetLayout(
-    header: SheetHeader(
-      title: Text(context.l10n.customSync),
-      actions: const [SheetCloseButton()],
-    ),
-    content: Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        AppSelectionBar(
-          selectedCount: _selected.length,
-          totalCount: _availableTargets.length,
-          summary: context.l10n.selectedItems(_selected.length),
-          onToggleAll: (selected) => setState(() {
-            _selected.clear();
-            if (selected) _selected.addAll(_availableTargets);
-          }),
-          onClear: _selected.isEmpty ? null : () => setState(_selected.clear),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        AppSectionHeader(context.l10n.syncSchoolData),
-        if (_usesTerm && _terms.isNotEmpty) ...[
-          SemesterDropdown(
-            label: context.l10n.syncTerm,
-            value: _term,
-            terms: _terms,
-            onChanged: (term) => setState(() => _term = term),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-        ],
-        _SyncTargetChoices(
-          targets: _availableTargets.where(
-            (target) => target.category == SyncCategory.schoolData,
-          ),
-          selected: _selected,
-          onChanged: _setSelected,
-        ),
-        const SizedBox(height: AppSpacing.md),
-        AppSectionHeader(context.l10n.syncDeadlineData),
-        _SyncTargetChoices(
-          targets: _availableTargets.where(
-            (target) => target.category == SyncCategory.deadlineData,
-          ),
-          selected: _selected,
-          onChanged: _setSelected,
-        ),
-        if (_selected.contains(SyncTarget.mooc) &&
-            widget.app.mooc.needsLogin) ...[
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                Icons.login_rounded,
-                size: 18,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  context.l10n.loginAfterSelection,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ],
-    ),
-    actions: SheetActionBar.primary(
-      primary: FilledButton(
-        onPressed: _selected.isEmpty
-            ? null
-            : () => Navigator.pop(context, (
-                targets: Set<SyncTarget>.unmodifiable(_selected),
-                term: _usesTerm ? _term : null,
-              )),
-        child: Text(context.l10n.syncSelected),
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final mooc = widget.app.mooc;
+    final moocSubtitle = mooc.needsLogin
+        ? Text(
+            mooc.status.localizedLabel(l10n),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: mooc.status == MoocStatus.expired
+                  ? scheme.error
+                  : scheme.onSurfaceVariant,
+            ),
+          )
+        : null;
+
+    return SheetLayout(
+      header: SheetHeader(
+        title: Text(l10n.customSync),
+        actions: const [SheetCloseButton()],
       ),
-    ),
-  );
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppSectionHeader(l10n.syncSchoolData),
+          _SyncTargetChoices(
+            targets: _availableTargets.where(
+              (target) => target.category == SyncCategory.schoolData,
+            ),
+            selected: _selected,
+            onChanged: _setSelected,
+          ),
+          if (_usesTerm && _terms.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            SemesterDropdown(
+              label: l10n.syncTerm,
+              value: _term,
+              terms: _terms,
+              onChanged: (term) => setState(() => _term = term),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.md),
+          AppSectionHeader(l10n.syncDeadlineData),
+          _SyncTargetChoices(
+            targets: _availableTargets.where(
+              (target) => target.category == SyncCategory.deadlineData,
+            ),
+            selected: _selected,
+            subtitleFor: (target) =>
+                target == SyncTarget.mooc ? moocSubtitle : null,
+            onChanged: _setSelected,
+          ),
+        ],
+      ),
+      actions: SheetActionBar.split(
+        leading: TextButton(
+          onPressed: () => setState(() {
+            if (_selected.isEmpty) {
+              _selected.addAll(_availableTargets);
+            } else {
+              _selected.clear();
+            }
+          }),
+          child: Text(_selected.isEmpty ? l10n.selectAll : l10n.clearSelection),
+        ),
+        primary: FilledButton(
+          onPressed: _selected.isEmpty
+              ? null
+              : () => Navigator.pop(context, (
+                  targets: Set<SyncTarget>.unmodifiable(_selected),
+                  term: _usesTerm ? _term : null,
+                )),
+          child: Text(l10n.syncSelected),
+        ),
+      ),
+    );
+  }
 
   void _setSelected(SyncTarget target, bool checked) {
     setState(() {
@@ -133,11 +130,13 @@ class _SyncTargetChoices extends StatelessWidget {
     required this.targets,
     required this.selected,
     required this.onChanged,
+    this.subtitleFor,
   });
 
   final Iterable<SyncTarget> targets;
   final Set<SyncTarget> selected;
   final void Function(SyncTarget target, bool checked) onChanged;
+  final Widget? Function(SyncTarget target)? subtitleFor;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -147,6 +146,7 @@ class _SyncTargetChoices extends StatelessWidget {
         AppSelectionTile(
           value: selected.contains(target),
           title: Text(target.localizedTitle(context.l10n)),
+          subtitle: subtitleFor?.call(target),
           onChanged: (checked) => onChanged(target, checked ?? false),
         ),
     ],

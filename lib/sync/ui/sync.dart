@@ -7,6 +7,7 @@ import '../../app/controller.dart';
 import '../../core/time.dart';
 import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
+import '../../mooc/status.dart';
 import '../../mooc/ui/mooc_sheet.dart';
 import '../../schedule/model.dart';
 import '../../school/ui/school_screen.dart';
