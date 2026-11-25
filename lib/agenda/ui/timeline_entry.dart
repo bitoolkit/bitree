@@ -217,9 +217,9 @@ class _AgendaTimelineEntryState extends State<AgendaTimelineEntry> {
                           Padding(
                             padding: EdgeInsets.only(
                               left: entry.isDeadline && !openEnded
-                                  ? deadlineWidth * 0.37
+                                  ? deadlineWidth * 0.22
                                   : 8,
-                              right: openEnded ? deadlineWidth * 0.37 : 8,
+                              right: openEnded ? deadlineWidth * 0.22 : 8,
                               top: 4,
                               bottom: 4,
                             ),

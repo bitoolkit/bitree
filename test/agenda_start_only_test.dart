@@ -117,9 +117,10 @@ void main() {
         layoutDays: 6,
       ).single;
 
+      const cardSpan = Duration(hours: 138); // (6 - 0.25) days.
       expect(placement.start, _opens);
-      expect(placement.end, _opens.add(const Duration(days: 6)));
-      expect(placement.layoutEnd, _opens.add(const Duration(days: 6)));
+      expect(placement.end, _opens.add(cardSpan));
+      expect(placement.layoutEnd, _opens.add(cardSpan));
     });
 
     test('A deadline with a due date still reserves its tail on the left', () {
@@ -130,7 +131,8 @@ void main() {
         layoutDays: 6,
       ).single;
 
-      expect(placement.start, _opens.subtract(const Duration(days: 6)));
+      const cardSpan = Duration(hours: 138); // (6 - 0.25) days.
+      expect(placement.start, _opens.subtract(cardSpan));
       expect(placement.end, _opens);
     });
   });

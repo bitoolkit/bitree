@@ -76,22 +76,28 @@ void main() {
             layoutEnd: p.layoutEnd,
           ), bounds[entry.id]);
           final effectiveDays = entry.effectiveLayoutDays(days);
+          final paintedDays = entry.isDeadline
+              ? effectiveDays - .25
+              : AgendaTimelineLayout.defaultEventInfoDays;
+          final reservedDays = entry.isDeadline
+              ? paintedDays
+              : paintedDays + AgendaTimelineLayout.eventInfoGutterDays;
+          final reservedSpan = Duration(
+            microseconds: (Duration.microsecondsPerDay * reservedDays).round(),
+          );
           final fixedSpan = Duration(
             microseconds:
-                (Duration.microsecondsPerDay * (effectiveDays - .25) / zoom)
-                    .ceil(),
+                (Duration.microsecondsPerDay * paintedDays / zoom).ceil(),
           );
           final anchor = entry.isDeadline ? entry.dueAt : entry.startsAt;
           expect(
             p.start,
-            entry.startOnly
-                ? entry.startsAt
-                : anchor.subtract(Duration(days: effectiveDays)),
+            entry.startOnly ? entry.startsAt : anchor.subtract(reservedSpan),
           );
           expect(
             p.end,
             entry.startOnly
-                ? entry.startsAt.add(Duration(days: effectiveDays))
+                ? entry.startsAt.add(reservedSpan)
                 : entry.isDeadline
                 ? entry.realDueAt
                 : entry.endsAt,

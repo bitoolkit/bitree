@@ -168,18 +168,21 @@ void main() {
       final before = tester.widget<EventTimelineEntry>(
         find.byType(EventTimelineEntry),
       );
-      expect(tester.getRect(information).width, closeTo(48 * 3.75, .001));
+      final compactWidth = tester.getRect(information).width;
+      expect(compactWidth, greaterThanOrEqualTo(48 * 1.5 - .001));
+      expect(compactWidth, lessThanOrEqualTo(48 * 3.25 + .001));
       expect(before.geometry.endX - before.geometry.startX, closeTo(4, .001));
       tester.widget<Slider>(find.byType(Slider)).onChanged!(24);
       await tester.pumpAndSettle();
       final after = tester.widget<EventTimelineEntry>(
         find.byType(EventTimelineEntry),
       );
-      expect(tester.getRect(information).width, closeTo(48 * 3.75, .001));
+      expect(tester.getRect(information).width, closeTo(compactWidth, .001));
       expect(after.geometry.endX - after.geometry.startX, closeTo(96, .001));
+      // Increasing global DDL layout days does not bloat event/exam info bars.
       await app.settings.setAgendaLayoutDays(6);
       await tester.pumpAndSettle();
-      expect(tester.getRect(information).width, closeTo(48 * 5.75, .001));
+      expect(tester.getRect(information).width, closeTo(compactWidth, .001));
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     });

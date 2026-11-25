@@ -92,7 +92,7 @@ void main() {
       final placement = layoutAgendaTimeline([
         entry,
       ], minimumEventSpan: const Duration(minutes: 1), now: _date).single;
-      expect(placement.start, entry.dueAt.subtract(const Duration(days: 14)));
+      expect(placement.start, entry.dueAt.subtract(const Duration(hours: 14 * 24 - 6)));
       expect(placement.end, entry.realDueAt);
       expect(placement.layoutEnd, entry.realDueAt);
       expect(entry.startsAt, _date.add(const Duration(hours: 14)));
@@ -131,17 +131,14 @@ void main() {
           now: _date,
           layoutDays: 8,
         ).single;
+        const cardSpan = Duration(hours: 14 * 24 - 6);
         expect(
           placement.start,
-          startOnly
-              ? entry.startsAt
-              : entry.dueAt.subtract(const Duration(days: 14)),
+          startOnly ? entry.startsAt : entry.dueAt.subtract(cardSpan),
         );
         expect(
           placement.end,
-          startOnly
-              ? entry.startsAt.add(const Duration(days: 14))
-              : entry.realDueAt,
+          startOnly ? entry.startsAt.add(cardSpan) : entry.realDueAt,
         );
       }
     },
@@ -231,7 +228,7 @@ void main() {
     final placement = layoutAgendaTimeline([
       entry,
     ], minimumEventSpan: const Duration(minutes: 1), now: _date).single;
-    expect(placement.start, entry.dueAt.subtract(const Duration(days: 14)));
+    expect(placement.start, entry.dueAt.subtract(const Duration(hours: 14 * 24 - 6)));
     await tester.pumpWidget(const SizedBox());
   });
 

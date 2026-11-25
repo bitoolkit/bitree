@@ -133,7 +133,7 @@ void main() {
               id: 'future-$index',
               title: '后续作业 $index',
               kind: AgendaKind.deadline,
-              startsAt: _date.add(const Duration(days: 10, hours: 12)),
+              startsAt: _date.add(const Duration(days: 20, hours: 12)),
             ),
         ];
         await _show(tester, entries);
@@ -196,7 +196,7 @@ void main() {
     (tester) async {
       final entries = [
         for (var day = 0; day < 24; day++)
-          for (var index = 0; index < (day == 0 || day == 22 ? 24 : 2); index++)
+          for (var index = 0; index < (day % 3 == 0 ? 24 : 2); index++)
             AgendaEntry(
               id: 'frame-$day-$index',
               title: '作业 $day $index',
@@ -696,14 +696,22 @@ void main() {
       minimumEventSpan: const Duration(hours: 48),
       now: _date,
     );
-    expect(zoomedOut.map((placement) => placement.lane), [0, 1]);
-    expect(
-      zoomedOut.first.start,
-      first.startsAt.subtract(const Duration(days: 4)),
+    final eventLead = Duration(
+      microseconds:
+          (Duration.microsecondsPerDay *
+                  (AgendaTimelineLayout.defaultEventInfoDays +
+                      AgendaTimelineLayout.eventInfoGutterDays))
+              .round(),
     );
-    expect(zoomedOut.first.end, first.endsAt);
+    final outFirst = zoomedOut.singleWhere((p) => p.entry == first);
+    final outSecond = zoomedOut.singleWhere((p) => p.entry == second);
+    // Live exams claim the top lane over ordinary live events.
+    expect(outSecond.lane, 0);
+    expect(outFirst.lane, 1);
+    expect(outFirst.start, first.startsAt.subtract(eventLead));
+    expect(outFirst.end, first.endsAt);
     expect(
-      zoomedOut.first.layoutEnd,
+      outFirst.layoutEnd,
       first.startsAt.add(const Duration(hours: 48)),
     );
     final zoomedIn = layoutAgendaTimeline(
@@ -711,21 +719,19 @@ void main() {
       minimumEventSpan: const Duration(hours: 2),
       now: _date,
     );
-    // Their real intervals do not overlap, but the four-day information
+    final inFirst = zoomedIn.singleWhere((p) => p.entry == first);
+    final inSecond = zoomedIn.singleWhere((p) => p.entry == second);
+    // Their real intervals do not overlap, but the compact information
     // reservations do, independently of the minimum hit-target span.
-    expect(zoomedIn.map((placement) => placement.lane), [0, 1]);
+    expect(inSecond.lane, 0);
+    expect(inFirst.lane, 1);
+    expect(inFirst.start, first.startsAt.subtract(eventLead));
     expect(
-      zoomedIn.first.start,
-      first.startsAt.subtract(const Duration(days: 4)),
-    );
-    expect(
-      zoomedIn.first.layoutEnd,
+      inFirst.layoutEnd,
       first.startsAt.add(const Duration(hours: 2)),
     );
-    expect(zoomedIn.map((placement) => placement.end), [
-      first.endsAt,
-      second.endsAt,
-    ]);
+    expect(inFirst.end, first.endsAt);
+    expect(inSecond.end, second.endsAt);
   });
 
   test('Long events and DDL reservations retain their full intervals', () {
@@ -752,13 +758,22 @@ void main() {
     final deadlinePlacement = placements.singleWhere(
       (placement) => placement.entry == ddl,
     );
-    expect(eventPlacement.start, long.startsAt.subtract(const Duration(days: 4)));
+    final eventLead = Duration(
+      microseconds:
+          (Duration.microsecondsPerDay *
+                  (AgendaTimelineLayout.defaultEventInfoDays +
+                      AgendaTimelineLayout.eventInfoGutterDays))
+              .round(),
+    );
+    final ddlSpan = Duration(
+      microseconds:
+          (Duration.microsecondsPerDay * (AgendaEntry.defaultTailDays - .25))
+              .round(),
+    );
+    expect(eventPlacement.start, long.startsAt.subtract(eventLead));
     expect(eventPlacement.end, long.endsAt);
     expect(eventPlacement.layoutEnd, long.endsAt);
-    expect(
-      deadlinePlacement.start,
-      ddl.dueAt.subtract(const Duration(days: 4)),
-    );
+    expect(deadlinePlacement.start, ddl.dueAt.subtract(ddlSpan));
     expect(deadlinePlacement.layoutEnd, ddl.dueAt);
   });
 
@@ -962,8 +977,8 @@ void main() {
         id: 'overlap',
         title: '日程',
         kind: AgendaKind.event,
-        startsAt: ddl.dueAt.subtract(Duration(days: days, hours: -1)),
-        endsAt: ddl.dueAt.subtract(Duration(days: days, hours: -2)),
+        startsAt: ddl.dueAt.subtract(Duration(days: days, hours: -7)),
+        endsAt: ddl.dueAt.subtract(Duration(days: days, hours: -8)),
       );
       final placements = layoutAgendaTimeline(
         [
@@ -975,7 +990,10 @@ void main() {
         layoutDays: days,
       );
       final reservation = placements.singleWhere((p) => p.entry == ddl);
-      expect(reservation.start, ddl.dueAt.subtract(Duration(days: days)));
+      final cardSpan = Duration(
+        microseconds: (Duration.microsecondsPerDay * (days - .25)).round(),
+      );
+      expect(reservation.start, ddl.dueAt.subtract(cardSpan));
       expect(reservation.end, ddl.dueAt);
       expect(placements.map((p) => p.lane).toSet(), hasLength(2));
     });
@@ -1046,17 +1064,29 @@ void main() {
           scale: scale,
           brightness: brightness,
         );
+        final initialEventWidths = <String, double>{};
+        final maxEventWidth = 48 * 3.25 * scale.clamp(1.0, 1.35);
         void checkCards(double realIntervalWidth) {
           final rectangles = entries
               .map((entry) => tester.getRect(_paintedBar(entry)))
               .toList();
           for (var index = 0; index < rectangles.length; index++) {
-            // Event/exam information regions now use the same fixed-width
-            // screen-space reservation as the DDL, not a 2px text box.
-            expect(rectangles[index].width, closeTo(180, .001));
+            final entry = entries[index];
+            if (entry.isDeadline) {
+              expect(rectangles[index].width, closeTo(180, .001));
+            } else {
+              // Event/exam information cards stay compact and fixed across zoom.
+              final expectedWidth = initialEventWidths.putIfAbsent(
+                entry.id,
+                () => rectangles[index].width,
+              );
+              expect(expectedWidth, greaterThanOrEqualTo(48 * 1.5 - .001));
+              expect(expectedWidth, lessThanOrEqualTo(maxEventWidth + .001));
+              expect(rectangles[index].width, closeTo(expectedWidth, .001));
+            }
             expect(
               rectangles[index].height,
-              closeTo(tester.getRect(_bar(entries[index])).height, .001),
+              closeTo(tester.getRect(_bar(entry)).height, .001),
             );
             for (var other = index + 1; other < rectangles.length; other++) {
               expect(rectangles[index].overlaps(rectangles[other]), isFalse);
@@ -1069,10 +1099,11 @@ void main() {
                     widget.entry.id == entry.id,
               ),
             );
-            expect(card.informationWidth, closeTo(180, .001));
+            final expectedWidth = initialEventWidths[entry.id]!;
+            expect(card.informationWidth, closeTo(expectedWidth, .001));
             expect(
               card.geometry.startX - card.geometry.informationLeft,
-              closeTo(180, .001),
+              closeTo(expectedWidth, .001),
             );
             expect(
               card.geometry.endX - card.geometry.startX,
@@ -1115,7 +1146,7 @@ void main() {
   testWidgets(
     'A future event stays tappable while only its information tail is visible',
     (tester) async {
-      final afterViewport = _date.add(const Duration(days: 5, hours: 12));
+      final afterViewport = _date.add(const Duration(days: 5));
       final entry = AgendaEntry(
         id: 'edge',
         title: '边缘短日程',
@@ -1126,7 +1157,8 @@ void main() {
       await _show(tester, [entry]);
       final viewport = tester.getRect(find.byType(AgendaTimeline));
       final painted = tester.getRect(_paintedBar(entry));
-      expect(painted.width, closeTo(180, .001));
+      expect(painted.width, greaterThanOrEqualTo(48 * 1.5 - .001));
+      expect(painted.width, lessThanOrEqualTo(48 * 3.25 + .001));
       expect(painted.left, lessThan(viewport.right));
       expect(painted.right, greaterThan(viewport.right));
       final card = tester.getRect(_bar(entry));
@@ -1160,11 +1192,9 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('Global lanes reserve space without rendering off-screen cards', (
+  testWidgets('Off-screen distant lanes collapse without rendering off-screen cards', (
     tester,
   ) async {
-    // Unfinished at the fixed 12:00 clock, so live-entry priority keeps it
-    // in the top lane where the painted bar stays on screen.
     final current = _event('current', 13);
     final farDay = _date.add(const Duration(days: 30));
     final offScreen = [
@@ -1185,7 +1215,7 @@ void main() {
         matching: find.byType(Scrollable),
       ),
     );
-    expect(scrollable.position.maxScrollExtent, greaterThan(0));
+    expect(scrollable.position.maxScrollExtent, 0);
     expect(_paintedBar(current), findsOneWidget);
     for (final entry in offScreen) {
       expect(_paintedBar(entry), findsNothing);
@@ -1224,10 +1254,19 @@ void main() {
   });
 
   testWidgets(
-    'Diagonal touch panning keeps the global range and vertical direction',
+    'Diagonal touch panning keeps the vertical direction across dense days',
     (tester) async {
       final entries = _stackedDeadlines();
-      await _show(tester, entries);
+      final trailing = [
+        for (var index = 0; index < 24; index++)
+          AgendaEntry(
+            id: 'trailing-${index.toString().padLeft(2, '0')}',
+            title: '后续重叠作业 $index',
+            kind: AgendaKind.deadline,
+            startsAt: _date.add(const Duration(days: 7, hours: 12)),
+          ),
+      ];
+      await _show(tester, [...entries, ...trailing]);
       final position = _lanePosition(tester);
       final maximum = position.maxScrollExtent;
       expect(maximum, greaterThan(0));
@@ -1479,6 +1518,161 @@ void main() {
     expect(find.byType(BottomSheet), findsNothing);
     await mouse.removePointer();
     await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  test('Live exams claim top lanes and simultaneous course DDLs cluster cleanly', () {
+    final now = DateTime.utc(2026, 12, 12, 12);
+    final mooc = [
+      for (var i = 0; i < 8; i++)
+        AgendaEntry(
+          id: 'mooc-$i',
+          title: '慕课作业 $i',
+          course: '大学物理',
+          kind: AgendaKind.deadline,
+          startsAt: DateTime.utc(2026, 12, 13, 23, 30),
+        ),
+    ];
+    final numericalDdls = [
+      for (var i = 4; i <= 6; i++)
+        AgendaEntry(
+          id: 'num-ch$i',
+          title: '第$i章作业提交',
+          course: '数值分析',
+          kind: AgendaKind.deadline,
+          startsAt: DateTime.utc(2026, 12, 16, 18, 28),
+        ),
+    ];
+    final numericalExam = AgendaEntry(
+      id: 'num-exam',
+      title: '100086022[数值分析]',
+      kind: AgendaKind.exam,
+      startsAt: DateTime.utc(2026, 12, 16, 18, 30),
+      endsAt: DateTime.utc(2026, 12, 16, 20, 30),
+    );
+    final placements = layoutAgendaTimeline(
+      [...mooc, ...numericalDdls, numericalExam],
+      minimumEventSpan: const Duration(minutes: 1),
+      now: now,
+    );
+    final byId = {for (final p in placements) p.entry.id: p};
+    // The live exam takes Lane 0 and does not collide with the 12/13 MOOC wave.
+    expect(byId['num-exam']!.lane, 0);
+    // The 3 simultaneous numerical-analysis DDLs stay contiguous right below it.
+    final numLanes = [
+      byId['num-ch4']!.lane,
+      byId['num-ch5']!.lane,
+      byId['num-ch6']!.lane,
+    ]..sort();
+    expect(numLanes, [1, 2, 3]);
+    // And none of the 12/16 cards are pushed below the 8 MOOC DDLs.
+    for (final p in placements) {
+      expect(p.lane, lessThan(12));
+    }
+  });
+
+  test('compactTimelineLanes collapses empty lanes smoothly without shrinking visible ones', () {
+    final early = [
+      for (var i = 0; i < 6; i++)
+        AgendaEntry(
+          id: 'early-$i',
+          title: '早期作业 $i',
+          kind: AgendaKind.deadline,
+          startsAt: _date.add(const Duration(hours: 12)),
+        ),
+    ];
+    final late = AgendaEntry(
+      id: 'late-exam',
+      title: '后期考试',
+      kind: AgendaKind.exam,
+      startsAt: _date.add(const Duration(days: 10, hours: 10)),
+      endsAt: _date.add(const Duration(days: 10, hours: 12)),
+    );
+    final placements = layoutAgendaTimeline(
+      [...early, late],
+      minimumEventSpan: const Duration(minutes: 1),
+      now: _date,
+    );
+    const laneHeight = 68.0;
+    const feather = Duration(hours: 18);
+
+    // On day 0, the 6 early lanes are visible (plus the exam's lane 0).
+    final atEarly = compactTimelineLanes(
+      placements,
+      left: _date.subtract(const Duration(days: 3)),
+      right: _date.add(const Duration(days: 3)),
+      featherSpan: feather,
+      laneHeight: laneHeight,
+    );
+    expect(atEarly.totalHeight, closeTo(6 * laneHeight, .001));
+    for (var i = 0; i < 6; i++) {
+      expect(atEarly.laneWeights[i], 1.0);
+    }
+
+    // Halfway through the feather past day 0, weights transition smoothly in (0, 1).
+    final midFeather = compactTimelineLanes(
+      placements,
+      left: _date.add(const Duration(hours: 21)),
+      right: _date.add(const Duration(days: 6)),
+      featherSpan: feather,
+      laneHeight: laneHeight,
+    );
+    for (var i = 0; i < 6; i++) {
+      expect(midFeather.laneWeights[i], greaterThan(0));
+      expect(midFeather.laneWeights[i], lessThan(1));
+    }
+
+    // On day 10, lanes 1..5 collapse completely while lane 0 stays full height.
+    final atLate = compactTimelineLanes(
+      placements,
+      left: _date.add(const Duration(days: 7)),
+      right: _date.add(const Duration(days: 13)),
+      featherSpan: feather,
+      laneHeight: laneHeight,
+    );
+    expect(atLate.laneWeights[0], 1.0);
+    for (var i = 1; i < 6; i++) {
+      expect(atLate.laneWeights[i], 0.0);
+    }
+    expect(atLate.totalHeight, closeTo(laneHeight, .001));
+  });
+
+  testWidgets('Panning past a dense day smoothly collapses empty lanes and restores them on return', (
+    tester,
+  ) async {
+    final dense = _stackedDeadlines();
+    final later = AgendaEntry(
+      id: 'later-single',
+      title: '后期单任务',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(days: 10, hours: 12)),
+    );
+    await _show(tester, [...dense, later]);
+    final position = _lanePosition(tester);
+    final initialMax = position.maxScrollExtent;
+    expect(initialMax, greaterThan(500));
+
+    // Pan horizontally past the dense day into the sparse day-10 window.
+    final gesture = await tester.startGesture(const Offset(340, 500));
+    for (var step = 0; step < 24; step++) {
+      await gesture.moveBy(const Offset(-20, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await gesture.cancel();
+    await tester.pumpAndSettle();
+    expect(position.maxScrollExtent, 0);
+    expect(_paintedBar(later), findsOneWidget);
+
+    // Panning back smoothly expands the dense day's lanes again.
+    final back = await tester.startGesture(const Offset(60, 500));
+    for (var step = 0; step < 24; step++) {
+      await back.moveBy(const Offset(20, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await back.cancel();
+    await tester.pumpAndSettle();
+    expect(position.maxScrollExtent, closeTo(initialMax, .01));
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });

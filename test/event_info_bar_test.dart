@@ -81,8 +81,23 @@ void main() {
       kind: AgendaKind.deadline,
       startsAt: _date.add(const Duration(days: 1, hours: 12)),
     );
-    final fixedCardSpan = Duration(
-      microseconds: (Duration.microsecondsPerDay * 3.75).round(),
+    final ddlCardSpan = Duration(
+      microseconds:
+          (Duration.microsecondsPerDay * (AgendaEntry.defaultTailDays - .25))
+              .round(),
+    );
+    final eventPaintedSpan = Duration(
+      microseconds:
+          (Duration.microsecondsPerDay *
+                  AgendaTimelineLayout.defaultEventInfoDays)
+              .round(),
+    );
+    final eventReservedSpan = Duration(
+      microseconds:
+          (Duration.microsecondsPerDay *
+                  (AgendaTimelineLayout.defaultEventInfoDays +
+                      AgendaTimelineLayout.eventInfoGutterDays))
+              .round(),
     );
     for (final reserve in [true, false]) {
       final placements = layoutAgendaTimeline(
@@ -95,22 +110,17 @@ void main() {
       final painted = byId['event']!;
       expect(
         painted.start,
-        reserve
-            ? event.startsAt.subtract(const Duration(days: 4))
-            : event.startsAt,
+        reserve ? event.startsAt.subtract(eventReservedSpan) : event.startsAt,
       );
       expect(
         painted.paintStart,
-        reserve ? event.startsAt.subtract(fixedCardSpan) : event.startsAt,
+        reserve ? event.startsAt.subtract(eventPaintedSpan) : event.startsAt,
       );
       expect(painted.end, event.endsAt);
       expect(painted.paintEnd, event.endsAt);
       // Deadlines keep their information lead regardless of this setting.
-      expect(
-        byId['ddl']!.start,
-        deadline.dueAt.subtract(const Duration(days: 4)),
-      );
-      expect(byId['ddl']!.paintStart, deadline.dueAt.subtract(fixedCardSpan));
+      expect(byId['ddl']!.start, deadline.dueAt.subtract(ddlCardSpan));
+      expect(byId['ddl']!.paintStart, deadline.dueAt.subtract(ddlCardSpan));
     }
   });
 
@@ -159,10 +169,10 @@ void main() {
       expect(bar('morning'), findsOneWidget);
       final shown = tester.widget<EventTimelineEntry>(event('morning'));
       expect(shown.showInformation, isTrue);
-      expect(
-        shown.geometry.startX - shown.geometry.informationLeft,
-        closeTo(48 * 3.75, .001),
-      );
+      final compactWidth =
+          shown.geometry.startX - shown.geometry.informationLeft;
+      expect(compactWidth, greaterThanOrEqualTo(48 * 1.5 - .001));
+      expect(compactWidth, lessThanOrEqualTo(48 * 3.25 + .001));
       // The information lead makes back-to-back intervals overlap in layout.
       expect(
         tester.getRect(card('morning')).top,
@@ -200,7 +210,7 @@ void main() {
       final restored = tester.widget<EventTimelineEntry>(event('morning'));
       expect(
         restored.geometry.startX - restored.geometry.informationLeft,
-        closeTo(48 * 3.75, .001),
+        closeTo(compactWidth, .001),
       );
       expect(
         tester.getRect(card('morning')).top,

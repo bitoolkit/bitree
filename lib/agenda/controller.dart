@@ -83,7 +83,7 @@ class AgendaController extends ChangeNotifier {
     var count = 0;
     final next = <AgendaEntry>[];
     for (final entry in _entries) {
-      if (entry.isDeadline && entry.tailDays == AgendaEntry.defaultTailDays) {
+      if (entry.isDeadline && entry.tailDays == 4) {
         count++;
         next.add(entry.copyWith(tailDays: null));
       } else {

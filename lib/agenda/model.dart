@@ -78,7 +78,7 @@ class AgendaEntry {
     }
   }
 
-  static const defaultTailDays = 4;
+  static const defaultTailDays = 3;
   static const minTailDays = 1;
   static const maxTailDays = 30;
 

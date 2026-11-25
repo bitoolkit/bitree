@@ -65,12 +65,12 @@ AgendaEntry _entry(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('Layout days default to four without writing preferences', () async {
+  test('Layout days default to three without writing preferences', () async {
     final preferences = MemoryPreferences();
     final settings = _settings(preferences);
     addTearDown(settings.dispose);
     await settings.initialize();
-    expect(settings.agendaLayoutDays.value, 4);
+    expect(settings.agendaLayoutDays.value, 3);
     expect(preferences.value(_key), isNull);
   });
 
@@ -94,11 +94,11 @@ void main() {
   );
 
   for (final invalid in ['', '0', '31', '-2', '2.5', 'unknown']) {
-    test('Invalid saved width falls back to four: $invalid', () async {
+    test('Invalid saved width falls back to three: $invalid', () async {
       final settings = _settings(MemoryPreferences({_key: invalid}));
       addTearDown(settings.dispose);
       await settings.initialize();
-      expect(settings.agendaLayoutDays.value, 4);
+      expect(settings.agendaLayoutDays.value, 3);
     });
   }
 
@@ -107,7 +107,7 @@ void main() {
     addTearDown(settings.dispose);
     expect(() => settings.setAgendaLayoutDays(0), throwsRangeError);
     expect(() => settings.setAgendaLayoutDays(31), throwsRangeError);
-    expect(settings.agendaLayoutDays.value, 4);
+    expect(settings.agendaLayoutDays.value, 3);
   });
 
   test('Rapid width changes persist in order with the latest last', () async {
@@ -201,13 +201,16 @@ void main() {
         now: _date,
         layoutDays: days,
       );
+      final cardSpan = Duration(
+        microseconds: (Duration.microsecondsPerDay * (days - .25)).round(),
+      );
       for (final placement in placements) {
         final entry = placement.entry;
         if (entry.startOnly) {
           expect(placement.start, entry.startsAt);
-          expect(placement.end, entry.startsAt.add(Duration(days: days)));
+          expect(placement.end, entry.startsAt.add(cardSpan));
         } else {
-          expect(placement.start, entry.dueAt.subtract(Duration(days: days)));
+          expect(placement.start, entry.dueAt.subtract(cardSpan));
           expect(placement.end, entry.realDueAt);
         }
       }
@@ -237,18 +240,17 @@ void main() {
       );
       for (final p in placements) {
         final entry = p.entry;
-        final span = Duration(days: entry.tailDays!);
         final cardSpan = Duration(
           microseconds: (Duration.microsecondsPerDay * (entry.tailDays! - .25))
               .round(),
         );
         expect(
           p.start,
-          entry.startOnly ? entry.startsAt : entry.dueAt.subtract(span),
+          entry.startOnly ? entry.startsAt : entry.dueAt.subtract(cardSpan),
         );
         expect(
           p.end,
-          entry.startOnly ? entry.startsAt.add(span) : entry.realDueAt,
+          entry.startOnly ? entry.startsAt.add(cardSpan) : entry.realDueAt,
         );
         expect(
           p.paintStart,
