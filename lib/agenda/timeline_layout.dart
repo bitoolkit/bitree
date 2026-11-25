@@ -186,9 +186,12 @@ List<AgendaTimelinePlacement> layoutAgendaTimeline(
   eventInfoDays: eventInfoDays,
 ).atZoom(1);
 
-/// Collapses lanes that have no cards near `[left, right]` with smoothstep
-/// feathering across [featherSpan], so panning horizontally glides empty rows
-/// closed without ever clipping or teleporting visible cards.
+/// Collapses trailing empty lanes below the lowest active lane near
+/// `[left, right]` with smoothstep feathering across [featherSpan].
+///
+/// A suffix maximum keeps every lane above an active lane at full height so
+/// visible cards never shift vertically while panning horizontally, while
+/// trailing blank height below the active lanes still collapses smoothly.
 CompactedTimelineLanes compactTimelineLanes(
   List<AgendaTimelinePlacement> placements, {
   required DateTime left,
@@ -229,6 +232,14 @@ CompactedTimelineLanes compactTimelineLanes(
     }
     if (weight > weights[placement.lane]) {
       weights[placement.lane] = weight;
+    }
+  }
+  var suffixMax = 0.0;
+  for (var index = laneCount - 1; index >= 0; index--) {
+    if (weights[index] > suffixMax) {
+      suffixMax = weights[index];
+    } else {
+      weights[index] = suffixMax;
     }
   }
   final tops = List<double>.filled(laneCount, 0.0);

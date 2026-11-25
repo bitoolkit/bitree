@@ -1676,4 +1676,65 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
+
+  testWidgets('Horizontal panning never shifts visible lower-lane cards vertically', (
+    tester,
+  ) async {
+    // Upper lanes (0..2) exit the left edge while a lower-lane card (lane 3)
+    // remains visible on screen, and trailing lanes (4..19) exit below it.
+    final upper = [
+      for (var i = 0; i < 3; i++)
+        AgendaEntry(
+          id: 'upper-$i',
+          title: '上方任务 $i',
+          kind: AgendaKind.deadline,
+          startsAt: _date.add(const Duration(hours: 12)),
+        ),
+    ];
+    final trailing = [
+      for (var i = 0; i < 16; i++)
+        AgendaEntry(
+          id: 'trailing-$i',
+          title: '下方密集任务 $i',
+          kind: AgendaKind.deadline,
+          startsAt: _date.add(const Duration(hours: 12)),
+          done: true,
+        ),
+    ];
+    final lower = AgendaEntry(
+      id: 'lower-steady',
+      title: '保持不动的任务',
+      kind: AgendaKind.deadline,
+      startsAt: _date.add(const Duration(days: 2, hours: 12)),
+    );
+    await _show(tester, [...upper, lower, ...trailing]);
+    final position = _lanePosition(tester);
+    final initialMax = position.maxScrollExtent;
+    expect(initialMax, greaterThan(0));
+    final initialTop = tester.getRect(_paintedBar(lower)).top;
+
+    // Pan horizontally past day 0 so upper (lanes 0..2) and trailing (lanes 4..19)
+    // leave the left edge completely while `lower` stays visible on screen.
+    final gesture = await tester.startGesture(const Offset(340, 500));
+    for (var step = 0; step < 18; step++) {
+      await gesture.moveBy(const Offset(-14, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(_paintedBar(lower), findsOneWidget);
+      expect(
+        tester.getRect(_paintedBar(lower)).top,
+        closeTo(initialTop, .001),
+        reason: 'step=$step: visible card shifted vertically during horizontal pan',
+      );
+    }
+    await gesture.cancel();
+    await tester.pumpAndSettle();
+    // Day-0 cards (upper + trailing) are now completely off screen, yet `lower`
+    // never shifted vertically while all 16 trailing lanes below it collapsed.
+    expect(_paintedBar(upper.first), findsNothing);
+    expect(_paintedBar(lower), findsOneWidget);
+    expect(tester.getRect(_paintedBar(lower)).top, closeTo(initialTop, .001));
+    expect(position.maxScrollExtent, 0);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
 }
