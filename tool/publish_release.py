@@ -4,13 +4,70 @@ import json
 import os
 import re
 import subprocess
+import sys
+import time
 from pathlib import Path
 
 from changelog import release_notes, unreleased_notes
 
 
+UPLOAD_ATTEMPTS = 4
+UPLOAD_BACKOFF_SECONDS = 2.0
+_TRANSIENT_UPLOAD_ERROR = re.compile(
+    r"HTTP (?:429|5\d\d)\b|connection reset|unexpected EOF|i/o timeout|"
+    r"TLS handshake timeout|timed out|temporary failure|stream error",
+    re.IGNORECASE,
+)
+
+
 def gh(*arguments):
     subprocess.run(["gh", *arguments], check=True, stdout=subprocess.DEVNULL)
+
+
+def upload_asset(
+    tag,
+    repository,
+    asset,
+    *,
+    attempts=UPLOAD_ATTEMPTS,
+    base_delay=UPLOAD_BACKOFF_SECONDS,
+):
+    command = [
+        "gh",
+        "release",
+        "upload",
+        tag,
+        "--repo",
+        repository,
+        "--clobber",
+        str(asset),
+    ]
+    for attempt in range(1, attempts + 1):
+        result = subprocess.run(
+            command,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            return
+        stderr = result.stderr.strip()
+        if stderr:
+            print(stderr, file=sys.stderr, flush=True)
+        retryable = bool(_TRANSIENT_UPLOAD_ERROR.search(stderr))
+        if not retryable or attempt == attempts:
+            raise subprocess.CalledProcessError(
+                result.returncode, command, stderr=result.stderr
+            )
+        delay = base_delay * (2 ** (attempt - 1))
+        print(
+            f"Retrying upload for {Path(asset).name} in {delay:.0f}s "
+            f"(attempt {attempt + 1}/{attempts})...",
+            file=sys.stderr,
+            flush=True,
+        )
+        time.sleep(delay)
 
 
 def github(path):
@@ -104,16 +161,8 @@ def main():
 
         gh(*command)
 
-    gh(
-        "release",
-        "upload",
-        tag,
-        "--repo",
-        repository,
-        "--clobber",
-        *map(str, assets),
-        str(checksums),
-    )
+    for asset in [*assets, checksums]:
+        upload_asset(tag, repository, asset)
 
     if development:
         ref = github(f"{endpoint}/git/ref/tags/{tag}")
