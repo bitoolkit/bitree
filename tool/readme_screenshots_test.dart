@@ -29,7 +29,6 @@ import 'package:bitree/schedule/ui/home_screen.dart';
 import 'package:bitree/school/service.dart';
 import 'package:bitree/school/storage.dart';
 import 'package:bitree/school/verification.dart';
-import 'package:bitree/ui/app_page.dart';
 import 'package:bitree/ui/theme.dart';
 import 'package:bitree/wencui/atlas.dart';
 import 'package:bitree/wencui/ui/wencui_map_screen.dart';
@@ -66,171 +65,183 @@ Future<void> main() async {
   });
 
   testWidgets('generate README screenshots from mock data', (tester) async {
-    await _setSurface(tester);
+    debugDisableShadows = false;
+    try {
+      await _setSurface(tester);
 
-    final home = _ScreenshotController(
-      schedule: _schedule(),
-      entries: _agendaEntries(),
-      academicRecord: _academicRecord(),
-      initialWeek: 9,
-    );
-    await home.initialize();
-    await tester.pumpWidget(
-      _capture(_app(_MainPreview(controller: home, selected: 0))),
-    );
-    await _pumpUi(tester);
-    await _captureScreenshot(tester, 'timetable.png');
+      final home = _ScreenshotController(
+        schedule: _schedule(),
+        entries: _agendaEntries(),
+        academicRecord: _academicRecord(),
+        initialWeek: 9,
+      );
+      await home.initialize();
+      await tester.pumpWidget(
+        _capture(_app(_MainPreview(controller: home, selected: 0))),
+      );
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      await _pumpUi(tester);
+      await _captureScreenshot(tester, 'timetable.png');
 
-    await tester.pumpWidget(
-      _capture(_app(_MainPreview(controller: home, selected: 1))),
-    );
-    await _pumpUi(tester);
-    await _captureScreenshot(tester, 'agenda.png');
+      await tester.pumpWidget(
+        _capture(_app(_MainPreview(controller: home, selected: 1))),
+      );
+      await _pumpUi(tester);
+      await _captureScreenshot(tester, 'agenda.png');
 
-    final academics = _ScreenshotController(
-      schedule: _schedule(),
-      entries: _agendaEntries(),
-      academicRecord: _academicRecord(),
-      initialWeek: 9,
-    );
-    await academics.initialize();
-    await tester.pumpWidget(
-      _capture(_app(GradesScreen(controller: academics))),
-    );
-    await _pumpUi(tester);
-    await _captureScreenshot(tester, 'grades.png');
+      final academics = _ScreenshotController(
+        schedule: _schedule(),
+        entries: _agendaEntries(),
+        academicRecord: _academicRecord(),
+        initialWeek: 9,
+      );
+      await academics.initialize();
+      await tester.pumpWidget(
+        _capture(_app(GradesScreen(controller: academics))),
+      );
+      await _pumpUi(tester);
+      await _captureScreenshot(tester, 'grades.png');
 
-    final retake = academics.academics.record.grades.firstWhere(
-      (grade) => grade.failed,
-    );
-    await tester.pumpWidget(
-      _capture(
-        _app(GradeSimulationScreen(controller: academics, retake: retake)),
-      ),
-    );
-    await _pumpUi(tester);
-    await _captureScreenshot(tester, 'grade-simulation.png');
-
-    await tester.pumpWidget(
-      _capture(_app(CreditProgressScreen(controller: academics))),
-    );
-    await _pumpUi(tester);
-    await _captureScreenshot(tester, 'credits.png');
-
-    final exams = _ScreenshotController(
-      schedule: _examSchedule(),
-      entries: _examEntries(),
-      academicRecord: _academicRecord(),
-    );
-    await exams.initialize();
-    await tester.pumpWidget(_capture(_app(ExamsScreen(controller: exams))));
-    await _pumpUi(tester);
-    await _captureScreenshot(tester, 'exams.png');
-
-    final classrooms = _ClassroomScreenshotController(
-      schedule: _schedule(),
-      entries: _agendaEntries(),
-      academicRecord: _academicRecord(),
-    );
-    await classrooms.initialize();
-    await tester.pumpWidget(
-      _capture(
-        _app(
-          ClassroomScreen(
-            repository: classrooms.classroomRepository,
-            school: classrooms.school,
-            timetable: classrooms.timetable,
-          ),
-        ),
-      ),
-    );
-    await _pumpUi(tester);
-    await _captureScreenshot(tester, 'classrooms.png');
-
-    final map = _ScreenshotController(
-      schedule: _schedule(),
-      entries: _agendaEntries(),
-      academicRecord: _academicRecord(),
-    );
-    await map.initialize();
-    await tester.runAsync(WencuiAtlas.load);
-    await tester.pumpWidget(
-      _capture(
-        _app(WencuiMapScreen(timetable: map.timetable, initialRoom: 'F704')),
-      ),
-    );
-    await tester.runAsync(
-      () => precacheImage(
-        const AssetImage('assets/wencui/7.jpg'),
-        tester.element(find.byType(WencuiMapScreen)),
-      ),
-    );
-    await _pumpUi(tester);
-    await _captureScreenshot(tester, 'wencui-map.png');
-
-    final moocStorage = MemoryMoocStorage()
-      ..account = MoocAccount(
-        id: 'mock-mooc-user',
-        name: '理枝同学',
-        credentials: MoocCredentials(
-          userAgent: 'Mozilla/5.0 (Linux; Android 15) BITree screenshot',
-          cookies: [
-            MoocCookie('NTESSTUDYSI', 'mock-session')
-              ..domain = 'www.icourse163.org'
-              ..path = '/'
-              ..secure = true,
-          ],
+      final retake = academics.academics.record.grades.firstWhere(
+        (grade) => grade.failed,
+      );
+      await tester.pumpWidget(
+        _capture(
+          _app(GradeSimulationScreen(controller: academics, retake: retake)),
         ),
       );
-    final mooc = _ScreenshotController(
-      schedule: _schedule(),
-      entries: _agendaEntries(),
-      academicRecord: _academicRecord(),
-      moocStorage: moocStorage,
-    );
-    await mooc.initialize();
-    tester.view.physicalSize = const Size(1200, 1000);
-    await tester.pumpWidget(
-      _capture(
-        _app(
-          Scaffold(
-            body: SettingsScreen(
-              controller: mooc,
-              checkingForUpdates: false,
-              onCheckForUpdates: () {},
+      await _pumpUi(tester);
+      await _captureScreenshot(tester, 'grade-simulation.png');
+
+      await tester.pumpWidget(
+        _capture(_app(CreditProgressScreen(controller: academics))),
+      );
+      await _pumpUi(tester);
+      await _captureScreenshot(tester, 'credits.png');
+
+      final exams = _ScreenshotController(
+        schedule: _examSchedule(),
+        entries: _examEntries(),
+        academicRecord: _academicRecord(),
+      );
+      await exams.initialize();
+      await tester.pumpWidget(_capture(_app(ExamsScreen(controller: exams))));
+      await _pumpUi(tester);
+      await _captureScreenshot(tester, 'exams.png');
+
+      final classrooms = _ClassroomScreenshotController(
+        schedule: _schedule(),
+        entries: _agendaEntries(),
+        academicRecord: _academicRecord(),
+      );
+      await classrooms.initialize();
+      await tester.pumpWidget(
+        _capture(
+          _app(
+            ClassroomScreen(
+              repository: classrooms.classroomRepository,
+              school: classrooms.school,
+              timetable: classrooms.timetable,
             ),
           ),
         ),
-      ),
-    );
-    await _pumpUi(tester);
-    await tester.tap(find.text('中国大学MOOC'));
-    await _pumpUi(tester);
-    await _captureScreenshot(tester, 'mooc-account.png');
-    await tester.tap(find.byTooltip('关闭').last);
-    await tester.pumpAndSettle();
-    tester.view.physicalSize = _screenshotSize;
+      );
+      await _pumpUi(tester);
+      await _captureScreenshot(tester, 'classrooms.png');
 
-    final widgetGuide = _ScreenshotController(
-      schedule: _schedule(),
-      entries: _agendaEntries(),
-      academicRecord: _academicRecord(),
-      initialWeek: 9,
-    );
-    await widgetGuide.initialize();
-    await tester.pumpWidget(
-      _capture(_app(_MainPreview(controller: widgetGuide, selected: 0))),
-    );
-    await _pumpUi(tester);
-    unawaited(showWidgetGuide(tester.element(find.byType(HomeScreen))));
-    await _pumpUi(tester);
-    await _captureScreenshot(tester, 'widget-guide.png');
-    await tester.tap(find.text('知道了'));
-    await tester.pumpAndSettle();
+      final map = _ScreenshotController(
+        schedule: _schedule(),
+        entries: _agendaEntries(),
+        academicRecord: _academicRecord(),
+      );
+      await map.initialize();
+      await tester.runAsync(WencuiAtlas.load);
+      await tester.pumpWidget(
+        _capture(
+          _app(WencuiMapScreen(timetable: map.timetable, initialRoom: 'F704')),
+        ),
+      );
+      await tester.runAsync(
+        () => precacheImage(
+          const AssetImage('assets/wencui/7.jpg'),
+          tester.element(find.byType(WencuiMapScreen)),
+        ),
+      );
+      await _pumpUi(tester);
+      await _captureScreenshot(tester, 'wencui-map.png');
 
-    await tester.pumpWidget(_capture(_app(const _AndroidWidgetMock())));
-    await _pumpUi(tester);
-    await _captureScreenshot(tester, 'android-widget.png');
+      final moocStorage = MemoryMoocStorage()
+        ..account = MoocAccount(
+          id: 'mock-mooc-user',
+          name: '理枝同学',
+          credentials: MoocCredentials(
+            userAgent: 'Mozilla/5.0 (Linux; Android 15) BITree screenshot',
+            cookies: [
+              MoocCookie('NTESSTUDYSI', 'mock-session')
+                ..domain = 'www.icourse163.org'
+                ..path = '/'
+                ..secure = true,
+              MoocCookie('STUDY_SESS', 'mock-session-token')
+                ..domain = 'www.icourse163.org'
+                ..path = '/'
+                ..secure = true,
+            ],
+          ),
+        );
+      final mooc = _ScreenshotController(
+        schedule: _schedule(),
+        entries: _agendaEntries(),
+        academicRecord: _academicRecord(),
+        moocStorage: moocStorage,
+      );
+      await mooc.initialize();
+      tester.view.physicalSize = const Size(1200, 1000);
+      await tester.pumpWidget(
+        _capture(
+          _app(
+            Scaffold(
+              body: SettingsScreen(
+                controller: mooc,
+                checkingForUpdates: false,
+                onCheckForUpdates: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await _pumpUi(tester);
+      await tester.tap(find.text('中国大学MOOC'));
+      await _pumpUi(tester);
+      await _captureScreenshot(tester, 'mooc-account.png');
+      await tester.tap(find.byTooltip('关闭').last);
+      await tester.pumpAndSettle();
+      tester.view.physicalSize = _screenshotSize;
+
+      final widgetGuide = _ScreenshotController(
+        schedule: _schedule(),
+        entries: _agendaEntries(),
+        academicRecord: _academicRecord(),
+        initialWeek: 9,
+      );
+      await widgetGuide.initialize();
+      await tester.pumpWidget(
+        _capture(_app(_MainPreview(controller: widgetGuide, selected: 0))),
+      );
+      await _pumpUi(tester);
+      unawaited(showWidgetGuide(tester.element(find.byType(HomeScreen))));
+      await _pumpUi(tester);
+      await _captureScreenshot(tester, 'widget-guide.png');
+      await tester.tap(find.text('知道了'));
+      await tester.pumpAndSettle();
+
+      await tester.pumpWidget(_capture(_app(const _AndroidWidgetMock())));
+      await _pumpUi(tester);
+      await _captureScreenshot(tester, 'android-widget.png');
+    } finally {
+      debugDisableShadows = true;
+    }
   });
 }
 
@@ -270,6 +281,14 @@ ThemeData _theme(Brightness brightness) {
   return theme.copyWith(
     textTheme: theme.textTheme.apply(fontFamily: 'Roboto'),
     primaryTextTheme: theme.primaryTextTheme.apply(fontFamily: 'Roboto'),
+    navigationRailTheme: theme.navigationRailTheme.copyWith(
+      selectedLabelTextStyle: withFont(
+        theme.navigationRailTheme.selectedLabelTextStyle,
+      ),
+      unselectedLabelTextStyle: withFont(
+        theme.navigationRailTheme.unselectedLabelTextStyle,
+      ),
+    ),
     appBarTheme: theme.appBarTheme.copyWith(
       titleTextStyle: withFont(theme.appBarTheme.titleTextStyle),
     ),
@@ -507,62 +526,82 @@ class _MainPreview extends StatelessWidget {
   final int selected;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: selected == 0
-        ? HomeScreen(controller: controller, now: _mockNow, active: false)
-        : ListenableBuilder(
-            listenable: controller.agenda,
-            builder: (context, _) =>
-                _AgendaPreview(controller: controller, now: _mockNow),
-          ),
-    bottomNavigationBar: DecoratedBox(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border(
-          top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-        ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Center(
-          heightFactor: 1,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
-            child: NavigationBar(
-              height: appNavigationBarHeight(context),
-              backgroundColor: Colors.transparent,
-              surfaceTintColor: Colors.transparent,
-              elevation: 0,
-              selectedIndex: selected,
-              onDestinationSelected: (_) {},
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home_rounded),
-                  label: '首页',
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Scaffold(
+      backgroundColor: scheme.surface,
+      body: Row(
+        children: [
+          ColoredBox(
+            color: scheme.surfaceContainerLow,
+            child: SafeArea(
+              right: false,
+              child: SizedBox(
+                width: 76,
+                child: NavigationRail(
+                  selectedIndex: selected,
+                  onDestinationSelected: (_) {},
+                  labelType: NavigationRailLabelType.all,
+                  groupAlignment: -0.92,
+                  leading: Padding(
+                    padding: const EdgeInsets.only(top: 10, bottom: 16),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.asset(
+                        'assets/brand/bitree.png',
+                        width: 30,
+                        height: 30,
+                      ),
+                    ),
+                  ),
+                  destinations: const [
+                    NavigationRailDestination(
+                      icon: Icon(Icons.home_outlined),
+                      selectedIcon: Icon(Icons.home_rounded),
+                      label: Text('首页'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.calendar_month_outlined),
+                      selectedIcon: Icon(Icons.calendar_month_rounded),
+                      label: Text('日程'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.grid_view_outlined),
+                      selectedIcon: Icon(Icons.grid_view_rounded),
+                      label: Text('工具'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.settings_outlined),
+                      selectedIcon: Icon(Icons.settings_rounded),
+                      label: Text('设置'),
+                    ),
+                  ],
                 ),
-                NavigationDestination(
-                  icon: Icon(Icons.calendar_month_outlined),
-                  selectedIcon: Icon(Icons.calendar_month_rounded),
-                  label: '日程',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.grid_view_outlined),
-                  selectedIcon: Icon(Icons.grid_view_rounded),
-                  label: '工具',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.settings_outlined),
-                  selectedIcon: Icon(Icons.settings_rounded),
-                  label: '设置',
-                ),
-              ],
+              ),
             ),
           ),
-        ),
+          VerticalDivider(
+            width: 1,
+            thickness: 1,
+            color: scheme.outlineVariant.withValues(alpha: 0.7),
+          ),
+          Expanded(
+            child: selected == 0
+                ? HomeScreen(
+                    controller: controller,
+                    now: _mockNow,
+                    active: false,
+                  )
+                : ListenableBuilder(
+                    listenable: controller.agenda,
+                    builder: (context, _) =>
+                        _AgendaPreview(controller: controller, now: _mockNow),
+                  ),
+          ),
+        ],
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _AgendaPreview extends StatelessWidget {
@@ -1093,7 +1132,7 @@ class _WidgetCard extends StatelessWidget {
             Text(
               '${_entries.length}项',
               style: const TextStyle(
-                color: Color(0xFFA85E3E),
+                color: Color(0xFF255188),
                 fontSize: 22,
                 fontWeight: FontWeight.w600,
               ),
