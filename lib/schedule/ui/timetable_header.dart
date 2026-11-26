@@ -97,14 +97,8 @@ class _DateHeading extends StatelessWidget {
       ),
       child: ExcludeSemantics(
         child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 2),
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          decoration: BoxDecoration(
-            color: current ? todayBackground : null,
-            borderRadius: const BorderRadius.vertical(
-              top: AppCorners.controlRadius,
-            ),
-          ),
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          decoration: BoxDecoration(color: current ? todayBackground : null),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
@@ -112,41 +106,58 @@ class _DateHeading extends StatelessWidget {
               Text(
                 localizedNarrowWeekday(l10n, date.weekday),
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11.5,
                   height: 1.2,
-                  color: current ? scheme.onSurface : scheme.onSurfaceVariant,
+                  fontWeight: current ? FontWeight.w600 : FontWeight.w500,
+                  color: current ? scheme.primary : scheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 3),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+                  padding: const EdgeInsets.fromLTRB(10, 2, 10, 0),
                   child: Badge(
                     isLabelVisible: agendaCount > 0,
-                    label: Text('$agendaCount'),
+                    label: Text(
+                      '$agendaCount',
+                      style: TextStyle(
+                        fontSize: 10,
+                        height: 1.1,
+                        fontWeight: FontWeight.w600,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                        color: current
+                            ? scheme.onPrimaryContainer
+                            : scheme.onPrimaryContainer,
+                      ),
+                    ),
                     backgroundColor: scheme.primaryContainer,
                     textColor: scheme.onPrimaryContainer,
-                    textStyle: const TextStyle(fontSize: 10, height: 1.2),
                     largeSize: 16,
-                    offset: const Offset(4, -4),
+                    offset: const Offset(6, -3),
                     child: Container(
+                      constraints: const BoxConstraints(
+                        minWidth: 28,
+                        minHeight: 26,
+                      ),
+                      alignment: Alignment.center,
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
+                        horizontal: 7,
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
                         color: current ? scheme.primary : null,
-                        borderRadius: AppCorners.control,
+                        borderRadius: AppCorners.compact,
                       ),
                       child: Text(
                         '${date.day}',
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: 17.5,
                           height: 1.15,
                           fontWeight: current
                               ? FontWeight.w600
                               : FontWeight.w500,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                           color: current ? scheme.onPrimary : scheme.onSurface,
                         ),
                       ),

@@ -138,30 +138,65 @@ class CalendarBlockTile extends StatelessWidget {
                     ),
                   );
                 }
-                final detailed = constraints.maxHeight >= 90 * scale;
+                final narrow = constraints.maxWidth < 100;
+                final horizontalPadding = narrow ? 4.0 : 10.0;
+                final verticalPadding = narrow ? 4.5 : 7.0;
+                final fontSize = narrow ? 12.0 : 13.5;
+                final lineHeight = fontSize * (narrow ? 1.24 : 1.32) * scale;
+                final showBadge =
+                    constraints.maxHeight >= 48 * scale &&
+                    (exam || items.length > 1);
+                final showLocation =
+                    constraints.maxHeight >= 90 * scale &&
+                    items.length == 1 &&
+                    items.single.location.isNotEmpty;
+                final badgeHeight = showBadge ? (15.0 * scale + 4.0) : 0.0;
+                final locationHeight = showLocation
+                    ? (28.0 * scale + 4.0)
+                    : 0.0;
+                final availableForTitle =
+                    constraints.maxHeight -
+                    verticalPadding * 2 -
+                    badgeHeight -
+                    locationHeight;
+                final titleMaxLines = (availableForTitle / lineHeight)
+                    .floor()
+                    .clamp(1, 20);
                 return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 6,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: horizontalPadding,
+                    vertical: verticalPadding,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (constraints.maxHeight >= 48 * scale &&
-                          (exam || items.length > 1)) ...[
-                        Text(
-                          items.length == 1
-                              ? l10n.exam
-                              : l10n.agendaItemCount(items.length),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 10,
-                            height: 1.2,
-                            color: foreground,
+                      if (showBadge) ...[
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: outline.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: narrow ? 4 : 5,
+                              vertical: 1,
+                            ),
+                            child: Text(
+                              items.length == 1
+                                  ? l10n.exam
+                                  : l10n.agendaItemCount(items.length),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 10,
+                                height: 1.15,
+                                fontWeight: FontWeight.w600,
+                                color: foreground,
+                              ),
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 3),
+                        const SizedBox(height: 4),
                       ],
                       Flexible(
                         child: Text(
@@ -172,19 +207,18 @@ class CalendarBlockTile extends StatelessWidget {
                               )
                               .join(' / '),
                           textAlign: TextAlign.start,
-                          maxLines: detailed ? 4 : 2,
+                          maxLines: titleMaxLines,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 12,
-                            height: 1.25,
+                            fontSize: fontSize,
+                            height: narrow ? 1.24 : 1.32,
+                            letterSpacing: -0.1,
                             fontWeight: FontWeight.w600,
                             color: foreground,
                           ),
                         ),
                       ),
-                      if (detailed &&
-                          items.length == 1 &&
-                          items.single.location.isNotEmpty) ...[
+                      if (showLocation) ...[
                         const SizedBox(height: 4),
                         Text(
                           items.single.location,
@@ -192,9 +226,9 @@ class CalendarBlockTile extends StatelessWidget {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: fontSize - 1.5,
                             height: 1.2,
-                            color: foreground,
+                            color: foreground.withValues(alpha: 0.8),
                           ),
                         ),
                       ],

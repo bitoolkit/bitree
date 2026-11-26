@@ -10,6 +10,8 @@ import '../../l10n/l10n.dart';
 import '../../sync/controller.dart';
 import '../../sync/ui/sync.dart';
 import '../../ui/app_dropdown_field.dart';
+import '../../ui/design.dart';
+import '../../ui/section_label.dart';
 import '../../ui/selection_controls.dart';
 import '../exam_conflicts.dart';
 import 'academic_common.dart';
@@ -101,47 +103,74 @@ class _ExamsScreenState extends State<ExamsScreen> {
                 style: theme.textTheme.bodySmall,
               ),
             ),
-          if (conflicts.isNotEmpty)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(
-                Icons.warning_amber_rounded,
-                color: theme.colorScheme.error,
+          if (conflicts.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Material(
+              color: theme.colorScheme.errorContainer,
+              shape: const RoundedRectangleBorder(
+                borderRadius: AppCorners.control,
               ),
-              title: Text(l10n.timeConflictsFound(conflicts.length)),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => _ExamConflictsScreen(
-                    controller: controller,
-                    term: term,
-                    includeClasses: _includeClasses,
-                    showPast: _showPast,
+              clipBehavior: Clip.antiAlias,
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 2,
+                ),
+                leading: Icon(
+                  Icons.warning_amber_rounded,
+                  color: theme.colorScheme.error,
+                ),
+                title: Text(
+                  l10n.timeConflictsFound(conflicts.length),
+                  style: TextStyle(
+                    color: theme.colorScheme.onErrorContainer,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                trailing: Icon(
+                  Icons.chevron_right_rounded,
+                  color: theme.colorScheme.error,
+                ),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => _ExamConflictsScreen(
+                      controller: controller,
+                      term: term,
+                      includeClasses: _includeClasses,
+                      showPast: _showPast,
+                    ),
                   ),
                 ),
               ),
             ),
+          ],
           for (final day in days.entries) ...[
             Padding(
-              padding: const EdgeInsets.only(top: 20, bottom: 8),
-              child: Text(
-                localizedAgendaDate(l10n, day.key),
-                style: theme.textTheme.bodySmall,
-              ),
+              padding: const EdgeInsets.only(top: 20),
+              child: AppSectionHeader(localizedAgendaDate(l10n, day.key)),
             ),
-            for (final exam in day.value)
+            for (var i = 0; i < day.value.length; i++) ...[
+              if (i > 0)
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: theme.colorScheme.outlineVariant.withValues(
+                    alpha: 0.55,
+                  ),
+                ),
               _ExamTile(
                 controller: controller,
-                exam: exam,
+                exam: day.value[i],
                 conflicts: conflicts
                     .where(
                       (conflict) =>
-                          conflict.exam.entry?.id == exam.id ||
-                          conflict.other.entry?.id == exam.id,
+                          conflict.exam.entry?.id == day.value[i].id ||
+                          conflict.other.entry?.id == day.value[i].id,
                     )
                     .toList(),
               ),
+            ],
           ],
           if (exams.isEmpty)
             AcademicEmpty(
@@ -185,7 +214,7 @@ class _ExamTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return ListTile(
-      contentPadding: EdgeInsets.zero,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       title: Text(exam.title),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

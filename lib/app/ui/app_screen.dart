@@ -88,111 +88,187 @@ class _AppScreenState extends State<AppScreen> {
 
   Widget _build(BuildContext context, DateTime now) {
     final l10n = context.l10n;
+    final scheme = Theme.of(context).colorScheme;
+    final useRail = MediaQuery.sizeOf(context).width >= 900;
+    final body = Stack(
+      fit: StackFit.expand,
+      children: [
+        IndexedStack(
+          index: _tab,
+          children: [
+            HomeScreen(
+              controller: widget.controller,
+              now: now,
+              active: _tab == 0,
+            ),
+            CalendarScreen(
+              controller: widget.controller,
+              now: now,
+              active: _tab == 1,
+            ),
+            ToolsScreen(controller: widget.controller),
+            SettingsScreen(
+              controller: widget.controller,
+              checkingForUpdates: _checkingUpdates,
+              onCheckForUpdates: () => _checkUpdates(),
+            ),
+          ],
+        ),
+        ListenableBuilder(
+          listenable: Listenable.merge([
+            widget.controller.school,
+            widget.controller.sync,
+          ]),
+          builder: (context, _) =>
+              widget.controller.school.busy || widget.controller.sync.busy
+              ? Positioned(
+                  top: MediaQuery.paddingOf(context).top,
+                  left: 0,
+                  right: 0,
+                  child: const LinearProgressIndicator(minHeight: 3),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
+    );
     return PopScope(
       canPop: _tab == 0,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop && _tab != 0) setState(() => _tab = 0);
       },
       child: Scaffold(
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            IndexedStack(
-              index: _tab,
-              children: [
-                HomeScreen(
-                  controller: widget.controller,
-                  now: now,
-                  active: _tab == 0,
-                ),
-                CalendarScreen(
-                  controller: widget.controller,
-                  now: now,
-                  active: _tab == 1,
-                ),
-                ToolsScreen(controller: widget.controller),
-                SettingsScreen(
-                  controller: widget.controller,
-                  checkingForUpdates: _checkingUpdates,
-                  onCheckForUpdates: () => _checkUpdates(),
-                ),
-              ],
-            ),
-            ListenableBuilder(
-              listenable: Listenable.merge([
-                widget.controller.school,
-                widget.controller.sync,
-              ]),
-              builder: (context, _) =>
-                  widget.controller.school.busy || widget.controller.sync.busy
-                  ? Positioned(
-                      top: MediaQuery.paddingOf(context).top,
-                      left: 0,
-                      right: 0,
-                      child: const LinearProgressIndicator(minHeight: 3),
-                    )
-                  : const SizedBox.shrink(),
-            ),
-          ],
-        ),
-        bottomNavigationBar: DecoratedBox(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            border: Border(
-              top: BorderSide(
-                color: Theme.of(context).colorScheme.outlineVariant,
-              ),
-            ),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Center(
-              heightFactor: 1,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 640),
-                child: NavigationBar(
-                  height: appNavigationBarHeight(context),
-                  backgroundColor: Colors.transparent,
-                  surfaceTintColor: Colors.transparent,
-                  elevation: 0,
-                  selectedIndex: _tab,
-                  onDestinationSelected: (value) =>
-                      setState(() => _tab = value),
-                  destinations: [
-                    NavigationDestination(
-                      icon: Icon(Icons.home_outlined),
-                      selectedIcon: Icon(Icons.home_rounded),
-                      label: l10n.navHome,
-                    ),
-                    NavigationDestination(
-                      icon: _AgendaNavigationIcon(
-                        agenda: widget.controller.agenda,
-                        now: now,
-                        icon: Icons.calendar_month_outlined,
+        body: useRail
+            ? Row(
+                children: [
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: scheme.surface,
+                      border: Border(
+                        right: BorderSide(
+                          color: scheme.outlineVariant.withValues(alpha: 0.65),
+                        ),
                       ),
-                      selectedIcon: _AgendaNavigationIcon(
-                        agenda: widget.controller.agenda,
-                        now: now,
-                        icon: Icons.calendar_month_rounded,
+                    ),
+                    child: NavigationRail(
+                      minWidth: 76,
+                      groupAlignment: -0.9,
+                      backgroundColor: Colors.transparent,
+                      labelType: NavigationRailLabelType.all,
+                      selectedIndex: _tab,
+                      onDestinationSelected: (value) =>
+                          setState(() => _tab = value),
+                      leading: Padding(
+                        padding: const EdgeInsets.only(top: 10, bottom: 16),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.asset(
+                            'assets/brand/bitree.png',
+                            width: 30,
+                            height: 30,
+                            errorBuilder: (_, _, _) => Icon(
+                              Icons.eco_rounded,
+                              size: 24,
+                              color: scheme.primary,
+                            ),
+                          ),
+                        ),
                       ),
-                      label: l10n.navAgenda,
+                      destinations: [
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.home_outlined),
+                          selectedIcon: const Icon(Icons.home_rounded),
+                          label: Text(l10n.navHome),
+                        ),
+                        NavigationRailDestination(
+                          icon: _AgendaNavigationIcon(
+                            agenda: widget.controller.agenda,
+                            now: now,
+                            icon: Icons.calendar_month_outlined,
+                          ),
+                          selectedIcon: _AgendaNavigationIcon(
+                            agenda: widget.controller.agenda,
+                            now: now,
+                            icon: Icons.calendar_month_rounded,
+                          ),
+                          label: Text(l10n.navAgenda),
+                        ),
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.grid_view_outlined),
+                          selectedIcon: const Icon(Icons.grid_view_rounded),
+                          label: Text(l10n.navTools),
+                        ),
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.settings_outlined),
+                          selectedIcon: const Icon(Icons.settings_rounded),
+                          label: Text(l10n.navSettings),
+                        ),
+                      ],
                     ),
-                    NavigationDestination(
-                      icon: Icon(Icons.grid_view_outlined),
-                      selectedIcon: Icon(Icons.grid_view_rounded),
-                      label: l10n.navTools,
+                  ),
+                  Expanded(child: body),
+                ],
+              )
+            : body,
+        bottomNavigationBar: useRail
+            ? null
+            : DecoratedBox(
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerLow,
+                  border: Border(
+                    top: BorderSide(
+                      color: scheme.outlineVariant.withValues(alpha: 0.7),
                     ),
-                    NavigationDestination(
-                      icon: Icon(Icons.settings_outlined),
-                      selectedIcon: Icon(Icons.settings_rounded),
-                      label: l10n.navSettings,
+                  ),
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Center(
+                    heightFactor: 1,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 640),
+                      child: NavigationBar(
+                        height: appNavigationBarHeight(context),
+                        backgroundColor: Colors.transparent,
+                        surfaceTintColor: Colors.transparent,
+                        elevation: 0,
+                        selectedIndex: _tab,
+                        onDestinationSelected: (value) =>
+                            setState(() => _tab = value),
+                        destinations: [
+                          NavigationDestination(
+                            icon: const Icon(Icons.home_outlined),
+                            selectedIcon: const Icon(Icons.home_rounded),
+                            label: l10n.navHome,
+                          ),
+                          NavigationDestination(
+                            icon: _AgendaNavigationIcon(
+                              agenda: widget.controller.agenda,
+                              now: now,
+                              icon: Icons.calendar_month_outlined,
+                            ),
+                            selectedIcon: _AgendaNavigationIcon(
+                              agenda: widget.controller.agenda,
+                              now: now,
+                              icon: Icons.calendar_month_rounded,
+                            ),
+                            label: l10n.navAgenda,
+                          ),
+                          NavigationDestination(
+                            icon: const Icon(Icons.grid_view_outlined),
+                            selectedIcon: const Icon(Icons.grid_view_rounded),
+                            label: l10n.navTools,
+                          ),
+                          NavigationDestination(
+                            icon: const Icon(Icons.settings_outlined),
+                            selectedIcon: const Icon(Icons.settings_rounded),
+                            label: l10n.navSettings,
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
-        ),
       ),
     );
   }

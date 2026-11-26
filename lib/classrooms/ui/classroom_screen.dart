@@ -14,6 +14,7 @@ import '../../ui/app_page.dart';
 import '../../ui/app_pickers.dart';
 import '../../ui/campus_time_builder.dart';
 import '../../ui/design.dart';
+import '../../ui/section_label.dart';
 import '../../ui/sheet_layout.dart';
 import '../../wencui/place.dart';
 import '../../wencui/ui/wencui_map_screen.dart';
@@ -312,59 +313,99 @@ class _ClassroomScreenState extends State<ClassroomScreen> {
       for (final group in groups) ...[
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
-            child: Text(group.building.name, style: theme.textTheme.bodySmall),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: AppSectionHeader(group.building.name),
           ),
         ),
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          sliver: SliverList.builder(
-            itemCount: group.rooms.length,
-            itemBuilder: (context, index) {
-              final room = group.rooms[index];
-              return DecoratedBox(
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: theme.colorScheme.outlineVariant),
-                  ),
-                ),
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(room.name),
-                  subtitle: Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Wrap(
-                      spacing: 12,
-                      runSpacing: 4,
-                      children: [
-                        for (final free in room.freePeriods)
-                          Text(
-                            free.localizedTime(l10n),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color:
-                                  (period != null
-                                      ? free.includes(period)
-                                      : current != null &&
-                                            free.contains(current))
-                                  ? theme.colorScheme.primary
-                                  : theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  trailing: const Icon(Icons.chevron_right_rounded, size: 18),
-                  onTap: () => _showRoom(
-                    context,
-                    widget.timetable,
-                    group.building,
-                    room,
-                    _queryState.date,
-                  ),
-                ),
-              );
-            },
+        SliverList.separated(
+          itemCount: group.rooms.length,
+          separatorBuilder: (_, _) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55),
+            ),
           ),
+          itemBuilder: (context, index) {
+            final room = group.rooms[index];
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 4,
+                  vertical: 4,
+                ),
+                title: Text(
+                  room.name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                ),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Wrap(
+                    spacing: 12,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      for (final free in room.freePeriods)
+                        Builder(
+                          builder: (context) {
+                            final highlighted = period != null
+                                ? free.includes(period)
+                                : current != null && free.contains(current);
+                            final text = Text(
+                              free.localizedTime(l10n),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontSize: 12.5,
+                                fontWeight: highlighted
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures(),
+                                ],
+                                color: highlighted
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.onSurfaceVariant,
+                              ),
+                            );
+                            if (!highlighted) return text;
+                            return DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primaryContainer
+                                    .withValues(alpha: 0.7),
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                child: text,
+                              ),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+                trailing: Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                onTap: () => _showRoom(
+                  context,
+                  widget.timetable,
+                  group.building,
+                  room,
+                  _queryState.date,
+                ),
+              ),
+            );
+          },
         ),
       ],
       if (groups.isNotEmpty)

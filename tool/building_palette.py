@@ -70,8 +70,16 @@ def colors(hue, chroma=1):
     a = math.cos(math.radians(hue)) * chroma
     b = math.sin(math.radians(hue)) * chroma
     return {
-        "light": [srgb(0.90, a * 0.065, b * 0.065), srgb(0.27, 0, 0), srgb(0.46, a * 0.12, b * 0.12)],
-        "dark": [srgb(0.30, a * 0.045, b * 0.045), srgb(0.95, 0, 0), srgb(0.78, a * 0.12, b * 0.12)],
+        "light": [
+            srgb(0.912, a * 0.064, b * 0.064),
+            srgb(0.27, a * 0.055, b * 0.055),
+            srgb(0.47, a * 0.115, b * 0.115),
+        ],
+        "dark": [
+            srgb(0.28, a * 0.044, b * 0.044),
+            srgb(0.94, a * 0.025, b * 0.025),
+            srgb(0.77, a * 0.115, b * 0.115),
+        ],
     }
 
 

@@ -253,8 +253,8 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
     final todayColumn = currentWeek ? today.weekday - 1 : null;
     final theme = Theme.of(context);
     final todayBackground = theme.brightness == Brightness.dark
-        ? theme.colorScheme.surfaceContainer
-        : theme.colorScheme.primary.withValues(alpha: 0.08);
+        ? theme.colorScheme.primary.withValues(alpha: 0.11)
+        : theme.colorScheme.primary.withValues(alpha: 0.075);
     final scale = MediaQuery.textScalerOf(context).scale(1);
 
     final days = [
@@ -283,62 +283,81 @@ class _TimetableState extends State<Timetable> with WidgetsBindingObserver {
         ),
     ];
 
-    final gutterWidth = 30.0 * scale;
-    return Column(
-      children: [
-        TimetableHeader(
-          controller: widget.agenda,
-          monday: monday,
-          now: _currentTime.value,
-          gutterWidth: gutterWidth,
-          todayBackground: todayBackground,
-        ),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final preferredRowHeight = 48.0 * scale;
-              final availableRowHeight =
-                  constraints.maxHeight / sectionTimes.length;
-              // A tiny shortfall should compress the grid instead of creating
-              // a distracting few-pixel vertical scroll.
-              final rowHeight =
-                  _fitToScreen || availableRowHeight >= preferredRowHeight * 0.9
-                  ? availableRowHeight
-                  : preferredRowHeight;
-              _rowHeight = rowHeight;
-
-              return NotificationListener<ScrollMetricsNotification>(
-                onNotification: (_) {
-                  unawaited(_revealCurrentTime());
-                  return false;
-                },
-                child: NotificationListener<ScrollNotification>(
-                  onNotification: _onScroll,
-                  child: SingleChildScrollView(
-                    controller: _vertical,
-                    physics: _fitToScreen
-                        ? const NeverScrollableScrollPhysics()
-                        : null,
-                    child: RepaintBoundary(
-                      child: TimetableGrid(
-                        timetable: widget.timetable,
-                        agenda: widget.agenda,
-                        monday: monday,
-                        layouts: layouts,
-                        gutterWidth: gutterWidth,
-                        rowHeight: rowHeight,
-                        todayColumn: todayColumn,
-                        todayBackground: todayBackground,
-                        currentTime: _currentTime,
+    return LayoutBuilder(
+      builder: (context, outer) {
+        final gutterWidth = (outer.maxWidth >= 720 ? 48.0 : 32.0) * scale;
+        return ColoredBox(
+          color: theme.colorScheme.surface,
+          child: Column(
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: theme.colorScheme.outlineVariant.withValues(
+                        alpha: 0.75,
                       ),
                     ),
                   ),
                 ),
-              );
-            },
+                child: TimetableHeader(
+                  controller: widget.agenda,
+                  monday: monday,
+                  now: _currentTime.value,
+                  gutterWidth: gutterWidth,
+                  todayBackground: todayBackground,
+                ),
+              ),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final preferredRowHeight = 48.0 * scale;
+                    final availableRowHeight =
+                        constraints.maxHeight / sectionTimes.length;
+                    // A tiny shortfall should compress the grid instead of creating
+                    // a distracting few-pixel vertical scroll.
+                    final rowHeight =
+                        _fitToScreen ||
+                            availableRowHeight >= preferredRowHeight * 0.9
+                        ? availableRowHeight
+                        : preferredRowHeight;
+                    _rowHeight = rowHeight;
+
+                    return NotificationListener<ScrollMetricsNotification>(
+                      onNotification: (_) {
+                        unawaited(_revealCurrentTime());
+                        return false;
+                      },
+                      child: NotificationListener<ScrollNotification>(
+                        onNotification: _onScroll,
+                        child: SingleChildScrollView(
+                          controller: _vertical,
+                          physics: _fitToScreen
+                              ? const NeverScrollableScrollPhysics()
+                              : null,
+                          child: RepaintBoundary(
+                            child: TimetableGrid(
+                              timetable: widget.timetable,
+                              agenda: widget.agenda,
+                              monday: monday,
+                              layouts: layouts,
+                              gutterWidth: gutterWidth,
+                              rowHeight: rowHeight,
+                              todayColumn: todayColumn,
+                              todayBackground: todayBackground,
+                              currentTime: _currentTime,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 }

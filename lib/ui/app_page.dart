@@ -63,7 +63,7 @@ class AppPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: inset, vertical: 4),
+                  padding: EdgeInsets.symmetric(horizontal: inset, vertical: 6),
                   child: splitHeader
                       ? Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,

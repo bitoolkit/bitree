@@ -3,8 +3,8 @@ part of 'building_palette.dart';
 
 const unknownBuildingPalette = BuildingPalette(
   name: '地点待定',
-  light: (fill: 0xFFDEDEDE, text: 0xFF262626, accent: 0xFF585858),
-  dark: (fill: 0xFF2E2E2E, text: 0xFFEEEEEE, accent: 0xFFB7B7B7),
+  light: (fill: 0xFFE2E2E2, text: 0xFF262626, accent: 0xFF5B5B5B),
+  dark: (fill: 0xFF292929, text: 0xFFEBEBEB, accent: 0xFFB4B4B4),
 );
 
 const _buildingData = [
@@ -13,8 +13,8 @@ const _buildingData = [
     BuildingPalette(
       name: '文萃楼A',
       area: CampusArea.wencui,
-      light: (fill: 0xFFB8ECD1, text: 0xFF262626, accent: 0xFF026947),
-      dark: (fill: 0xFF163527, text: 0xFFEEEEEE, accent: 0xFF67CFA0),
+      light: (fill: 0xFFBDF0D5, text: 0xFF042F1E, accent: 0xFF036C49),
+      dark: (fill: 0xFF123022, text: 0xFFDDF1E6, accent: 0xFF68CB9E),
     ),
   ),
   (
@@ -22,8 +22,8 @@ const _buildingData = [
     BuildingPalette(
       name: '文萃楼B',
       area: CampusArea.wencui,
-      light: (fill: 0xFFBBECCD, text: 0xFF262626, accent: 0xFF04693E),
-      dark: (fill: 0xFF193525, text: 0xFFEEEEEE, accent: 0xFF70CE98),
+      light: (fill: 0xFFC0EFD1, text: 0xFF092E1B, accent: 0xFF056D41),
+      dark: (fill: 0xFF142F20, text: 0xFFDEF1E5, accent: 0xFF71CA96),
     ),
   ),
   (
@@ -31,8 +31,8 @@ const _buildingData = [
     BuildingPalette(
       name: '文萃楼C',
       area: CampusArea.wencui,
-      light: (fill: 0xFFBDEBCC, text: 0xFF262626, accent: 0xFF016A3B),
-      dark: (fill: 0xFF1A3524, text: 0xFFEEEEEE, accent: 0xFF73CE96),
+      light: (fill: 0xFFC1EFD0, text: 0xFF0B2E1A, accent: 0xFF026D3D),
+      dark: (fill: 0xFF152F1F, text: 0xFFDFF0E4, accent: 0xFF74CA94),
     ),
   ),
   (
@@ -40,8 +40,8 @@ const _buildingData = [
     BuildingPalette(
       name: '文萃楼D',
       area: CampusArea.wencui,
-      light: (fill: 0xFFBBECCE, text: 0xFF262626, accent: 0xFF046940),
-      dark: (fill: 0xFF183525, text: 0xFFEEEEEE, accent: 0xFF6ECF9A),
+      light: (fill: 0xFFBFF0D2, text: 0xFF082E1C, accent: 0xFF066C42),
+      dark: (fill: 0xFF142F20, text: 0xFFDEF1E5, accent: 0xFF6FCA98),
     ),
   ),
   (
@@ -49,8 +49,8 @@ const _buildingData = [
     BuildingPalette(
       name: '文萃楼E',
       area: CampusArea.wencui,
-      light: (fill: 0xFFBAECCF, text: 0xFF262626, accent: 0xFF036942),
-      dark: (fill: 0xFF183526, text: 0xFFEEEEEE, accent: 0xFF6CCF9C),
+      light: (fill: 0xFFBEF0D3, text: 0xFF072E1D, accent: 0xFF046C45),
+      dark: (fill: 0xFF132F21, text: 0xFFDEF1E5, accent: 0xFF6DCB9A),
     ),
   ),
   (
@@ -58,8 +58,8 @@ const _buildingData = [
     BuildingPalette(
       name: '文萃楼F',
       area: CampusArea.wencui,
-      light: (fill: 0xFFB9ECCF, text: 0xFF262626, accent: 0xFF056944),
-      dark: (fill: 0xFF173526, text: 0xFFEEEEEE, accent: 0xFF6ACF9D),
+      light: (fill: 0xFFBEF0D4, text: 0xFF062E1D, accent: 0xFF006C46),
+      dark: (fill: 0xFF133021, text: 0xFFDEF1E5, accent: 0xFF6CCB9B),
     ),
   ),
   (
@@ -67,8 +67,8 @@ const _buildingData = [
     BuildingPalette(
       name: '文萃楼G',
       area: CampusArea.wencui,
-      light: (fill: 0xFFB7ECD3, text: 0xFF262626, accent: 0xFF056849),
-      dark: (fill: 0xFF153528, text: 0xFFEEEEEE, accent: 0xFF63D0A3),
+      light: (fill: 0xFFBBF0D7, text: 0xFF032F1F, accent: 0xFF006C4C),
+      dark: (fill: 0xFF113023, text: 0xFFDDF1E7, accent: 0xFF65CBA1),
     ),
   ),
   (
@@ -76,8 +76,8 @@ const _buildingData = [
     BuildingPalette(
       name: '文萃楼H',
       area: CampusArea.wencui,
-      light: (fill: 0xFFB3EDD8, text: 0xFF262626, accent: 0xFF066851),
-      dark: (fill: 0xFF12352B, text: 0xFFEEEEEE, accent: 0xFF58D0AD),
+      light: (fill: 0xFFB8F0DC, text: 0xFF002F23, accent: 0xFF016B54),
+      dark: (fill: 0xFF0D3026, text: 0xFFDCF1E9, accent: 0xFF5BCCAA),
     ),
   ),
   (
@@ -85,8 +85,8 @@ const _buildingData = [
     BuildingPalette(
       name: '文萃楼I',
       area: CampusArea.wencui,
-      light: (fill: 0xFFB4EDD6, text: 0xFF262626, accent: 0xFF00684F),
-      dark: (fill: 0xFF13352A, text: 0xFFEEEEEE, accent: 0xFF5CD0AA),
+      light: (fill: 0xFFB9F0DA, text: 0xFF002F22, accent: 0xFF016B51),
+      dark: (fill: 0xFF0E3025, text: 0xFFDCF1E8, accent: 0xFF5ECCA7),
     ),
   ),
   (
@@ -94,8 +94,8 @@ const _buildingData = [
     BuildingPalette(
       name: '文萃楼J',
       area: CampusArea.wencui,
-      light: (fill: 0xFFB2EDDA, text: 0xFF262626, accent: 0xFF046754),
-      dark: (fill: 0xFF11352C, text: 0xFFEEEEEE, accent: 0xFF54D0B1),
+      light: (fill: 0xFFB6F1DE, text: 0xFF012E24, accent: 0xFF056B56),
+      dark: (fill: 0xFF0C3027, text: 0xFFDBF1EA, accent: 0xFF57CCAE),
     ),
   ),
   (
@@ -103,8 +103,8 @@ const _buildingData = [
     BuildingPalette(
       name: '文萃楼K',
       area: CampusArea.wencui,
-      light: (fill: 0xFFB3EDD8, text: 0xFF262626, accent: 0xFF056851),
-      dark: (fill: 0xFF12352B, text: 0xFFEEEEEE, accent: 0xFF58D0AD),
+      light: (fill: 0xFFB8F0DC, text: 0xFF012E23, accent: 0xFF066B54),
+      dark: (fill: 0xFF0D3026, text: 0xFFDCF1E9, accent: 0xFF5BCCAB),
     ),
   ),
   (
@@ -112,8 +112,8 @@ const _buildingData = [
     BuildingPalette(
       name: '文萃楼L',
       area: CampusArea.wencui,
-      light: (fill: 0xFFB4EDD7, text: 0xFF262626, accent: 0xFF046850),
-      dark: (fill: 0xFF13352A, text: 0xFFEEEEEE, accent: 0xFF5AD0AB),
+      light: (fill: 0xFFB8F0DB, text: 0xFF012E22, accent: 0xFF056B52),
+      dark: (fill: 0xFF0E3025, text: 0xFFDCF1E8, accent: 0xFF5DCCA8),
     ),
   ),
   (
@@ -121,8 +121,8 @@ const _buildingData = [
     BuildingPalette(
       name: '文萃楼M',
       area: CampusArea.wencui,
-      light: (fill: 0xFFB5ECD5, text: 0xFF262626, accent: 0xFF01684D),
-      dark: (fill: 0xFF143529, text: 0xFFEEEEEE, accent: 0xFF5FD0A7),
+      light: (fill: 0xFFBAF0D9, text: 0xFF012F21, accent: 0xFF026B4F),
+      dark: (fill: 0xFF0F3024, text: 0xFFDCF1E8, accent: 0xFF61CCA4),
     ),
   ),
   (
@@ -130,8 +130,8 @@ const _buildingData = [
     BuildingPalette(
       name: '文萃楼',
       area: CampusArea.wencui,
-      light: (fill: 0xFFB7ECD3, text: 0xFF262626, accent: 0xFF066849),
-      dark: (fill: 0xFF153528, text: 0xFFEEEEEE, accent: 0xFF64D0A3),
+      light: (fill: 0xFFBBF0D7, text: 0xFF032F1F, accent: 0xFF016C4B),
+      dark: (fill: 0xFF113023, text: 0xFFDDF1E7, accent: 0xFF65CBA1),
     ),
   ),
   (
@@ -139,8 +139,8 @@ const _buildingData = [
     BuildingPalette(
       name: '综合教学楼A',
       area: CampusArea.northTeaching,
-      light: (fill: 0xFFC7E1FE, text: 0xFF262626, accent: 0xFF1A5998),
-      dark: (fill: 0xFF1D2F44, text: 0xFFEEEEEE, accent: 0xFF81BCFE),
+      light: (fill: 0xFFCEE5FF, text: 0xFF112740, accent: 0xFF225C99),
+      dark: (fill: 0xFF182A3E, text: 0xFFE0EDFC, accent: 0xFF7DB9FC),
     ),
   ),
   (
@@ -148,8 +148,8 @@ const _buildingData = [
     BuildingPalette(
       name: '综合教学楼B',
       area: CampusArea.northTeaching,
-      light: (fill: 0xFFC4E2FF, text: 0xFF262626, accent: 0xFF065B97),
-      dark: (fill: 0xFF1A3043, text: 0xFFEEEEEE, accent: 0xFF77BEFF),
+      light: (fill: 0xFFCBE5FF, text: 0xFF0D2840, accent: 0xFF155E97),
+      dark: (fill: 0xFF162B3E, text: 0xFFDFEDFC, accent: 0xFF76BAFA),
     ),
   ),
   (
@@ -157,8 +157,8 @@ const _buildingData = [
     BuildingPalette(
       name: '综合教学楼',
       area: CampusArea.northTeaching,
-      light: (fill: 0xFFC6E1FF, text: 0xFF262626, accent: 0xFF125A98),
-      dark: (fill: 0xFF1C2F44, text: 0xFFEEEEEE, accent: 0xFF7CBDFE),
+      light: (fill: 0xFFCDE5FF, text: 0xFF0F2840, accent: 0xFF1C5D98),
+      dark: (fill: 0xFF172A3E, text: 0xFFDFEDFC, accent: 0xFF79B9FB),
     ),
   ),
   (
@@ -166,8 +166,8 @@ const _buildingData = [
     BuildingPalette(
       name: '理科教学楼',
       area: CampusArea.southScience,
-      light: (fill: 0xFFF2DCAD, text: 0xFF262626, accent: 0xFF705300),
-      dark: (fill: 0xFF382C11, text: 0xFFEEEEEE, accent: 0xFFDAB155),
+      light: (fill: 0xFFF5E0B2, text: 0xFF322400, accent: 0xFF735601),
+      dark: (fill: 0xFF33270D, text: 0xFFF3EAD9, accent: 0xFFD5AF57),
     ),
   ),
   (
@@ -175,8 +175,8 @@ const _buildingData = [
     BuildingPalette(
       name: '理学楼',
       area: CampusArea.southScience,
-      light: (fill: 0xFFF6DAAE, text: 0xFF262626, accent: 0xFF745004),
-      dark: (fill: 0xFF3A2B12, text: 0xFFEEEEEE, accent: 0xFFE1AD57),
+      light: (fill: 0xFFFADEB3, text: 0xFF352201, accent: 0xFF785300),
+      dark: (fill: 0xFF35260D, text: 0xFFF5EAD9, accent: 0xFFDCAB59),
     ),
   ),
   (
@@ -184,8 +184,8 @@ const _buildingData = [
     BuildingPalette(
       name: '物理实验中心',
       area: CampusArea.southScience,
-      light: (fill: 0xFFF4DAAE, text: 0xFF262626, accent: 0xFF735102),
-      dark: (fill: 0xFF392B11, text: 0xFFEEEEEE, accent: 0xFFDFAF56),
+      light: (fill: 0xFFF8DEB2, text: 0xFF342301, accent: 0xFF765403),
+      dark: (fill: 0xFF34260D, text: 0xFFF4EAD9, accent: 0xFFDAAC58),
     ),
   ),
   (
@@ -193,8 +193,8 @@ const _buildingData = [
     BuildingPalette(
       name: '化学实验中心',
       area: CampusArea.southScience,
-      light: (fill: 0xFFF8D8AF, text: 0xFF262626, accent: 0xFF774E03),
-      dark: (fill: 0xFF3B2A12, text: 0xFFEEEEEE, accent: 0xFFE5AB59),
+      light: (fill: 0xFFFCDCB3, text: 0xFF362202, accent: 0xFF7B5104),
+      dark: (fill: 0xFF36250E, text: 0xFFF6E9D9, accent: 0xFFE0A95B),
     ),
   ),
   (
@@ -202,8 +202,8 @@ const _buildingData = [
     BuildingPalette(
       name: '工业生态楼',
       area: CampusArea.southEngineering,
-      light: (fill: 0xFFFFD4BB, text: 0xFF262626, accent: 0xFF884204),
-      dark: (fill: 0xFF402718, text: 0xFFEEEEEE, accent: 0xFFF4A16C),
+      light: (fill: 0xFFFFD9C3, text: 0xFF3B1E0A, accent: 0xFF8B4509),
+      dark: (fill: 0xFF3A2213, text: 0xFFFAE7DC, accent: 0xFFEE9F6D),
     ),
   ),
   (
@@ -211,8 +211,8 @@ const _buildingData = [
     BuildingPalette(
       name: '徐特立图书馆',
       area: CampusArea.northTeaching,
-      light: (fill: 0xFFC0E3FF, text: 0xFF262626, accent: 0xFF045D8F),
-      dark: (fill: 0xFF183043, text: 0xFFEEEEEE, accent: 0xFF6DC0FE),
+      light: (fill: 0xFFC8E6FF, text: 0xFF08293F, accent: 0xFF056093),
+      dark: (fill: 0xFF142B3D, text: 0xFFDDEEFB, accent: 0xFF6EBDF7),
     ),
   ),
   (
@@ -220,8 +220,8 @@ const _buildingData = [
     BuildingPalette(
       name: '行政楼',
       area: CampusArea.northTeaching,
-      light: (fill: 0xFFC1E3FF, text: 0xFF262626, accent: 0xFF025D90),
-      dark: (fill: 0xFF183043, text: 0xFFEEEEEE, accent: 0xFF6EC0FE),
+      light: (fill: 0xFFC9E6FE, text: 0xFF09293F, accent: 0xFF036094),
+      dark: (fill: 0xFF142B3D, text: 0xFFDEEEFB, accent: 0xFF6FBCF8),
     ),
   ),
   (
@@ -229,8 +229,8 @@ const _buildingData = [
     BuildingPalette(
       name: '文博中心',
       area: CampusArea.eastFacilities,
-      light: (fill: 0xFFF1D1FA, text: 0xFF262626, accent: 0xFF733F83),
-      dark: (fill: 0xFF37263C, text: 0xFFEEEEEE, accent: 0xFFD89EE9),
+      light: (fill: 0xFFF4D5FE, text: 0xFF321D38, accent: 0xFF754384),
+      dark: (fill: 0xFF322237, text: 0xFFF2E6F6, accent: 0xFFD39DE4),
     ),
   ),
   (
@@ -238,8 +238,8 @@ const _buildingData = [
     BuildingPalette(
       name: '文化体育中心',
       area: CampusArea.eastFacilities,
-      light: (fill: 0xFFEBD3FF, text: 0xFF262626, accent: 0xFF6C4289),
-      dark: (fill: 0xFF35273F, text: 0xFFEEEEEE, accent: 0xFFCFA1F1),
+      light: (fill: 0xFFEED8FF, text: 0xFF2F1E3A, accent: 0xFF6E468A),
+      dark: (fill: 0xFF302339, text: 0xFFF0E7F8, accent: 0xFFCB9FEB),
     ),
   ),
   (
@@ -247,8 +247,8 @@ const _buildingData = [
     BuildingPalette(
       name: '信创楼A',
       area: CampusArea.eastFacilities,
-      light: (fill: 0xFFE4D6FE, text: 0xFF262626, accent: 0xFF644590),
-      dark: (fill: 0xFF322841, text: 0xFFEEEEEE, accent: 0xFFC4A5F8),
+      light: (fill: 0xFFE7DBFF, text: 0xFF2B1F3D, accent: 0xFF664991),
+      dark: (fill: 0xFF2C243B, text: 0xFFEEE8FA, accent: 0xFFC0A3F2),
     ),
   ),
   (
@@ -256,8 +256,8 @@ const _buildingData = [
     BuildingPalette(
       name: '工程训练中心',
       area: CampusArea.southEngineering,
-      light: (fill: 0xFFFFD3C2, text: 0xFF262626, accent: 0xFF8D3C18),
-      dark: (fill: 0xFF41261B, text: 0xFFEEEEEE, accent: 0xFFF89D79),
+      light: (fill: 0xFFFFD8CA, text: 0xFF3C1C0F, accent: 0xFF8E4120),
+      dark: (fill: 0xFF3B2117, text: 0xFFFBE6DE, accent: 0xFFF29B79),
     ),
   ),
   (
@@ -265,8 +265,8 @@ const _buildingData = [
     BuildingPalette(
       name: '南区操场',
       area: CampusArea.southScience,
-      light: (fill: 0xFFF1DCAD, text: 0xFF262626, accent: 0xFF6E5404),
-      dark: (fill: 0xFF372C11, text: 0xFFEEEEEE, accent: 0xFFD8B255),
+      light: (fill: 0xFFF4E0B2, text: 0xFF322400, accent: 0xFF725601),
+      dark: (fill: 0xFF32270D, text: 0xFFF2EBD9, accent: 0xFFD4AF57),
     ),
   ),
 ];

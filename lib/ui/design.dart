@@ -13,7 +13,7 @@ abstract final class AppSpacing {
 abstract final class AppCorners {
   static const controlRadius = Radius.circular(10);
   static const _panelRadius = Radius.circular(20);
-  static const compact = BorderRadius.all(Radius.circular(6));
+  static const compact = BorderRadius.all(Radius.circular(8));
   static const control = BorderRadius.all(controlRadius);
   static const panel = BorderRadius.all(_panelRadius);
   static const sheet = BorderRadius.vertical(top: _panelRadius);

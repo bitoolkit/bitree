@@ -104,13 +104,24 @@ class _TimelineGridPainter extends CustomPainter {
     final today = calendarDate(now);
     final tomorrow = DateTime.utc(today.year, today.month, today.day + 1);
     final dayWidth = 24 * pixelsPerHour;
+    if (!header) {
+      canvas.drawRect(
+        Offset.zero & size,
+        Paint()..color = scheme.surfaceContainerLow,
+      );
+    } else {
+      canvas.drawRect(
+        Offset.zero & size,
+        Paint()..color = scheme.surfaceContainerLow,
+      );
+    }
     canvas.drawRect(
       Rect.fromLTRB(x(today), 0, x(tomorrow), size.height),
-      Paint()..color = scheme.primary.withValues(alpha: 0.06),
+      Paint()..color = scheme.primary.withValues(alpha: 0.048),
     );
     final gridPaint = Paint()
       ..strokeWidth = 1
-      ..color = scheme.outlineVariant.withValues(alpha: 0.65);
+      ..color = scheme.outlineVariant.withValues(alpha: 0.5);
     // Text density must not change the grid's one-day / one-hour endpoints.
     final hourStep = <int>[1, 2, 3, 6, 12, 24].firstWhere(
       (hours) => hours * pixelsPerHour >= cellWidth - 0.001,
@@ -282,6 +293,7 @@ class _TimelineNowPainter extends CustomPainter {
         ..color = color
         ..strokeWidth = 1.5,
     );
+    canvas.drawCircle(Offset(nowX, 3), 3, Paint()..color = color);
     canvas.restore();
   }
 

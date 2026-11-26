@@ -105,26 +105,118 @@ class AppSegmentedControl<T> extends StatelessWidget {
   final ValueChanged<T>? onChanged;
 
   @override
-  Widget build(BuildContext context) => SegmentedButton<T>(
-    expandedInsets: EdgeInsets.zero,
-    showSelectedIcon: false,
-    segments: [
-      for (final option in options.entries)
-        ButtonSegment(
-          value: option.key,
-          label: Text(
-            option.value,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final dark = theme.brightness == Brightness.dark;
+    final keys = options.keys.toList(growable: false);
+    final selectedIndex = keys.indexOf(value);
+    final alignmentX = keys.length <= 1
+        ? 0.0
+        : -1.0 + 2.0 * selectedIndex / (keys.length - 1);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainer,
+        borderRadius: AppCorners.control,
+        border: Border.all(
+          color: dark
+              ? Colors.white.withValues(alpha: 0.05)
+              : scheme.outlineVariant.withValues(alpha: 0.35),
         ),
-    ],
-    selected: {value},
-    onSelectionChanged: onChanged == null
-        ? null
-        : (selection) => onChanged!(selection.single),
-  );
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(3),
+        child: Stack(
+          fit: StackFit.passthrough,
+          children: [
+            if (selectedIndex >= 0 && keys.isNotEmpty)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: AnimatedAlign(
+                    alignment: AlignmentDirectional(alignmentX, 0),
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    child: FractionallySizedBox(
+                      widthFactor: 1 / keys.length,
+                      heightFactor: 1,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: dark
+                              ? scheme.surfaceContainerHighest
+                              : scheme.surfaceContainerLowest,
+                          borderRadius: BorderRadius.circular(7),
+                          border: dark
+                              ? Border.all(
+                                  color: Colors.white.withValues(alpha: 0.08),
+                                )
+                              : null,
+                          boxShadow: dark
+                              ? null
+                              : const [
+                                  BoxShadow(
+                                    color: Color(0x1014171D),
+                                    blurRadius: 3,
+                                    offset: Offset(0, 1),
+                                  ),
+                                  BoxShadow(
+                                    color: Color(0x0614171D),
+                                    blurRadius: 1,
+                                    offset: Offset(0, 0.5),
+                                  ),
+                                ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            SegmentedButton<T>(
+              expandedInsets: EdgeInsets.zero,
+              showSelectedIcon: false,
+              style: SegmentedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                selectedBackgroundColor: Colors.transparent,
+                foregroundColor: scheme.onSurfaceVariant,
+                selectedForegroundColor: scheme.onSurface,
+                side: BorderSide.none,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                minimumSize: const Size(0, 36),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                visualDensity: VisualDensity.standard,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              segments: [
+                for (final option in options.entries)
+                  ButtonSegment(
+                    value: option.key,
+                    label: Text(
+                      option.value,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight: option.key == value
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+              ],
+              selected: {value},
+              onSelectionChanged: onChanged == null
+                  ? null
+                  : (selection) => onChanged!(selection.single),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// A compact, consistently aligned row for a single checkbox choice.

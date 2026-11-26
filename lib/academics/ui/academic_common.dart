@@ -99,28 +99,51 @@ class AcademicSummary extends StatelessWidget {
   final List<({String label, String value})> values;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 20),
-    child: Wrap(
-      spacing: 32,
-      runSpacing: 16,
-      children: [
-        for (final item in values)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(item.label, style: Theme.of(context).textTheme.bodySmall),
-              const SizedBox(height: 4),
-              Text(
-                item.value,
-                style: Theme.of(context).textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-      ],
-    ),
-  );
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Wrap(
+        spacing: 28,
+        runSpacing: 14,
+        crossAxisAlignment: WrapCrossAlignment.start,
+        children: [
+          for (var index = 0; index < values.length; index++)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(values[index].label, style: theme.textTheme.bodySmall),
+                const SizedBox(height: 4),
+                Text(
+                  values[index].value,
+                  style:
+                      (index == 0
+                              ? theme.textTheme.headlineSmall?.copyWith(
+                                  fontSize: 30,
+                                  height: 1.15,
+                                  letterSpacing: -0.6,
+                                  fontWeight: FontWeight.w700,
+                                  color: scheme.primary,
+                                )
+                              : theme.textTheme.titleLarge?.copyWith(
+                                  fontSize: 20,
+                                  height: 1.25,
+                                  letterSpacing: -0.3,
+                                  fontWeight: FontWeight.w600,
+                                  color: scheme.onSurface,
+                                ))
+                          ?.copyWith(
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 class GradeListTile extends StatelessWidget {
@@ -131,15 +154,16 @@ class GradeListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final scheme = Theme.of(context).colorScheme;
     return ListTile(
-      contentPadding: EdgeInsets.zero,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
       title: Text(grade.name),
       subtitle: Text(
         [
           l10n.credits(creditText(grade.credits)),
           grade.category,
           if (grade.failed) l10n.failedCourse,
-        ].where((text) => text.isNotEmpty).join('  '),
+        ].where((text) => text.isNotEmpty).join(' · '),
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -151,14 +175,17 @@ class GradeListTile extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: grade.failed
-                    ? Theme.of(context).colorScheme.error
-                    : null,
+                fontFeatures: const [FontFeature.tabularFigures()],
+                color: grade.failed ? scheme.error : scheme.onSurface,
               ),
             ),
           ),
           const SizedBox(width: 4),
-          const Icon(Icons.chevron_right_rounded, size: 18),
+          Icon(
+            Icons.chevron_right_rounded,
+            size: 18,
+            color: scheme.onSurfaceVariant,
+          ),
         ],
       ),
       onTap: onTap,
