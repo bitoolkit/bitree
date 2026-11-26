@@ -17,37 +17,41 @@ class _TimetableBackground extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final columnWidth = size.width / 7;
     final paint = Paint();
-    const radius = Radius.circular(6);
 
+    // Subtle alternating row bands so eyes can track periods across all 7 days.
+    paint.color = surfaceColor.withValues(alpha: 0.032);
     for (var section = 1; section < sectionTimes.length; section += 2) {
-      paint.color = surfaceColor.withValues(alpha: 0.025);
-      final band = Rect.fromLTWH(
-        0,
-        section * rowHeight + 2,
-        size.width,
-        math.max(0.0, rowHeight - 4),
-      );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(band, const Radius.circular(4)),
+      canvas.drawRect(
+        Rect.fromLTWH(0, section * rowHeight, size.width, rowHeight),
         paint,
       );
     }
 
     if (todayColumn != null) {
       final column = Rect.fromLTWH(
-        todayColumn! * columnWidth + 2,
+        todayColumn! * columnWidth,
         0,
-        math.max(0.0, columnWidth - 4),
+        columnWidth,
         size.height,
       );
-      canvas.drawRRect(
-        RRect.fromRectAndCorners(
-          column,
-          bottomLeft: radius,
-          bottomRight: radius,
-        ),
-        paint..color = todayBackground,
-      );
+      canvas.drawRect(column, paint..color = todayBackground);
+    }
+
+    final verticalLine = Paint()
+      ..color = surfaceColor.withValues(alpha: 0.09)
+      ..strokeWidth = 1;
+    for (var day = 0; day < 7; day++) {
+      final x = day * columnWidth;
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), verticalLine);
+    }
+
+    for (var section = 1; section < sectionTimes.length; section++) {
+      final y = section * rowHeight;
+      final isMajorBreak = section == 5 || section == 10;
+      final linePaint = Paint()
+        ..color = surfaceColor.withValues(alpha: isMajorBreak ? 0.20 : 0.09)
+        ..strokeWidth = isMajorBreak ? 1.25 : 1;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), linePaint);
     }
   }
 
@@ -93,9 +97,11 @@ class _PeriodLabel extends StatelessWidget {
               children: [
                 Text(
                   '$section',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                    color: scheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -108,9 +114,10 @@ class _PeriodLabel extends StatelessWidget {
                       softWrap: false,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 9.5,
                         height: 1.2,
-                        color: scheme.onSurfaceVariant,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                        color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
                       ),
                     ),
                   ),

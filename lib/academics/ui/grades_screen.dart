@@ -6,6 +6,7 @@ import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../sync/controller.dart';
 import '../../sync/ui/sync.dart';
+import '../../ui/design.dart';
 import '../../ui/selection_controls.dart';
 import '../model.dart';
 import 'academic_common.dart';
@@ -86,10 +87,30 @@ class _GradesScreenState extends State<GradesScreen> {
                   startSync(context, controller, targets: {SyncTarget.grades}),
             )
           else ...[
-            SizedBox(
-              width: double.infinity,
+            Align(
+              alignment: AlignmentDirectional.centerStart,
               child: OutlinedButton.icon(
                 key: const Key('grade-scope-button'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 38),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  backgroundColor: scopeFiltered
+                      ? Theme.of(context).colorScheme.primaryContainer
+                      : Theme.of(context).colorScheme.surfaceContainerLow,
+                  foregroundColor: scopeFiltered
+                      ? Theme.of(context).colorScheme.onPrimaryContainer
+                      : Theme.of(context).colorScheme.onSurface,
+                  side: BorderSide(
+                    color: scopeFiltered
+                        ? Theme.of(context).colorScheme.primary
+                              .withValues(alpha: 0.35)
+                        : Theme.of(context).colorScheme.outlineVariant
+                              .withValues(alpha: 0.7),
+                  ),
+                ),
                 onPressed: () async {
                   final scope = await showGradeScopeSheet(
                     context,
@@ -102,7 +123,7 @@ class _GradesScreenState extends State<GradesScreen> {
                     _onlyFailed = false;
                   });
                 },
-                icon: const Icon(Icons.tune_rounded),
+                icon: const Icon(Icons.tune_rounded, size: 18),
                 label: Text(
                   scopeFiltered ? l10n.gradeScopeFiltered : l10n.gradeScope,
                 ),
@@ -138,49 +159,108 @@ class _GradesScreenState extends State<GradesScreen> {
               value: _byTerm,
               onChanged: (value) => setState(() => _byTerm = value),
             ),
-            const SizedBox(height: 12),
-            if (_byTerm)
-              for (final value in terms)
+            const SizedBox(height: 16),
+            if (_byTerm) ...[
+              for (var i = 0; i < terms.length; i++) ...[
+                if (i > 0)
+                  Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: Theme.of(context).colorScheme.outlineVariant
+                        .withValues(alpha: 0.55),
+                  ),
                 _TermPerformance(
-                  term: value,
+                  term: terms[i],
                   stats: AcademicStats(
-                    grades.where((grade) => grade.term == value),
+                    grades.where((grade) => grade.term == terms[i]),
                   ),
-                )
-            else ...[
-              if (stats.failed.isNotEmpty)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(
-                    Icons.error_outline_rounded,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                  title: Text(
-                    _onlyFailed
-                        ? l10n.onlyFailedCourses
-                        : singleTerm == null
-                        ? l10n.coursesNotPassed(stats.failed.length)
-                        : l10n.termCoursesNotPassed(stats.failed.length),
-                  ),
-                  trailing: Text(_onlyFailed ? l10n.showAll : l10n.view),
-                  onTap: () => setState(() => _onlyFailed = !_onlyFailed),
                 ),
-              for (final grade in _onlyFailed ? stats.failed : grades)
+              ],
+            ] else ...[
+              if (stats.failed.isNotEmpty) ...[
+                Material(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: AppCorners.control,
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 2,
+                    ),
+                    leading: Icon(
+                      Icons.error_outline_rounded,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    title: Text(
+                      _onlyFailed
+                          ? l10n.onlyFailedCourses
+                          : singleTerm == null
+                          ? l10n.coursesNotPassed(stats.failed.length)
+                          : l10n.termCoursesNotPassed(stats.failed.length),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onErrorContainer,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    trailing: Text(
+                      _onlyFailed ? l10n.showAll : l10n.view,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    onTap: () => setState(() => _onlyFailed = !_onlyFailed),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              for (
+                var i = 0;
+                i < (_onlyFailed ? stats.failed : grades).length;
+                i++
+              ) ...[
+                if (i > 0)
+                  Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: Theme.of(context).colorScheme.outlineVariant
+                        .withValues(alpha: 0.55),
+                  ),
                 GradeListTile(
-                  grade: grade,
-                  onTap: () => showGradeDetails(context, controller, grade),
+                  grade: (_onlyFailed ? stats.failed : grades)[i],
+                  onTap: () => showGradeDetails(
+                    context,
+                    controller,
+                    (_onlyFailed ? stats.failed : grades)[i],
+                  ),
                 ),
+              ],
               if (grades.isEmpty)
                 Padding(
                   padding: const EdgeInsets.all(24),
                   child: Text(l10n.noCoursesInScope),
                 ),
             ],
-            const Divider(height: 32),
+            const SizedBox(height: 12),
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: Theme.of(context).colorScheme.outlineVariant
+                  .withValues(alpha: 0.55),
+            ),
             ListTile(
-              contentPadding: EdgeInsets.zero,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 4,
+                vertical: 2,
+              ),
               title: Text(l10n.creditProgress),
-              trailing: const Icon(Icons.chevron_right_rounded),
+              trailing: Icon(
+                Icons.chevron_right_rounded,
+                size: 19,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute<void>(
@@ -204,7 +284,7 @@ class _TermPerformance extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 16),
+    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

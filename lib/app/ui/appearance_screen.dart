@@ -20,6 +20,7 @@ class AppearanceScreen extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return AppRoutePage(
       title: l10n.appearance,
+      maxWidth: 720,
       child: ListenableBuilder(
         listenable: Listenable.merge([settings, settings.timetableHeightMode]),
         builder: (context, _) => ListView(

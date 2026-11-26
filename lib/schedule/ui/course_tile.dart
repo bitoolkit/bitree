@@ -61,6 +61,26 @@ class CourseTile extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
+                  if (!isToday)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: AppCorners.compact,
+                            border: Border.all(
+                              color: Color.lerp(
+                                colors.fill,
+                                colors.accent,
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? 0.22
+                                    : 0.16,
+                              )!,
+                              width: 0.75,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   if (progress case final value?)
                     Align(
                       alignment: Alignment.topCenter,
@@ -80,10 +100,10 @@ class CourseTile extends StatelessWidget {
                           40 * media.textScaler.scale(1);
                       final horizontalPadding = compact
                           ? 1.0
-                          : (narrow ? 3.0 : 10.0);
+                          : (narrow ? 4.0 : 10.0);
                       final verticalPadding = compact
                           ? 0.0
-                          : (narrow ? 4.0 : 6.0);
+                          : (narrow ? 4.5 : 7.0);
                       final spacing = narrow ? 3.0 : 4.0;
                       final width =
                           constraints.maxWidth - horizontalPadding * 2;
@@ -95,13 +115,15 @@ class CourseTile extends StatelessWidget {
                       final defaults = DefaultTextStyle.of(context);
                       final titleStyle = TextStyle(
                         fontSize: fontSize,
-                        height: narrow ? 1.25 : 1.4,
+                        height: narrow ? 1.24 : 1.35,
+                        letterSpacing: -0.1,
                         fontWeight: FontWeight.w600,
                         color: colors.text,
                       );
                       final roomStyle = TextStyle(
-                        fontSize: fontSize - 1,
-                        height: narrow ? 1.2 : 1.35,
+                        fontSize: fontSize - 1.5,
+                        height: narrow ? 1.2 : 1.3,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                         color: progress != null
                             ? colors.text
                             : colors.secondaryText,

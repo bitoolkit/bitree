@@ -11,62 +11,62 @@ typedef _TimelineColors = ({Color fill, Color text, Color accent});
 enum _TimelineTone {
   exam(
     light: (
-      fill: Color(0xFFF4DAAE),
-      text: Color(0xFF262626),
-      accent: Color(0xFF735102),
+      fill: Color(0xFFF5E0B2),
+      text: Color(0xFF322400),
+      accent: Color(0xFF735601),
     ),
     dark: (
-      fill: Color(0xFF392B11),
-      text: Color(0xFFEEEEEE),
-      accent: Color(0xFFDFAF56),
+      fill: Color(0xFF33270D),
+      text: Color(0xFFF3EAD9),
+      accent: Color(0xFFD5AF57),
     ),
   ),
   physicsLabDeadline(
     light: (
-      fill: Color(0xFFC7E1FE),
-      text: Color(0xFF262626),
-      accent: Color(0xFF1A5998),
+      fill: Color(0xFFCEE5FF),
+      text: Color(0xFF112740),
+      accent: Color(0xFF225C99),
     ),
     dark: (
-      fill: Color(0xFF1D2F44),
-      text: Color(0xFFEEEEEE),
-      accent: Color(0xFF81BCFE),
+      fill: Color(0xFF182A3E),
+      text: Color(0xFFE0EDFC),
+      accent: Color(0xFF7DB9FC),
     ),
   ),
   lexue(
     light: (
-      fill: Color(0xFFFFD3C2),
-      text: Color(0xFF262626),
-      accent: Color(0xFF8D3C18),
+      fill: Color(0xFFFFD8CA),
+      text: Color(0xFF3C1C0F),
+      accent: Color(0xFF8E4120),
     ),
     dark: (
-      fill: Color(0xFF41261B),
-      text: Color(0xFFEEEEEE),
-      accent: Color(0xFFF89D79),
+      fill: Color(0xFF3B2117),
+      text: Color(0xFFFBE6DE),
+      accent: Color(0xFFF29B79),
     ),
   ),
   eclass(
     light: (
-      fill: Color(0xFFEBD3FF),
-      text: Color(0xFF262626),
-      accent: Color(0xFF6C4289),
+      fill: Color(0xFFEED8FF),
+      text: Color(0xFF2F1E3A),
+      accent: Color(0xFF6E468A),
     ),
     dark: (
-      fill: Color(0xFF35273F),
-      text: Color(0xFFEEEEEE),
-      accent: Color(0xFFCFA1F1),
+      fill: Color(0xFF302339),
+      text: Color(0xFFF0E7F8),
+      accent: Color(0xFFCB9FEB),
     ),
   ),
   mooc(
     light: (
-      fill: Color(0xFFB8ECD1),
-      text: Color(0xFF262626),
-      accent: Color(0xFF026947),
+      fill: Color(0xFFBDF0D5),
+      text: Color(0xFF042F1E),
+      accent: Color(0xFF036C49),
     ),
     dark: (
-      fill: Color(0xFF163527),
-      text: Color(0xFFEEEEEE),
-      accent: Color(0xFF67CFA0),
+      fill: Color(0xFF123022),
+      text: Color(0xFFDDF1E6),
+      accent: Color(0xFF68CB9E),
     ),
   );
 
@@ -108,7 +108,9 @@ enum _TimelineTone {
   late final _TimelineColors colors;
   if (customColors != null) {
     colors = (
-      fill: customColors.fill.withValues(alpha: customColors.fill.a * fillAlpha),
+      fill: customColors.fill.withValues(
+        alpha: customColors.fill.a * fillAlpha,
+      ),
       text: customColors.text.withValues(
         alpha: customColors.text.a * foregroundAlpha,
       ),
@@ -121,7 +123,9 @@ enum _TimelineTone {
     colors = (
       fill: values.fill.withValues(alpha: values.fill.a * fillAlpha),
       text: values.text.withValues(alpha: values.text.a * foregroundAlpha),
-      accent: values.accent.withValues(alpha: values.accent.a * foregroundAlpha),
+      accent: values.accent.withValues(
+        alpha: values.accent.a * foregroundAlpha,
+      ),
     );
   } else if (agendaPaletteColors(theme) case final blockPalette?) {
     final fill = Color(blockPalette.fill);

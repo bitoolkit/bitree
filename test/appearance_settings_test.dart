@@ -5,6 +5,7 @@ import 'package:bitree/main.dart';
 import 'package:bitree/schedule/height_mode.dart';
 import 'package:bitree/ui/app_menu_anchor.dart';
 import 'package:bitree/ui/course_palette.dart';
+import 'package:bitree/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -42,10 +43,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(AppearanceScreen), findsOneWidget);
       expect(find.text('课表高度'), findsOneWidget);
-      expect(
-        find.byType(SegmentedButton<TimetableHeightMode>),
-        findsOneWidget,
-      );
+      expect(find.byType(SegmentedButton<TimetableHeightMode>), findsOneWidget);
       expect(find.text('浅色模式调色板'), findsOneWidget);
       expect(find.text('深色模式调色板'), findsOneWidget);
       expect(find.text('导入调色板'), findsOneWidget);
@@ -113,8 +111,9 @@ void main() {
         theme.extension<CoursePaletteTheme>()!.palette,
         same(controller.settings.paletteFor(Brightness.dark)),
       );
-      expect(theme.colorScheme.surface, const Color(0xFF171717));
-      expect(theme.colorScheme.surfaceContainer, const Color(0xFF282828));
+      final darkScheme = bitreeTheme(Brightness.dark).colorScheme;
+      expect(theme.colorScheme.surface, darkScheme.surface);
+      expect(theme.colorScheme.surfaceContainer, darkScheme.surfaceContainer);
 
       await tester.tap(find.byType(BackButton));
       await tester.pumpAndSettle();

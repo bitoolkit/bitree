@@ -69,7 +69,12 @@ class AgendaListTile extends StatelessWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: scheme.outlineVariant)),
+        color: scheme.surfaceContainerLow,
+        border: Border(
+          bottom: BorderSide(
+            color: scheme.outlineVariant.withValues(alpha: 0.55),
+          ),
+        ),
       ),
       child: SwipeActionTile(
         enabled: !controller.busy,

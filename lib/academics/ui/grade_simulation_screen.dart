@@ -176,7 +176,13 @@ class _GradeSimulationScreenState extends State<GradeSimulationScreen> {
                             : l10n.scoreValue('$needed')
                       : result.gpa?.toStringAsFixed(2) ?? '—',
                   style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
+                    fontSize: _courses.isEmpty ? 20 : 30,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: _courses.isEmpty ? -0.2 : -0.6,
+                    color: _courses.isEmpty
+                        ? theme.colorScheme.onSurfaceVariant
+                        : theme.colorScheme.primary,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
                 if (!_targetMode &&
@@ -202,36 +208,51 @@ class _GradeSimulationScreenState extends State<GradeSimulationScreen> {
               label: Text(l10n.addCourse),
             ),
           ),
-          for (final course in _courses)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(course.name),
-              subtitle: Text(
-                [
-                  l10n.credits(creditText(course.credits)),
-                  if (course.replaces != null) l10n.retake,
-                ].join('  '),
+          for (var i = 0; i < _courses.length; i++) ...[
+            if (i > 0)
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55),
               ),
-              onTap: () => _edit(course),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextButton(
-                    onPressed: () => _edit(course),
-                    child: Text(
-                      _targetMode
-                          ? l10n.editAction
-                          : l10n.scoreValue(creditText(course.score)),
-                    ),
+            Builder(
+              builder: (context) {
+                final course = _courses[i];
+                return ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
                   ),
-                  IconButton(
-                    tooltip: l10n.removeSimulatedCourse,
-                    onPressed: () => _remove(course),
-                    icon: const Icon(Icons.close_rounded, size: 18),
+                  title: Text(course.name),
+                  subtitle: Text(
+                    [
+                      l10n.credits(creditText(course.credits)),
+                      if (course.replaces != null) l10n.retake,
+                    ].join(' · '),
                   ),
-                ],
-              ),
+                  onTap: () => _edit(course),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextButton(
+                        onPressed: () => _edit(course),
+                        child: Text(
+                          _targetMode
+                              ? l10n.editAction
+                              : l10n.scoreValue(creditText(course.score)),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: l10n.removeSimulatedCourse,
+                        onPressed: () => _remove(course),
+                        icon: const Icon(Icons.close_rounded, size: 18),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
+          ],
           AppToggleTile(
             title: Text(l10n.retakeUsesHighest),
             value: _replaceRetakes,

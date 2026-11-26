@@ -7,6 +7,7 @@ import '../../l10n/formats.dart';
 import '../../l10n/l10n.dart';
 import '../../sync/controller.dart';
 import '../../sync/ui/sync.dart';
+import '../../ui/design.dart';
 import '../model.dart';
 import 'academic_common.dart';
 import 'credit_targets_dialog.dart';
@@ -74,7 +75,7 @@ class CreditProgressScreen extends StatelessWidget {
                 [
                   plan.year,
                   plan.major,
-                ].where((text) => text.isNotEmpty).join('  '),
+                ].where((text) => text.isNotEmpty).join(' · '),
                 style: theme.textTheme.titleMedium,
               ),
             AcademicSummary(
@@ -107,28 +108,67 @@ class CreditProgressScreen extends StatelessWidget {
               LinearProgressIndicator(
                 value: (earned / target).clamp(0, 1).toDouble(),
                 minHeight: 6,
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(999),
               ),
             const SizedBox(height: 20),
             if (stats.failed
                     .where((grade) => grade.attribute.contains('必修'))
                     .toList()
-                case final failed when failed.isNotEmpty)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  Icons.error_outline_rounded,
-                  color: theme.colorScheme.error,
+                case final failed when failed.isNotEmpty) ...[
+              Material(
+                color: theme.colorScheme.errorContainer,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: AppCorners.control,
                 ),
-                title: Text(l10n.requiredCoursesPending(failed.length)),
-                subtitle: Text(failed.map((grade) => grade.name).join('、')),
-                onTap: () =>
-                    _showCategory(context, l10n.pendingRequiredCourses, failed),
-                trailing: const Icon(Icons.chevron_right_rounded),
+                clipBehavior: Clip.antiAlias,
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 4,
+                  ),
+                  leading: Icon(
+                    Icons.error_outline_rounded,
+                    color: theme.colorScheme.error,
+                  ),
+                  title: Text(
+                    l10n.requiredCoursesPending(failed.length),
+                    style: TextStyle(
+                      color: theme.colorScheme.onErrorContainer,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  subtitle: Text(
+                    failed.map((grade) => grade.name).join('、'),
+                    style: TextStyle(
+                      color: theme.colorScheme.onErrorContainer.withValues(
+                        alpha: 0.85,
+                      ),
+                    ),
+                  ),
+                  onTap: () => _showCategory(
+                    context,
+                    l10n.pendingRequiredCourses,
+                    failed,
+                  ),
+                  trailing: Icon(
+                    Icons.chevron_right_rounded,
+                    color: theme.colorScheme.error,
+                  ),
+                ),
               ),
+              const SizedBox(height: 20),
+            ],
             Row(
               children: [
-                Expanded(child: Text(l10n.reviewByCategory)),
+                Expanded(
+                  child: Text(
+                    l10n.reviewByCategory,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      fontSize: 12.5,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
                 TextButton(
                   onPressed:
                       controller.school.username == null ||
@@ -139,15 +179,25 @@ class CreditProgressScreen extends StatelessWidget {
                 ),
               ],
             ),
-            for (final category in categories)
+            for (var i = 0; i < categories.length; i++) ...[
+              if (i > 0)
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: theme.colorScheme.outlineVariant.withValues(
+                    alpha: 0.55,
+                  ),
+                ),
               _CreditCategoryRow(
-                name: category,
+                name: categories[i],
                 grades: stats.courses
-                    .where((grade) => record.categoryOf(grade) == category)
+                    .where((grade) => record.categoryOf(grade) == categories[i])
                     .toList(),
-                target: record.categoryTargets[category],
-                onTap: (grades) => _showCategory(context, category, grades),
+                target: record.categoryTargets[categories[i]],
+                onTap: (grades) =>
+                    _showCategory(context, categories[i], grades),
               ),
+            ],
             if (record.gradesUpdatedAt == null)
               TextButton.icon(
                 onPressed: () => startSync(
@@ -216,13 +266,18 @@ class _CreditCategoryRow extends StatelessWidget {
     return InkWell(
       onTap: () => onTap(grades),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Expanded(child: Text(name)),
+                Expanded(
+                  child: Text(
+                    name,
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
                 Text(
                   target == null
                       ? l10n.credits(creditText(earned))
@@ -230,17 +285,25 @@ class _CreditCategoryRow extends StatelessWidget {
                           creditText(earned),
                           creditText(target!),
                         ),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
                 ),
                 const SizedBox(width: 4),
-                const Icon(Icons.chevron_right_rounded, size: 18),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ],
             ),
             if (target != null && target! > 0) ...[
               const SizedBox(height: 8),
               LinearProgressIndicator(
                 value: (earned / target!).clamp(0, 1).toDouble(),
-                minHeight: 4,
-                borderRadius: BorderRadius.circular(3),
+                minHeight: 5,
+                borderRadius: BorderRadius.circular(999),
               ),
             ],
             const SizedBox(height: 6),

@@ -162,11 +162,16 @@ class _AgendaReminderState extends State<AgendaReminder>
                   child: Semantics(
                     liveRegion: true,
                     child: Material(
-                      color: scheme.surfaceContainerLow,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? scheme.surfaceContainerLow
+                          : Colors.white,
                       elevation: 3,
+                      shadowColor: Colors.black.withValues(alpha: 0.14),
                       shape: RoundedRectangleBorder(
                         borderRadius: AppCorners.control,
-                        side: BorderSide(color: scheme.outlineVariant),
+                        side: BorderSide(
+                          color: scheme.outlineVariant.withValues(alpha: 0.85),
+                        ),
                       ),
                       clipBehavior: Clip.antiAlias,
                       child: Row(
@@ -175,9 +180,11 @@ class _AgendaReminderState extends State<AgendaReminder>
                             child: InkWell(
                               onTap: _open,
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 10,
+                                padding: const EdgeInsets.fromLTRB(
+                                  14,
+                                  10,
+                                  8,
+                                  10,
                                 ),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
@@ -186,20 +193,26 @@ class _AgendaReminderState extends State<AgendaReminder>
                                     Wrap(
                                       spacing: 8,
                                       runSpacing: 2,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
                                       children: [
                                         Text(
                                           l10n.agendaReminderCount(
                                             widget.entries.length,
                                           ),
                                           style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w500,
+                                            fontSize: 13.5,
+                                            fontWeight: FontWeight.w600,
                                           ),
                                         ),
                                         Text(
                                           caption,
                                           style: TextStyle(
                                             fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            fontFeatures: const [
+                                              FontFeature.tabularFigures(),
+                                            ],
                                             color: entry!.overdue(widget.now)
                                                 ? scheme.error
                                                 : scheme.primary,
@@ -207,13 +220,13 @@ class _AgendaReminderState extends State<AgendaReminder>
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(height: 3),
+                                    const SizedBox(height: 2),
                                     Text(
                                       localizedAgendaTitle(l10n, entry),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 12.5,
                                         color: scheme.onSurfaceVariant,
                                       ),
                                     ),
@@ -225,7 +238,7 @@ class _AgendaReminderState extends State<AgendaReminder>
                           IconButton(
                             tooltip: l10n.agendaReminderCollapse,
                             onPressed: _dismiss,
-                            icon: const Icon(Icons.close_rounded, size: 20),
+                            icon: const Icon(Icons.close_rounded, size: 19),
                           ),
                           const SizedBox(width: 4),
                         ],

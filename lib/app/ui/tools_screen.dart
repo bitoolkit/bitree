@@ -19,72 +19,88 @@ class ToolsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final scheme = Theme.of(context).colorScheme;
+    final divider = Divider(
+      height: 1,
+      thickness: 1,
+      color: scheme.outlineVariant.withValues(alpha: 0.55),
+    );
+    final academicTools = [
+      (
+        title: l10n.gradesAndAcademics,
+        icon: Icons.school_outlined,
+        page: GradesScreen(controller: controller),
+      ),
+      (
+        title: l10n.gradeSimulation,
+        icon: Icons.calculate_outlined,
+        page: GradeSimulationScreen(controller: controller),
+      ),
+      (
+        title: l10n.creditProgress,
+        icon: Icons.checklist_rounded,
+        page: CreditProgressScreen(controller: controller),
+      ),
+      (
+        title: l10n.examScheduleTool,
+        icon: Icons.event_available_outlined,
+        page: ExamsScreen(controller: controller),
+      ),
+    ];
+    final campusTools = [
+      (
+        title: l10n.emptyClassroomQuery,
+        icon: Icons.meeting_room_outlined,
+        page: ClassroomScreen(
+          repository: controller.classroomRepository,
+          school: controller.school,
+          timetable: controller.timetable,
+        ),
+      ),
+      (
+        title: l10n.wencuiMap,
+        icon: Icons.map_outlined,
+        page: WencuiMapScreen(timetable: controller.timetable),
+      ),
+    ];
+
+    Widget buildSection(
+      String header,
+      List<({String title, IconData icon, Widget page})> items,
+    ) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppSectionHeader(header),
+        for (var i = 0; i < items.length; i++) ...[
+          if (i > 0) divider,
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 4,
+              vertical: 2,
+            ),
+            leading: Icon(items[i].icon, size: 21),
+            title: Text(items[i].title),
+            trailing: Icon(
+              Icons.chevron_right_rounded,
+              size: 19,
+              color: scheme.onSurfaceVariant,
+            ),
+            onTap: () => Navigator.of(context)
+                .push<void>(MaterialPageRoute(builder: (_) => items[i].page)),
+          ),
+        ],
+      ],
+    );
+
     return AppPage(
       title: Text(l10n.toolsTitle),
+      maxWidth: 720,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         children: [
-          AppSectionHeader(l10n.academicTools),
-          for (final tool in [
-            (
-              title: l10n.gradesAndAcademics,
-              icon: Icons.school_outlined,
-              page: GradesScreen(controller: controller),
-            ),
-            (
-              title: l10n.gradeSimulation,
-              icon: Icons.calculate_outlined,
-              page: GradeSimulationScreen(controller: controller),
-            ),
-            (
-              title: l10n.creditProgress,
-              icon: Icons.checklist_rounded,
-              page: CreditProgressScreen(controller: controller),
-            ),
-            (
-              title: l10n.examScheduleTool,
-              icon: Icons.event_available_outlined,
-              page: ExamsScreen(controller: controller),
-            ),
-          ])
-            ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-              leading: Icon(tool.icon),
-              title: Text(tool.title),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () =>
-                  Navigator.of(context)
-                      .push<void>(MaterialPageRoute(builder: (_) => tool.page)),
-            ),
-          const SizedBox(height: 16),
-          AppSectionHeader(l10n.campusTools),
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-            leading: const Icon(Icons.meeting_room_outlined),
-            title: Text(l10n.emptyClassroomQuery),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => Navigator.of(context).push<void>(
-              MaterialPageRoute(
-                builder: (_) => ClassroomScreen(
-                  repository: controller.classroomRepository,
-                  school: controller.school,
-                  timetable: controller.timetable,
-                ),
-              ),
-            ),
-          ),
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-            leading: const Icon(Icons.map_outlined),
-            title: Text(l10n.wencuiMap),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => Navigator.of(context).push<void>(
-              MaterialPageRoute(
-                builder: (_) =>
-                    WencuiMapScreen(timetable: controller.timetable),
-              ),
-            ),
-          ),
+          buildSection(l10n.academicTools, academicTools),
+          const SizedBox(height: 28),
+          buildSection(l10n.campusTools, campusTools),
         ],
       ),
     );

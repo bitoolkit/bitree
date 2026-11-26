@@ -96,11 +96,27 @@ class SettingsScreen extends StatelessWidget {
       DeadlineClearScope.values,
     );
 
-    Widget section(String title, List<Widget> children) => Padding(
-      padding: const EdgeInsets.only(top: 24),
+    final divider = Divider(
+      height: 1,
+      thickness: 1,
+      color: scheme.outlineVariant.withValues(alpha: 0.55),
+    );
+
+    Widget section(
+      String title,
+      List<Widget> children, {
+      bool dividers = true,
+    }) => Padding(
+      padding: const EdgeInsets.only(top: 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [AppSectionHeader(title), ...children],
+        children: [
+          AppSectionHeader(title),
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0 && dividers) divider,
+            children[i],
+          ],
+        ],
       ),
     );
 
@@ -108,11 +124,14 @@ class SettingsScreen extends StatelessWidget {
 
     return AppPage(
       title: Text(l10n.navSettings),
+      maxWidth: 720,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
           SchoolAccount(controller: controller.school),
+          divider,
           MoocAccountTile(controller: controller.mooc),
+          divider,
           Padding(
             padding: const EdgeInsets.only(top: 24),
             child: ListTile(
@@ -141,7 +160,7 @@ class SettingsScreen extends StatelessWidget {
               value: controller.settings.language,
               onChanged: controller.settings.setLanguage,
             ),
-          ]),
+          ], dividers: false),
           if (controller.timetable.schedule != null)
             section(l10n.settingsLocalSchedule, [
               LayoutBuilder(

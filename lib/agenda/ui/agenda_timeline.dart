@@ -519,34 +519,97 @@ class _AgendaTimelineState extends State<AgendaTimeline>
               onPointerSignal: (event) {
                 if (event is PointerScrollEvent) _stopMotion();
               },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  children: [
-                    TextButton.icon(
-                      onPressed: () {
-                        _stopMotion();
-                        _visibleCenter.value = calendarDate(widget.now)
-                            .add(const Duration(hours: 12));
-                      },
-                      icon: const Icon(Icons.today_outlined, size: 18),
-                      label: Text(l10n.today),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  border: Border(
+                    top: BorderSide(
+                      color: Theme.of(context).colorScheme.outlineVariant
+                          .withValues(alpha: 0.65),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Tooltip(
-                        message: l10n.agendaTimelineZoom,
-                        child: Slider(
-                          value: _zoom,
-                          min: 1,
-                          max: 24,
-                          semanticFormatterCallback: (_) => scaleLabel,
-                          onChanged: (value) =>
-                              _zoomAt(value, width / 2, width, baseline),
+                    bottom: BorderSide(
+                      color: Theme.of(context).colorScheme.outlineVariant
+                          .withValues(alpha: 0.65),
+                    ),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 3,
+                  ),
+                  child: Row(
+                    children: [
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          backgroundColor: Theme.of(context)
+                              .colorScheme
+                              .primaryContainer
+                              .withValues(alpha: 0.6),
+                          foregroundColor: Theme.of(context)
+                              .colorScheme
+                              .onPrimaryContainer,
+                          minimumSize: const Size(0, 36),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
                         ),
+                        onPressed: () {
+                          _stopMotion();
+                          _visibleCenter.value = calendarDate(widget.now)
+                              .add(const Duration(hours: 12));
+                        },
+                        icon: const Icon(Icons.today_outlined, size: 17),
+                        label: Text(l10n.today),
                       ),
-                    ),
-                  ],
+                      if (width >= 600)
+                        const Spacer()
+                      else
+                        const SizedBox(width: 8),
+                      if (width >= 600)
+                        SizedBox(
+                          width: 190,
+                          child: Tooltip(
+                            message: l10n.agendaTimelineZoom,
+                            child: Slider(
+                              value: _zoom,
+                              min: 1,
+                              max: 24,
+                              semanticFormatterCallback: (_) => scaleLabel,
+                              onChanged: (value) =>
+                                  _zoomAt(value, width / 2, width, baseline),
+                            ),
+                          ),
+                        )
+                      else
+                        Expanded(
+                          child: Tooltip(
+                            message: l10n.agendaTimelineZoom,
+                            child: Slider(
+                              value: _zoom,
+                              min: 1,
+                              max: 24,
+                              semanticFormatterCallback: (_) => scaleLabel,
+                              onChanged: (value) =>
+                                  _zoomAt(value, width / 2, width, baseline),
+                            ),
+                          ),
+                        ),
+                      if (width >= 600) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          scaleLabel,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures(),
+                                ],
+                              ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -772,8 +835,8 @@ class _AgendaTimelineState extends State<AgendaTimeline>
       }
     }
     final featherSpan = Duration(
-      microseconds:
-          (cellWidth * 0.75 / pixelsPerHour * _microsecondsPerHour).round(),
+      microseconds: (cellWidth * 0.75 / pixelsPerHour * _microsecondsPerHour)
+          .round(),
     );
     final compacted = compactTimelineLanes(
       placements,
